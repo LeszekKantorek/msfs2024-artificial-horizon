@@ -9,6 +9,8 @@ honest indication when data is unavailable.
 ## Requirements
 
 - Rust server with HTTP and server-to-browser telemetry delivery over SSE.
+- Windows x64 MSVC is the only supported platform for the Rust library, CLI,
+  server, and CI. The web client runs in mobile browsers.
 - Rust library package with reusable application logic and executable entry points
   under `src/bin/`; clap for command-line argument parsing.
 - HTML, CSS, JavaScript, and SVG client with no application framework/build pipeline.

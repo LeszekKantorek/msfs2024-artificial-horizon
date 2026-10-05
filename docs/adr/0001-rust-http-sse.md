@@ -18,6 +18,9 @@ and a same-origin SSE endpoint. Use native EventSource, HTML/CSS, vanilla JavaSc
 and SVG in the browser. Publish normalized latest-value snapshots from either an
 explicit demo provider or a Windows SimConnect provider.
 
+Target Windows x64 MSVC for the Rust library and binaries, including demo mode
+and CI. Keep SDK dependencies optional so default Windows checks run without MSFS.
+
 Axum has [SSE response and keep-alive support](https://docs.rs/axum/latest/axum/response/sse/).
 Native EventSource supports reconnecting streams; the
 [MDN SSE guide](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)

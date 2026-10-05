@@ -24,7 +24,8 @@ Unverified hardware acceptance stays open or becomes an explicit linked follow-u
 - Changes to the telemetry contract include compatible fixtures and consumer updates.
 - Documentation describes implemented behavior and clearly marks planned behavior.
 
-Once Cargo is introduced, the baseline commands are `cargo fmt --all -- --check`,
+Rust development and CI target Windows x64 MSVC only. Once Cargo is introduced,
+the baseline commands are `cargo fmt --all -- --check`,
 `cargo clippy --locked --all-targets -- -D warnings`, and `cargo test --locked`.
 Run feature-specific checks as documented by the SimConnect integration; default
 checks must not require the simulator. Add useful behavior tests, not assertions

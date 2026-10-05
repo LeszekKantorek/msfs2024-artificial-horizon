@@ -36,8 +36,9 @@ server or telemetry logic; separate packages or services require a concrete need
 
 Keep SDK types out of telemetry and HTTP. A dedicated worker owns any blocking
 SimConnect callback loop and communicates normalized state to the async runtime.
-Use an opt-in Windows-only feature for SDK dependencies. Demo and default tests
-must compile on Windows and Linux without the SDK.
+Windows x64 MSVC is the only supported Rust build and runtime target. Use an
+opt-in feature for SDK dependencies so demo builds and default tests run on
+Windows without the SDK. CI runs on Windows only.
 
 A Tokio latest-value watch channel is the initial distribution choice. Intermediate
 samples may be skipped by slow consumers. Do not queue flight history. Recompute

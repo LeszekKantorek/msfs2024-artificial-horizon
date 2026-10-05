@@ -4,6 +4,9 @@ A mobile web attitude display for Microsoft Flight Simulator 2024, inspired by
 the readability of the Garmin G5. Rust runs the HTTP server; a lightweight
 HTML/CSS/JavaScript client receives telemetry through Server-Sent Events (SSE).
 
+The Rust library, CLI, and server target Windows x64 MSVC only, with Windows-only
+CI. The web client supports iOS Safari and Android Chrome.
+
 **Status:** project preparation. Architecture, delivery plan, and GitHub tasks
 are ready; the application is not implemented or runnable yet.
 

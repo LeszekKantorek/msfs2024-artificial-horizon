@@ -6,7 +6,7 @@ below become mandatory as the corresponding implementation is added.
 ## Automated checks
 
 Run formatting, Clippy with warnings denied, and locked dependency tests on Windows
-and Linux for the demo/default feature set. The SimConnect feature gets a Windows
+x64 MSVC only for the demo/default feature set. The SimConnect feature gets a Windows
 build check once its SDK prerequisites and distribution constraints are known.
 
 Test behavior at these boundaries:
