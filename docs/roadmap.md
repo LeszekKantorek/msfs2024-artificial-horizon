@@ -8,7 +8,7 @@ and dependencies; it deliberately does not duplicate open/closed status.
 
 | Order | Issue | Depends on | Deliverable |
 | --- | --- | --- | --- |
-| 1 | [#1 Rust skeleton and CI](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/1) | None | Buildable server, static page, health, checks |
+| 1 | [#1 Rust skeleton and CI](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/1) | None | Library, thin clap CLI, static page, `/health`, checks |
 | 2 | [#2 Telemetry and demo provider](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/2) | #1 | Typed current state and repeatable attitudes |
 | 3 | [#3 SSE sessions](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/3) | #1, #2 | Current snapshots, reconnect, bounded consumers |
 | 4 | [#4 Mobile instrument](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/4) | #2, #3 | Responsive attitude and honest status |

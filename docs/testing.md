@@ -11,11 +11,14 @@ build check once its SDK prerequisites and distribution constraints are known.
 
 Test behavior at these boundaries:
 
+- Library/CLI: typed configuration works without parsing process arguments; clap
+  help/version succeed and invalid CLI values produce actionable errors.
 - Model: unit/sign normalization, roll wrap, invalid numbers, serialization, and
   monotonic sample age. Use fixtures independent of the implementation formula.
 - Providers: deterministic trajectories, unchanged-but-fresh samples, lifecycle
   transitions, reconnect backoff, and shutdown/handle ownership.
-- HTTP/SSE: immediate full snapshot, event framing, MIME/cache headers, reconnect
+- HTTP/SSE: `/health` reports HTTP liveness independently of source readiness;
+  immediate full snapshot, event framing, MIME/cache headers, reconnect
   without replay, shared acquisition, two clients, slow consumers, and cleanup.
 - Browser: pure attitude transforms, message validation, source/transport status,
   receive timeout, and fresh-data requirement after background/resume.

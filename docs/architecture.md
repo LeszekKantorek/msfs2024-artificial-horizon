@@ -15,13 +15,17 @@ flowchart LR
 ```
 
 Choose exactly one provider at startup. One Rust process contains acquisition,
-normalization, current state, and the HTTP server. A single binary crate is enough;
-separate crates or services require a concrete need.
+normalization, current state, and the HTTP server. Initialize one Cargo package as
+a library (`cargo init --lib`): reusable application logic lives in `src/lib.rs`
+and its modules. Thin executable entry points live in `src/bin/`, starting with
+`src/bin/main.rs`. Additional applications can reuse the library without duplicating
+server or telemetry logic; separate packages or services require a concrete need.
 
 ## Boundaries
 
 | Component | Responsibility |
 | --- | --- |
+| CLI | clap argument parsing, help/version output, conversion into library configuration |
 | Configuration | Source selection, validated listen address/port, sampling settings |
 | Telemetry | Typed normalized attitude, validity, sequence, and freshness |
 | Demo provider | Repeatable scenarios and explicitly marked synthetic data |
@@ -47,11 +51,12 @@ Create these files as their implementation issues are completed; this is a plan,
 not a claim that these modules already exist.
 
 ```text
-Cargo.toml                  # one application crate, edition 2024
+Cargo.toml                  # library package with binary targets, edition 2024
 Cargo.lock                  # committed application dependency lock
 src/
-  main.rs                   # startup and shutdown
-  lib.rs                    # application assembly usable by integration tests
+  lib.rs                    # reusable application API and assembly
+  bin/
+    main.rs                 # thin clap CLI, runtime startup, shutdown wiring
   config.rs
   telemetry.rs              # transport-independent normalized model
   providers/
@@ -72,6 +77,13 @@ tests/
 .github/workflows/ci.yml
 ```
 
+Use `clap` with its derive API for CLI arguments, including source selection,
+listen address/port, and standard help/version output. Keep argument parsing in
+the binary boundary; the library accepts typed configuration and never reads
+process arguments itself. Validate configuration at the library boundary so other
+binaries and tests receive the same guarantees. Document `cargo run --bin main`
+when the executable is implemented; future binaries use their own names.
+
 Embed web assets into the release binary. The browser uses a relative SSE URL from
 the same origin. No CDN, frontend package manager, CORS policy, or database is needed.
 
@@ -83,7 +95,7 @@ acknowledgements still exist. A session ends when the subscription closes.
 
 Immediately send current state to each subscriber. EventSource handles transport
 reconnection. A new connection gets current state rather than missed samples.
-Keep source health separate from HTTP liveness: `/healthz` can be healthy while
+Keep source health separate from HTTP liveness: `/health` can be healthy while
 the simulator is unavailable, which must be reported in telemetry.
 
 When a page resumes from the background, mark it as waiting until a new valid

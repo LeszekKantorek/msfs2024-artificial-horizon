@@ -8,7 +8,7 @@ together if implementation evidence requires a change.
 | Request | Response |
 | --- | --- |
 | `GET /` | Instrument HTML; relative same-origin asset URLs |
-| `GET /healthz` | `200` JSON `{"status":"ok"}` when HTTP is serving |
+| `GET /health` | `200` JSON `{"status":"ok"}` when HTTP is serving |
 | `GET /api/v1/events` | `200 text/event-stream`; one stream per page |
 
 There are no write/control endpoints. Health reports process liveness, not flight readiness.

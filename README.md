@@ -48,6 +48,8 @@ Code, documentation, issues, commit messages, and pull requests use English.
 ## Implementation starting point
 
 Start with [#1: Rust skeleton and CI](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/1).
+Initialize a Rust library package with a thin `src/bin/main.rs` entry point and
+clap CLI, so future applications can share the library. HTTP liveness uses `/health`.
 Then build the demo-to-browser path while the SimConnect investigation resolves
 SDK integration choices. Installation and run commands will be added when they
 have been tested against an actual application.

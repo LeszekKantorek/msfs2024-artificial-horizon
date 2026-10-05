@@ -9,6 +9,8 @@ honest indication when data is unavailable.
 ## Requirements
 
 - Rust server with HTTP and server-to-browser telemetry delivery over SSE.
+- Rust library package with reusable application logic and executable entry points
+  under `src/bin/`; clap for command-line argument parsing.
 - HTML, CSS, JavaScript, and SVG client with no application framework/build pipeline.
 - Mobile browser support: iOS Safari and Android Chrome, portrait and landscape.
 - Automatic subscription on page load and recovery after a connection interruption.

@@ -11,7 +11,9 @@ updates but no simulator command channel. There is no persistent domain data.
 
 ## Decision
 
-Use one Rust binary crate with Tokio, Axum, and Serde; serve embedded static assets
+Use one Rust library package with Tokio, Axum, and Serde, plus thin executable
+targets under `src/bin/`, starting with `src/bin/main.rs`. Use clap for CLI parsing;
+pass typed configuration into the reusable library. Serve embedded static assets
 and a same-origin SSE endpoint. Use native EventSource, HTML/CSS, vanilla JavaScript,
 and SVG in the browser. Publish normalized latest-value snapshots from either an
 explicit demo provider or a Windows SimConnect provider.
@@ -34,6 +36,7 @@ record the tested toolchain, and commit Cargo.lock; this ADR does not pin untest
 
 ## Consequences
 
+- Additional binaries can reuse the library without coupling it to process arguments.
 - Demo development and HTTP tests do not require MSFS or its SDK.
 - Freshness, reconnects, mobile suspension, and slow clients need explicit handling.
 - Browsers may limit concurrent HTTP/1.x SSE connections; use one per page and test
