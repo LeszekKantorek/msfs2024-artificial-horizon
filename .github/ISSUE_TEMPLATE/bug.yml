@@ -1,0 +1,34 @@
+name: Bug report
+description: Report incorrect instrument, server, or connection behavior.
+title: "[Bug]: "
+body:
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: App commit/version, source mode, OS, simulator/aircraft, phone, and browser.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Logs, screenshots, and measurements. Remove private information.
