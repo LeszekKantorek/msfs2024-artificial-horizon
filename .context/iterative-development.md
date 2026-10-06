@@ -5,21 +5,14 @@ status: active
 
 # Build foundations for the next iteration
 
-The project owner established during the issue #1 review on 2026-10-06 that demo
-will be built and extended in successive iterations. Each step should provide
-foundations for the next one. Assess design choices against both the current
-outcome and the next documented use in the [roadmap](../docs/roadmap.md).
-
-A small structural change is justified when it simplifies a concrete next step.
-Avoid postponing such a change solely because the current skeleton can work
-without it. Future extensibility must still be grounded in agreed requirements;
-this preference does not authorize implementing later issues or speculative
-frameworks as part of the current task.
-
-Use [architecture](../docs/architecture.md) for target boundaries, including
-ownership of source types, and [CONTRIBUTING](../CONTRIBUTING.md) for document
-responsibilities and the issue workflow. Those documents remain the canonical
-sources; this entry records the owner's development preference and its rationale.
-
-When applying this preference, identify the next use that motivates the choice,
-explain its immediate cost, and verify that the current outcome still works.
+- Build each demo iteration as a foundation for the next, as agreed with the owner during the issue #1 review on 2026-10-06.
+- Assess design choices against the current outcome and the next documented use in the [roadmap](../docs/roadmap.md).
+- Make small structural changes when they simplify a concrete next step.
+- Do not postpone a useful structural change solely because the current skeleton works without it.
+- Ground extensibility in agreed requirements.
+- Keep later issues and speculative frameworks outside the current task.
+- Use [architecture](../docs/architecture.md) as the canonical source for target boundaries and source-type ownership.
+- Use [CONTRIBUTING](../CONTRIBUTING.md) as the canonical source for document responsibilities and the issue workflow.
+- Identify the next use that motivates each structural choice.
+- Explain the immediate cost of the choice.
+- Verify that the current outcome still works.
