@@ -2,11 +2,7 @@
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Source {
-    Demo,
-    SimConnect,
-}
+use crate::providers::{Source, SourceError};
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -35,7 +31,8 @@ impl Config {
         {
             return Err(ConfigError::InvalidAddress(self.listen_address));
         }
-        crate::providers::validate_source(self.source)
+        crate::providers::validate_source(self.source)?;
+        Ok(())
     }
 
     pub fn socket_address(&self) -> SocketAddr {
@@ -51,10 +48,8 @@ pub enum ConfigError {
         "listen address {0} is multicast or broadcast; choose a local interface or wildcard address"
     )]
     InvalidAddress(IpAddr),
-    #[error(
-        "SimConnect integration is not implemented yet (issues #5 and #6); explicitly select --source demo to start the HTTP skeleton"
-    )]
-    SimConnectUnavailable,
+    #[error(transparent)]
+    Source(#[from] SourceError),
 }
 
 #[cfg(test)]
@@ -103,7 +98,7 @@ mod tests {
                 ..Config::default()
             }
             .validate(),
-            Err(ConfigError::SimConnectUnavailable)
+            Err(ConfigError::Source(SourceError::SimConnectUnavailable))
         ));
     }
 }

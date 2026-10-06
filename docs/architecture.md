@@ -94,6 +94,11 @@ owns process signal handling. Default demo selection serves HTTP without samples
 SimConnect selection returns an unavailable-integration error. The `simconnect`
 feature reserves a Windows-only module and has no SDK dependencies yet.
 
+The providers module owns `Source` and `SourceError`. Configuration consumes the
+source type and wraps availability failures in `ConfigError::Source`, so providers
+do not depend on application configuration. The library re-exports these types
+for callers.
+
 Embed web assets into the release binary. The browser uses a relative SSE URL from
 the same origin. No CDN, frontend package manager, CORS policy, or database is needed.
 

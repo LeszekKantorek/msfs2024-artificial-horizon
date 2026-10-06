@@ -8,5 +8,6 @@ pub mod http;
 pub mod providers;
 pub mod telemetry;
 
-pub use config::{Config, ConfigError, Source};
+pub use config::{Config, ConfigError};
 pub use http::{Server, ServerError};
+pub use providers::{Source, SourceError};
