@@ -1,5 +1,5 @@
 ---
-description: Implementation and context-use rules for this repository; read before working on a task.
+description: Implementation rules for this repository; read before working on a task.
 status: active
 ---
 
@@ -30,24 +30,3 @@ Apply the architectural constraints when changing code:
 Follow [CONTRIBUTING](../CONTRIBUTING.md) for workflow, document responsibilities,
 the definition of done, and required checks. It is the canonical source for those
 rules.
-
-## Project context
-
-- Before choosing module boundaries or extending demo behavior, read
-  [iterative development](iterative-development.md).
-- Read only entries relevant to the task. Use `context-gather` for missing or
-  conflicting knowledge and `context-apply` for known constraints.
-- Check entry status and sources: follow `superseded_by` for superseded entries;
-  do not apply deprecated entries. `active` describes current knowledge, not
-  implementation progress or proof of a claim. Exclude `.context/sessions/`.
-- Apply retrieved constraints to the actual change and its validation; reading
-  or citing an entry alone is insufficient. Keep intended and observed behavior
-  distinct, and surface unresolved conflicts rather than silently resolving them.
-- Use `context-consolidate` to preserve new durable learning within the task's
-  scope. Prefer updating its existing home or linking to a canonical source over
-  duplicating documentation. Update [the index](index.md) when adding, renaming,
-  or retiring entries. Do not require a memory update after every task.
-- Use `context-review` when knowledge is conflicting, stale, duplicated, or hard
-  to retrieve; do not require all four skills for every task.
-- Keep progress, blockers, next steps, and test execution results in Issues/PRs
-  or the task's own plan, not `.context/`. Do not store raw chats or secrets.

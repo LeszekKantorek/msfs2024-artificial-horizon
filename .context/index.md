@@ -10,7 +10,7 @@ for authoritative details; this index does not track implementation progress.
 
 | Entry | When to read |
 | --- | --- |
-| [Repository instructions](repository-instructions.md) | Before working on any task: implementation constraints and context-use rules |
+| [Repository instructions](repository-instructions.md) | Before working on any task: implementation constraints |
 | [Iterative development](iterative-development.md) | Choosing module boundaries or extending demo behavior across iterations |
 
 For target design, see [architecture](../docs/architecture.md). For document
