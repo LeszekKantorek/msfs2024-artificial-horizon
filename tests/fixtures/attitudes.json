@@ -1,0 +1,9 @@
+[
+  {"sample":0,"pitch_deg":0.0,"roll_deg":0.0},
+  {"sample":40,"pitch_deg":15.0,"roll_deg":0.0},
+  {"sample":80,"pitch_deg":-15.0,"roll_deg":0.0},
+  {"sample":120,"pitch_deg":0.0,"roll_deg":-30.0},
+  {"sample":160,"pitch_deg":0.0,"roll_deg":30.0},
+  {"sample":200,"pitch_deg":10.0,"roll_deg":25.0},
+  {"sample":240,"pitch_deg":-10.0,"roll_deg":-25.0}
+]

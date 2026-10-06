@@ -10,7 +10,7 @@ use msfs2024_artificial_horizon::{Config, Server, Source};
 #[derive(Parser, Debug)]
 #[command(version, about)]
 struct Cli {
-    /// Selected source; demo currently starts HTTP without telemetry.
+    /// Selected source; demo produces synthetic telemetry at 20 Hz.
     #[arg(long, value_enum, default_value = "demo")]
     source: CliSource,
     /// Local interface IP; use 0.0.0.0 explicitly for LAN access.
@@ -66,7 +66,7 @@ fn print_startup_message(address: SocketAddr) {
     } else {
         println!("Open http://{address}");
     }
-    println!("Source: demo. Telemetry is not implemented yet. Press Ctrl+C to stop.");
+    println!("Source: DEMO (synthetic telemetry, 20 Hz). Press Ctrl+C to stop.");
 }
 
 fn print_lan_url(address: SocketAddr) {

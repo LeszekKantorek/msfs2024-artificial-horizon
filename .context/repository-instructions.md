@@ -21,4 +21,5 @@ status: active
 - Add focused tests for changed behavior.
 - Report hardware checks honestly.
 - Do not treat planned modules, commands, targets, or SDK compatibility as verified.
+- Collect implementation findings in [MVP issue #9](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9), referencing the originating task; review them after that task closes before deciding on follow-up scope.
 - Follow [CONTRIBUTING](../CONTRIBUTING.md) as the canonical source for workflow, document responsibilities, the definition of done, and required checks.

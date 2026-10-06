@@ -58,8 +58,10 @@ cargo build --locked
 cargo run --locked --bin main
 ```
 
-Open `http://127.0.0.1:8080`. The default source is `demo`, but this skeleton
-produces no telemetry. `GET /health` returns `{"status":"ok"}` for HTTP liveness,
+Open `http://127.0.0.1:8080`. The default source is `demo`, producing deterministic
+synthetic telemetry at 20 Hz through the library. The page marks DEMO but has no
+stream or instrument yet (issues #3 and #4).
+`GET /health` returns `{"status":"ok"}` for HTTP liveness,
 not simulator readiness. Press Ctrl+C for graceful shutdown.
 
 ```powershell
@@ -88,7 +90,8 @@ phone URL. `localhost` on the phone refers to the phone itself.
 Allow inbound TCP on the chosen port in Windows Defender Firewall, scoped to
 the Private profile and local subnet. Use the same trusted private network;
 do not forward the port on your router. LAN access has no authentication.
-This skeleton exposes only its placeholder and liveness, not flight data.
+HTTP exposes the DEMO placeholder and liveness; telemetry is currently available
+through the library only.
 
 ## Library and checks
 
@@ -96,6 +99,18 @@ The `msfs2024_artificial_horizon` library exposes `Config`, `Source`, and `Serve
 `Server::bind(config).await` validates and binds; `local_address()` returns the
 bound address; `run(shutdown).await` takes a caller-owned shutdown future.
 The library never reads process arguments or installs a Ctrl+C handler.
+
+`Server::telemetry()` returns a cloneable latest-value subscription. Call
+`snapshot()` for immediate state and `changed().await` for the next publication;
+serialize a newly obtained snapshot immediately so its age is current. Subscribers
+share one producer, and slow consumers skip intermediate samples. Closing the
+server stops and joins the producer and closes subscriptions after pending data.
+
+The demo repeats a 14-second cycle: level flight, nose up/down, left/right bank,
+and two combined attitudes, each held for two seconds. Every 50 ms tick is a fresh
+sample, including unchanged poses. Missed ticks are skipped. Telemetry begins in
+`waiting`, becomes `live` on fresh data, and expires after 1000 ms without an
+accepted sample. Demo never substitutes for unavailable SimConnect.
 
 ```powershell
 cargo fmt --all -- --check
