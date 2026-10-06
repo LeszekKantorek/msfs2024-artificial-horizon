@@ -7,11 +7,15 @@ permissions:
 jobs:
   check:
     runs-on: windows-latest
+    env:
+      RUSTUP_TOOLCHAIN: stable
     steps:
       - uses: actions/checkout@v4
-      - name: Install recorded toolchain
+      - name: Install Rust stable
         shell: pwsh
-        run: rustup show
+        run: rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+      - name: Record tested toolchain
+        run: rustc --version --verbose
       - name: Formatting
         run: cargo fmt --all -- --check
       - name: Clippy

@@ -5,9 +5,11 @@ execution results and acceptance progress in the related GitHub issue or PR.
 
 ## HTTP startup checks
 
-Use Windows x64 MSVC with the toolchain in `rust-toolchain.toml`. Run the check
+Use Rust stable on Windows x64 MSVC with rustfmt and Clippy installed. Run the check
 commands in README, including default and `simconnect` feature tests. Dependencies
 are resolved from committed Cargo.lock; no simulator or SimConnect SDK is required.
+Record `rustc --version --verbose` with execution results in the issue or PR;
+CI records the tested compiler version in its logs.
 
 Run `cargo run --locked --bin main`, then request `http://127.0.0.1:8080/`,
 `/styles.css`, and `/health`. Expect HTML, CSS, and JSON `{"status":"ok"}`.

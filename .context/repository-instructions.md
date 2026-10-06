@@ -19,7 +19,7 @@ Apply the architectural constraints when changing code:
   points under `src/bin/`. Use clap at the CLI boundary.
 - Use `/health` for HTTP liveness, distinct from source validity and transport
   connectivity.
-- Target Windows x64 MSVC for the Rust library, CLI, server, and CI.
+- Use Rust stable and target Windows x64 MSVC for the Rust library, CLI, server, and CI.
 - Preserve read-only SSE; do not add browser simulator controls.
 - Isolate Windows SimConnect dependencies. Demo/default builds must not need
   the simulator SDK.

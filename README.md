@@ -48,10 +48,12 @@ Code, documentation, issues, commit messages, and pull requests use English.
 ## Build and run
 
 Use Windows x64 with rustup and the Visual Studio C++ Build Tools (MSVC linker
-and Windows SDK). No MSFS installation or SimConnect SDK is needed. The recorded
-Rust toolchain is 1.98.1; rustup reads `rust-toolchain.toml` automatically.
+and Windows SDK). No MSFS installation or SimConnect SDK is needed. Use Rust
+stable with rustfmt and Clippy; the project does not pin a compiler version.
 
 ```powershell
+rustup default stable
+rustup component add rustfmt clippy --toolchain stable
 cargo build --locked
 cargo run --locked --bin main
 ```
