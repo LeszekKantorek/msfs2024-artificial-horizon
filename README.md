@@ -7,10 +7,6 @@ HTML/CSS/JavaScript client receives telemetry through Server-Sent Events (SSE).
 The Rust library, CLI, and server target Windows x64 MSVC only, with Windows-only
 CI. The web client supports iOS Safari and Android Chrome.
 
-**Status:** HTTP application skeleton. The embedded placeholder page and `/health`
-are available. Telemetry, demo trajectories, SSE, and the instrument are planned
-in issues #2-#4; SimConnect integration is planned in #5-#6.
-
 ## Intended experience
 
 1. Start the application on the Windows PC running MSFS2024.
@@ -108,7 +104,7 @@ cargo test --locked --all-targets --features simconnect
 ```
 
 CI runs the same checks on Windows x64 MSVC. See [testing](docs/testing.md)
-for the skeleton acceptance procedure and later simulator/mobile validation.
+for HTTP startup checks and simulator/mobile acceptance procedures.
 
 ## License
 

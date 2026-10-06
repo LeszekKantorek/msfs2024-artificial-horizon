@@ -1,7 +1,7 @@
 # Architecture
 
-Status: HTTP skeleton implemented. Telemetry acquisition, SSE distribution, and
-the instrument below remain the implementation baseline for later issues.
+This document defines the target architecture, component responsibilities,
+dependency boundaries, and runtime behavior.
 
 ## System
 
@@ -49,9 +49,8 @@ connection cannot retain resources indefinitely.
 
 ## Intended source layout
 
-Configuration, source availability, HTTP, a placeholder telemetry boundary,
-embedded HTML/CSS, and the CLI exist. Create the remaining files as their
-implementation issues are completed; the full layout below is the target.
+The target layout separates application configuration, telemetry, providers,
+HTTP transport, and browser presentation.
 
 ```text
 Cargo.toml                  # library package with binary targets, edition 2024
@@ -87,12 +86,12 @@ process arguments itself. Validate configuration at the library boundary so othe
 binaries and tests receive the same guarantees. Start the executable with
 `cargo run --bin main`; future binaries use their own names.
 
-The skeleton exposes typed `Config`/`Source` and `Server::bind`,
+The library exposes typed `Config`/`Source` and `Server::bind`,
 `Server::local_address`, and `Server::run(shutdown)`. Binding validates configuration
 before acquiring the listener. Shutdown is supplied by the caller; only the CLI
-owns process signal handling. Default demo selection serves HTTP without samples;
-SimConnect selection returns an unavailable-integration error. The `simconnect`
-feature reserves a Windows-only module and has no SDK dependencies yet.
+owns process signal handling. Source selection is explicit; a provider failure
+must never cause an automatic switch to demo. The `simconnect` feature gates
+Windows-only SDK integration and dependencies.
 
 The providers module owns `Source` and `SourceError`. Configuration consumes the
 source type and wraps availability failures in `ConfigError::Source`, so providers

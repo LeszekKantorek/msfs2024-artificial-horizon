@@ -1,7 +1,6 @@
 # Telemetry contract v1
 
-Status: proposed implementation contract. Update this document and its fixtures
-together if implementation evidence requires a change.
+Update this contract and its fixtures together when changing the HTTP/SSE interface.
 
 ## HTTP surface
 
