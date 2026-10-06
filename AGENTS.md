@@ -20,6 +20,7 @@
 ## Project context
 
 - Follow the document responsibilities in [CONTRIBUTING.md](CONTRIBUTING.md).
+- Use [.context/index.md](.context/index.md) to find relevant project knowledge.
 - Before choosing module boundaries or extending demo behavior, read
   [.context/iterative-development.md](.context/iterative-development.md).
 - For other tasks, read only relevant `.context/` entries. Use `context-gather`
@@ -32,7 +33,8 @@
   distinct, and surface unresolved conflicts rather than silently resolving them.
 - Use `context-consolidate` to preserve new durable learning within the task's
   scope. Prefer updating its existing home or linking to a canonical source over
-  duplicating documentation. Do not require a memory update after every task.
+  duplicating documentation. Update `.context/index.md` when adding, renaming,
+  or retiring entries. Do not require a memory update after every task.
 - Use `context-review` when knowledge is conflicting, stale, duplicated, or hard
   to retrieve; do not require all four skills for every task.
 - Keep progress, blockers, next steps, and test execution results in Issues/PRs
