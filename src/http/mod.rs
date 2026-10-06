@@ -6,10 +6,13 @@ use axum::{Json, Router, http::header, response::Html, routing::get};
 use serde::Serialize;
 use tokio::net::TcpListener;
 
+use crate::telemetry::{self, Publisher, Subscription};
 use crate::{Config, ConfigError};
 
 pub struct Server {
     listener: TcpListener,
+    publisher: Publisher,
+    subscription: Subscription,
 }
 
 impl Server {
@@ -19,18 +22,47 @@ impl Server {
         let listener = TcpListener::bind(address)
             .await
             .map_err(|source| ServerError::Bind { address, source })?;
-        Ok(Self { listener })
+        let (publisher, subscription) = telemetry::channel(config.source);
+        Ok(Self {
+            listener,
+            publisher,
+            subscription,
+        })
     }
 
     pub fn local_address(&self) -> io::Result<SocketAddr> {
         self.listener.local_addr()
     }
 
+    /// All subscribers share the same producer and retain only the latest state.
+    pub fn telemetry(&self) -> Subscription {
+        self.subscription.clone()
+    }
+
     /// Stop accepting requests on shutdown and finish requests already in flight.
     pub async fn run(self, shutdown: impl Future<Output = ()> + Send + 'static) -> io::Result<()> {
-        axum::serve(self.listener, router())
-            .with_graceful_shutdown(shutdown)
-            .await
+        let (stop, stopped) = tokio::sync::watch::channel(false);
+        let (finished, completion) = tokio::sync::oneshot::channel();
+        let producer = tokio::spawn(async move {
+            let result = crate::providers::demo::run(self.publisher, async move {
+                let mut stopped = stopped;
+                let _ = stopped.wait_for(|stop| *stop).await;
+            })
+            .await;
+            let _ = finished.send(());
+            result
+        });
+        let stop_on_shutdown = stop.clone();
+        let http_result = axum::serve(self.listener, router())
+            .with_graceful_shutdown(async move {
+                tokio::select! { _ = shutdown => {}, _ = completion => {} }
+                let _ = stop_on_shutdown.send(true);
+            })
+            .await;
+        let _ = stop.send(true);
+        let producer_result = producer.await.map_err(io::Error::other)?;
+        producer_result.map_err(io::Error::other)?;
+        http_result
     }
 }
 
@@ -84,7 +116,13 @@ mod tests {
         // Port zero is confined to the listener-owning test, not public configuration.
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = listener.local_addr().unwrap();
-        let server = Server { listener };
+        let (publisher, subscription) = telemetry::channel(crate::Source::Demo);
+        let server = Server {
+            listener,
+            publisher,
+            subscription,
+        };
+        let mut telemetry = server.telemetry();
         let (stop, stopped) = oneshot::channel();
         let task = tokio::spawn(server.run(async {
             let _ = stopped.await;
@@ -103,12 +141,27 @@ mod tests {
         .unwrap();
         assert!(response.starts_with("HTTP/1.1 200 OK"));
         assert!(response.contains("{\"status\":\"ok\"}"));
+        let sample = timeout(Duration::from_secs(5), telemetry.changed())
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(
+            serde_json::to_value(sample).unwrap()["sequence"]
+                .as_u64()
+                .unwrap()
+                > 0
+        );
         stop.send(()).unwrap();
         timeout(Duration::from_secs(5), task)
             .await
             .unwrap()
             .unwrap()
             .unwrap();
+        timeout(Duration::from_secs(5), async {
+            while telemetry.changed().await.is_ok() {}
+        })
+        .await
+        .unwrap();
         let rebound = TcpListener::bind(address).await.unwrap();
         assert_eq!(rebound.local_addr().unwrap(), address);
     }

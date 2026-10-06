@@ -82,3 +82,17 @@ visible rendering on a healthy LAN, not receipt-to-render alone.
 
 Attach results to the validation issue. Keep tasks requiring hardware open until
 observed; unit tests cannot certify actual simulator or phone behavior.
+
+## Telemetry and demo checks
+
+`tests/fixtures/attitudes.json` specifies independent degree/sign expectations for
+all seven demo poses. `tests/fixtures/snapshots.json` specifies the v1 wire shape,
+including unavailable states with null attitude. Keep these fixtures synchronized
+with contract changes and reuse them for future browser tests.
+
+Run `cargo test --locked --test telemetry`. Tests use a paused monotonic Tokio clock
+rather than wall-clock sleeps for sample age, stale threshold, fresh identical
+samples, cadence and skipped ticks. They also verify normalized bounds, roll wrap,
+non-finite rejection, source identity and slow independent consumers. Library
+tests check sequence exhaustion and shutdown ownership, including subscription
+closure and listener reuse. These tests require neither simulator nor SDK.

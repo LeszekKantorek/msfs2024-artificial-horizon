@@ -2,6 +2,13 @@
 
 Update this contract and its fixtures together when changing the HTTP/SSE interface.
 
+The Rust model exposes validated `Attitude`, typed `State`, and serializable
+`Snapshot` in `telemetry`. Only `State::Live` carries attitude. Snapshot fields
+cannot be constructed or mutated by callers; obtain a current snapshot from a
+`Subscription` immediately before serialization. Wire examples and known poses
+are specified independently in `tests/fixtures/snapshots.json` and
+`tests/fixtures/attitudes.json`. The model does not itself expose an HTTP endpoint.
+
 ## HTTP surface
 
 | Request | Response |

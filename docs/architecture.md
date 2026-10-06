@@ -135,3 +135,25 @@ prerequisites, signs/units, and redistribution requirements remain the subject o
 Do not select a wrapper solely because it supported an earlier simulator version.
 
 See [ADR 0001](adr/0001-rust-http-sse.md) and the [wire contract](telemetry-contract.md).
+
+## Library telemetry interface
+
+`telemetry::channel(Source)` returns one `Publisher` and a cloneable `Subscription`.
+The publisher accepts typed `State`; only `State::Live(Attitude)` carries validated
+normalized degrees. A provider must emit live only for fresh callbacks from an
+active, unpaused source and emit explicit unavailable states otherwise. It calls
+`Publisher::expire()` on an independent 50 ms freshness tick even if callbacks stop.
+The demo runtime owns both sample and freshness ticks, with skipped missed ticks.
+
+`Subscription::snapshot()` obtains current state without acknowledging a pending
+publication; `changed().await` waits for and acknowledges the newest publication.
+Both compute age at read time and suppress expired live attitude, even before the
+freshness tick runs. `Snapshot` is an immutable serializable v1 value: acquire it
+immediately before sending, rather than cache the wire value. The internal accepted
+sample timestamp is never serialized. The channel retains one current value and
+has no history queue; source identity remains fixed for its lifetime.
+
+`Server::telemetry()` exposes this subscription before `run` starts acquisition.
+`Server::run` owns one demo task and joins it on shutdown or HTTP failure. Producer
+failure triggers HTTP shutdown and is returned to the caller. No SSE route is
+introduced by the telemetry model; HTTP delivery remains a separate boundary.

@@ -1,4 +1,4 @@
-//! Reusable configuration and HTTP application, independent of CLI arguments.
+//! Reusable telemetry, providers and HTTP application, independent of CLI arguments.
 
 #[cfg(not(all(target_os = "windows", target_arch = "x86_64", target_env = "msvc")))]
 compile_error!("Only the x86_64-pc-windows-msvc target is supported.");
