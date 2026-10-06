@@ -53,32 +53,45 @@ async fn main() -> ExitCode {
 
 async fn start(config: Config) -> Result<(), Box<dyn Error>> {
     let server = Server::bind(config).await?;
-    let address = server.local_address()?;
+    print_startup_message(server.local_address()?);
+    run_until_ctrl_c(server).await?;
+    println!("Server stopped.");
+    Ok(())
+}
+
+fn print_startup_message(address: SocketAddr) {
     println!("Listening on {address}");
     if address.ip().is_unspecified() {
-        let detected = if address.is_ipv4() {
-            local_ip_address::local_ip()
-        } else {
-            local_ip_address::local_ipv6()
-        };
-        match detected {
-            Ok(ip) if !ip.is_loopback() && !ip.is_unspecified() => println!(
-                "Open http://{} on the same private network (check the interface if using VPN).",
-                SocketAddr::new(ip, address.port())
-            ),
-            Ok(_) => eprintln!(
-                "No LAN interface detected. Use the PC's private interface IP and port {}.",
-                address.port()
-            ),
-            Err(error) => eprintln!(
-                "Cannot detect a LAN IP: {error}. Use the PC's private interface IP and port {}.",
-                address.port()
-            ),
-        }
+        print_lan_url(address);
     } else {
         println!("Open http://{address}");
     }
     println!("Source: demo. Telemetry is not implemented yet. Press Ctrl+C to stop.");
+}
+
+fn print_lan_url(address: SocketAddr) {
+    let detected = if address.is_ipv4() {
+        local_ip_address::local_ip()
+    } else {
+        local_ip_address::local_ipv6()
+    };
+    match detected {
+        Ok(ip) if !ip.is_loopback() && !ip.is_unspecified() => println!(
+            "Open http://{} on the same private network (check the interface if using VPN).",
+            SocketAddr::new(ip, address.port())
+        ),
+        Ok(_) => eprintln!(
+            "No LAN interface detected. Use the PC's private interface IP and port {}.",
+            address.port()
+        ),
+        Err(error) => eprintln!(
+            "Cannot detect a LAN IP: {error}. Use the PC's private interface IP and port {}.",
+            address.port()
+        ),
+    }
+}
+
+async fn run_until_ctrl_c(server: Server) -> Result<(), Box<dyn Error>> {
     let (stop, stopped) = tokio::sync::oneshot::channel();
     // Propagate signal registration errors instead of claiming a clean shutdown.
     let shutdown = tokio::spawn(async {
@@ -92,7 +105,6 @@ async fn start(config: Config) -> Result<(), Box<dyn Error>> {
         })
         .await?;
     shutdown.await??;
-    println!("Server stopped.");
     Ok(())
 }
 
