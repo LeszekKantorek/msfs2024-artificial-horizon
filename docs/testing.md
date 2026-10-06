@@ -1,7 +1,42 @@
 # Test and acceptance strategy
 
-The repository currently contains planning and workflow documents. The checks
-below become mandatory as the corresponding implementation is added.
+The HTTP skeleton has configuration, CLI, HTTP response, binding, and shutdown
+tests. Telemetry, provider lifecycle, SSE, and instrument checks below become
+mandatory as their corresponding implementation is added.
+
+## Skeleton acceptance
+
+Use Windows x64 MSVC with the toolchain in `rust-toolchain.toml`. Run the check
+commands in README, including default and `simconnect` feature tests. Dependencies
+are resolved from committed Cargo.lock; no simulator or SimConnect SDK is required.
+
+Run `cargo run --locked --bin main`, then request `http://127.0.0.1:8080/`,
+`/styles.css`, and `/health`. Expect HTML, CSS, and JSON `{"status":"ok"}`.
+The page must state that telemetry is unavailable. `/api/v1/events` returns 404
+until issue #3 implements SSE. Check `--help`, `--version`, and rejected arguments.
+
+Press Ctrl+C, confirm successful exit, then start again on the same port.
+Library tests independently signal shutdown and rebind the socket with a five-second
+completion timeout. Public configuration rejects port zero; internal listener
+tests use OS-assigned ports to avoid collisions.
+
+For LAN, explicitly bind the private interface or `0.0.0.0` and verify the printed
+interface URL. A desktop check establishes only the placeholder's layout; real
+phone, simulator, and telemetry acceptance still belongs to later issues.
+
+### Local skeleton evidence (2026-10-06)
+
+Windows x64 MSVC, Rust 1.98.1: formatting, warning-free Clippy, all ten tests
+in both default and `simconnect` configurations, and explicit target build passed.
+`cargo run --locked --bin main` served HTML/CSS and the expected health JSON.
+An isolated hidden Windows console received the real `CTRL_C_EVENT`: two runs
+exited with code 0 and `Server stopped.`, reusing the same listening port.
+The automation terminal's inherited signal-ignore flag was disabled in the
+validation launcher; it was not changed in the application.
+
+Playwright with installed Microsoft Edge checked 1280x800 and 320x568 viewports;
+both rendered the placeholder without horizontal overflow. Screenshots were
+visually inspected. No real phone or MSFS compatibility is claimed by these checks.
 
 ## Automated checks
 

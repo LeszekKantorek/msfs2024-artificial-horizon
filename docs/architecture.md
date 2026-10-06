@@ -1,6 +1,7 @@
 # Architecture
 
-Status: implementation baseline; no runtime code exists yet.
+Status: HTTP skeleton implemented. Telemetry acquisition, SSE distribution, and
+the instrument below remain the implementation baseline for later issues.
 
 ## System
 
@@ -48,8 +49,9 @@ connection cannot retain resources indefinitely.
 
 ## Intended source layout
 
-Create these files as their implementation issues are completed; this is a plan,
-not a claim that these modules already exist.
+Configuration, source availability, HTTP, a placeholder telemetry boundary,
+embedded HTML/CSS, and the CLI exist. Create the remaining files as their
+implementation issues are completed; the full layout below is the target.
 
 ```text
 Cargo.toml                  # library package with binary targets, edition 2024
@@ -82,8 +84,15 @@ Use `clap` with its derive API for CLI arguments, including source selection,
 listen address/port, and standard help/version output. Keep argument parsing in
 the binary boundary; the library accepts typed configuration and never reads
 process arguments itself. Validate configuration at the library boundary so other
-binaries and tests receive the same guarantees. Document `cargo run --bin main`
-when the executable is implemented; future binaries use their own names.
+binaries and tests receive the same guarantees. Start the executable with
+`cargo run --bin main`; future binaries use their own names.
+
+The skeleton exposes typed `Config`/`Source` and `Server::bind`,
+`Server::local_address`, and `Server::run(shutdown)`. Binding validates configuration
+before acquiring the listener. Shutdown is supplied by the caller; only the CLI
+owns process signal handling. Default demo selection serves HTTP without samples;
+SimConnect selection returns an unavailable-integration error. The `simconnect`
+feature reserves a Windows-only module and has no SDK dependencies yet.
 
 Embed web assets into the release binary. The browser uses a relative SSE URL from
 the same origin. No CDN, frontend package manager, CORS policy, or database is needed.
