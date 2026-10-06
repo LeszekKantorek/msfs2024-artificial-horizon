@@ -9,8 +9,6 @@
 
 ## Project context
 
-- Before choosing module boundaries or extending demo behavior, read
-  [.context/iterative-development.md](.context/iterative-development.md).
 - Read only relevant entries, using `context-gather` for missing knowledge and
   `context-apply` for known constraints; exclude `.context/sessions/`.
 - Check sources and entry status, follow superseded entries to their replacements,

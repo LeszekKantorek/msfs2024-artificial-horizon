@@ -15,6 +15,8 @@ for telemetry or browser changes.
 Apply the architectural constraints when changing code:
 
 - Keep one Rust server and a lightweight HTML/CSS/JavaScript/SVG client.
+- Before choosing module boundaries or extending demo behavior, read
+  [iterative development](iterative-development.md).
 - Keep reusable application logic in `src/lib.rs` and modules, with thin entry
   points under `src/bin/`. Use clap at the CLI boundary.
 - Use `/health` for HTTP liveness, distinct from source validity and transport
