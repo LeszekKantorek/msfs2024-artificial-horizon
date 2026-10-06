@@ -16,6 +16,13 @@ GitHub Issues are the source of truth for task status. The roadmap records order
 and dependencies; avoid maintaining a second status checklist in repository files.
 Unverified hardware acceptance stays open or becomes an explicit linked follow-up.
 
+Architecture documents define the target design and boundaries, not implementation
+progress. Testing documentation defines procedures and acceptance criteria; record
+test results in issues or PRs. README documents runnable commands and user-facing
+limitations. Keep implementation status and completed/pending task lists in GitHub
+Issues, not scattered across these documents. ADR status describes a decision's
+lifecycle, not task completion.
+
 ## Definition of done
 
 - Acceptance criteria are met and relevant evidence is attached.

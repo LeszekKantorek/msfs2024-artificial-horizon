@@ -1,0 +1,9 @@
+:root { color-scheme: light; font-family: system-ui, sans-serif; color: #202526; background: #f3f5f5; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { max-width: 48rem; margin: 0 auto; padding: 3rem 1.25rem; }
+h1 { font-size: 2rem; line-height: 1.2; overflow-wrap: anywhere; margin: 1rem 0 2rem; }
+p { line-height: 1.6; }
+.source { color: #006b61; font-weight: 700; }
+.status { border-left: 4px solid #bb354e; padding-left: 1rem; font-weight: 600; }
+@media (max-width: 400px) { h1 { font-size: 1.5rem; } }

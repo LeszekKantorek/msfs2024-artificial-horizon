@@ -1,7 +1,29 @@
 # Test and acceptance strategy
 
-The repository currently contains planning and workflow documents. The checks
-below become mandatory as the corresponding implementation is added.
+This document defines verification procedures and acceptance criteria. Record
+execution results and acceptance progress in the related GitHub issue or PR.
+
+## HTTP startup checks
+
+Use Rust stable on Windows x64 MSVC with rustfmt and Clippy installed. Run the check
+commands in README, including default and `simconnect` feature tests. Dependencies
+are resolved from committed Cargo.lock; no simulator or SimConnect SDK is required.
+Record `rustc --version --verbose` with execution results in the issue or PR;
+CI records the tested compiler version in its logs.
+
+Run `cargo run --locked --bin main`, then request `http://127.0.0.1:8080/`,
+`/styles.css`, and `/health`. Expect HTML, CSS, and JSON `{"status":"ok"}`.
+Check `--help`, `--version`, and rejected arguments. A page without telemetry
+must indicate unavailable data rather than show a valid-looking attitude.
+
+Press Ctrl+C, confirm successful exit, then start again on the same port.
+Library tests independently signal shutdown and rebind the socket with a five-second
+completion timeout. Public configuration rejects port zero; internal listener
+tests use OS-assigned ports to avoid collisions.
+
+For LAN, explicitly bind the private interface or `0.0.0.0` and verify the printed
+interface URL. Desktop checks do not establish real-phone or simulator
+compatibility; validate those with the manual acceptance matrix below.
 
 ## Automated checks
 
