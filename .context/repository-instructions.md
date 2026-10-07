@@ -1,25 +1,25 @@
 ---
-description: Repository instructions for implementation; read before working on a task.
+description: Select implementation sources, validate changes, and record follow-up findings. Use before planning or implementing a repository change.
 status: active
 ---
 
-## Implementation
+## Steps
 
-- Read [README](../README.md) for runnable commands and user-facing limitations before implementation.
-- Read [architecture](../docs/architecture.md) for target components and boundaries before implementation.
-- Read the [telemetry contract](../docs/telemetry-contract.md) for telemetry or browser changes.
-- Keep one Rust server and a lightweight HTML/CSS/JavaScript/SVG client.
-- Read [iterative development](iterative-development.md) before choosing module boundaries or extending demo behavior.
-- Keep reusable application logic in `src/lib.rs` and modules, with thin entry points under `src/bin/`.
-- Use clap at the CLI boundary.
-- Use `/health` for HTTP liveness, distinct from source validity and transport connectivity.
-- Use Rust stable and target Windows x64 MSVC for the Rust library, CLI, server, and CI.
-- Preserve read-only SSE; do not add browser simulator controls.
-- Isolate Windows SimConnect dependencies.
-- Keep demo/default builds independent of the simulator SDK.
-- Never silently substitute demo data or valid-looking zero attitude after failure.
-- Add focused tests for changed behavior.
-- Report hardware checks honestly.
-- Do not treat planned modules, commands, targets, or SDK compatibility as verified.
-- Collect implementation findings in [MVP issue #9](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9), referencing the originating task; review them after that task closes before deciding on follow-up scope.
-- Follow [CONTRIBUTING](../CONTRIBUTING.md) as the canonical source for workflow, document responsibilities, the definition of done, and required checks.
+1. Read README, architecture, and CONTRIBUTING before implementation, then select the other sources below for the affected scope.
+2. Apply their constraints without treating target designs or SDK compatibility as verified behavior.
+3. Add focused checks for changed behavior and run the required validation for the affected scope.
+4. Report observed results and unavailable hardware checks separately.
+5. Collect implementation findings in MVP issue #9 with a reference to the originating task.
+6. Review those findings after the originating task closes before deciding on follow-up scope.
+
+## Source
+
+| Source | Use when |
+| --- | --- |
+| [README](../README.md) | Selecting runnable commands, supported targets, and user-facing limitations. |
+| [Architecture](../docs/architecture.md) | Applying component boundaries, library/CLI ownership, SDK isolation, and runtime constraints. |
+| [CONTRIBUTING](../CONTRIBUTING.md) | Following the issue workflow, document responsibilities, definition of done, and required checks. |
+| [Telemetry contract](../docs/telemetry-contract.md) | Changing telemetry or browser behavior, including read-only delivery and unavailable data. |
+| [Testing](../docs/testing.md) | Choosing behavior checks and simulator or mobile acceptance procedures. |
+| [Iterative development](iterative-development.md) | Choosing module boundaries or extending demo behavior across iterations. |
+| [MVP issue #9](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9) | Collecting findings and deciding on follow-up scope after the originating task closes. |

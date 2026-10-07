@@ -1,18 +1,23 @@
 ---
-description: Use when choosing module boundaries or extending demo behavior across delivery iterations.
+description: Build each demo iteration as a foundation for the next agreed use. Use when choosing module boundaries or extending demo behavior across delivery iterations.
 status: active
 ---
 
-# Build foundations for the next iteration
+## Steps
 
-- Build each demo iteration as a foundation for the next, as agreed with the owner during the issue #1 review on 2026-10-06.
-- Assess design choices against the current outcome and the next documented use in the [roadmap](../docs/roadmap.md).
-- Make small structural changes when they simplify a concrete next step.
-- Do not postpone a useful structural change solely because the current skeleton works without it.
-- Ground extensibility in agreed requirements.
-- Keep later issues and speculative frameworks outside the current task.
-- Use [architecture](../docs/architecture.md) as the canonical source for target boundaries and source-type ownership.
-- Use [CONTRIBUTING](../CONTRIBUTING.md) as the canonical source for document responsibilities and the issue workflow.
-- Identify the next use that motivates each structural choice.
-- Explain the immediate cost of the choice.
-- Verify that the current outcome still works.
+- Ground extensibility in agreed requirements and keep later issues or speculative frameworks outside the current task.
+
+1. Identify the current outcome and the next agreed use in the roadmap.
+2. Assess module boundaries against the architecture and those two uses.
+3. Choose small structural changes that simplify the concrete next step.
+4. Explain the next use and immediate cost of each structural choice.
+5. Verify that the current outcome still works.
+
+> Do not postpone a useful structural change solely because the current skeleton works without it.
+
+## Source
+
+- Owner agreement during the issue #1 review on 2026-10-06, as recorded in this entry.
+- [Roadmap](../docs/roadmap.md) defines delivery order and the next documented use.
+- [Architecture](../docs/architecture.md) defines target boundaries and source-type ownership.
+- [CONTRIBUTING](../CONTRIBUTING.md) defines document responsibilities and the issue workflow.
