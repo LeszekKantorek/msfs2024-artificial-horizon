@@ -1,0 +1,67 @@
+{
+  "description": "Project knowledge application, gathering, and session import",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"Use context-apply to read .context/index.md and relevant entries, then apply their knowledge. Use context-gather to save session learning, review entries, and create or update the table-only index. Use context-import-sessions to load saved sessions and invoke gather. Exclude .context/sessions from knowledge retrieval.\"",
+            "commandWindows": "echo \"Use context-apply to read .context/index.md and relevant entries, then apply their knowledge. Use context-gather to save session learning, review entries, and create or update the table-only index. Use context-import-sessions to load saved sessions and invoke gather. Exclude .context/sessions from knowledge retrieval.\"",
+            "statusMessage": "Loading project context guidance",
+            "additionalContextLimit": 500
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/context_register_session.py\"",
+            "commandWindows": "powershell.exe -NoProfile -Command \"& python ((git rev-parse --show-toplevel) + '/.codex/hooks/context_register_session.py')\"",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "Interrupt": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/context_register_session.py\"",
+            "commandWindows": "powershell.exe -NoProfile -Command \"& python ((git rev-parse --show-toplevel) + '/.codex/hooks/context_register_session.py')\"",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/context_register_session.py\"",
+            "commandWindows": "powershell.exe -NoProfile -Command \"& python ((git rev-parse --show-toplevel) + '/.codex/hooks/context_register_session.py')\"",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/context_register_session.py\"",
+            "commandWindows": "powershell.exe -NoProfile -Command \"& python ((git rev-parse --show-toplevel) + '/.codex/hooks/context_register_session.py')\"",
+            "timeout": 3
+          }
+        ]
+      }
+    ]
+  }
+}

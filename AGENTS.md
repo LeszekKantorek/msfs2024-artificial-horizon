@@ -9,16 +9,25 @@
 
 ## Project context
 
-- Read only relevant entries, using `context-gather` for missing knowledge and
-  `context-apply` for known constraints; exclude `.context/sessions/`.
+- Use `context-apply` to read the index and relevant entries before planning,
+  implementing, validating, or resuming work; exclude `.context/sessions/`.
+- Inspect relevant project sources when knowledge is missing, and state unresolved gaps.
 - Check sources and entry status, follow superseded entries to their replacements,
   and do not apply deprecated entries or treat `active` as proof of a claim.
 - Apply constraints to the change and its validation, distinguish intent from
   observed behavior, and surface unresolved conflicts.
-- Use `context-consolidate` only for durable learning within scope, updating its
-  existing home or linking to canonical sources instead of duplicating content.
-- Update `.context/index.md` when adding, renaming, or retiring entries.
-- Use `context-review` for conflicting, stale, duplicated, or hard-to-find knowledge;
-  do not require all four skills or a memory update for every task.
+- Use `context-gather` to save durable session learning and review or repair stored
+  knowledge, updating its existing home or linking to canonical sources.
+- Keep entry descriptions within three short sentences and bodies in concise,
+  single-sentence bullets; require `description` and `status` frontmatter.
+- Require `superseded_by`, relative to the entry, for superseded knowledge.
+- Keep `.context/index.md` as a table with only `Entry` and `Use when` columns,
+  linking each active entry once with paths relative to the index.
+- Update the existing index when adding, renaming, replacing, or withdrawing entries;
+  exclude session records, withdrawn entries, and the index itself.
+- Use `context-import-sessions` for selected saved transcripts or session checkpoints,
+  passing loaded material to `context-gather` before marking a checkpoint reviewed.
+- Leave missing, incomplete, changed, or report-only checkpoints pending.
+- Do not require a full skill sequence or a memory update for every task.
 - Keep task progress and execution results in Issues/PRs or the task plan, and
   keep raw chats and secrets out of `.context/`.

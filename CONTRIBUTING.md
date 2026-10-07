@@ -41,3 +41,39 @@ that merely duplicate implementation details.
 Keep Cargo.lock committed. Do not commit simulator SDK binaries, local SDK paths,
 credentials, generated build output, or dependencies without distribution rights.
 Preserve the existing MIT license. Record material architectural changes in docs/adr/.
+
+## Agent skills and session hooks
+
+The project installs `context-apply`, `context-gather`, and
+`context-import-sessions` from
+[context-skills](https://github.com/LeszekKantorek/context-skills).
+Follow [AGENTS.md](AGENTS.md) for their roles and knowledge conventions.
+The existing context index remains `.context/index.md` and contains only its
+navigation table.
+
+Use Node.js with npm/npx to reinstall the project skills:
+
+```powershell
+npx --yes skills remove context-apply context-gather context-import-sessions -y
+npx --yes skills add LeszekKantorek/context-skills --agent codex --skill context-apply context-gather context-import-sessions --copy -y
+```
+
+Keep `skills-lock.json` and the installed `.agents/skills/` files together when
+updating skills; remove retired skill copies during migrations.
+
+The project includes the upstream
+[Codex hooks integration](https://github.com/LeszekKantorek/context-skills/tree/main/integrations/codex)
+in `.codex/hooks.json` and `.codex/hooks/context_register_session.py`.
+Its startup reminder uses this project's existing lowercase index path.
+Git and Python 3 must be available on `PATH`; Windows hooks use PowerShell and
+`python`. Open `/hooks` in the Codex CLI to review and trust the project hook
+definitions after installation or changes, as required by the
+[Codex hook documentation](https://learn.chatgpt.com/docs/hooks).
+
+`SessionStart` reminds the agent of the skill roles. `Stop`, `Interrupt`,
+`PreCompact`, and `SessionEnd` register one metadata record per session under
+`.context/sessions/`, which Git ignores. Registration does not read transcripts
+or invoke skills. Use `context-import-sessions` to process selected checkpoints;
+mark them reviewed only after their contents have been read and gathering succeeds.
+When updating the integration, preserve unrelated hooks and keep the startup
+reminder aligned with the existing index path.
