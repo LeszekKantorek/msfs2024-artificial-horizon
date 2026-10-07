@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "context-apply": {
+      "source": "LeszekKantorek/context-skills",
+      "sourceType": "github",
+      "skillPath": "skills/context-apply/SKILL.md",
+      "computedHash": "4f9de0ad8d340569a119f940c20ed201504e77508e19cc156fa41737754624b8"
+    },
+    "context-gather": {
+      "source": "LeszekKantorek/context-skills",
+      "sourceType": "github",
+      "skillPath": "skills/context-gather/SKILL.md",
+      "computedHash": "7f2bb1e23d479b850dbb580d30589172d47851794d795422aa15bba551a596d5"
+    },
+    "context-import-sessions": {
+      "source": "LeszekKantorek/context-skills",
+      "sourceType": "github",
+      "skillPath": "skills/context-import-sessions/SKILL.md",
+      "computedHash": "f7c93a96e5d77edb47f31a71d1b102b03729308499c4a2db706a62001b0781ce"
+    }
+  }
+}
