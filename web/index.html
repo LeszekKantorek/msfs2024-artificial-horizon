@@ -2,21 +2,42 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#10151b">
     <title>MSFS2024 Artificial Horizon</title>
     <link rel="stylesheet" href="/styles.css">
     <script type="module" src="/app.js"></script>
   </head>
   <body>
     <main>
-      <p class="source">Source unavailable</p>
-      <h1>MSFS2024 Artificial Horizon</h1>
-      <div role="status" aria-live="polite">
+      <header><h1>ATTITUDE</h1><span class="source">Source unavailable</span></header>
+      <section class="instrument" data-available="false" aria-label="Artificial horizon">
+        <svg viewBox="0 0 320 320" role="img" aria-labelledby="instrument-title instrument-description">
+          <title id="instrument-title">Aircraft attitude</title>
+          <desc id="instrument-description">Moving sky, ground and pitch ladder around a fixed aircraft reference, with a bank scale. Read the telemetry status below before using the indication.</desc>
+          <defs><clipPath id="display-clip"><rect width="320" height="320" rx="8"/></clipPath></defs>
+          <g clip-path="url(#display-clip)">
+            <g class="moving-world">
+              <g id="world-rotation"><g id="world-pitch">
+                <path class="sky" d="M -640 -640 H 960 V 160 H -640 Z"/>
+                <path class="ground" d="M -640 160 H 960 V 960 H -640 Z"/>
+                <path class="horizon-line" d="M -640 160 H 960"/>
+                <g id="pitch-ladder"/>
+              </g></g>
+              <path id="bank-pointer" d="M 160 40 L 153 52 H 167 Z"/>
+            </g>
+            <g id="bank-scale"><path class="bank-zero" d="M 160 14 L 155 21 H 165 Z"/></g>
+            <path class="aircraft-outline" d="M 91 160 H 131 L 143 172 M 177 172 L 189 160 H 229 M 155 160 H 165"/>
+            <path class="aircraft" d="M 91 160 H 131 L 143 172 M 177 172 L 189 160 H 229 M 155 160 H 165"/>
+          </g>
+        </svg>
+        <div class="unavailable-panel"><span class="unavailable-mark" aria-hidden="true">×</span><p id="unavailable">Connecting…</p></div>
+      </section>
+      <footer role="status" aria-live="polite" aria-atomic="true">
+        <p id="data-status" data-state="waiting">Waiting for fresh telemetry</p>
         <p id="transport">Connecting…</p>
-        <p id="data-status" class="status">No telemetry available</p>
-      </div>
-      <p>This page subscribes to current telemetry automatically. The attitude instrument is planned separately.</p>
-      <noscript>Enable JavaScript to receive telemetry.</noscript>
+      </footer>
+      <noscript>Enable JavaScript to display live attitude.</noscript>
     </main>
   </body>
 </html>

@@ -28,7 +28,7 @@ jobs:
         with:
           node-version: '24'
       - name: Browser controller checks
-        run: node --test tests/telemetry-client.test.mjs
+        run: node --test tests/*.test.mjs
       - name: Build
         run: cargo build --locked --target x86_64-pc-windows-msvc
       - name: SDK-free SimConnect boundary

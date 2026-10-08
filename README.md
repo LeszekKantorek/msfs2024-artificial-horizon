@@ -60,8 +60,12 @@ cargo run --locked --bin main
 
 Open `http://127.0.0.1:8080`. The default source is `demo`, producing deterministic
 synthetic telemetry at 20 Hz. The page automatically opens a read-only SSE stream,
-marks DEMO, and shows separate connection and source status. The attitude instrument
-is planned in issue #4.
+marks DEMO, and displays a responsive SVG attitude instrument with separate connection
+and source status. Positive pitch lowers the horizon; positive right bank rotates
+the world counterclockwise around the fixed aircraft reference. Unavailable or stale
+telemetry obscures the instrument rather than showing a level-flight fallback.
+Rendering uses the latest sample on the next animation frame, without interpolation.
+Real iOS Safari and Android Chrome acceptance requires device results in issue #4.
 `GET /health` returns `{"status":"ok"}` for HTTP liveness,
 not simulator readiness. Press Ctrl+C for graceful shutdown.
 
@@ -129,7 +133,7 @@ cargo clippy --locked --all-targets -- -D warnings
 cargo test --locked --all-targets
 cargo clippy --locked --all-targets --features simconnect -- -D warnings
 cargo test --locked --all-targets --features simconnect
-node --test tests/telemetry-client.test.mjs
+node --test tests/*.test.mjs
 ```
 
 The dependency-free browser controller tests require Node.js 24. CI runs these
