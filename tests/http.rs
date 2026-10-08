@@ -9,13 +9,22 @@ use tower::ServiceExt;
 #[tokio::test]
 async fn embedded_page_assets_and_liveness_match_the_contract() {
     for (path, content_type, expected) in [
-        ("/", "text/html; charset=utf-8", "No telemetry available"),
+        (
+            "/",
+            "text/html; charset=utf-8",
+            "Waiting for fresh telemetry",
+        ),
         ("/styles.css", "text/css; charset=utf-8", "font-family"),
         ("/health", "application/json", "{\"status\":\"ok\"}"),
         (
             "/app.js",
             "text/javascript; charset=utf-8",
             "createTelemetryClient",
+        ),
+        (
+            "/horizon.js",
+            "text/javascript; charset=utf-8",
+            "createHorizonRenderer",
         ),
         (
             "/telemetry-client.js",

@@ -165,3 +165,11 @@ starting a provider; Server uses its single acquisition channel. Embedded browse
 modules display separate transport/source status and own one subscription and
 retry timer. The HTTP connection adapter enforces stalled-write and shutdown
 deadlines as specified in [ADR 0002](adr/0002-sse-connection-lifecycle.md).
+
+The browser telemetry client reports source/transport status and optionally delivers
+fresh attitude with a local monotonic expiry deadline through `onAttitude`.
+The instrument renderer retains only the latest sample and one pending animation
+frame, checks expiry before drawing, and cancels pending work on unavailable status.
+Pure SVG transforms live in `horizon.js`; `app.js` owns DOM updates and page lifecycle.
+Pitch translation is nested inside bank rotation so mixed attitudes move in the
+world's local coordinates. No interpolation or extrapolation is applied.

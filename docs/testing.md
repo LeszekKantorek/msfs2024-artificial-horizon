@@ -59,9 +59,11 @@ an infinite stream. Unit tests check subscriber release and socket write/shutdow
 deadlines using a bounded duplex transport; local TCP tests check two active SSE
 connections and port reuse after shutdown.
 
-Use Node.js 24 and `node --test tests/telemetry-client.test.mjs` for independent
+Use Node.js 24 and `node --test tests/*.test.mjs` for independent
 fixture validation, a single EventSource/retry timer, retry after two seconds,
 sequence reset on reconnect, sample freshness, malformed messages, and suspend/resume.
+Instrument tests cover pose signs, nested transform order, angle boundaries,
+latest-sample frame coalescing, expiry before a frame, and cancellation on data loss.
 No npm install or browser framework is needed; these checks run in Windows CI.
 
 For desktop exploration, start demo and open the page. Expect DEMO, Connected and
@@ -88,6 +90,66 @@ Do not report these desktop checks as evidence of iOS/Android compatibility.
 
 Run mobile acceptance on real iOS Safari and Android Chrome. Desktop emulation
 helps development but does not establish mobile lifecycle compatibility.
+
+## Attitude display: owner-assisted phone acceptance
+
+1. Run demo on the PC's private LAN address using the README command. Open the
+   printed LAN URL on each phone; verify DEMO and live status remain visible.
+2. Observe a full 14-second cycle: level, nose up/down, left/right bank, and both
+   combined poses. Nose up lowers the horizon; right bank rotates it counterclockwise.
+3. Rotate each phone between portrait and landscape. Check readable scales and
+   status, no horizontal scrolling, and no overlap with browser bars or safe areas.
+4. Lock and unlock the phone, switch apps, and hide/restore the browser. The display
+   must require a fresh snapshot before showing live attitude; no frozen valid-looking
+   indication may be restored from the previous session.
+5. Disable and restore the phone's Wi-Fi. Check an obscured instrument and retry
+   status during loss, then automatic recovery without reloading the page.
+6. Stop and restart the server on the same port. Check connection loss and automatic
+   recovery even though the new server's sequence starts again.
+7. Record results in issue #4. Both real-device results are required before closure;
+   desktop findings and automated tests must be labelled separately.
+
+Use this evidence template in the issue or PR:
+
+| Field | Value |
+| --- | --- |
+| Build commit / local changes | |
+| Phone model | |
+| OS version | |
+| Safari / Chrome version | |
+| Network and server address | |
+| Demo poses and directions | Pass/fail, observations |
+| Portrait / landscape / safe areas | Pass/fail, observations |
+| Lock / background / resume | Pass/fail, observations |
+| Wi-Fi loss / recovery | Pass/fail, observations |
+| Server restart / recovery | Pass/fail, observations |
+
+### Controlled browser fixtures
+
+Run `node tests/browser-fixture-server.mjs` and open `http://127.0.0.1:8082`.
+This development-only server serves the real web assets with synthetic SSE. It
+is separate from the release binary and binds loopback only. Enter JSON lines in
+its terminal to select scenarios:
+
+```json
+{"state":"live","pitch_deg":10,"roll_deg":25,"hold":false,"malformed":false}
+{"state":"paused"}
+{"state":"disconnected"}
+{"state":"invalid"}
+{"state":"waiting"}
+{"state":"stale"}
+{"state":"live","hold":false}
+{"hold":true}
+{"hold":false,"malformed":true}
+{"malformed":false}
+```
+
+Apply one line at a time and inspect the result. `hold` sends comments but no
+samples: live attitude must become stale after one second despite those comments.
+Malformed JSON must obscure the instrument. Repeat live poses at pitch ±90° and
+roll -180° / 179.999° and check no uncovered background. The server logs active SSE
+client count; one page must not create parallel subscriptions after reconnect or
+background/resume. These fixtures establish UI behavior, not simulator compatibility.
 
 ## Measurements and evidence
 

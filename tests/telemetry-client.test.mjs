@@ -13,7 +13,9 @@ function harness() {
   const timers = new Map();
   const connections = [];
   const statuses = [];
+  const attitudes = [];
   const client = createTelemetryClient({ onStatus: value => statuses.push(value),
+    onAttitude: value => attitudes.push(value),
     now: () => time,
     schedule: (fn, ms) => { const id = ++nextId; timers.set(id, { fn, at: time + ms }); return id; },
     cancel: id => timers.delete(id),
@@ -26,7 +28,7 @@ function harness() {
       return connection;
     },
   });
-  return { client, connections, statuses, timers,
+  return { client, connections, statuses, timers, attitudes,
     get status() { return statuses.at(-1); },
     advance(ms) {
       time += ms;
@@ -116,4 +118,28 @@ test('initial construction failure retries without parallel connections', () => 
   client.start(); assert.equal(retries, 1);
   pending(); assert.equal(retries, 2);
   client.stop();
+});
+
+test('attitude callback accepts only fresh new live samples with a monotonic deadline', () => {
+  const h = harness(); h.client.start();
+  const connection = h.connections[0]; connection.onopen();
+  h.advance(100);
+  connection.send(live(1, 400));
+  assert.deepEqual(h.attitudes, [{ attitude: live().attitude, expiresAt: 700 }]);
+  connection.send(live(1));
+  connection.send(live(2, 1000));
+  connection.receive({ data: 'broken JSON' });
+  for (const [index, state] of ['waiting', 'paused', 'stale', 'disconnected', 'invalid'].entries()) {
+    connection.send({ ...live(index + 3), state, attitude: null });
+  }
+  assert.equal(h.attitudes.length, 1);
+  connection.send(live(8));
+  assert.equal(h.attitudes.length, 2);
+  assert.equal(h.attitudes.at(-1).expiresAt, 1100);
+  h.client.stop(); connection.send(live(9));
+  assert.equal(h.attitudes.length, 2);
+  h.client.start(); h.connections[1].onopen();
+  assert.equal(h.attitudes.length, 2);
+  h.connections[1].send(live(1));
+  assert.equal(h.attitudes.length, 3);
 });

@@ -17,7 +17,7 @@ export function validateSnapshot(value) {
 }
 
 export function createTelemetryClient({
-  onStatus, makeEventSource = url => new EventSource(url),
+  onStatus, onAttitude = () => {}, makeEventSource = url => new EventSource(url),
   now = () => performance.now(), schedule = (fn, ms) => setTimeout(fn, ms),
   cancel = id => clearTimeout(id),
 }) {
@@ -68,6 +68,7 @@ export function createTelemetryClient({
       report({ source: snapshot.source,
         state: snapshot.state === 'live' && remaining <= 0 ? 'stale' : snapshot.state });
       if (status.state === 'live') {
+        onAttitude({ attitude: { ...snapshot.attitude }, expiresAt: receivedAt + remaining });
         const expire = () => {
           const left = remaining - (now() - receivedAt);
           if (left > 0) { ageTimer = schedule(expire, left); return; }
