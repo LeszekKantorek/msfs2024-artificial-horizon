@@ -102,3 +102,22 @@ Browser transport states (`connecting` / `reconnecting`) are separate from sourc
 state. On errors, timeout, background/resume, or unavailable source, obscure/flag
 the attitude instead of resetting to a credible level horizon. Keep a DEMO indicator
 visible in demo mode even while source state is `live`.
+
+## Planned PFD extension boundary
+
+The [PFD demo scope](project-brief.md#pfd-reference-and-coverage) will add optional
+normalized instrument data incrementally. This section records compatibility
+requirements, not fields available on the current endpoint. The fields and examples
+above remain the current v1 contract.
+
+Each implementing slice must define its added fields, units, independent validity,
+freshness handling and compatible Rust/browser fixtures together. Preserve the
+existing attitude fields, state meanings and pitch/bank-only publication path;
+old snapshots without extensions remain usable for attitude. Optional malformed
+instrument values invalidate only that indication, while existing envelope/attitude
+validation and global source/transport invalidation remain in force.
+
+Do not substitute zero or demo values for missing data. The attitude-only
+SimConnect integration in #6 has no obligation to populate PFD extensions. All
+selected values remain source-supplied and read-only; no control endpoint is added.
+Exact schema additions are owned by their feature issues, not this scope update.
