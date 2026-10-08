@@ -25,11 +25,14 @@ proxy buffering. If a proxy is introduced, test streaming and timeout configurat
 
 Send a full named `telemetry` event on subscription and on each publication. A
 proposed 20 Hz cadence applies while receiving valid samples; state transitions
-must also be sent promptly. Use `retry: 1000` as a reconnect hint and an SSE comment
-every 10 seconds when otherwise idle. These durations are initial tuning values.
+must also be sent promptly. Use `retry: 2000` as a reconnect hint and an SSE comment
+every 10 seconds when otherwise idle. The page closes a failed EventSource and
+creates a new one after 2,000 ms, ensuring the same retry delay even if the first
+connection fails before receiving the hint; only one connection and retry timer
+are active per page. These durations are initial tuning values.
 
 ```text
-retry: 1000
+retry: 2000
 event: telemetry
 data: {"schema_version":1,"sequence":42,"source":"demo","state":"live","sample_age_ms":0,"attitude":{"pitch_deg":5.0,"roll_deg":15.0}}
 
@@ -38,6 +41,15 @@ data: {"schema_version":1,"sequence":42,"source":"demo","state":"live","sample_a
 End every event with an empty line. Omit SSE `id`: history replay is not supported.
 Ignore `Last-Event-ID` if supplied and send the latest state. Browser reconnection
 starts a new subscription; sequence comparisons reset on that subscription.
+
+Use `X-Accel-Buffering: no` and do not compress SSE responses. Per-client delivery
+is pull-driven from the latest-value channel: intermediate publications may be
+skipped and no sample history is queued. Age is computed when producing a body
+frame; downstream HTTP/TCP buffers are finite but may add transit delay.
+Close connections after 30 seconds of stalled socket writes, rather than limiting
+session duration or treating an idle source as a transport failure. During server
+shutdown stop acquisition and end streams, with a five-second deadline for
+remaining connections. A closed source channel ends the stream after pending state.
 
 ## Fields and conventions
 

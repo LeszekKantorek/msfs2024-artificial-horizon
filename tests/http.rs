@@ -12,6 +12,16 @@ async fn embedded_page_assets_and_liveness_match_the_contract() {
         ("/", "text/html; charset=utf-8", "No telemetry available"),
         ("/styles.css", "text/css; charset=utf-8", "font-family"),
         ("/health", "application/json", "{\"status\":\"ok\"}"),
+        (
+            "/app.js",
+            "text/javascript; charset=utf-8",
+            "createTelemetryClient",
+        ),
+        (
+            "/telemetry-client.js",
+            "text/javascript; charset=utf-8",
+            "EventSource",
+        ),
     ] {
         let response = router()
             .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())
@@ -32,7 +42,7 @@ async fn embedded_page_assets_and_liveness_match_the_contract() {
 }
 
 #[tokio::test]
-async fn unknown_routes_and_future_sse_endpoint_are_not_available() {
+async fn static_router_does_not_create_a_telemetry_source() {
     for path in ["/missing", "/api/v1/events"] {
         let response = router()
             .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())

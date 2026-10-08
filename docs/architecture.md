@@ -147,6 +147,8 @@ The demo runtime owns both sample and freshness ticks, with skipped missed ticks
 
 `Subscription::snapshot()` obtains current state without acknowledging a pending
 publication; `changed().await` waits for and acknowledges the newest publication.
+`snapshot_and_update()` reads and acknowledges current state atomically for the
+first SSE event, preventing an already pending publication from being delivered twice.
 Both compute age at read time and suppress expired live attitude, even before the
 freshness tick runs. `Snapshot` is an immutable serializable v1 value: acquire it
 immediately before sending, rather than cache the wire value. The internal accepted
@@ -157,3 +159,9 @@ has no history queue; source identity remains fixed for its lifetime.
 `Server::run` owns one demo task and joins it on shutdown or HTTP failure. Producer
 failure triggers HTTP shutdown and is returned to the caller. No SSE route is
 introduced by the telemetry model; HTTP delivery remains a separate boundary.
+
+`http::router_with_telemetry(subscription)` adds SSE to the static router without
+starting a provider; Server uses its single acquisition channel. Embedded browser
+modules display separate transport/source status and own one subscription and
+retry timer. The HTTP connection adapter enforces stalled-write and shutdown
+deadlines as specified in [ADR 0002](adr/0002-sse-connection-lifecycle.md).

@@ -59,8 +59,9 @@ cargo run --locked --bin main
 ```
 
 Open `http://127.0.0.1:8080`. The default source is `demo`, producing deterministic
-synthetic telemetry at 20 Hz through the library. The page marks DEMO but has no
-stream or instrument yet (issues #3 and #4).
+synthetic telemetry at 20 Hz. The page automatically opens a read-only SSE stream,
+marks DEMO, and shows separate connection and source status. The attitude instrument
+is planned in issue #4.
 `GET /health` returns `{"status":"ok"}` for HTTP liveness,
 not simulator readiness. Press Ctrl+C for graceful shutdown.
 
@@ -90,8 +91,10 @@ phone URL. `localhost` on the phone refers to the phone itself.
 Allow inbound TCP on the chosen port in Windows Defender Firewall, scoped to
 the Private profile and local subnet. Use the same trusted private network;
 do not forward the port on your router. LAN access has no authentication.
-HTTP exposes the DEMO placeholder and liveness; telemetry is currently available
-through the library only.
+HTTP exposes the status page, liveness, and `GET /api/v1/events`. Each browser gets
+current state immediately and shares one producer with other browsers. Reconnection
+gets current state without replay; the page retries after two seconds on transport
+errors. Stale source data does not restart a healthy connection.
 
 ## Library and checks
 
@@ -105,6 +108,14 @@ The library never reads process arguments or installs a Ctrl+C handler.
 serialize a newly obtained snapshot immediately so its age is current. Subscribers
 share one producer, and slow consumers skip intermediate samples. Closing the
 server stops and joins the producer and closes subscriptions after pending data.
+Socket writes that make no progress for 30 seconds terminate that connection.
+Shutdown allows five seconds for HTTP connections to finish, then forces remaining
+connections closed; an unresponsive receiver cannot prevent shutdown indefinitely.
+
+`http::router()` builds static routes only. `http::router_with_telemetry(subscription)`
+adds SSE using a caller-supplied channel, without starting acquisition. Use
+`snapshot_and_update()` for an initial snapshot that acknowledges its publication;
+`snapshot()` retains its existing non-acknowledging semantics.
 
 The demo repeats a 14-second cycle: level flight, nose up/down, left/right bank,
 and two combined attitudes, each held for two seconds. Every 50 ms tick is a fresh
@@ -118,9 +129,11 @@ cargo clippy --locked --all-targets -- -D warnings
 cargo test --locked --all-targets
 cargo clippy --locked --all-targets --features simconnect -- -D warnings
 cargo test --locked --all-targets --features simconnect
+node --test tests/telemetry-client.test.mjs
 ```
 
-CI runs the same checks on Windows x64 MSVC. See [testing](docs/testing.md)
+The dependency-free browser controller tests require Node.js 24. CI runs these
+and the Rust checks on Windows x64 MSVC. See [testing](docs/testing.md)
 for HTTP startup checks and simulator/mobile acceptance procedures.
 
 ## License

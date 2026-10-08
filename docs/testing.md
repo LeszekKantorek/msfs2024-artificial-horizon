@@ -49,6 +49,28 @@ Use known expected geometry: nose up lowers the horizon; positive right bank
 rotates the world counterclockwise around the fixed aircraft reference. Include
 combined pitch/bank fixtures to catch transform-order errors.
 
+## SSE and browser controller checks
+
+Run `cargo test --locked --test http_sse` for wire framing/headers, immediate state,
+reconnect with ignored Last-Event-ID, invalid/unavailable/stale states, delivery-time
+age, independent slow consumers, heartbeat comments and channel closure. These tests
+use real Axum response bodies and a paused monotonic clock rather than collecting
+an infinite stream. Unit tests check subscriber release and socket write/shutdown
+deadlines using a bounded duplex transport; local TCP tests check two active SSE
+connections and port reuse after shutdown.
+
+Use Node.js 24 and `node --test tests/telemetry-client.test.mjs` for independent
+fixture validation, a single EventSource/retry timer, retry after two seconds,
+sequence reset on reconnect, sample freshness, malformed messages, and suspend/resume.
+No npm install or browser framework is needed; these checks run in Windows CI.
+
+For desktop exploration, start demo and open the page. Expect DEMO, Connected and
+Live telemetry. Stop the server: expect connection loss and retry indication.
+Restart on the same port without reloading the page: expect automatic recovery
+despite a restarted sequence. Hide/restore the page and require a new snapshot.
+Inspect the network stream for named telemetry events and no duplicate subscriptions.
+Do not report these desktop checks as evidence of iOS/Android compatibility.
+
 ## Manual acceptance matrix
 
 | Scenario | Expected result |

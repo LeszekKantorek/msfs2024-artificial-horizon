@@ -139,6 +139,11 @@ impl Publisher {
     }
 }
 impl Subscription {
+    /// Obtain current state and acknowledge it atomically, including on subscription.
+    pub fn snapshot_and_update(&mut self) -> Snapshot {
+        self.receiver.borrow_and_update().snapshot()
+    }
+
     /// Does not acknowledge a pending change; suitable for immediate delivery.
     pub fn snapshot(&self) -> Snapshot {
         self.receiver.borrow().snapshot()
@@ -161,6 +166,27 @@ pub enum TelemetryError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test]
+    async fn closing_sse_body_releases_its_subscription() {
+        use axum::{body::Body, http::Request};
+        use http_body_util::BodyExt;
+        use tower::ServiceExt;
+        let (publisher, subscription) = channel(Source::Demo);
+        let response = crate::http::router_with_telemetry(subscription.clone())
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/events")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let mut body = response.into_body();
+        body.frame().await.unwrap().unwrap();
+        assert_eq!(publisher.sender.receiver_count(), 2);
+        drop(body);
+        assert_eq!(publisher.sender.receiver_count(), 1);
+    }
     #[test]
     fn sequence_exhaustion_does_not_publish_or_wrap() {
         let (mut publisher, subscription) = channel(Source::Demo);
