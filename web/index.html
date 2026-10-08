@@ -5,13 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>MSFS2024 Artificial Horizon</title>
     <link rel="stylesheet" href="/styles.css">
+    <script type="module" src="/app.js"></script>
   </head>
   <body>
     <main>
-      <p class="source">DEMO</p>
+      <p class="source">Source unavailable</p>
       <h1>MSFS2024 Artificial Horizon</h1>
-      <p class="status">No telemetry available</p>
-      <p>Synthetic DEMO data runs at 20 Hz. Browser streaming and the instrument are not implemented yet.</p>
+      <div role="status" aria-live="polite">
+        <p id="transport">Connecting…</p>
+        <p id="data-status" class="status">No telemetry available</p>
+      </div>
+      <p>This page subscribes to current telemetry automatically. The attitude instrument is planned separately.</p>
+      <noscript>Enable JavaScript to receive telemetry.</noscript>
     </main>
   </body>
 </html>

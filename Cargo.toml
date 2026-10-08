@@ -12,13 +12,14 @@ simconnect = []
 [dependencies]
 axum = "0.8"
 clap = { version = "4", features = ["derive"] }
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
 local-ip-address = "0.6"
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 thiserror = "2"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "signal", "sync", "time"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["io-util", "test-util"] }
 http-body-util = "0.1"
-serde_json = "1"
 tower = { version = "0.5", features = ["util"] }
