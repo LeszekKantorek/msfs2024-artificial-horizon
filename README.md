@@ -1,7 +1,7 @@
 # MSFS2024 Artificial Horizon
 
-A mobile web attitude display for Microsoft Flight Simulator 2024, inspired by
-the readability of the Garmin G5. Rust runs the HTTP server; a lightweight
+A mobile web attitude display for Microsoft Flight Simulator 2024, with a planned
+G5-inspired PFD demo expansion. Rust runs the HTTP server; a lightweight
 HTML/CSS/JavaScript client receives telemetry through Server-Sent Events (SSE).
 
 The Rust library, CLI, and server target Windows x64 MSVC only, with Windows-only
@@ -18,7 +18,7 @@ The address above is illustrative. No cloud service, account, phone application,
 or browser-to-simulator controls are planned for the MVP. A browser session means
 an active SSE subscription, not a persisted login session.
 
-## MVP
+## Original simulator MVP scope
 
 - Pitch and bank, with a horizon, pitch ladder, bank scale, and fixed aircraft reference.
 - Responsive portrait and landscape display with explicit connection/data status.
@@ -26,9 +26,28 @@ an active SSE subscription, not a persisted login session.
 - A Windows SimConnect provider, subject to a compatibility spike.
 - Automatic browser reconnection and clear stale/paused/disconnected indication.
 
-Airspeed/altitude tapes, heading, navigation, flight director, autopilot controls,
-recording, internet hosting, and a full G5 replica are outside the initial scope.
+The runnable demo currently displays attitude only. SimConnect selection still
+fails explicitly until its provider is implemented, as described below.
 This is a simulator companion, not a real-flight instrument.
+
+## Planned PFD demo expansion
+
+The [project brief](docs/project-brief.md) defines an accepted expansion into
+18 G5-inspired PFD elements, delivered as seven end-to-end feature slices in the
+[roadmap](docs/roadmap.md). These additions are planned, not available in the
+current executable: slip/skid and turn rate; IAS/GS, speed ranges and trends;
+altitude/baro, selected-altitude alerts and VSI; heading/track and selected direction.
+
+The mobile layout will adapt to portrait and landscape without a fixed 4:3 aspect
+ratio, with independently sized text and symbols, safe areas, compact status and
+no scrolling from 320 CSS px. All new values and selected settings come from demo
+scenarios; the page remains read-only.
+
+Battery, HSI, CDI, navigation course, ILS, GPS glidepath, VNAV, menus and knobs are
+excluded. Flight director, autopilot controls, recording, internet hosting and a
+full G5 replica remain outside scope. Issues #5-#8 retain their original
+attitude-only integration, validation and distribution scope; live integration of
+the new PFD values is future work and must not use demo values as a fallback.
 
 ## Project guide
 

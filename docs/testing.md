@@ -153,6 +153,9 @@ background/resume. These fixtures establish UI behavior, not simulator compatibi
 
 ## Measurements and evidence
 
+The original simulator reliability/performance work in #7 retains its existing
+scope. The planned PFD demo acceptance below belongs to #20-#26, not #7 or #8.
+
 Record OS, CPU, phone models, browser versions, simulator/SDK/aircraft versions,
 build commit, source rate, network conditions, duration, and observed failures.
 Run two phones for at least 30 minutes and record memory/subscriber trends.
@@ -180,3 +183,28 @@ samples, cadence and skipped ticks. They also verify normalized bounds, roll wra
 non-finite rejection, source identity and slow independent consumers. Library
 tests check sequence exhaustion and shutdown ownership, including subscription
 closure and listener reuse. These tests require neither simulator nor SDK.
+
+## Planned PFD demo acceptance
+
+Apply these procedures incrementally as #20-#26 introduce indications; they do
+not describe functionality already present. Each feature issue owns automated
+and real-phone evidence for its slice. The final slice (#26) links earlier evidence
+and records an accumulated full-panel run covering all 18 included reference
+elements. Use the device/build/network evidence fields above; do not expand the
+original simulator acceptance or claim live PFD compatibility from demo results.
+
+| Area | Scenarios and acceptance |
+| --- | --- |
+| End-to-end values | Independent fixtures agree across typed Rust data, deterministic demo, SSE and rendered indication; values remain shared between clients |
+| Compatibility | Old attitude-only v1 snapshots still display attitude; absent PFD fields show unavailable, not zero; excluded instruments have no placeholders |
+| Instrument failures | Missing/invalid optional values invalidate their indication without hiding unrelated valid ones; source/transport loss invalidates the panel |
+| Timing | Controlled clocks verify five-second altitude alerts, target-change reset, freshness and expiry before a pending render; no wall-clock sleeps for deterministic checks |
+| Geometry | Pitch/bank signs and extremes, slip/skid both ways, +/-3 deg/s turns, IAS/altitude rolling digits, speed-range boundaries and six-second trend, altitude bugs outside the tape, VSI limits and heading wrap at 359/0 |
+| Mobile layout | Widths from 320 CSS px, portrait, short landscape, safe areas, browser-bar changes and rotation while streaming; no scrolling, overlap, clipped warnings or distorted symbols |
+| Lifecycle regression | Wi-Fi loss/recovery, server restart, lock/background/resume, source pause/stale/invalid states and partial failures; fresh sample required before restoring valid readings and no duplicate subscription |
+
+In #20 inspect development-only layout fixtures representing the complete intended
+arrangement before later slices add their live demo values. Recheck real-phone
+legibility with every added instrument; passing a desktop viewport check does not
+establish mobile acceptance. Run the existing README/CONTRIBUTING Rust and Node
+checks and update each feature's contract fixtures/procedures in the same PR.

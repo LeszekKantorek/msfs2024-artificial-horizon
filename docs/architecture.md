@@ -136,6 +136,52 @@ Do not select a wrapper solely because it supported an earlier simulator version
 
 See [ADR 0001](adr/0001-rust-http-sse.md) and the [wire contract](telemetry-contract.md).
 
+## Planned PFD demo extension
+
+[ADR 0003](adr/0003-responsive-pfd-demo.md) records the accepted extension boundaries;
+the [project brief](project-brief.md) owns instrument scope and exclusions, and
+the [roadmap](roadmap.md) maps the seven end-to-end slices to issues.
+
+Keep the existing single-process Rust/SSE/plain JavaScript/SVG design. The Rust
+demo owns deterministic instrument scenarios shared by every subscriber, including
+selected values and a synthetic speed profile. The browser presents received data;
+it does not invent independent flight values or send setting/control commands.
+
+Evolve v1 with optional normalized PFD values while preserving existing attitude
+field meanings, lifecycle states and the pitch/bank-only publishing path. Missing
+extensions remain unavailable with old snapshots and with the future attitude-only
+SimConnect provider. Do not add SDK requirements or broaden issues #5-#8 for this
+demo work. Define exact additional field names, validity and fixtures in the slice
+that introduces them; do not advertise unimplemented fields as a current contract.
+
+Validate new instrument values independently so one bad optional value does not
+hide unrelated valid instruments. Source/transport loss still invalidates the
+whole panel; omitted or invalid values must never become credible zero readings.
+Keep the existing envelope/attitude validation semantics and sample-age rules.
+Derive any trend from source-time data, not irregular browser arrival intervals.
+
+The presentation has three separate responsibilities:
+
+- Layout geometry uses available viewport/container width and height, safe areas
+  and orientation; it does not mutate telemetry or constrain the panel to 4:3.
+- Instrument geometry maps validated values to scales, positions, digits and
+  alerts independently of the DOM and the layout lifecycle.
+- Rendering updates SVG/DOM from one latest sample on the next animation frame,
+  checks freshness at draw time and applies invalidation without interpolation.
+
+Use explicit SVG groups and clipping for moving sky/ground/pitch, instrument
+tapes, fixed aircraft/scale references, markers and warning overlays. Transforms
+belong only to the elements that move; resizing preserves rotation centers and
+undistorted symbols. Size labels, symbols and scales independently rather than
+stretching a single fixed-size instrument. CSS owns page composition and compact
+DEMO/source/transport status. No canvas rewrite, frontend framework or build
+pipeline is needed for this extension.
+
+Assess the complete intended 18-element arrangement in the first slice with
+development-only layout fixtures. Build shared helpers only where the next agreed
+slice needs them; do not create a general avionics framework or reserved regions
+for the excluded battery/navigation instruments.
+
 ## Library telemetry interface
 
 `telemetry::channel(Source)` returns one `Publisher` and a cloneable `Subscription`.
