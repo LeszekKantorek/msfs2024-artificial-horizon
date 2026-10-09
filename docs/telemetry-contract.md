@@ -1,35 +1,35 @@
 # Telemetry contract v1
 
-Update this contract and its fixtures together when changing the HTTP/SSE interface.
+> Update this contract and its fixtures together when changing the HTTP/SSE interface.
 
-The Rust model exposes validated `Attitude`, typed `State`, and serializable
-`Snapshot` in `telemetry`. Only `State::Live` carries attitude. Snapshot fields
-cannot be constructed or mutated by callers; obtain a current snapshot from a
-`Subscription` immediately before serialization. Wire examples and known poses
-are specified independently in `tests/fixtures/snapshots.json` and
-`tests/fixtures/attitudes.json`. The model does not itself expose an HTTP endpoint.
+## Model boundary
+
+| Type / fixture | Contract |
+| --- | --- |
+| `telemetry::Attitude` | Validated attitude |
+| `State` | Typed lifecycle state. Only `State::Live` carries attitude |
+| `Snapshot` | Serializable value. Callers cannot construct or mutate its fields |
+| `Subscription` | Obtain a current snapshot immediately before serialization |
+| `tests/fixtures/snapshots.json` | Independent wire examples |
+| `tests/fixtures/attitudes.json` | Independent known poses |
+
+The model exposes no HTTP endpoint.
 
 ## HTTP surface
 
 | Request | Response |
 | --- | --- |
-| `GET /` | Instrument HTML; relative same-origin asset URLs |
+| `GET /` | Instrument HTML with relative same-origin asset URLs |
 | `GET /health` | `200` JSON `{"status":"ok"}` when HTTP is serving |
-| `GET /api/v1/events` | `200 text/event-stream`; one stream per page |
+| `GET /api/v1/events` | `200 text/event-stream`, one stream per page |
 
-There are no write/control endpoints. Health reports process liveness, not flight readiness.
-For SSE use `Cache-Control: no-cache, no-transform`; avoid response compression and
-proxy buffering. If a proxy is introduced, test streaming and timeout configuration.
+* There are no write/control endpoints.
+* Health reports process liveness, not flight readiness.
+* Send `Cache-Control: no-cache, no-transform` and `X-Accel-Buffering: no` for SSE.
+* Do not compress or buffer SSE responses through a proxy.
+* If you introduce a proxy, test streaming and timeout settings.
 
 ## Framing
-
-Send a full named `telemetry` event on subscription and on each publication. A
-proposed 20 Hz cadence applies while receiving valid samples; state transitions
-must also be sent promptly. Use `retry: 2000` as a reconnect hint and an SSE comment
-every 10 seconds when otherwise idle. The page closes a failed EventSource and
-creates a new one after 2,000 ms, ensuring the same retry delay even if the first
-connection fails before receiving the hint; only one connection and retry timer
-are active per page. These durations are initial tuning values.
 
 ```text
 retry: 2000
@@ -38,86 +38,121 @@ data: {"schema_version":1,"sequence":42,"source":"demo","state":"live","sample_a
 
 ```
 
-End every event with an empty line. Omit SSE `id`: history replay is not supported.
-Ignore `Last-Event-ID` if supplied and send the latest state. Browser reconnection
-starts a new subscription; sequence comparisons reset on that subscription.
+1. Send a full named `telemetry` event on subscription.
+2. Send a full event on each publication.
+3. Send state transitions promptly.
+4. End every event with an empty line.
 
-Use `X-Accel-Buffering: no` and do not compress SSE responses. Per-client delivery
-is pull-driven from the latest-value channel: intermediate publications may be
-skipped and no sample history is queued. Age is computed when producing a body
-frame; downstream HTTP/TCP buffers are finite but may add transit delay.
-Close connections after 30 seconds of stalled socket writes, rather than limiting
-session duration or treating an idle source as a transport failure. During server
-shutdown stop acquisition and end streams, with a five-second deadline for
-remaining connections. A closed source channel ends the stream after pending state.
+| Timing | Initial value / rule |
+| --- | --- |
+| Valid samples | Proposed 20 Hz cadence |
+| Reconnect hint | `retry: 2000` |
+| Page retry | Close the failed EventSource. Create its replacement after 2,000 ms, including initial connection failures |
+| Idle heartbeat | SSE comment every 10 seconds when otherwise idle |
+| Stalled socket write | Close after 30 seconds without progress |
+| Server shutdown | Stop acquisition and end streams. Allow five seconds for remaining connections |
+
+These durations are initial tuning values.
+
+* Keep only one connection and retry timer active per page.
+* Omit SSE `id`. Ignore supplied `Last-Event-ID` and send latest state without history replay.
+* Reset sequence comparisons for each new subscription.
+* Pull from the latest-value channel. Intermediate publications may be skipped, with no sample queue.
+* Compute age when producing each body frame. Finite HTTP/TCP buffers may still add transit delay.
+* Do not limit session duration or treat an idle source as transport failure.
+* A closed source channel ends the stream after pending state.
 
 ## Fields and conventions
 
 | Field | Contract |
 | --- | --- |
-| `schema_version` | Integer `1`; reject unsupported major versions visibly |
-| `sequence` | Nonnegative, increasing publication number within one server run; JSON safe integer |
-| `source` | `demo` or `simconnect`; never silently changed on failure |
+| `schema_version` | Integer `1`. Visibly reject unsupported major versions |
+| `sequence` | Nonnegative, increasing publication number within one server run. JSON safe integer |
+| `source` | `demo` or `simconnect`. Never silently change on failure |
 | `state` | `waiting`, `live`, `paused`, `stale`, `disconnected`, or `invalid` |
 | `sample_age_ms` | Nonnegative server-monotonic age of last accepted sample, or `null` before any sample |
-| `attitude` | Object only for `live`; otherwise `null` |
-| `attitude.pitch_deg` | Finite degrees, positive nose up; range [-90, 90] |
-| `attitude.roll_deg` | Finite degrees, positive right wing down; normalized to [-180, 180) |
+| `attitude` | Object only for `live`, otherwise `null` |
+| `attitude.pitch_deg` | Finite degrees, positive nose up, range [-90, 90] |
+| `attitude.roll_deg` | Finite degrees, positive right wing down, normalized to [-180, 180) |
 
-The provider converts SDK values to these conventions; never infer a SimVar's
-units from its name alone. Verify conversion in the SimConnect spike. Handle the
-roll wrap via the shortest angular distance if interpolating. Do not clamp
-non-finite or invalid values into apparently valid telemetry.
+* Providers convert SDK values to these conventions.
+* Check conversion in the SimConnect spike. Do not infer SimVar units from names alone.
+* If you introduce interpolation, use the shortest angular distance across roll wrap.
+* Do not clamp invalid or non-finite values into apparently valid telemetry.
 
-Example unavailable state:
+Unavailable state example:
 
 ```json
-{"schema_version":1,"sequence":43,"source":"simconnect","state":"disconnected","sample_age_ms":1250,"attitude":null}
+{
+  "schema_version": 1,
+  "sequence": 43,
+  "source": "simconnect",
+  "state": "disconnected",
+  "sample_age_ms": 1250,
+  "attitude": null
+}
 ```
 
-An additive optional field is compatible with v1. Removing/changing field meaning,
-units, or states requires a new version and endpoint. Clients ignore unknown fields
-but reject malformed messages, unknown states, and non-finite/out-of-range attitude.
+### Compatibility
+
+| Change / input | Required behavior |
+| --- | --- |
+| Add an optional field | Compatible with v1 |
+| Remove or change field meaning, units, or states | Introduce a new version and endpoint |
+| Unknown field | Client ignores it |
+| Malformed message, unknown state, non-finite/out-of-range attitude | Client rejects it |
 
 ## Freshness and status
 
-- `waiting`: connected source without an active flight/usable sample yet.
-- `live`: usable current sample and an active, unpaused source.
-- `paused`: simulator explicitly reports pause; invalidate the displayed live attitude.
-- `stale`: no accepted sample for 1,000 ms while otherwise expecting live data.
-- `disconnected`: simulator connection is unavailable/lost.
-- `invalid`: current source data cannot be normalized or validated.
+| Source state | Meaning |
+| --- | --- |
+| `waiting` | Source connected, but no active flight or usable sample yet |
+| `live` | Usable current sample from an active, unpaused source |
+| `paused` | Simulator explicitly reports pause. Invalidate displayed live attitude |
+| `stale` | No accepted sample for 1,000 ms while expecting live data |
+| `disconnected` | Simulator connection unavailable or lost |
+| `invalid` | Current source data cannot be normalized or validated |
 
-Explicit unavailable states override `live`. Only a fresh valid sample from an
-active unpaused flight can restore `live`. Repeated equal values with fresh source
-callbacks are valid samples; re-emitting a cached value does not reset its age.
+> Explicit unavailable states override `live`. Only a fresh valid sample from an active, unpaused flight restores `live`.
 
-Compute age using a monotonic server clock immediately before sending. The browser
-adds elapsed monotonic time since receipt to `sample_age_ms`; at 1,000 ms it flags
-stale attitude. Heartbeats, unknown/malformed events, and connection-open events do
-not refresh valid-sample age. This estimate excludes network transit time, so it is
-not an end-to-end latency measurement or a substitute for bounded server buffers.
+### Age calculation
 
-Browser transport states (`connecting` / `reconnecting`) are separate from source
-state. On errors, timeout, background/resume, or unavailable source, obscure/flag
-the attitude instead of resetting to a credible level horizon. Keep a DEMO indicator
-visible in demo mode even while source state is `live`.
+```text
+estimated age = server sample_age_ms + browser monotonic time since receipt
+stale         = estimated age >= 1,000 ms
+```
+
+* Compute server age with a monotonic clock immediately before sending.
+* Repeated equal values from fresh callbacks are valid samples.
+* Publishing a cached value again does not reset age.
+* Heartbeats, unknown/malformed events, and connection-open events do not refresh valid-sample age.
+
+> Estimated age excludes network transit time. It does not measure end-to-end latency or replace bounded server buffers.
+
+### Browser indication
+
+* Keep transport states (`connecting` / `reconnecting`) separate from source state.
+* Obscure or flag attitude after errors, timeout, background/resume, or unavailable source.
+* Never replace unavailable attitude with a credible level horizon.
+* Keep DEMO visible in demo mode, including while source state is `live`.
 
 ## Planned PFD extension boundary
 
-The [PFD demo scope](project-brief.md#pfd-reference-and-coverage) will add optional
-normalized instrument data incrementally. This section records compatibility
-requirements, not fields available on the current endpoint. The fields and examples
-above remain the current v1 contract.
+> The fields above define current v1. The [PFD scope](project-brief.md#pfd-reference-and-coverage) defines planned additions, not available endpoint fields.
 
-Each implementing slice must define its added fields, units, independent validity,
-freshness handling and compatible Rust/browser fixtures together. Preserve the
-existing attitude fields, state meanings and pitch/bank-only publication path;
-old snapshots without extensions remain usable for attitude. Optional malformed
-instrument values invalidate only that indication, while existing envelope/attitude
-validation and global source/transport invalidation remain in force.
+Each feature slice must:
 
-Do not substitute zero or demo values for missing data. The attitude-only
-SimConnect integration in #6 has no obligation to populate PFD extensions. All
-selected values remain source-supplied and read-only; no control endpoint is added.
-Exact schema additions are owned by their feature issues, not this scope update.
+* Define its optional normalized fields, units, independent validity, and freshness handling.
+* Add compatible Rust/browser fixtures with the fields.
+* Preserve attitude fields, state meanings, and pitch/bank-only publication.
+* Keep old snapshots usable for attitude.
+* Invalidate only the affected indication for malformed optional instrument data.
+* Preserve existing envelope/attitude validation and global source/transport invalidation.
+
+Constraints:
+
+* Never substitute zero or demo values for missing data.
+* The attitude-only SimConnect integration in #6 need not populate PFD extensions.
+* Selected values remain source-supplied and read-only.
+* Add no control endpoint.
+* Feature issues own exact schema additions.

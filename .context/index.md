@@ -1,7 +1,10 @@
 | Entry | Use when |
 | --- | --- |
-| [Repository instructions](repository-instructions.md) | Use when selecting implementation sources, validating repository changes, or recording follow-up findings. |
-| [Iterative development](iterative-development.md) | Use when choosing module boundaries or extending demo behavior across delivery iterations. |
-| [Windows validation](windows-validation.md) | Use when Rust commands fail under Windows application control or report SAC error 4551. |
-| [Browser presentation](browser-presentation.md) | Use when extending instrument rendering or planning real-phone acceptance. |
-| [PFD demo scope](pfd-demo-scope.md) | Use when planning or implementing the responsive PFD demo slices and checking their exclusions and simulator boundaries. |
+| [Repository rules](repository-instructions.md) | Implementing or validating a repository change. |
+| [Iterative development](iterative-development.md) | Choosing module boundaries for agreed delivery steps. |
+| [Windows validation](windows-validation.md) | Diagnosing SAC blocking, error 4551, or Rust E0463. |
+| [Browser presentation](browser-presentation.md) | Changing rendering or preparing phone acceptance. |
+| [PFD demo scope](pfd-demo-scope.md) | Planning or implementing PFD demo features. |
+| [Documentation style](documentation-style.md) | Writing docs or choosing document ownership. |
+| [Agent maintenance](agent-maintenance.md) | Reinstalling skills or changing session hooks. |
+| [Context authoring](context-authoring.md) | Editing knowledge entries or their index. |

@@ -1,15 +1,18 @@
 ---
-description: Apply the accepted PFD demo expansion and its boundaries when planning or implementing the new feature slices.
+description: Plan or implement PFD demo slices without expanding live-simulator scope.
 status: active
 ---
 
-- Read the [project brief](../docs/project-brief.md) for canonical PFD coverage, exclusions, units and mobile acceptance ownership.
-- Follow the [roadmap](../docs/roadmap.md) for feature order and technical dependencies; do not silently widen #5-#8 to live PFD integration.
-- The owner's final corrections removed battery, HSI and navigation guidance and replaced the earlier 4:3 proposal with responsive phone layout.
-- Treat new functionality as planned until its issue provides implementation and acceptance evidence; document/backlog approval is not hardware evidence.
-- Use [ADR 0003](../docs/adr/0003-responsive-pfd-demo.md) and the [telemetry contract](../docs/telemetry-contract.md) to preserve the attitude-only provider path during additive demo work.
+| Decision | Canonical source |
+| --- | --- |
+| Coverage, exclusions, units, mobile acceptance owner | [Project brief](../docs/project-brief.md) |
+| Feature order and technical prerequisites | [Roadmap](../docs/roadmap.md) |
+| Additive fields and preserved attitude-only provider | [ADR 0003](../docs/adr/0003-responsive-pfd-demo.md), [contract](../docs/telemetry-contract.md) |
 
-## Sources
+* Preserve #5-#8 scope instead of adding live PFD integration.
+* Apply the owner's final corrections: no battery, HSI, or navigation guidance, and responsive layout instead of fixed 4:3.
+* Treat new features as planned until their issues provide implementation and acceptance evidence.
+* Scope approval does not establish hardware acceptance.
 
-- Owner-approved plan and corrections in the 2026-10-08 scope-planning session, implemented as scope/backlog work in [#19](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/19).
-- Garmin reference `190-01112-12_02.pdf`, section 3.3: printed Page 8 of 25 is physical PDF page 13; supplied locally by the owner and visually inspected in that session.
+Sources: owner-approved scope, 2026-10-08, recorded in [#19](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/19).
+The owner-supplied `190-01112-12_02.pdf`, section 3.3, was visually inspected in that session: printed page 8/25 is PDF page 13.
