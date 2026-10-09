@@ -1,92 +1,92 @@
 # MSFS2024 Artificial Horizon
 
-A mobile web attitude display for Microsoft Flight Simulator 2024, with a planned
-G5-inspired PFD demo expansion. Rust runs the HTTP server; a lightweight
-HTML/CSS/JavaScript client receives telemetry through Server-Sent Events (SSE).
+An aircraft attitude display for your phone. Start the Rust server on Windows,
+then open its address in a browser on the same network.
 
-The Rust library, CLI, and server target Windows x64 MSVC only, with Windows-only
-CI. The web client supports iOS Safari and Android Chrome.
+**Windows x64** · **Read-only browser display** · **No phone app or account**
 
-## Intended experience
+> **Try the demo today.** The current executable displays synthetic pitch and bank.
+> MSFS2024 integration and the expanded PFD demo are planned. This is not a real-flight instrument.
 
-1. Start the application on the Windows PC running MSFS2024.
-2. Connect a phone to the same local network.
-3. Open the server address, for example `http://192.168.1.20:8080`.
-4. The page automatically opens a read-only telemetry stream and displays attitude.
+[Start the demo](#start-the-demo) · [Use your phone](#use-your-phone) · [Development](CONTRIBUTING.md)
 
-The address above is illustrative. No cloud service, account, phone application,
-or browser-to-simulator controls are planned for the MVP. A browser session means
-an active SSE subscription, not a persisted login session.
+## Start the demo
 
-## Original simulator MVP scope
+You need:
 
-- Pitch and bank, with a horizon, pitch ladder, bank scale, and fixed aircraft reference.
-- Responsive portrait and landscape display with explicit connection/data status.
-- An explicitly selected demo mode for development without the simulator.
-- A Windows SimConnect provider, subject to a compatibility spike.
-- Automatic browser reconnection and clear stale/paused/disconnected indication.
+* Windows x64, Git, and Rust stable through rustup, using the MSVC toolchain.
+* Visual Studio C++ Build Tools with the MSVC linker and Windows SDK.
 
-The runnable demo currently displays attitude only. SimConnect selection still
-fails explicitly until its provider is implemented, as described below.
-This is a simulator companion, not a real-flight instrument.
+The demo requires no MSFS installation, SimConnect SDK, Node.js, or frontend build.
 
-## Planned PFD demo expansion
+### 1. Get the source
 
-The [project brief](docs/project-brief.md) defines an accepted expansion into
-18 G5-inspired PFD elements, delivered as seven end-to-end feature slices in the
-[roadmap](docs/roadmap.md). These additions are planned, not available in the
-current executable: slip/skid and turn rate; IAS/GS, speed ranges and trends;
-altitude/baro, selected-altitude alerts and VSI; heading/track and selected direction.
+Run in PowerShell:
 
-The mobile layout will adapt to portrait and landscape without a fixed 4:3 aspect
-ratio, with independently sized text and symbols, safe areas, compact status and
-no scrolling from 320 CSS px. All new values and selected settings come from demo
-scenarios; the page remains read-only.
+```powershell
+git clone https://github.com/LeszekKantorek/msfs2024-artificial-horizon.git
+cd msfs2024-artificial-horizon
+```
 
-Battery, HSI, CDI, navigation course, ILS, GPS glidepath, VNAV, menus and knobs are
-excluded. Flight director, autopilot controls, recording, internet hosting and a
-full G5 replica remain outside scope. Issues #5-#8 retain their original
-attitude-only integration, validation and distribution scope; live integration of
-the new PFD values is future work and must not use demo values as a fallback.
-
-## Project guide
-
-| Document | Purpose |
-| --- | --- |
-| [Project brief](docs/project-brief.md) | Requirements, assumptions, scope, and success criteria |
-| [Architecture](docs/architecture.md) | Components, intended source layout, and deployment |
-| [Architecture decision](docs/adr/0001-rust-http-sse.md) | Stack choice and trade-offs |
-| [Telemetry contract](docs/telemetry-contract.md) | HTTP/SSE interface, units, and freshness |
-| [Roadmap](docs/roadmap.md) | Delivery order and linked GitHub Issues |
-| [Testing](docs/testing.md) | Automated checks and real-device acceptance |
-| [Contributing](CONTRIBUTING.md) | Issue and branch workflow |
-
-Work is tracked in [GitHub Issues](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues).
-Code, documentation, issues, commit messages, and pull requests use English.
-
-## Build and run
-
-Use Windows x64 with rustup and the Visual Studio C++ Build Tools (MSVC linker
-and Windows SDK). No MSFS installation or SimConnect SDK is needed. Use Rust
-stable with rustfmt and Clippy; the project does not pin a compiler version.
+### 2. Start the server
 
 ```powershell
 rustup default stable
-rustup component add rustfmt clippy --toolchain stable
-cargo build --locked
 cargo run --locked --bin main
 ```
 
-Open `http://127.0.0.1:8080`. The default source is `demo`, producing deterministic
-synthetic telemetry at 20 Hz. The page automatically opens a read-only SSE stream,
-marks DEMO, and displays a responsive SVG attitude instrument with separate connection
-and source status. Positive pitch lowers the horizon; positive right bank rotates
-the world counterclockwise around the fixed aircraft reference. Unavailable or stale
-telemetry obscures the instrument rather than showing a level-flight fallback.
-Rendering uses the latest sample on the next animation frame, without interpolation.
-Real iOS Safari and Android Chrome acceptance requires device results in issue #4.
-`GET /health` returns `{"status":"ok"}` for HTTP liveness,
-not simulator readiness. Press Ctrl+C for graceful shutdown.
+Cargo builds the application before starting it.
+
+### 3. Open the display
+
+Open [http://127.0.0.1:8080](http://127.0.0.1:8080) on the PC.
+Expect `DEMO`, a connection indicator, and a moving attitude display.
+Press `Ctrl+C` in PowerShell to stop the server gracefully.
+
+## Use your phone
+
+1. Connect the PC and phone to the same trusted private network.
+2. Stop the local server with `Ctrl+C` if it is still running.
+3. Start the server with LAN access:
+
+   ```powershell
+   cargo run --locked --bin main -- --source demo --listen-address 0.0.0.0 --port 8080
+   ```
+
+4. Allow inbound TCP port `8080` in Windows Defender Firewall for the Private profile and local subnet.
+5. Open the printed LAN URL on the phone.
+
+```text
+Windows PC                         Phone browser
+Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
+                         telemetry
+```
+
+* Use iOS Safari or Android Chrome. Rotate between portrait and landscape.
+* Check the printed interface when a VPN or multiple adapters are active.
+* If address detection fails, use `ipconfig` to find the PC's private IP.
+* You can bind that IP directly with `--listen-address`.
+
+> Use the PC's LAN IP on the phone. `localhost` refers to the phone itself.
+> LAN access has no authentication. Do not forward the port on your router.
+
+## What to expect
+
+| Behavior | Current demo |
+| --- | --- |
+| Instrument | Horizon, pitch ladder, bank scale, fixed aircraft reference |
+| Motion | Repeating 14-second cycle: level, nose up/down, left/right bank, two combined attitudes |
+| Data | Synthetic samples at 20 Hz, clearly marked DEMO |
+| Connection loss | Obscured attitude and automatic retry after two seconds |
+| Stale or unavailable data | Explicit status, no fabricated level-flight reading |
+| Background/resume | A fresh snapshot is required before live attitude returns |
+
+> Real iOS Safari and Android Chrome acceptance requires [device evidence](docs/testing.md#attitude-display-owner-assisted-phone-acceptance) in issue #4.
+
+The planned G5-inspired PFD adds airspeed, altitude, vertical speed, and heading/track indications.
+See the [project brief](docs/project-brief.md) for coverage and exclusions, and the [roadmap](docs/roadmap.md) for delivery order.
+
+## Options and troubleshooting
 
 ```powershell
 cargo run --locked --bin main -- --help
@@ -94,71 +94,23 @@ cargo run --locked --bin main -- --version
 cargo run --locked --bin main -- --source demo --listen-address 127.0.0.1 --port 9000
 ```
 
-`--listen-address` accepts an IPv4 or IPv6 address, not a hostname. `--port`
-accepts 1-65535. Multicast and IPv4 broadcast addresses are rejected. An occupied
-port produces an error; choose another port. Selecting `--source simconnect`
-fails explicitly until integration is implemented, even with `--features simconnect`.
-The feature is currently an SDK-free Windows module boundary.
+| Situation | Action / constraint |
+| --- | --- |
+| Port occupied | Select another `--port` from `1` to `65535` |
+| Invalid address | Use an IPv4/IPv6 address, not a hostname, multicast address, or IPv4 broadcast address |
+| Phone cannot connect | Check the private network, PC address, port, VPN interface, and firewall scope |
+| SimConnect selection fails | `--source simconnect` is not implemented, even with `--features simconnect`. Demo never replaces it automatically |
 
-## Explicit LAN access
+## Project guide
 
-```powershell
-cargo run --locked --bin main -- --source demo --listen-address 0.0.0.0 --port 8080
-```
+| I want to… | Read |
+| --- | --- |
+| Run checks or test a phone | [Testing](docs/testing.md) |
+| Contribute a change | [Contributing](CONTRIBUTING.md) |
+| Use the Rust library or understand the design | [Architecture](docs/architecture.md#application-api) |
+| Consume telemetry | [Telemetry contract](docs/telemetry-contract.md) |
+| Review scope and future work | [Project brief](docs/project-brief.md) · [Roadmap](docs/roadmap.md) |
+| Understand the stack choice | [ADR 0001](docs/adr/0001-rust-http-sse.md) |
+| Track work | [GitHub Issues](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues) |
 
-The startup output reports a detected LAN URL. Verify the interface when using
-a VPN or multiple adapters; alternatively bind your PC's private IP directly.
-If detection fails, find the private IP with `ipconfig` and use that IP in the
-phone URL. `localhost` on the phone refers to the phone itself.
-
-Allow inbound TCP on the chosen port in Windows Defender Firewall, scoped to
-the Private profile and local subnet. Use the same trusted private network;
-do not forward the port on your router. LAN access has no authentication.
-HTTP exposes the status page, liveness, and `GET /api/v1/events`. Each browser gets
-current state immediately and shares one producer with other browsers. Reconnection
-gets current state without replay; the page retries after two seconds on transport
-errors. Stale source data does not restart a healthy connection.
-
-## Library and checks
-
-The `msfs2024_artificial_horizon` library exposes `Config`, `Source`, and `Server`.
-`Server::bind(config).await` validates and binds; `local_address()` returns the
-bound address; `run(shutdown).await` takes a caller-owned shutdown future.
-The library never reads process arguments or installs a Ctrl+C handler.
-
-`Server::telemetry()` returns a cloneable latest-value subscription. Call
-`snapshot()` for immediate state and `changed().await` for the next publication;
-serialize a newly obtained snapshot immediately so its age is current. Subscribers
-share one producer, and slow consumers skip intermediate samples. Closing the
-server stops and joins the producer and closes subscriptions after pending data.
-Socket writes that make no progress for 30 seconds terminate that connection.
-Shutdown allows five seconds for HTTP connections to finish, then forces remaining
-connections closed; an unresponsive receiver cannot prevent shutdown indefinitely.
-
-`http::router()` builds static routes only. `http::router_with_telemetry(subscription)`
-adds SSE using a caller-supplied channel, without starting acquisition. Use
-`snapshot_and_update()` for an initial snapshot that acknowledges its publication;
-`snapshot()` retains its existing non-acknowledging semantics.
-
-The demo repeats a 14-second cycle: level flight, nose up/down, left/right bank,
-and two combined attitudes, each held for two seconds. Every 50 ms tick is a fresh
-sample, including unchanged poses. Missed ticks are skipped. Telemetry begins in
-`waiting`, becomes `live` on fresh data, and expires after 1000 ms without an
-accepted sample. Demo never substitutes for unavailable SimConnect.
-
-```powershell
-cargo fmt --all -- --check
-cargo clippy --locked --all-targets -- -D warnings
-cargo test --locked --all-targets
-cargo clippy --locked --all-targets --features simconnect -- -D warnings
-cargo test --locked --all-targets --features simconnect
-node --test tests/*.test.mjs
-```
-
-The dependency-free browser controller tests require Node.js 24. CI runs these
-and the Rust checks on Windows x64 MSVC. See [testing](docs/testing.md)
-for HTTP startup checks and simulator/mobile acceptance procedures.
-
-## License
-
-[MIT](LICENSE).
+[MIT license](LICENSE).

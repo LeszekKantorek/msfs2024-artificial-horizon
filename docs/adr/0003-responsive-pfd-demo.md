@@ -1,54 +1,50 @@
 # ADR 0003: Extend the demo with a responsive read-only PFD
 
-- Date: 2026-10-08
-- Status: Accepted
+| Date | Status |
+| --- | --- |
+| 2026-10-08 | Accepted |
 
 ## Context
 
-The owner approved expanding the attitude demo into the PFD scope defined in the
-[project brief](../project-brief.md), with seven feature slices under
-[epic #9](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9).
-The G5 illustration is a behavior and visual-hierarchy reference; the phone's
-available screen area differs from the physical instrument. Existing simulator
-integration, validation and distribution issues #5-#8 must retain their scope.
+* The owner approved the [PFD scope](../project-brief.md) as seven feature slices under [epic #9](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9).
+* The G5 illustration guides behavior and visual hierarchy. Phone screen area differs from the physical instrument.
+* Existing simulator integration, validation, and distribution issues #5-#8 retain their scope.
 
 ## Decision
 
-- Deliver each PFD feature through typed Rust data, shared deterministic demo,
-  SSE, JavaScript/SVG presentation, tests and documentation in one reviewable slice.
-- Keep the GUI read-only and all new values demo-supplied, including selected
-  altitude/direction and barometric setting; defer live PFD integration.
-- Use responsive layout geometry without a fixed panel aspect ratio; size text,
-  symbols and scales independently while preserving familiar relative positions.
-- Separate layout, instrument geometry and DOM updates; use explicit SVG groups
-  and clipping for moving elements, fixed references, markers and warnings.
-- Retain the existing stack, latest-sample animation-frame rendering and no
-  interpolation; add only the structure needed for the agreed next slices.
-- Extend v1 additively with optional fields; preserve the attitude-only publication
-  path, field meanings and lifecycle semantics.
-- Missing new data remains unavailable; isolate optional instrument failures while
-  source/transport loss invalidates the panel. Never fill missing live data from demo.
-- Do not model or reserve space for battery, HSI, CDI, navigation course, ILS,
-  GPS glidepath or VNAV.
+| Area | Rule |
+| --- | --- |
+| Delivery | Each slice includes typed Rust data, shared deterministic demo, SSE, JavaScript/SVG, tests, and documentation |
+| Data | Demo supplies all new values, including selected altitude/direction and barometric setting. Defer live PFD integration |
+| Controls | Keep the GUI read-only |
+| Layout | No fixed aspect ratio. Size text, symbols, and scales independently. Preserve familiar relative positions |
+| Geometry | Separate layout, instrument geometry, and DOM updates |
+| SVG | Use explicit groups and clipping for moving elements, fixed references, markers, and warnings |
+| Rendering | Retain the stack and latest-sample animation frames without interpolation |
+| Structure | Add only what the agreed next slices need |
+| Contract | Add optional v1 fields. Preserve attitude-only publication, field meanings, and lifecycle semantics |
+| Missing data | Show unavailable. Never fill missing live data with demo values |
+| Invalid data | Isolate optional instrument failures. Source/transport loss invalidates the panel |
+| Exclusions | No models or reserved space for battery, HSI, CDI, navigation course, ILS, GPS glidepath, or VNAV |
 
 ## Alternatives and trade-offs
 
 | Approach | Trade-off | Decision |
 | --- | --- | --- |
-| Scale one fixed 4:3 instrument | Simple geometry, but wastes phone space or makes all labels too small together | Reject; mobile readability takes priority |
-| Responsive SVG composition | Requires explicit sizing, clipping and resize tests; preserves the existing renderer and testable geometry | Select |
-| Replace presentation with Canvas or a frontend framework | Adds migration/tooling cost before existing SVG limits are demonstrated | Defer |
-| Expand live integration at the same time | Couples UI delivery to unverified simulator fields and changes #5-#8 | Defer to separate future scope |
+| Scale one fixed 4:3 instrument | Simple geometry wastes phone space or makes all labels too small | Reject for mobile readability |
+| Responsive SVG composition | Requires explicit sizing, clipping, and resize tests. Preserves the renderer and testable geometry | Select |
+| Canvas or frontend framework | Adds migration/tooling before measurements establish SVG limits | Defer |
+| Concurrent live integration | Depends on unverified simulator fields and changes #5-#8 | Defer to separate scope |
 
 ## Consequences and validation
 
-The first slice assesses the complete intended arrangement with development-only
-fixtures; later slices must preserve phone legibility. Exact wire fields and
-fixtures are introduced with their owning feature, not predeclared by this ADR.
-Demo profiles and results do not establish real aircraft performance or live
-PFD compatibility. Real iOS Safari and Android Chrome evidence belongs to the new
-feature issues, with accumulated full-panel acceptance in the final slice.
+* Assess the complete arrangement in the first slice with development-only fixtures.
+* Preserve phone readability through later slices.
+* Introduce exact wire fields and fixtures with their owning feature, not this ADR.
+* Demo profiles/results establish neither real-aircraft performance nor live PFD compatibility.
+* Record real iOS Safari and Android Chrome evidence in each feature issue.
+* Record accumulated full-panel acceptance in the final slice.
 
-Revisit these decisions if live PFD data, user controls, interpolation or another
-rendering technology becomes an explicitly accepted requirement supported by
-measurements. ADR acceptance does not indicate feature implementation or test results.
+> ADR acceptance records a decision. It does not indicate implementation or test results.
+
+Revisit for explicitly accepted live PFD data, user controls, interpolation, or another rendering technology supported by measurements.

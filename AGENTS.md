@@ -1,7 +1,19 @@
-# Instructions
+# Agent instructions
 
-- Use `context-apply` with [.context/index.md](.context/index.md) before working on a task.
-- Follow [CONTRIBUTING.md](CONTRIBUTING.md) for the issue/branch/PR workflow,
-  document responsibilities, and required checks.
-- Use `context-gather` to maintain project knowledge and `context-import-sessions`
-  to process selected saved sessions; follow each skill's instructions.
+## Before work
+
+1. Use `context-apply` with [.context/index.md](.context/index.md).
+2. Read the relevant knowledge entries before acting.
+3. Follow [CONTRIBUTING](CONTRIBUTING.md) for the contribution workflow and links to project rules.
+
+## Project knowledge
+
+| Skill | Use |
+| --- | --- |
+| `context-apply` | Retrieve and apply project knowledge |
+| `context-gather` | Save session learning, review entries, and maintain the table-only index |
+| `context-import-sessions` | Process selected saved sessions and invoke gathering |
+
+* Follow each skill's instructions.
+* Exclude `.context/sessions/` from knowledge retrieval.
+* Use `context-import-sessions` to read selected session records.

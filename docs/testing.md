@@ -1,115 +1,162 @@
 # Test and acceptance strategy
 
-This document defines verification procedures and acceptance criteria. Record
-execution results and acceptance progress in the related GitHub issue or PR.
+> Procedures and criteria belong here. Record results and acceptance progress in the related GitHub issue or PR.
 
 ## HTTP startup checks
 
-Use Rust stable on Windows x64 MSVC with rustfmt and Clippy installed. Run the check
-commands in README, including default and `simconnect` feature tests. Dependencies
-are resolved from committed Cargo.lock; no simulator or SimConnect SDK is required.
-Record `rustc --version --verbose` with execution results in the issue or PR;
-CI records the tested compiler version in its logs.
+Prerequisites: Rust stable, rustfmt, and Clippy on Windows x64 MSVC.
+Use committed `Cargo.lock`. These checks require no simulator or SDK.
 
-Run `cargo run --locked --bin main`, then request `http://127.0.0.1:8080/`,
-`/styles.css`, and `/health`. Expect HTML, CSS, and JSON `{"status":"ok"}`.
-Check `--help`, `--version`, and rejected arguments. A page without telemetry
-must indicate unavailable data rather than show a valid-looking attitude.
+1. Run the [automated checks](#automated-checks), including default and `simconnect` feature tests.
+2. Record the compiler version with results. CI records it in its logs.
 
-Press Ctrl+C, confirm successful exit, then start again on the same port.
-Library tests independently signal shutdown and rebind the socket with a five-second
-completion timeout. Public configuration rejects port zero; internal listener
-tests use OS-assigned ports to avoid collisions.
+   ```powershell
+   rustc --version --verbose
+   ```
 
-For LAN, explicitly bind the private interface or `0.0.0.0` and verify the printed
-interface URL. Desktop checks do not establish real-phone or simulator
-compatibility; validate those with the manual acceptance matrix below.
+3. Start the server.
+
+   ```powershell
+   cargo run --locked --bin main
+   ```
+
+4. Check the endpoints and CLI behavior below.
+5. Press `Ctrl+C`.
+6. Check successful exit.
+7. Restart on the same port.
+
+| Check | Expected result |
+| --- | --- |
+| `http://127.0.0.1:8080/` | HTML |
+| `http://127.0.0.1:8080/styles.css` | CSS |
+| `http://127.0.0.1:8080/health` | JSON `{"status":"ok"}` |
+| `--help`, `--version` | Successful output |
+| Invalid arguments | Actionable errors |
+| Page without telemetry | Unavailable indication, no credible attitude |
+| Explicit LAN bind: private interface or `0.0.0.0` | Printed URL uses the correct interface |
+
+Library tests signal shutdown independently and rebind within a five-second completion timeout.
+Public configuration rejects port zero. Internal listener tests use OS-assigned ports to avoid collisions.
+
+> Desktop checks do not establish real-phone or simulator compatibility.
 
 ## Automated checks
 
-Run formatting, Clippy with warnings denied, and locked dependency tests on Windows
-x64 MSVC only for the demo/default feature set. The SimConnect feature gets a Windows
-build check once its SDK prerequisites and distribution constraints are known.
+Run these commands from the repository root on Windows x64 MSVC.
+They match the checks in [CI](../.github/workflows/ci.yml).
 
-Test behavior at these boundaries:
+Complete the [environment setup](../CONTRIBUTING.md#environment-setup) first.
+Use committed `Cargo.lock` with `--locked`.
+Default checks and the current SDK-free `simconnect` feature require no simulator or SDK.
 
-- Library/CLI: typed configuration works without parsing process arguments; clap
-  help/version succeed and invalid CLI values produce actionable errors.
-- Model: unit/sign normalization, roll wrap, invalid numbers, serialization, and
-  monotonic sample age. Use fixtures independent of the implementation formula.
-- Providers: deterministic trajectories, unchanged-but-fresh samples, lifecycle
-  transitions, reconnect backoff, and shutdown/handle ownership.
-- HTTP/SSE: `/health` reports HTTP liveness independently of source readiness;
-  immediate full snapshot, event framing, MIME/cache headers, reconnect
-  without replay, shared acquisition, two clients, slow consumers, and cleanup.
-- Browser: pure attitude transforms, message validation, source/transport status,
-  receive timeout, and fresh-data requirement after background/resume.
+Run the default checks and build:
 
-Use known expected geometry: nose up lowers the horizon; positive right bank
-rotates the world counterclockwise around the fixed aircraft reference. Include
-combined pitch/bank fixtures to catch transform-order errors.
+```powershell
+cargo fmt --all -- --check
+cargo clippy --locked --all-targets -- -D warnings
+cargo test --locked --all-targets
+node --test tests/*.test.mjs
+cargo build --locked --target x86_64-pc-windows-msvc
+```
+
+Check the current SimConnect module boundary:
+
+```powershell
+cargo clippy --locked --all-targets --features simconnect -- -D warnings
+cargo test --locked --all-targets --features simconnect
+```
+
+> The current `simconnect` feature contains no SDK integration. Passing these checks does not establish simulator compatibility.
+> Future SDK-dependent checks require documented prerequisites and distribution constraints.
+
+### Coverage boundaries
+
+| Boundary | Required coverage |
+| --- | --- |
+| Library/CLI | Typed configuration without process parsing, help/version, actionable invalid-value errors |
+| Model | Units/signs, roll wrap, invalid numbers, serialization, monotonic age, fixtures independent of implementation formulas |
+| Providers | Deterministic trajectories, unchanged fresh samples, lifecycle transitions, reconnect backoff, shutdown/handle ownership |
+| HTTP/SSE | Health independent of source, immediate full snapshot, framing, MIME/cache headers, reconnect without replay, shared acquisition, two clients, slow consumers, cleanup |
+| Browser | Pure transforms, message validation, separate source/transport status, receive timeout, fresh data after background/resume |
+
+Known geometry:
+
+* Nose up lowers the horizon.
+* Positive right bank rotates the world counterclockwise around the fixed aircraft reference.
+* Combined pitch/bank fixtures detect transform-order errors.
 
 ## SSE and browser controller checks
 
-Run `cargo test --locked --test http_sse` for wire framing/headers, immediate state,
-reconnect with ignored Last-Event-ID, invalid/unavailable/stale states, delivery-time
-age, independent slow consumers, heartbeat comments and channel closure. These tests
-use real Axum response bodies and a paused monotonic clock rather than collecting
-an infinite stream. Unit tests check subscriber release and socket write/shutdown
-deadlines using a bounded duplex transport; local TCP tests check two active SSE
-connections and port reuse after shutdown.
+```powershell
+cargo test --locked --test http_sse
+node --test tests/*.test.mjs
+```
 
-Use Node.js 24 and `node --test tests/*.test.mjs` for independent
-fixture validation, a single EventSource/retry timer, retry after two seconds,
-sequence reset on reconnect, sample freshness, malformed messages, and suspend/resume.
-Instrument tests cover pose signs, nested transform order, angle boundaries,
-latest-sample frame coalescing, expiry before a frame, and cancellation on data loss.
-No npm install or browser framework is needed; these checks run in Windows CI.
+Node checks require Node.js 24, without npm install or a browser framework.
+These checks run in Windows CI.
 
-For desktop exploration, start demo and open the page. Expect DEMO, Connected and
-Live telemetry. Stop the server: expect connection loss and retry indication.
-Restart on the same port without reloading the page: expect automatic recovery
-despite a restarted sequence. Hide/restore the page and require a new snapshot.
-Inspect the network stream for named telemetry events and no duplicate subscriptions.
-Do not report these desktop checks as evidence of iOS/Android compatibility.
+| Suite | Coverage / method |
+| --- | --- |
+| HTTP SSE | Framing/headers, immediate state, ignored `Last-Event-ID`, invalid/unavailable/stale states, delivery-time age, independent slow consumers, heartbeat comments, channel closure |
+| HTTP timing | Real Axum bodies and a paused monotonic clock. Do not collect an infinite stream |
+| Socket unit tests | Subscriber release and write/shutdown deadlines with bounded duplex transport |
+| Local TCP | Two active SSE connections and port reuse after shutdown |
+| Browser controller | Independent fixtures, one EventSource/retry timer, two-second retry, sequence reset, freshness, malformed messages, suspend/resume |
+| Instrument | Pose signs, nested transforms, angle bounds, latest-sample frame coalescing, expiry before draw, cancellation on data loss |
+
+### Desktop exploration
+
+1. Start demo and open the page.
+2. Check `DEMO`, `Connected`, and `Live telemetry`.
+3. Stop the server.
+4. Check connection loss and retry indication.
+5. Restart on the same port without reloading the page.
+6. Check automatic recovery despite sequence restart.
+7. Hide and restore the page.
+8. Check that live attitude requires a new snapshot.
+9. Inspect the network stream for named telemetry events and no duplicate subscriptions.
+
+> Label these results as desktop evidence, not iOS/Android compatibility.
 
 ## Manual acceptance matrix
 
+Run on real iOS Safari and Android Chrome.
+Desktop emulation does not establish mobile lifecycle compatibility.
+
 | Scenario | Expected result |
 | --- | --- |
-| Level / +/- pitch / +/- bank / combined | Instrument agrees with known demo pose and simulator cockpit |
-| Portrait / landscape / 320 CSS px | Scales and status remain readable without horizontal scrolling |
-| Simulator not running / flight not loaded | Disconnected or waiting; no fabricated live attitude |
-| Pause / menu / flight exit / simulator restart | Explicit state followed by automatic recovery on fresh data |
-| Network loss / Wi-Fi recovery | Reconnecting/stale, then current state without manual reload |
-| HTTP server restart | Browser reconnects; sequence restart is accepted |
-| Background tab / phone lock / resume | Fresh sample required before returning to live |
-| Two phones / deliberately slow receiver | Independent delivery and bounded memory |
-| Source stops sampling but SSE stays open | Stale within one second on active page; heartbeat cannot mask it |
-| Invalid values | Visible invalid state; no level-flight fallback |
-
-Run mobile acceptance on real iOS Safari and Android Chrome. Desktop emulation
-helps development but does not establish mobile lifecycle compatibility.
+| Level / +/- pitch / +/- bank / combined | Agreement with known demo pose and simulator cockpit |
+| Portrait / landscape / 320 CSS px | Readable scales/status without horizontal scrolling |
+| Simulator absent / flight not loaded | Disconnected or waiting, no fabricated live attitude |
+| Pause / menu / flight exit / simulator restart | Explicit state, then automatic recovery on fresh data |
+| Network loss / Wi-Fi recovery | Reconnecting/stale, then current state without reload |
+| HTTP server restart | Reconnect accepts sequence restart |
+| Background / phone lock / resume | Fresh sample required before live |
+| Two phones / deliberately slow receiver | Independent delivery, bounded memory |
+| Source stops, SSE remains open | Stale within one second on active page. Heartbeats cannot mask it |
+| Invalid values | Visible invalid state, no level-flight fallback |
 
 ## Attitude display: owner-assisted phone acceptance
 
-1. Run demo on the PC's private LAN address using the README command. Open the
-   printed LAN URL on each phone; verify DEMO and live status remain visible.
-2. Observe a full 14-second cycle: level, nose up/down, left/right bank, and both
-   combined poses. Nose up lowers the horizon; right bank rotates it counterclockwise.
-3. Rotate each phone between portrait and landscape. Check readable scales and
-   status, no horizontal scrolling, and no overlap with browser bars or safe areas.
-4. Lock and unlock the phone, switch apps, and hide/restore the browser. The display
-   must require a fresh snapshot before showing live attitude; no frozen valid-looking
-   indication may be restored from the previous session.
-5. Disable and restore the phone's Wi-Fi. Check an obscured instrument and retry
-   status during loss, then automatic recovery without reloading the page.
-6. Stop and restart the server on the same port. Check connection loss and automatic
-   recovery even though the new server's sequence starts again.
-7. Record results in issue #4. Both real-device results are required before closure;
-   desktop findings and automated tests must be labelled separately.
+Use this checklist for each phone. Store completed results in issue #4.
+Issue closure requires both real-device results.
+Label desktop findings and automated tests separately.
 
-Use this evidence template in the issue or PR:
+* [ ] Start demo on the PC's private LAN address with the [README command](../README.md#use-your-phone).
+* [ ] Open the printed URL on each phone.
+* [ ] Check that DEMO and live status remain visible.
+* [ ] Observe the full 14-second cycle: level, nose up/down, left/right bank, both combined poses.
+* [ ] Check that nose up lowers the horizon and right bank rotates it counterclockwise.
+* [ ] Rotate between portrait and landscape.
+* [ ] Check readable scales/status, no horizontal scrolling, and no overlap with browser bars or safe areas.
+* [ ] Exercise lock/unlock, app switching, and browser hide/restore.
+* [ ] Check that live attitude requires a fresh snapshot, without restoring a frozen valid-looking indication.
+* [ ] Disable and restore Wi-Fi.
+* [ ] Check obscured attitude and retry status during loss, then automatic recovery without reload.
+* [ ] Stop and restart the server on the same port.
+* [ ] Check connection loss and automatic recovery despite sequence restart.
+
+Evidence template for the issue or PR:
 
 | Field | Value |
 | --- | --- |
@@ -126,10 +173,15 @@ Use this evidence template in the issue or PR:
 
 ### Controlled browser fixtures
 
-Run `node tests/browser-fixture-server.mjs` and open `http://127.0.0.1:8082`.
-This development-only server serves the real web assets with synthetic SSE. It
-is separate from the release binary and binds loopback only. Enter JSON lines in
-its terminal to select scenarios:
+1. Start the development-only fixture server.
+
+   ```powershell
+   node tests/browser-fixture-server.mjs
+   ```
+
+2. Open `http://127.0.0.1:8082`.
+3. Enter one JSON line at a time in the server terminal.
+4. Inspect the result after each line.
 
 ```json
 {"state":"live","pitch_deg":10,"roll_deg":25,"hold":false,"malformed":false}
@@ -144,67 +196,98 @@ its terminal to select scenarios:
 {"malformed":false}
 ```
 
-Apply one line at a time and inspect the result. `hold` sends comments but no
-samples: live attitude must become stale after one second despite those comments.
-Malformed JSON must obscure the instrument. Repeat live poses at pitch ±90° and
-roll -180° / 179.999° and check no uncovered background. The server logs active SSE
-client count; one page must not create parallel subscriptions after reconnect or
-background/resume. These fixtures establish UI behavior, not simulator compatibility.
+| Scenario | Check |
+| --- | --- |
+| `hold: true` | Comments continue without samples. Live attitude becomes stale after one second |
+| Malformed JSON | Instrument becomes obscured |
+| Pitch +/-90 degrees, roll -180 / 179.999 degrees | No uncovered background |
+| Reconnect or background/resume | Check the logged active SSE count for parallel subscriptions from one page |
+
+> The fixture server serves real web assets with synthetic SSE on loopback only. It is separate from the release binary.
+> These checks establish UI behavior, not simulator compatibility.
 
 ## Measurements and evidence
 
-The original simulator reliability/performance work in #7 retains its existing
-scope. The planned PFD demo acceptance below belongs to #20-#26, not #7 or #8.
+| Owner | Scope |
+| --- | --- |
+| #7 | Original simulator reliability/performance |
+| #20-#26 | Planned PFD demo acceptance, without expanding #7 or #8 |
 
-Record OS, CPU, phone models, browser versions, simulator/SDK/aircraft versions,
-build commit, source rate, network conditions, duration, and observed failures.
-Run two phones for at least 30 minutes and record memory/subscriber trends.
+Record:
 
-Measure browser receipt-to-render using its monotonic clock and frame callbacks.
-For total latency, use either an instrumented source with measured clock offset
-and uncertainty or a synchronized/high-frame-rate recording of source and phone.
-Include method uncertainty and p50/p95 results; do not subtract unrelated device
-timestamps. The proposed p95 <=150 ms target covers source acquisition through
-visible rendering on a healthy LAN, not receipt-to-render alone.
+* OS, CPU, phone models, and browser versions.
+* Simulator, SDK, and aircraft versions.
+* Build commit, source rate, network conditions, duration, and failures.
+* Memory/subscriber trends with two phones for at least 30 minutes.
 
-Attach results to the validation issue. Keep tasks requiring hardware open until
-observed; unit tests cannot certify actual simulator or phone behavior.
+| Measurement | Method |
+| --- | --- |
+| Receipt-to-render | Browser monotonic clock and frame callbacks |
+| Total latency | Instrumented source with measured clock offset/uncertainty, or synchronized/high-frame-rate recording of source and phone |
+| Report | Method uncertainty and p50/p95. Never subtract unrelated device timestamps |
+| Proposed target | p95 <= 150 ms from source acquisition through visible rendering on healthy LAN |
+
+Attach results to the validation issue.
+Keep hardware-dependent tasks open until observations support acceptance.
+Unit tests cannot certify simulator or phone behavior.
 
 ## Telemetry and demo checks
 
-`tests/fixtures/attitudes.json` specifies independent degree/sign expectations for
-all seven demo poses. `tests/fixtures/snapshots.json` specifies the v1 wire shape,
-including unavailable states with null attitude. Keep these fixtures synchronized
-with contract changes and reuse them for future browser tests.
+```powershell
+cargo test --locked --test telemetry
+```
 
-Run `cargo test --locked --test telemetry`. Tests use a paused monotonic Tokio clock
-rather than wall-clock sleeps for sample age, stale threshold, fresh identical
-samples, cadence and skipped ticks. They also verify normalized bounds, roll wrap,
-non-finite rejection, source identity and slow independent consumers. Library
-tests check sequence exhaustion and shutdown ownership, including subscription
-closure and listener reuse. These tests require neither simulator nor SDK.
+These tests require no simulator or SDK.
+
+### Demo behavior
+
+| Property | Expected behavior |
+| --- | --- |
+| Cycle | Seven poses over 14 seconds, each held for two seconds |
+| Poses | Level, nose up/down, left/right bank, two combined attitudes |
+| Sampling | One fresh sample every 50 ms, including unchanged poses. Skip missed ticks |
+| Initial state | `waiting`, then `live` on fresh data |
+| Expiry | No accepted sample for 1,000 ms makes attitude stale |
+| Source failure | Never substitute demo for unavailable SimConnect |
+
+### Fixtures and tests
+
+| Fixture / suite | Coverage |
+| --- | --- |
+| `tests/fixtures/attitudes.json` | Independent degree/sign expectations for all seven demo poses |
+| `tests/fixtures/snapshots.json` | v1 wire shape, including null attitude in unavailable states |
+| Telemetry tests | Age, stale threshold, fresh identical samples, cadence, skipped ticks, normalized bounds, roll wrap, non-finite rejection, source identity, slow independent consumers |
+| Library tests | Sequence exhaustion, shutdown ownership, subscription closure, listener reuse |
+
+* Keep fixtures synchronized with contract changes.
+* Reuse fixtures for future browser tests.
+* Use a paused monotonic Tokio clock instead of wall-clock sleeps for timing checks.
 
 ## Planned PFD demo acceptance
 
-Apply these procedures incrementally as #20-#26 introduce indications; they do
-not describe functionality already present. Each feature issue owns automated
-and real-phone evidence for its slice. The final slice (#26) links earlier evidence
-and records an accumulated full-panel run covering all 18 included reference
-elements. Use the device/build/network evidence fields above; do not expand the
-original simulator acceptance or claim live PFD compatibility from demo results.
+> Apply these procedures as #20-#26 introduce features. They do not describe existing functionality or establish live PFD compatibility.
+
+* Each feature issue owns its automated and real-phone evidence.
+* #26 links earlier evidence and records a full-panel run for all 18 elements.
+* Use the device/build/network evidence fields above.
+* Preserve original simulator acceptance scope.
 
 | Area | Scenarios and acceptance |
 | --- | --- |
-| End-to-end values | Independent fixtures agree across typed Rust data, deterministic demo, SSE and rendered indication; values remain shared between clients |
-| Compatibility | Old attitude-only v1 snapshots still display attitude; absent PFD fields show unavailable, not zero; excluded instruments have no placeholders |
-| Instrument failures | Missing/invalid optional values invalidate their indication without hiding unrelated valid ones; source/transport loss invalidates the panel |
-| Timing | Controlled clocks verify five-second altitude alerts, target-change reset, freshness and expiry before a pending render; no wall-clock sleeps for deterministic checks |
-| Geometry | Pitch/bank signs and extremes, slip/skid both ways, +/-3 deg/s turns, IAS/altitude rolling digits, speed-range boundaries and six-second trend, altitude bugs outside the tape, VSI limits and heading wrap at 359/0 |
-| Mobile layout | Widths from 320 CSS px, portrait, short landscape, safe areas, browser-bar changes and rotation while streaming; no scrolling, overlap, clipped warnings or distorted symbols |
-| Lifecycle regression | Wi-Fi loss/recovery, server restart, lock/background/resume, source pause/stale/invalid states and partial failures; fresh sample required before restoring valid readings and no duplicate subscription |
+| End-to-end values | Independent fixtures agree across typed Rust data, deterministic demo, SSE, and display. Clients share values |
+| Compatibility | Old v1 snapshots display attitude. Missing PFD fields display unavailable, never zero. No excluded-instrument placeholders |
+| Instrument failures | Missing/invalid optional values affect only their indication. Source/transport loss invalidates the panel |
+| Timing | Controlled clocks check five-second altitude alerts, target-change reset, freshness, and expiry before pending draw. No wall-clock sleeps |
+| Attitude/turn geometry | Pitch/bank signs and extremes, slip/skid both ways, +/-3 deg/s turns |
+| Tape geometry | IAS/altitude rolling digits, speed boundaries, six-second trend, altitude bugs outside tape, VSI limits, heading wrap at 359/0 |
+| Mobile layout | From 320 CSS px, portrait, short landscape, safe areas, browser-bar changes, rotation while streaming |
+| Layout acceptance | No scrolling, overlap, clipped warnings, or distorted symbols |
+| Lifecycle | Wi-Fi recovery, server restart, lock/background/resume, source pause/stale/invalid states, partial failures |
+| Recovery | Fresh sample before valid readings return. No duplicate subscription |
 
-In #20 inspect development-only layout fixtures representing the complete intended
-arrangement before later slices add their live demo values. Recheck real-phone
-legibility with every added instrument; passing a desktop viewport check does not
-establish mobile acceptance. Run the existing README/CONTRIBUTING Rust and Node
-checks and update each feature's contract fixtures/procedures in the same PR.
+1. In #20, inspect layout fixtures for the complete intended arrangement before later slices add live demo values.
+2. Check real-phone readability with each added instrument.
+3. Run the [automated checks](#automated-checks) and follow [CONTRIBUTING](../CONTRIBUTING.md).
+4. Update the feature's contract fixtures and procedures in the same PR.
+
+> Desktop viewport checks do not establish mobile acceptance.

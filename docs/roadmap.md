@@ -1,8 +1,24 @@
 # Delivery roadmap
 
 Track progress in [MVP issue #9](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9).
-GitHub Issues own task status and acceptance criteria. This document defines order
-and dependencies; it deliberately does not duplicate open/closed status.
+
+> This roadmap defines order and dependencies. GitHub Issues own status and acceptance criteria.
+
+```mermaid
+flowchart LR
+    I1["#1 Skeleton"] --> I2["#2 Telemetry"]
+    I1 --> I3["#3 SSE"]
+    I2 --> I3
+    I2 --> I4["#4 Mobile instrument"]
+    I3 --> I4
+    I4 --> PFD["#20-#26 PFD demo"]
+    I2 --> I6["#6 SimConnect provider"]
+    I5["#5 Independent SDK spike"] --> I6
+    I4 --> I7["#7 Validation"]
+    I6 --> I7
+    I6 --> I8["#8 Release"]
+    I7 --> I8
+```
 
 ## Stage 1: Demo from source to phone
 
@@ -13,15 +29,12 @@ and dependencies; it deliberately does not duplicate open/closed status.
 | 3 | [#3 SSE sessions](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/3) | #1, #2 | Current snapshots, reconnect, bounded consumers |
 | 4 | [#4 Mobile instrument](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/4) | #2, #3 | Responsive attitude and honest status |
 
-Exit: a phone displays explicitly marked demo attitude and recovers from a dropped
-connection without manual reload. This establishes the full presentation path
-without depending on the simulator SDK.
+> **Exit:** A phone displays marked demo attitude and recovers after connection loss without reload. The full path requires no simulator SDK.
 
 ## Stage 2: G5 PFD demo vertical slice
 
-The [project brief](project-brief.md) defines the 18 included reference elements,
-exclusions and responsive layout without a fixed aspect ratio. Scope/backlog work
-belongs to [#19](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/19).
+* [Project brief](project-brief.md): 18 included elements, exclusions, responsive layout without a fixed aspect ratio.
+* [#19](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/19): scope and backlog work.
 
 | Order | Issue | Depends on | Deliverable |
 | --- | --- | --- | --- |
@@ -33,20 +46,22 @@ belongs to [#19](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/i
 | G6 | [#25 Vertical speed](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/25) | #23 | VSI scale and indication |
 | G7 | [#26 Heading, track and selected direction](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/26) | #20 | PFD direction tape and accumulated full-panel demo acceptance |
 
-Deliver in G1-G7 order; the dependency column records technical prerequisites,
-not extra dependencies on all preceding rows. Each issue owns one complete slice
-from typed data and deterministic Rust demo through SSE to presentation, tests
-and documentation. Use one reviewable feature PR per issue. Selected values are
-read-only demo data; there is no battery, HSI or navigation-guidance slice.
+* Deliver in G1-G7 order.
+* Read dependencies as technical prerequisites, not dependencies on every preceding row.
+* Deliver typed data, deterministic Rust demo, SSE, presentation, tests, and documentation in each issue.
+* Use one reviewable feature PR per issue.
+* Keep selected values read-only and demo-supplied.
+* Add no battery, HSI, or navigation-guidance slice.
 
-Exit: all 18 included elements meet their criteria on actual iOS Safari and
-Android Chrome, with readable portrait/landscape layouts from 320 CSS px, explicit
-unavailable indications and recovery without reload. Each slice owns its mobile
-evidence; #26 collects full-panel acceptance. This establishes demo behavior only.
+| Exit criterion | Evidence owner |
+| --- | --- |
+| All 18 elements meet their criteria on real iOS Safari and Android Chrome | Each slice, accumulated in #26 |
+| Readable portrait/landscape from 320 CSS px | Each slice |
+| Explicit unavailable indications and recovery without reload | Each slice |
+| Full-panel acceptance | #26 |
 
-The following two stages retain their existing issue scope and dependencies.
-New PFD values remain unavailable in the attitude-only simulator provider; live
-integration of those values requires a separate future scope decision.
+> This evidence establishes demo behavior only. Stages 3-4 retain existing scope and dependencies.
+> The attitude-only provider leaves new PFD values unavailable. Live PFD integration requires separate future scope.
 
 ## Stage 3: Real simulator data
 
@@ -55,12 +70,12 @@ integration of those values requires a separate future scope decision.
 | Early investigation | [#5 SimConnect compatibility spike](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) | None | Proven binding/setup, signs, units, lifecycle |
 | Integration | [#6 Windows SimConnect provider](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/6) | #2, #5 | Live data, reconnect, pause/flight lifecycle |
 
-Start #5 early; it can proceed independently of both demo stages. Its initial one-day
-timebox produces evidence or a concrete blocker, not an assumption of success.
-SDK/binding decisions are deferred until that evidence exists.
+* Start #5 early, independently of both demo stages.
+* Limit the initial investigation to one day.
+* Produce evidence or a concrete blocker.
+* Defer SDK/binding decisions until evidence exists.
 
-Exit: the same instrument consumes real MSFS2024 attitude and represents unavailable
-or paused simulation explicitly. Demo mode remains separately selectable.
+> **Exit:** The same instrument displays real MSFS2024 attitude with explicit unavailable/paused states. Demo remains separately selectable.
 
 ## Stage 4: Validate and distribute
 
@@ -69,13 +84,13 @@ or paused simulation explicitly. Demo mode remains separately selectable.
 | Validation | [#7 Mobile reliability and latency](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/7) | #4, #6 | Device evidence and measured targets |
 | Packaging | [#8 Windows MVP release](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/8) | #6, #7 | Executable, prerequisites, tested setup guide |
 
-Exit: a user launches the Windows package and connects a phone using documented
-steps, without development tools. The release notes distinguish measured behavior
-from remaining limitations.
+> **Exit:** A user starts the Windows package and connects a phone through documented steps, without development tools.
+> Release notes distinguish measured behavior from remaining limitations.
 
 ## Change control
 
-Create a new issue for additional instruments or deployment modes. Change scope
-and acceptance criteria explicitly before adding them to the MVP. Close issues
-only when evidence meets their criteria; repository preparation does not close
-the implementation tasks above.
+1. Create an issue for additional instruments or deployment modes.
+2. Change scope and acceptance criteria before adding them to the MVP.
+3. Close issues only when evidence meets their criteria.
+
+Repository preparation does not close implementation tasks.

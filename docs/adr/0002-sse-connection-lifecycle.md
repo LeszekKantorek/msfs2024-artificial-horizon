@@ -1,47 +1,67 @@
 # ADR 0002: Pull-driven SSE with socket lifecycle deadlines
 
-- Date: 2026-10-08
-- Status: Accepted
+| Date | Status |
+| --- | --- |
+| 2026-10-08 | Accepted |
 
 ## Context
 
-Issue #3 needs independent browser subscriptions without replay or acquisition
-backpressure. A latest-value watch channel already owns telemetry freshness.
-An SSE body is only polled when HTTP wants more data; a timeout inside that body
-cannot reliably close a socket whose writes are stalled. Long-lived responses
-must also terminate before graceful server shutdown can complete.
+* #3 needs independent subscriptions without replay or acquisition backpressure.
+* A latest-value watch channel already owns freshness.
+* HTTP polls the SSE body only when it needs more data.
+* A timeout inside that body cannot reliably close a socket with stalled writes.
+* Long-lived responses must end before graceful shutdown can complete.
 
 ## Decision
 
-Keep Axum's server and SSE framing. Pull snapshots directly from each subscriber,
-acknowledging the initial publication and serializing age immediately. Do not add
-per-client acquisition tasks, queues, or cached wire snapshots. Keep provider
-states separate from HTTP liveness, and end streams when their source channel closes.
+### Delivery
 
-Wrap accepted sockets through Axum's Listener interface. A pending write/flush
-has a 30-second no-progress deadline; successful progress clears it. Idle time
-without a pending write is unrestricted. A shared monotonic shutdown timestamp
-allows five seconds for connections to finish, then pending reads and writes
-return an I/O error. Deadlines operate below the SSE body and retain Axum's
-accept-error handling. Producer ownership and joining remain in Server::run.
+* Keep Axum's server and SSE framing.
+* Pull snapshots directly from each subscriber.
+* Acknowledge the initial publication and serialize age immediately.
+* Add no per-client acquisition tasks, queues, or cached wire snapshots.
+* Keep provider state separate from HTTP liveness.
+* End streams when their source channel closes.
+* Keep producer ownership and joining in `Server::run`.
 
-The browser owns one EventSource and retries failed connections after two seconds,
-including initial failures. Explicitly close the failed object before scheduling
-its replacement, avoiding native retries competing with application retries.
-Send retry: 2000 for other EventSource consumers. Suspend subscriptions while the
-page is hidden and require a fresh snapshot after resumption. This is connection
-recovery, not telemetry polling; stale source data does not trigger reconnect.
+### Socket deadlines
+
+Wrap accepted sockets through Axum's `Listener` interface.
+
+| Condition | Behavior |
+| --- | --- |
+| Pending write/flush without progress | Fail after 30 seconds |
+| Successful progress | Clear the write deadline |
+| Idle, no pending write | No time limit |
+| Shutdown | Use one shared monotonic timestamp. Allow five seconds to finish |
+| Shutdown deadline reached | Pending reads/writes return an I/O error |
+
+Deadlines operate below the SSE body and preserve Axum's accept-error handling.
+
+### Browser lifecycle
+
+1. Keep one EventSource per page.
+2. Close a failed EventSource before scheduling its replacement.
+3. Retry after two seconds, including initial failures.
+4. Suspend subscriptions while the page is hidden.
+5. Require a fresh snapshot after resumption.
+
+* Send `retry: 2000` for other EventSource consumers.
+* Closing the failed object prevents competing native and application retries.
+* Stale source data does not trigger reconnect.
+
+> This mechanism recovers connections. It does not poll telemetry.
 
 ## Alternatives and consequences
 
-- Per-client queues would preserve history but increase memory and stale delivery;
-  current-state delivery deliberately skips intermediate publications.
-- Body-only timeouts are simpler but cannot enforce socket shutdown under write
-  backpressure; the adapter adds focused I/O code with deterministic deadline tests.
-- Replacing Axum's server with a custom Hyper task supervisor gives more control
-  but duplicates connection ownership unnecessarily for this requirement.
-- The write timeout measures progress into the socket, not phone receipt; finite
-  HTTP/TCP buffers can still add delay and require real-device measurement in #7.
-- Fatal producer-task failure shuts HTTP down and returns an error; recoverable
-  source failures are explicit telemetry states and never trigger demo fallback.
-- Real phone lifecycle and long-duration memory evidence remain part of #7.
+| Alternative | Trade-off / decision |
+| --- | --- |
+| Per-client queues | Preserve history but increase memory and stale delivery. Select current state and skip intermediate publications |
+| Body-only timeouts | Simpler, but cannot enforce shutdown under socket backpressure. Use an adapter with deterministic I/O deadline tests |
+| Custom Hyper task supervisor | More control, but duplicates connection ownership unnecessarily |
+
+* The write deadline measures socket progress, not phone receipt.
+* Finite HTTP/TCP buffers can add delay. Measure it on real devices in #7.
+* Fatal producer failure shuts HTTP down and returns an error.
+* Recoverable source failures produce explicit telemetry states without demo fallback.
+* #7 owns real-phone lifecycle and long-duration memory evidence.
