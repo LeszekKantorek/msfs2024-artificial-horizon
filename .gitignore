@@ -23,7 +23,6 @@ __pycache__/
 
 # Local work and additional skills
 /.local/
-/.skills/*/
 /.agents/skills/*/
 !/.agents/skills/context-apply/
 !/.agents/skills/context-gather/
