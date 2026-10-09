@@ -36,6 +36,61 @@ impl Attitude {
         self.roll_deg
     }
 }
+/// Normalized ball displacement: negative left, positive right, zero centered.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[serde(transparent)]
+pub struct SlipSkid(f64);
+impl SlipSkid {
+    pub fn new(value: f64) -> Result<Self, TelemetryError> {
+        if !value.is_finite() || !(-1.0..=1.0).contains(&value) {
+            return Err(TelemetryError::InvalidSlipSkid);
+        }
+        Ok(Self(value))
+    }
+    pub fn normalized(self) -> f64 {
+        self.0
+    }
+}
+/// Degrees per second: negative left and positive right.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[serde(transparent)]
+pub struct TurnRate(f64);
+impl TurnRate {
+    pub fn new(degrees_per_second: f64) -> Result<Self, TelemetryError> {
+        if !degrees_per_second.is_finite() {
+            return Err(TelemetryError::InvalidTurnRate);
+        }
+        Ok(Self(degrees_per_second))
+    }
+    pub fn degrees_per_second(self) -> f64 {
+        self.0
+    }
+}
+/// One fresh acquisition with independently available optional indications.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+pub struct FlightSample {
+    attitude: Attitude,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    slip_skid: Option<SlipSkid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    turn_rate_dps: Option<TurnRate>,
+}
+impl FlightSample {
+    pub fn new(
+        attitude: Attitude,
+        slip_skid: Option<SlipSkid>,
+        turn_rate: Option<TurnRate>,
+    ) -> Self {
+        Self {
+            attitude,
+            slip_skid,
+            turn_rate_dps: turn_rate,
+        }
+    }
+    pub fn attitude(self) -> Attitude {
+        self.attitude
+    }
+}
 /// Unavailable states cannot carry attitude.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum State {
@@ -55,6 +110,10 @@ pub struct Snapshot {
     state: &'static str,
     sample_age_ms: Option<u64>,
     attitude: Option<Attitude>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    slip_skid: Option<SlipSkid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    turn_rate_dps: Option<TurnRate>,
 }
 #[derive(Clone, Debug)]
 struct Current {
@@ -62,6 +121,8 @@ struct Current {
     sequence: u64,
     state: State,
     accepted_at: Option<Instant>,
+    slip_skid: Option<SlipSkid>,
+    turn_rate: Option<TurnRate>,
 }
 impl Current {
     fn snapshot(&self) -> Snapshot {
@@ -89,6 +150,8 @@ impl Current {
             state,
             sample_age_ms: age.map(|age| u64::try_from(age.as_millis()).unwrap_or(u64::MAX)),
             attitude,
+            slip_skid: attitude.and(self.slip_skid),
+            turn_rate_dps: attitude.and(self.turn_rate),
         }
     }
 }
@@ -107,6 +170,8 @@ pub fn channel(source: Source) -> (Publisher, Subscription) {
         sequence: 0,
         state: State::Waiting,
         accepted_at: None,
+        slip_skid: None,
+        turn_rate: None,
     };
     let (sender, receiver) = watch::channel(current.clone());
     (Publisher { sender, current }, Subscription { receiver })
@@ -114,6 +179,22 @@ pub fn channel(source: Source) -> (Publisher, Subscription) {
 impl Publisher {
     /// Live means a fresh callback from an active, unpaused source, not cached data.
     pub fn publish(&mut self, state: State) -> Result<(), TelemetryError> {
+        self.publish_values(state, None, None)
+    }
+    /// Publish one fresh acquisition atomically, sharing sequence and age with attitude.
+    pub fn publish_sample(&mut self, sample: FlightSample) -> Result<(), TelemetryError> {
+        self.publish_values(
+            State::Live(sample.attitude),
+            sample.slip_skid,
+            sample.turn_rate_dps,
+        )
+    }
+    fn publish_values(
+        &mut self,
+        state: State,
+        slip_skid: Option<SlipSkid>,
+        turn_rate: Option<TurnRate>,
+    ) -> Result<(), TelemetryError> {
         if self.current.sequence == MAX_SEQUENCE {
             return Err(TelemetryError::SequenceExhausted);
         }
@@ -122,6 +203,8 @@ impl Publisher {
             self.current.accepted_at = Some(Instant::now());
         }
         self.current.state = state;
+        self.current.slip_skid = slip_skid;
+        self.current.turn_rate = turn_rate;
         self.sender.send_replace(self.current.clone());
         Ok(())
     }
@@ -160,6 +243,10 @@ pub enum TelemetryError {
         "attitude must contain finite normalized degrees within pitch [-90, 90] and roll [-180, 180)"
     )]
     InvalidAttitude,
+    #[error("slip/skid must be finite normalized displacement within [-1, 1]")]
+    InvalidSlipSkid,
+    #[error("turn rate must be finite degrees per second")]
+    InvalidTurnRate,
     #[error("telemetry sequence exhausted the JSON safe integer range")]
     SequenceExhausted,
 }

@@ -88,6 +88,7 @@ Use original graphics. Do not embed PDF screenshots or copy the bezel.
 | Page chrome | Minimize bezel, headings, and margins |
 | Status | Keep DEMO and separate source/transport status compact, visible, and unambiguous |
 | Viewport | Account for safe areas, cutouts, and browser bars. Fit without scrolling from 320 CSS px in both orientations |
+| Minimum usable height | 240 CSS px after browser bars and safe areas, including short landscape |
 | First slice (#20) | Assess all intended elements with development-only layout fixtures before later additions reduce horizon space |
 
 ### Acceptance ownership

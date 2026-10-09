@@ -9,6 +9,7 @@ status: active
 * Separate source and transport status.
 * Obscure unavailable attitude instead of displaying a credible level-flight indication.
 * Use [PFD scope](pfd-demo-scope.md) for extensions beyond the initial attitude-only demo.
+* Reuse the [recorded phone environments](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/4#issuecomment-6065793741) when later feedback explicitly states that the same devices were used.
 
 | Evidence | Limit |
 | --- | --- |

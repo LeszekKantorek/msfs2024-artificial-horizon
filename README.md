@@ -74,14 +74,19 @@ Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
 
 | Behavior | Current demo |
 | --- | --- |
-| Instrument | Horizon, pitch ladder, bank scale, fixed aircraft reference |
-| Motion | Repeating 14-second cycle: level, nose up/down, left/right bank, two combined attitudes |
+| Instrument | Responsive attitude, 2.5-degree pitch ladder, extreme-pitch chevrons, bank scale, fixed aircraft reference, slip/skid and turn rate |
+| Motion | Repeating 18-second cycle: seven original attitudes, then +70/-50-degree pitch. Centered and both-direction slip/skid; +/-3 deg/s turns |
 | Data | Synthetic samples at 20 Hz, clearly marked DEMO |
 | Connection loss | Obscured attitude and automatic retry after two seconds |
 | Stale or unavailable data | Explicit status, no fabricated level-flight reading |
 | Background/resume | A fresh snapshot is required before live attitude returns |
 
 > Real iOS Safari and Android Chrome acceptance requires [device evidence](docs/testing.md#attitude-display-real-device-phone-acceptance) in issue #4.
+
+The panel adapts to available width and height without a fixed aspect ratio.
+The supported minimum is 320 CSS px wide and 240 CSS px of usable height after browser bars and safe areas.
+Old attitude-only snapshots display attitude with unavailable slip/skid and turn rate.
+Real-phone acceptance for this extension remains in [issue #20](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/20).
 
 The planned G5-inspired PFD adds airspeed, altitude, vertical speed, and heading/track indications.
 See the [project brief](docs/project-brief.md) for coverage and exclusions, and the [roadmap](docs/roadmap.md) for delivery order.

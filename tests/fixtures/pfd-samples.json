@@ -1,0 +1,11 @@
+[
+  {"sample":0,"attitude":{"pitch_deg":0.0,"roll_deg":0.0},"slip_skid":0.0,"turn_rate_dps":0.0},
+  {"sample":40,"attitude":{"pitch_deg":15.0,"roll_deg":0.0},"slip_skid":-0.5,"turn_rate_dps":0.0},
+  {"sample":80,"attitude":{"pitch_deg":-15.0,"roll_deg":0.0},"slip_skid":0.5,"turn_rate_dps":0.0},
+  {"sample":120,"attitude":{"pitch_deg":0.0,"roll_deg":-30.0},"slip_skid":0.0,"turn_rate_dps":-3.0},
+  {"sample":160,"attitude":{"pitch_deg":0.0,"roll_deg":30.0},"slip_skid":0.0,"turn_rate_dps":3.0},
+  {"sample":200,"attitude":{"pitch_deg":10.0,"roll_deg":25.0},"slip_skid":1.0,"turn_rate_dps":3.0},
+  {"sample":240,"attitude":{"pitch_deg":-10.0,"roll_deg":-25.0},"slip_skid":-1.0,"turn_rate_dps":-3.0},
+  {"sample":280,"attitude":{"pitch_deg":70.0,"roll_deg":0.0},"slip_skid":0.0,"turn_rate_dps":0.0},
+  {"sample":320,"attitude":{"pitch_deg":-50.0,"roll_deg":0.0},"slip_skid":0.0,"turn_rate_dps":0.0}
+]

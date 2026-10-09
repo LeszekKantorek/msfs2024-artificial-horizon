@@ -21,6 +21,7 @@ status: active
 * Target Windows x64 MSVC for Rust development and CI.
 * Keep default checks independent of the simulator.
 * Test behavior, not assertions that repeat implementation details.
+* Follow [PR preparation](../CONTRIBUTING.md#workflow), including the manual checklist requirement for new features.
 
 ## Definition of done
 
@@ -32,3 +33,5 @@ status: active
 * [ ] Documentation distinguishes implemented and planned behavior.
 
 Sources: repository CONTRIBUTING rules, moved here by an accepted documentation decision on 2026-10-09, and the linked project documents.
+
+Source: accepted PR checklist requirement and corrections, 2026-10-09. CONTRIBUTING owns this workflow rule.

@@ -44,6 +44,30 @@ fn snapshot(frame: &str) -> Value {
     .unwrap()
 }
 
+#[tokio::test(start_paused = true)]
+async fn extended_samples_reach_two_clients_with_shared_values_and_delivery_time_age() {
+    let (mut publisher, subscription) = telemetry::channel(Source::Demo);
+    publisher
+        .publish_sample(msfs2024_artificial_horizon::providers::demo::sample(240))
+        .unwrap();
+    let mut first = subscribe(subscription.clone(), None).await.into_body();
+    let mut second = subscribe(subscription.clone(), None).await.into_body();
+    advance(Duration::from_millis(50)).await;
+    let a = snapshot(&frame(&mut first).await);
+    let b = snapshot(&frame(&mut second).await);
+    assert_eq!(a, b);
+    assert_eq!(a["slip_skid"], -1.0);
+    assert_eq!(a["turn_rate_dps"], -3.0);
+    assert_eq!(a["sample_age_ms"], 50);
+    publisher.publish(State::Paused).unwrap();
+    for body in [&mut first, &mut second] {
+        let unavailable = snapshot(&frame(body).await);
+        assert_eq!(unavailable["state"], "paused");
+        assert!(unavailable.get("slip_skid").is_none());
+        assert!(unavailable.get("turn_rate_dps").is_none());
+    }
+}
+
 #[tokio::test]
 async fn source_failure_does_not_change_http_liveness_or_allow_control_requests() {
     let (mut publisher, subscription) = telemetry::channel(Source::SimConnect);

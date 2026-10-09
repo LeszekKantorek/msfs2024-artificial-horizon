@@ -108,7 +108,9 @@ See [agent maintenance](.context/agent-maintenance.md) for reinstalls and integr
 4. Implement one reviewable outcome.
 5. Update affected documentation, contracts, and fixtures.
 6. Run the relevant [checks](docs/testing.md#automated-checks).
-7. Open a PR referencing the issue, changed behavior, and validation evidence.
+7. Open a PR referencing the issue, changed behavior, and validation evidence. For new features, include an acceptance checklist for manual verification.
+
+> Keep the checklist specific to the implemented feature. List only the main checks, without generic placeholders or detailed steps.
 
 > Use `Closes #N` only when evidence satisfies all acceptance criteria.
 > Keep unverified hardware acceptance open or create an explicit linked follow-up.

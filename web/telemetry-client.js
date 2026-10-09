@@ -16,8 +16,16 @@ export function validateSnapshot(value) {
     Number.isFinite(a.roll_deg) && a.roll_deg >= -180 && a.roll_deg < 180;
 }
 
+// Optional instruments fail independently of the envelope and attitude.
+export function optionalIndications(value) {
+  return {
+    slip_skid: Number.isFinite(value.slip_skid) && Math.abs(value.slip_skid) <= 1 ? value.slip_skid : null,
+    turn_rate_dps: Number.isFinite(value.turn_rate_dps) ? value.turn_rate_dps : null,
+  };
+}
+
 export function createTelemetryClient({
-  onStatus, onAttitude = () => {}, makeEventSource = url => new EventSource(url),
+  onStatus, onAttitude = () => {}, onSample = () => {}, makeEventSource = url => new EventSource(url),
   now = () => performance.now(), schedule = (fn, ms) => setTimeout(fn, ms),
   cancel = id => clearTimeout(id),
 }) {
@@ -69,6 +77,8 @@ export function createTelemetryClient({
         state: snapshot.state === 'live' && remaining <= 0 ? 'stale' : snapshot.state });
       if (status.state === 'live') {
         onAttitude({ attitude: { ...snapshot.attitude }, expiresAt: receivedAt + remaining });
+        onSample({ attitude: { ...snapshot.attitude }, ...optionalIndications(snapshot),
+          expiresAt: receivedAt + remaining });
         const expire = () => {
           const left = remaining - (now() - receivedAt);
           if (left > 0) { ageTimer = schedule(expire, left); return; }
