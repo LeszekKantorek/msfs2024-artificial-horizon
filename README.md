@@ -81,7 +81,7 @@ Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
 | Stale or unavailable data | Explicit status, no fabricated level-flight reading |
 | Background/resume | A fresh snapshot is required before live attitude returns |
 
-> Real iOS Safari and Android Chrome acceptance requires [device evidence](docs/testing.md#attitude-display-owner-assisted-phone-acceptance) in issue #4.
+> Real iOS Safari and Android Chrome acceptance requires [device evidence](docs/testing.md#attitude-display-real-device-phone-acceptance) in issue #4.
 
 The planned G5-inspired PFD adds airspeed, altitude, vertical speed, and heading/track indications.
 See the [project brief](docs/project-brief.md) for coverage and exclusions, and the [roadmap](docs/roadmap.md) for delivery order.
