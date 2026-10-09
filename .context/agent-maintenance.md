@@ -1,39 +1,31 @@
 ---
-description: Maintain installed context skills and session hooks. Use when reinstalling skills, migrating their files, or changing the session registration integration.
+description: Maintain installed context skills and session hooks.
 status: active
 ---
 
-## Skills and hooks
+## Reinstall skills
 
-The project uses [context-skills](https://github.com/LeszekKantorek/context-skills).
-[AGENTS.md](../AGENTS.md) defines skill roles. Each skill defines its procedure.
+1. Read [setup and skill sources](../CONTRIBUTING.md#3-prepare-agent-skills-and-hooks).
+2. Remove existing copies for a clean reinstall:
 
-### Reinstall skills
+   ```powershell
+   npx --yes skills remove context-apply context-gather context-import-sessions -y
+   ```
 
-Follow [environment setup](../CONTRIBUTING.md#environment-setup) for prerequisites, skill sources, and first installation.
+3. Run the installation command from setup.
 
-For a clean reinstall, remove the existing copies:
-
-```powershell
-npx --yes skills remove context-apply context-gather context-import-sessions -y
-```
-
-Then run the [skill installation command](../CONTRIBUTING.md#3-prepare-agent-skills-and-hooks).
-
-* Update `skills-lock.json` and installed `.agents/skills/` files together.
+* Update `skills-lock.json` and `.agents/skills/` together.
 * Remove retired skill copies during migrations.
-* Keep `.context/index.md` as the table-only navigation index.
+* Keep `.context/index.md` as the table-only index.
 
-### Session hooks
+## Hook maintenance
 
-Use [session hook setup](../CONTRIBUTING.md#session-hooks) for integration sources, files, events, dependencies, and trust steps.
-
-* Process selected checkpoints with `context-import-sessions`.
+* Read [hook setup](../CONTRIBUTING.md#session-hooks) for sources, files, events, dependencies, and trust steps.
+* Import selected checkpoints with `context-import-sessions`.
 * Mark checkpoints reviewed only after reading their contents and successful gathering.
-* Preserve unrelated hooks when updating the integration.
-* Keep the startup reminder aligned with `.context/index.md`.
+* Preserve unrelated hooks.
+* Align the startup reminder with `.context/index.md`.
 
-## Source
+> Setup documentation does not prove that local hooks executed successfully.
 
-* Maintenance instructions moved from CONTRIBUTING at the owner's request in the documentation prototype session on 2026-10-09.
-* Setup documentation identifies integration sources, not evidence that local hooks executed successfully.
+Sources: [AGENTS](../AGENTS.md) defines roles, each skill defines its procedure, and the owner approved moving maintenance rules here on 2026-10-09.
