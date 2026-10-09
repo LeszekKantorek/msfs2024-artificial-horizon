@@ -12,8 +12,6 @@ status: active
 * Preserve requirements, units, limits, uncertainty, and planned/implemented distinctions.
 * Apply `asd-ste100` when available without claiming certified dictionary compliance.
 * Link to the canonical source instead of repeating commands or rules.
-* For each PR that adds a feature, include a short checklist tailored to the implemented behavior and the manual checks it needs.
-* Name concrete actions or expected results in checklist items, without generic placeholders or detailed steps.
 
 ## Impersonal project records
 
@@ -42,5 +40,3 @@ Source: writing requirement recorded in [issue #31](https://github.com/LeszekKan
 | GitHub Issues / PRs | Task status, execution results, acceptance evidence |
 
 Source: accepted writing style, document responsibilities, and setup decisions, 2026-10-09.
-
-Source for manual PR checklists: accepted requirement and correction, 2026-10-09, to write feature-specific checks instead of generic template items.

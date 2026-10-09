@@ -1,6 +1,6 @@
 | Entry | Use when |
 | --- | --- |
-| [Repository rules](repository-instructions.md) | Implementing or validating a repository change. |
+| [Repository rules](repository-instructions.md) | Implementing or validating a change, or preparing a PR. |
 | [Iterative development](iterative-development.md) | Choosing module boundaries for agreed delivery steps. |
 | [Windows validation](windows-validation.md) | Diagnosing SAC blocking, error 4551, or Rust E0463. |
 | [Browser presentation](browser-presentation.md) | Changing rendering or preparing phone acceptance. |
