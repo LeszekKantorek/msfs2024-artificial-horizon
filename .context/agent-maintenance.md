@@ -28,4 +28,4 @@ status: active
 
 > Setup documentation does not prove that local hooks executed successfully.
 
-Sources: [AGENTS](../AGENTS.md) defines roles, each skill defines its procedure, and the owner approved moving maintenance rules here on 2026-10-09.
+Sources: [AGENTS](../AGENTS.md) defines roles, each skill defines its procedure, and moving maintenance rules here was approved on 2026-10-09.

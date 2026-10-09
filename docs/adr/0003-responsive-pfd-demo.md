@@ -6,7 +6,7 @@
 
 ## Context
 
-* The owner approved the [PFD scope](../project-brief.md) as seven feature slices under [epic #9](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9).
+* The [PFD scope](../project-brief.md) was approved as seven feature slices under [epic #9](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9).
 * The G5 illustration guides behavior and visual hierarchy. Phone screen area differs from the physical instrument.
 * Existing simulator integration, validation, and distribution issues #5-#8 retain their scope.
 

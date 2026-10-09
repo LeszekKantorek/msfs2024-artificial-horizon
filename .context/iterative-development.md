@@ -12,4 +12,4 @@ status: active
 * Keep speculative frameworks and later issues outside current scope.
 * Do not postpone useful structural changes solely because the current skeleton works.
 
-Source: owner agreement during issue #1 review, 2026-10-06.
+Source: accepted development approach from issue #1 review, 2026-10-06.

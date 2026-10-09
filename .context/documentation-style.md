@@ -1,5 +1,5 @@
 ---
-description: Choose document ownership and write concise technical documentation.
+description: Write concise, impersonal documentation, knowledge entries, code comments, and GitHub records. Choose document responsibilities.
 status: active
 ---
 
@@ -11,6 +11,18 @@ status: active
 * Preserve requirements, units, limits, uncertainty, and planned/implemented distinctions.
 * Apply `asd-ste100` when available without claiming certified dictionary compliance.
 * Link to the canonical source instead of repeating commands or rules.
+
+## Impersonal project records
+
+* Describe results, decisions, procedures, and evidence without personal narration.
+* Apply this rule to documentation, knowledge entries, code comments, and GitHub issues, PRs, and comments.
+* Avoid references such as "the owner", "owner-assisted", "the user reported", or "the assistant verified".
+* Use wording such as "Tested on...", "Confirmed using...", "Based on documentation...", and "Accepted for this iteration...".
+* Use "Reported..." for supplied observations and "Verified..." only for checks directly performed.
+* Preserve sources, dates, environments, missing details, uncertainty, and approval requirements.
+* Keep technical ownership terms when they describe resource management or responsibilities.
+
+Source: writing requirement recorded in [issue #31](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/31), 2026-10-09.
 
 ## Document responsibilities
 
@@ -26,4 +38,4 @@ status: active
 | [ADRs](../docs/adr/) | Decisions and decision lifecycle, not implementation status |
 | GitHub Issues / PRs | Task status, execution results, acceptance evidence |
 
-Source: owner's style, document ownership, and setup decisions, 2026-10-09.
+Source: accepted writing style, document responsibilities, and setup decisions, 2026-10-09.

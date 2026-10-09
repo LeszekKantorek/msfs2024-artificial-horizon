@@ -13,4 +13,4 @@ status: active
 * Keep independent topics separate so agents can read only relevant entries.
 * Follow the context skills for metadata, retrieval, and review procedures instead of duplicating their instructions.
 
-Source: owner request, 2026-10-09, to reduce recurring context cost without losing actionable knowledge.
+Source: accepted requirement, 2026-10-09, to reduce recurring context cost without losing actionable knowledge.

@@ -136,7 +136,7 @@ Desktop emulation does not establish mobile lifecycle compatibility.
 | Source stops, SSE remains open | Stale within one second on active page. Heartbeats cannot mask it |
 | Invalid values | Visible invalid state, no level-flight fallback |
 
-## Attitude display: owner-assisted phone acceptance
+## Attitude display: real-device phone acceptance
 
 Use this checklist for each phone. Store completed results in issue #4.
 Issue closure requires both real-device results.

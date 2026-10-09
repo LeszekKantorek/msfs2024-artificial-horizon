@@ -5,6 +5,6 @@
 | [Windows validation](windows-validation.md) | Diagnosing SAC blocking, error 4551, or Rust E0463. |
 | [Browser presentation](browser-presentation.md) | Changing rendering or preparing phone acceptance. |
 | [PFD demo scope](pfd-demo-scope.md) | Planning or implementing PFD demo features. |
-| [Documentation style](documentation-style.md) | Writing docs or choosing document ownership. |
+| [Documentation style](documentation-style.md) | Writing documentation, knowledge entries, code comments, or GitHub records; choosing document responsibilities. |
 | [Agent maintenance](agent-maintenance.md) | Reinstalling skills or changing session hooks. |
 | [Context authoring](context-authoring.md) | Editing knowledge entries or their index. |

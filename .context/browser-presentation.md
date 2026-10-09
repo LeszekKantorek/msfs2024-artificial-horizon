@@ -13,7 +13,7 @@ status: active
 | Evidence | Limit |
 | --- | --- |
 | Desktop viewports / synthetic SSE | Browser behavior only, not phone lifecycle or simulator compatibility |
-| Real iOS Safari / Android Chrome | Owner executes agent-provided procedures. Keep the feature issue open until required device evidence exists |
+| Real iOS Safari / Android Chrome | Run the documented procedures on actual devices. Keep the feature issue open until required device evidence exists |
 
-Sources: owner decisions for #4 and [#19](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/19), 2026-10-08.
+Sources: accepted decisions for [#4](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/4) and [#19](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/19), 2026-10-08.
 Procedures: [testing](../docs/testing.md). Freshness/status: [contract](../docs/telemetry-contract.md).

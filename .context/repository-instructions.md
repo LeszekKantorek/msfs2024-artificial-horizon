@@ -31,4 +31,4 @@ status: active
 * [ ] Telemetry changes include compatible fixtures and consumer updates.
 * [ ] Documentation distinguishes implemented and planned behavior.
 
-Sources: repository CONTRIBUTING rules, moved here at the owner's request on 2026-10-09, and the linked project documents.
+Sources: repository CONTRIBUTING rules, moved here by an accepted documentation decision on 2026-10-09, and the linked project documents.

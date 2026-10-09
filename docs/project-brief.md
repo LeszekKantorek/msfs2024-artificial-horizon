@@ -46,7 +46,7 @@ Prioritize mobile readability, low delay, and explicit unavailable states.
 
 | Reference | Location |
 | --- | --- |
-| Owner-supplied guide | Garmin G5 Part 23 AML STC Pilot's Guide |
+| Reference guide | Garmin G5 Part 23 AML STC Pilot's Guide |
 | File / revision | `190-01112-12_02.pdf`, document 190-01112-12 Rev. 2 |
 | Illustration | Section 3.3, printed **Page 8 of 25**, physical PDF page **13** |
 | Behavior | Subsequent subsections |
