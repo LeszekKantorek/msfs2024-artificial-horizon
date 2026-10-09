@@ -21,6 +21,13 @@ rustc-ice-*.txt
 __pycache__/
 *.pyc
 
+# Local work and additional skills
+/.local/
+/.agents/skills/*/
+!/.agents/skills/context-apply/
+!/.agents/skills/context-gather/
+!/.agents/skills/context-import-sessions/
+
 # RustRover
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
