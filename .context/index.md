@@ -6,5 +6,5 @@
 | [Browser presentation](browser-presentation.md) | Changing rendering or preparing phone acceptance. |
 | [PFD demo scope](pfd-demo-scope.md) | Planning or implementing PFD demo features. |
 | [Writing style](writing-style.md) | Writing documentation, knowledge entries, code comments, commit messages, or GitHub issues, comments, and PRs; choosing document responsibilities. |
-| [Agent maintenance](agent-maintenance.md) | Reinstalling skills or changing session hooks. |
+| [Agent maintenance](agent-maintenance.md) | Adding or reinstalling skills, changing local skill exclusions, or changing session hooks. |
 | [Context authoring](context-authoring.md) | Editing knowledge entries or their index. |

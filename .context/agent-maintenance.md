@@ -1,5 +1,5 @@
 ---
-description: Maintain installed context skills and session hooks.
+description: Maintain installed context skills, local skill exclusions, and session hooks.
 status: active
 ---
 
@@ -17,6 +17,7 @@ status: active
 * Update `skills-lock.json` and `.agents/skills/` together.
 * Remove retired skill copies during migrations.
 * Keep `.context/index.md` as the table-only index.
+* Follow the [skill exclusions](../.gitignore) when adding skills; only the three listed context skill directories are included by default.
 
 ## Hook maintenance
 
