@@ -1,8 +1,9 @@
 ---
-description: Write concise, impersonal documentation, knowledge entries, code comments, and GitHub records. Choose document responsibilities.
+description: Write concise, impersonal project text, including documentation, knowledge entries, code comments, commit messages, and GitHub issues, comments, and PRs. Choose document responsibilities.
 status: active
 ---
 
+* Apply these writing rules to documentation, knowledge entries, code comments, commit messages, and GitHub issues, comments, and PRs.
 * Use short English sentences and consistent terms.
 * Use `*` bullets for parallel rules and numbered steps for sequences.
 * Use tables for comparisons, `>` notes for constraints, and diagrams for flows.
@@ -15,7 +16,7 @@ status: active
 ## Impersonal project records
 
 * Describe results, decisions, procedures, and evidence without personal narration.
-* Apply this rule to documentation, knowledge entries, code comments, and GitHub issues, PRs, and comments.
+* Apply this rule to all project text covered above.
 * Avoid references such as "the owner", "owner-assisted", "the user reported", or "the assistant verified".
 * Use wording such as "Tested on...", "Confirmed using...", "Based on documentation...", and "Accepted for this iteration...".
 * Use "Reported..." for supplied observations and "Verified..." only for checks directly performed.

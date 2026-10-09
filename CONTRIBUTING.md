@@ -116,6 +116,6 @@ See [agent maintenance](.context/agent-maintenance.md) for reinstalls and integr
 ## Project guidance
 
 * Check [repository rules and acceptance criteria](.context/repository-instructions.md#repository-rules) before submitting a change.
-* Use [document responsibilities and writing style](.context/documentation-style.md) when editing documentation.
+* Follow the [writing style and document responsibilities](.context/writing-style.md) for documentation, knowledge entries, code comments, commit messages, and GitHub issues, comments, and PRs.
 * Run the relevant [automated checks](docs/testing.md#automated-checks).
 * Follow [AGENTS.md](AGENTS.md) for agent work and [agent maintenance](.context/agent-maintenance.md) for skills and hooks.

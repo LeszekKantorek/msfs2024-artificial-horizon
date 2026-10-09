@@ -13,7 +13,7 @@ status: active
 
 ## Repository rules
 
-* Use English for code, comments, documentation, issues, commits, and PRs.
+* Use English for code, comments, documentation, knowledge entries, commit messages, and GitHub issues and PRs; follow the [writing style](writing-style.md) for project text, including GitHub comments.
 * Commit `Cargo.lock`.
 * Preserve the MIT license.
 * Record material architecture changes in `docs/adr/`.
