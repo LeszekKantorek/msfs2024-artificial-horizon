@@ -69,7 +69,7 @@ src/
   bin/
     main.rs                 # clap CLI, startup, shutdown wiring
   config.rs
-  telemetry.rs              # normalized model, independent of transport
+  telemetry.rs              # validated attitude and optional coordinated-turn values
   providers/
     mod.rs                  # source boundary
     demo.rs
@@ -81,7 +81,9 @@ web/
   index.html
   styles.css
   app.js                    # EventSource, DOM, page lifecycle
-  horizon.js                # pure attitude geometry
+  horizon.js                # attitude transforms and latest-sample frame scheduling
+  layout.js                 # responsive instrument regions in CSS pixels
+  pfd-view.js               # SVG geometry and DOM updates
 tests/
   http_sse.rs
   fixtures/                 # known attitudes and lifecycle states
@@ -160,7 +162,7 @@ Do not select a wrapper solely because it supported an earlier simulator.
 
 See [ADR 0001](adr/0001-rust-http-sse.md) and the [wire contract](telemetry-contract.md).
 
-## Planned PFD demo extension
+## PFD demo extension
 
 > Planned scope: [project brief](project-brief.md). Decisions: [ADR 0003](adr/0003-responsive-pfd-demo.md). Feature order: [roadmap](roadmap.md).
 
@@ -172,6 +174,21 @@ See [ADR 0001](adr/0001-rust-http-sse.md) and the [wire contract](telemetry-cont
 * Add no SDK requirements and do not expand #5-#8.
 * Define field names, validity, and fixtures in the feature that introduces them.
 * Do not advertise unimplemented fields as current contract fields.
+
+### Attitude and coordinated-turn boundary
+
+* `FlightSample` combines validated attitude with optional `SlipSkid` and `TurnRate` values.
+* `Publisher::publish_sample` uses the existing latest-value channel, sequence, and monotonic age.
+* `Publisher::publish(State)` keeps the attitude-only path and clears all optional indications.
+* `demo::sample` defines nine deterministic two-second segments; `demo::attitude` retains its original seven-pose helper contract.
+* `createTelemetryClient` validates optional values independently and calls `onSample` with normalized values or `null` and one expiry deadline.
+* The existing `onAttitude` callback retains its attitude-only shape.
+* `pfdLayout` allocates instrument regions from available CSS width/height.
+* `createPfdView` owns SVG construction; `createHorizonRenderer` owns coalescing, resize redraws, cancellation, and expiry before paint.
+* Resize preserves the latest accepted sample and its original deadline.
+* Sky/ground and pitch markings use separate transformed groups with separate screen-space clipping.
+* Future instrument regions contain no readings or scales in the production page.
+* `tests/layout-fixture.js` adds the complete intended arrangement only through the development fixture server.
 
 ### Validation and rendering
 

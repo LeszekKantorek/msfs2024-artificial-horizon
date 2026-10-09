@@ -75,6 +75,24 @@ impl Server {
 pub fn router() -> Router {
     Router::new()
         .route(
+            "/layout.js",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
+                    include_str!("../../web/layout.js"),
+                )
+            }),
+        )
+        .route(
+            "/pfd-view.js",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
+                    include_str!("../../web/pfd-view.js"),
+                )
+            }),
+        )
+        .route(
             "/horizon.js",
             get(|| async {
                 (

@@ -1,12 +1,104 @@
 use msfs2024_artificial_horizon::{
     Source,
     providers::demo,
-    telemetry::{self, Attitude, STALE_AFTER, State},
+    telemetry::{self, Attitude, FlightSample, STALE_AFTER, SlipSkid, State, TurnRate},
 };
 use serde_json::{Value, json};
 use tokio::time::{Duration, advance};
 fn value(snapshot: telemetry::Snapshot) -> Value {
     serde_json::to_value(snapshot).unwrap()
+}
+
+#[test]
+fn pfd_demo_matches_independent_fixtures_through_every_segment_and_repeat() {
+    let fixtures: Vec<Value> =
+        serde_json::from_str(include_str!("fixtures/pfd-samples.json")).unwrap();
+    for mut fixture in fixtures {
+        let start = fixture
+            .as_object_mut()
+            .unwrap()
+            .remove("sample")
+            .unwrap()
+            .as_u64()
+            .unwrap();
+        for index in start..start + 40 {
+            for repeat in [0, 360, 720] {
+                assert_eq!(
+                    serde_json::to_value(demo::sample(index + repeat)).unwrap(),
+                    fixture
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn optional_indications_reject_invalid_numbers_without_clamping() {
+    for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+        assert!(SlipSkid::new(value).is_err());
+        assert!(TurnRate::new(value).is_err());
+    }
+    for value in [-1.001, 1.001] {
+        assert!(SlipSkid::new(value).is_err());
+    }
+    for value in [-1.0, 0.0, 1.0] {
+        assert_eq!(SlipSkid::new(value).unwrap().normalized(), value);
+    }
+    // The display range is not a telemetry validity limit.
+    for value in [-12.0, -3.0, 0.0, 3.0, 12.0] {
+        assert_eq!(TurnRate::new(value).unwrap().degrees_per_second(), value);
+    }
+}
+
+#[tokio::test(start_paused = true)]
+async fn extended_publication_shares_age_and_clears_absent_or_unavailable_indications() {
+    let (mut publisher, subscription) = telemetry::channel(Source::Demo);
+    let attitude = Attitude::new(10.0, 25.0).unwrap();
+    publisher.publish_sample(demo::sample(200)).unwrap();
+    let full = value(subscription.snapshot());
+    assert_eq!(
+        full,
+        json!({"schema_version":1,"sequence":1,"source":"demo","state":"live",
+        "sample_age_ms":0,"attitude":{"pitch_deg":10.0,"roll_deg":25.0},"slip_skid":1.0,"turn_rate_dps":3.0})
+    );
+    advance(Duration::from_millis(999)).await;
+    assert_eq!(value(subscription.snapshot())["slip_skid"], 1.0);
+    advance(Duration::from_millis(1)).await;
+    let stale = value(subscription.snapshot());
+    assert_eq!(stale["state"], "stale");
+    assert!(stale.get("slip_skid").is_none());
+    assert!(stale.get("turn_rate_dps").is_none());
+    for (slip, turn) in [
+        (Some(SlipSkid::new(-0.5).unwrap()), None),
+        (None, Some(TurnRate::new(-3.0).unwrap())),
+        (None, None),
+    ] {
+        publisher
+            .publish_sample(FlightSample::new(attitude, slip, turn))
+            .unwrap();
+        let partial = value(subscription.snapshot());
+        assert_eq!(partial["sample_age_ms"], 0);
+        assert_eq!(partial.get("slip_skid").is_some(), slip.is_some());
+        assert_eq!(partial.get("turn_rate_dps").is_some(), turn.is_some());
+    }
+    publisher.publish_sample(demo::sample(200)).unwrap();
+    publisher.publish(State::Live(attitude)).unwrap();
+    let old = value(subscription.snapshot());
+    assert!(old.get("slip_skid").is_none());
+    assert!(old.get("turn_rate_dps").is_none());
+    for state in [
+        State::Paused,
+        State::Waiting,
+        State::Disconnected,
+        State::Invalid,
+        State::Stale,
+    ] {
+        publisher.publish_sample(demo::sample(200)).unwrap();
+        publisher.publish(state).unwrap();
+        let unavailable = value(subscription.snapshot());
+        assert!(unavailable.get("slip_skid").is_none());
+        assert!(unavailable.get("turn_rate_dps").is_none());
+    }
 }
 
 #[test]

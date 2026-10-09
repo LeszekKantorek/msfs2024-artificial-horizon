@@ -26,6 +26,12 @@ async fn embedded_page_assets_and_liveness_match_the_contract() {
             "text/javascript; charset=utf-8",
             "createHorizonRenderer",
         ),
+        ("/layout.js", "text/javascript; charset=utf-8", "pfdLayout"),
+        (
+            "/pfd-view.js",
+            "text/javascript; charset=utf-8",
+            "createPfdView",
+        ),
         (
             "/telemetry-client.js",
             "text/javascript; charset=utf-8",
@@ -52,7 +58,13 @@ async fn embedded_page_assets_and_liveness_match_the_contract() {
 
 #[tokio::test]
 async fn static_router_does_not_create_a_telemetry_source() {
-    for path in ["/missing", "/api/v1/events"] {
+    for path in [
+        "/missing",
+        "/api/v1/events",
+        "/layout.html",
+        "/layout-fixture.js",
+        "/tests/layout-fixture.js",
+    ] {
         let response = router()
             .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())
             .await

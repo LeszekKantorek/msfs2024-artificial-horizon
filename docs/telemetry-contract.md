@@ -7,6 +7,10 @@
 | Type / fixture | Contract |
 | --- | --- |
 | `telemetry::Attitude` | Validated attitude |
+| `SlipSkid`, `TurnRate` | Independently validated optional indications |
+| `FlightSample` | One acquisition with attitude and independently optional indications |
+| `Publisher::publish_sample` | Atomically publish a fresh extended sample with shared sequence and age |
+| `Publisher::publish(State)` | Preserve attitude-only and lifecycle publication; clear prior optional values |
 | `State` | Typed lifecycle state. Only `State::Live` carries attitude |
 | `Snapshot` | Serializable value. Callers cannot construct or mutate its fields |
 | `Subscription` | Obtain a current snapshot immediately before serialization |
@@ -74,11 +78,44 @@ These durations are initial tuning values.
 | `attitude` | Object only for `live`, otherwise `null` |
 | `attitude.pitch_deg` | Finite degrees, positive nose up, range [-90, 90] |
 | `attitude.roll_deg` | Finite degrees, positive right wing down, normalized to [-180, 180) |
+| `slip_skid` | Optional finite normalized ball displacement in [-1, 1]. Negative left, positive right, zero centered |
+| `turn_rate_dps` | Optional finite degrees/second. Negative left, positive right. Standard rate is +/-3 deg/s |
 
 * Providers convert SDK values to these conventions.
 * Check conversion in the SimConnect spike. Do not infer SimVar units from names alone.
 * If you introduce interpolation, use the shortest angular distance across roll wrap.
 * Do not clamp invalid or non-finite values into apparently valid telemetry.
+
+### Optional coordinated-turn indications
+
+* Rust omits absent optional fields and all extensions in non-live snapshots.
+* New clients accept missing or `null` fields as unavailable indications.
+* Validate each optional value separately from the envelope and attitude.
+* An invalid or missing field hides its moving indication and shows a local unavailable mark.
+* Never retain a prior optional value when the next snapshot omits or invalidates it.
+* Each indication shares the accepted sample time and expires with attitude.
+* Source/transport loss invalidates all indications.
+* The normalized ball displacement defines this demo's presentation, not future SDK units.
+* The turn display spans +/-6 deg/s with +/-3 deg/s marks and edge arrows beyond the display range.
+* Finite rates beyond the display range remain valid telemetry; clipping is a display decision.
+
+Extended live example:
+
+```json
+{
+  "schema_version": 1,
+  "sequence": 42,
+  "source": "demo",
+  "state": "live",
+  "sample_age_ms": 0,
+  "attitude": {"pitch_deg": 10.0, "roll_deg": 25.0},
+  "slip_skid": 1.0,
+  "turn_rate_dps": 3.0
+}
+```
+
+`tests/fixtures/pfd-samples.json` defines independent extended demo values.
+`tests/fixtures/snapshots.json` retains unchanged attitude-only v1 examples.
 
 Unavailable state example:
 
@@ -136,9 +173,9 @@ stale         = estimated age >= 1,000 ms
 * Never replace unavailable attitude with a credible level horizon.
 * Keep DEMO visible in demo mode, including while source state is `live`.
 
-## Planned PFD extension boundary
+## Further PFD extension boundary
 
-> The fields above define current v1. The [PFD scope](project-brief.md#pfd-reference-and-coverage) defines planned additions, not available endpoint fields.
+> The fields above define current v1. The remaining [PFD scope](project-brief.md#pfd-reference-and-coverage) defines planned additions.
 
 Each feature slice must:
 

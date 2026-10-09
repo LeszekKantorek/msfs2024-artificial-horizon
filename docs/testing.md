@@ -103,6 +103,7 @@ These checks run in Windows CI.
 | Local TCP | Two active SSE connections and port reuse after shutdown |
 | Browser controller | Independent fixtures, one EventSource/retry timer, two-second retry, sequence reset, freshness, malformed messages, suspend/resume |
 | Instrument | Pose signs, nested transforms, angle bounds, latest-sample frame coalescing, expiry before draw, cancellation on data loss |
+| Coordinated turn | Typed bounds, independent optional failures, old snapshots, shared sample age, +/-3 deg/s, resize without refreshing age |
 
 ### Desktop exploration
 
@@ -194,6 +195,12 @@ Evidence template for the issue or PR:
 {"hold":true}
 {"hold":false,"malformed":true}
 {"malformed":false}
+{"state":"live","slip_skid":-1,"turn_rate_dps":-3}
+{"slip_skid":1,"turn_rate_dps":3}
+{"slip_skid":"bad","turn_rate_dps":3}
+{"slip_skid":0,"turn_rate_dps":"bad"}
+{"attitude_only":true}
+{"attitude_only":false,"slip_skid":0,"turn_rate_dps":0}
 ```
 
 | Scenario | Check |
@@ -205,6 +212,48 @@ Evidence template for the issue or PR:
 
 > The fixture server serves real web assets with synthetic SSE on loopback only. It is separate from the release binary.
 > These checks establish UI behavior, not simulator compatibility.
+
+### Responsive PFD layout and desktop checks
+
+Open `http://127.0.0.1:8082/layout.html` for the development-only arrangement of all 18 intended illustration items.
+The `LAYOUT FIXTURE` badge distinguishes future illustrative values from telemetry.
+Use this page before changing layout geometry or adding the next PFD instrument.
+No fixture page, script, or future instrument values enter the Rust binary.
+
+| Check | Expected result |
+| --- | --- |
+| 320x480, 390x664, 568x240, 667x280, 844x320 CSS px | No scrolling or overlap; readable central attitude and supplemental values |
+| Minimum usable area | 320 CSS px wide and 240 CSS px high after browser bars/safe areas |
+| Rotation / viewport changes during streaming | Preserve values and sample deadline; round ball and undistorted symbols |
+| Pitch scale / warnings | 2.5-degree intervals; red chevrons start at +60/-40 scale positions and point toward the horizon |
+| Slip/skid | Center and both directions; a local unavailable mark for missing or invalid data |
+| Turn rate | +/-3 deg/s reaches the standard-rate marks; beyond +/-6 deg/s shows an edge arrow |
+| Reserved future regions | No fake readings or unfinished instrument scales on the production page |
+
+An optional scripted desktop run uses Playwright with an installed browser.
+It adds no application dependency or frontend build step.
+Install the test tool in ignored local storage if it is not already available:
+
+```powershell
+npm install --prefix .local/browser --no-save playwright
+$env:PLAYWRIGHT_MODULE = Join-Path $PWD '.local/browser/node_modules/playwright'
+$env:BROWSER_CHANNEL = 'msedge'
+node tests/pfd-browser.mjs
+node tests/pfd-runtime-browser.mjs
+```
+
+The script starts an isolated loopback fixture server on an OS-assigned port.
+It checks real assets, viewports, known poses, old/partial snapshots, stale states, resize, and page lifecycle handlers.
+Screenshots are saved under `.local/pfd-browser/` for visual inspection.
+Review the screenshots; passing geometry checks alone do not establish readability.
+Synthetic padding and page events do not establish actual cutout, browser-bar, or background behavior on phones.
+The runtime script uses the compiled Windows binary from the required build.
+It checks embedded assets and Rust demo SSE, then stops and restarts its server to check recovery without reloading the page.
+
+Run the documented real-device procedure on iOS Safari and Android Chrome for #20.
+Include centered/left/right slip, both standard-rate turns, both chevron scenarios, orientation, browser bars, lock/resume, Wi-Fi and server recovery.
+Record device, OS/browser, build and network details in the issue.
+Keep #20 open while this hardware evidence is missing.
 
 ## Measurements and evidence
 
@@ -243,8 +292,9 @@ These tests require no simulator or SDK.
 
 | Property | Expected behavior |
 | --- | --- |
-| Cycle | Seven poses over 14 seconds, each held for two seconds |
-| Poses | Level, nose up/down, left/right bank, two combined attitudes |
+| Cycle | Nine poses over 18 seconds, each held for two seconds |
+| Poses | Level, nose up/down, left/right bank, two combined attitudes, then +70/-50 pitch |
+| Coordinated turn | Centered and both-direction slip/skid; coordinated and uncoordinated +/-3 deg/s turns |
 | Sampling | One fresh sample every 50 ms, including unchanged poses. Skip missed ticks |
 | Initial state | `waiting`, then `live` on fresh data |
 | Expiry | No accepted sample for 1,000 ms makes attitude stale |
@@ -255,6 +305,7 @@ These tests require no simulator or SDK.
 | Fixture / suite | Coverage |
 | --- | --- |
 | `tests/fixtures/attitudes.json` | Independent degree/sign expectations for all seven demo poses |
+| `tests/fixtures/pfd-samples.json` | Nine independent extended samples, repeated every 360 publications |
 | `tests/fixtures/snapshots.json` | v1 wire shape, including null attitude in unavailable states |
 | Telemetry tests | Age, stale threshold, fresh identical samples, cadence, skipped ticks, normalized bounds, roll wrap, non-finite rejection, source identity, slow independent consumers |
 | Library tests | Sequence exhaustion, shutdown ownership, subscription closure, listener reuse |

@@ -1,5 +1,7 @@
 //! Repeatable degree fixtures; no simulator SDK conventions are assumed.
-use crate::telemetry::{Attitude, Publisher, SAMPLE_PERIOD, State, TelemetryError};
+use crate::telemetry::{
+    Attitude, FlightSample, Publisher, SAMPLE_PERIOD, SlipSkid, TelemetryError, TurnRate,
+};
 use std::future::Future;
 use tokio::time::{MissedTickBehavior, interval};
 pub fn attitude(sample: u64) -> Attitude {
@@ -13,6 +15,29 @@ pub fn attitude(sample: u64) -> Attitude {
         _ => (-10.0, -25.0),
     };
     normalize_degrees(pitch, roll).expect("built-in demo poses are valid")
+}
+/// Nine two-second segments. The original attitude helper retains its seven-pose cycle.
+pub fn sample(index: u64) -> FlightSample {
+    let phase = (index / 40) % 9;
+    let attitude = match phase {
+        7 => Attitude::new(70.0, 0.0).unwrap(),
+        8 => Attitude::new(-50.0, 0.0).unwrap(),
+        _ => attitude(phase * 40),
+    };
+    let (slip, turn) = match phase {
+        1 => (-0.5, 0.0),
+        2 => (0.5, 0.0),
+        3 => (0.0, -3.0),
+        4 => (0.0, 3.0),
+        5 => (1.0, 3.0),
+        6 => (-1.0, -3.0),
+        _ => (0.0, 0.0),
+    };
+    FlightSample::new(
+        attitude,
+        Some(SlipSkid::new(slip).expect("built-in ball positions are valid")),
+        Some(TurnRate::new(turn).expect("built-in turn rates are valid")),
+    )
 }
 /// Provider boundary for verified degree/sign conventions.
 pub fn normalize_degrees(pitch: f64, roll: f64) -> Result<Attitude, TelemetryError> {
@@ -37,7 +62,7 @@ pub async fn run(
     let mut freshness = interval(SAMPLE_PERIOD);
     samples.set_missed_tick_behavior(MissedTickBehavior::Skip);
     freshness.set_missed_tick_behavior(MissedTickBehavior::Skip);
-    let mut sample = 0;
+    let mut index = 0;
     tokio::pin!(shutdown);
     loop {
         tokio::select! {
@@ -45,8 +70,8 @@ pub async fn run(
             _ = &mut shutdown => return Ok(()),
             _ = freshness.tick() => publisher.expire()?,
             _ = samples.tick() => {
-                publisher.publish(State::Live(attitude(sample)))?;
-                sample = (sample + 1) % 280;
+                publisher.publish_sample(sample(index))?;
+                index = (index + 1) % 360;
             }
         }
     }

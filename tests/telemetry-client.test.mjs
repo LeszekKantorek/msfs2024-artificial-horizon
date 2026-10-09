@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createTelemetryClient, validateSnapshot } from '../web/telemetry-client.js';
+import { createTelemetryClient, validateSnapshot, optionalIndications } from '../web/telemetry-client.js';
 import { readFileSync } from 'node:fs';
 
 const live = (sequence = 1, age = 0) => ({ schema_version: 1, sequence,
@@ -14,8 +14,10 @@ function harness() {
   const connections = [];
   const statuses = [];
   const attitudes = [];
+  const samples = [];
   const client = createTelemetryClient({ onStatus: value => statuses.push(value),
     onAttitude: value => attitudes.push(value),
+    onSample: value => samples.push(value),
     now: () => time,
     schedule: (fn, ms) => { const id = ++nextId; timers.set(id, { fn, at: time + ms }); return id; },
     cancel: id => timers.delete(id),
@@ -28,7 +30,7 @@ function harness() {
       return connection;
     },
   });
-  return { client, connections, statuses, timers, attitudes,
+  return { client, connections, statuses, timers, attitudes, samples,
     get status() { return statuses.at(-1); },
     advance(ms) {
       time += ms;
@@ -52,6 +54,37 @@ test('validator accepts independent fixtures and rejects malformed/unsupported t
     { ...live(), attitude: { pitch_deg: 0, roll_deg: 180 } },
     { ...live(), attitude: { pitch_deg: NaN, roll_deg: 0 } },
     { ...live(), state: 'paused' }]) assert.ok(!validateSnapshot(invalid));
+});
+
+test('optional values fail independently and never coerce missing values to zero', () => {
+  assert.deepEqual(optionalIndications(live()), { slip_skid: null, turn_rate_dps: null });
+  for (const invalid of [undefined, null, false, '0', {}, [], NaN, Infinity, -Infinity]) {
+    assert.deepEqual(optionalIndications({ slip_skid: invalid, turn_rate_dps: 3 }),
+      { slip_skid: null, turn_rate_dps: 3 });
+    assert.deepEqual(optionalIndications({ slip_skid: -1, turn_rate_dps: invalid }),
+      { slip_skid: -1, turn_rate_dps: null });
+  }
+  for (const invalid of [-1.001, 1.001]) assert.equal(optionalIndications({ slip_skid: invalid }).slip_skid, null);
+  for (const row of JSON.parse(readFileSync(new URL('./fixtures/pfd-samples.json', import.meta.url)))) {
+    assert.deepEqual(optionalIndications(row), { slip_skid: row.slip_skid, turn_rate_dps: row.turn_rate_dps });
+  }
+  assert.equal(optionalIndications({ turn_rate_dps: 12 }).turn_rate_dps, 12);
+});
+
+test('new sample callback supports old snapshots and clears previously valid optional data', () => {
+  const h = harness(); h.client.start();
+  const connection = h.connections[0]; connection.onopen();
+  connection.send({ ...live(1, 400), slip_skid: 1, turn_rate_dps: 3 });
+  assert.deepEqual(h.samples.at(-1), { attitude: live().attitude, slip_skid: 1, turn_rate_dps: 3, expiresAt: 600 });
+  connection.send({ ...live(2), slip_skid: 'bad', turn_rate_dps: -3 });
+  assert.equal(h.status.state, 'live');
+  assert.equal(h.samples.at(-1).slip_skid, null);
+  assert.equal(h.samples.at(-1).turn_rate_dps, -3);
+  connection.send(live(3));
+  assert.deepEqual(h.samples.at(-1), { attitude: live().attitude, slip_skid: null, turn_rate_dps: null, expiresAt: 1000 });
+  connection.send({ ...live(4), schema_version: 2, turn_rate_dps: 3 });
+  assert.equal(h.status.state, 'invalid');
+  assert.equal(h.samples.length, 3);
 });
 
 test('one subscription retries after two seconds and accepts sequence restart', () => {

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { attitudeTransforms, createHorizonRenderer } from '../web/horizon.js';
+import { pfdLayout } from '../web/layout.js';
 
 // Expected transforms are independent of the implementation and reuse source poses.
 test('known poses use the correct signs and local pitch displacement', () => {
@@ -81,4 +82,34 @@ test('unavailable and suspended states cancel pending rendering and discard the 
     assert.deepEqual(h.obscured, [reason]);
     h.renderer.accept(sample(-10, -25)); h.flush(); assert.equal(h.drawn.length, 1);
   }
+});
+
+test('resize preserves the last values and deadline, coalescing with new samples', () => {
+  const h = harness();
+  h.renderer.accept(sample(10, 25, 500)); h.flush();
+  const portrait = pfdLayout(320, 440);
+  h.renderer.resize(portrait); h.renderer.resize(pfdLayout(568, 204));
+  assert.equal(h.frames.size, 1);
+  h.flush();
+  assert.equal(h.drawn.length, 2);
+  const last = h.drawn.at(-1);
+  assert.match(last.rotation, /^rotate\(-25 /);
+  assert.equal(h.frames.size, 0);
+  h.advance(500);
+  h.renderer.resize(portrait); h.flush();
+  assert.equal(h.drawn.length, 2);
+  assert.deepEqual(h.obscured, ['stale']);
+  h.renderer.resize(portrait); h.flush();
+  assert.equal(h.frames.size, 0);
+});
+
+test('an already cancelled frame cannot draw a newer subscription sample', () => {
+  const h = harness(); h.renderer.accept(sample(10, 25));
+  const oldCallback = [...h.frames.values()][0];
+  h.renderer.invalidate('reconnecting');
+  h.renderer.accept(sample(-10, -25));
+  oldCallback();
+  assert.equal(h.drawn.length, 0);
+  assert.equal(h.frames.size, 1);
+  h.flush(); assert.equal(h.drawn.length, 1);
 });
