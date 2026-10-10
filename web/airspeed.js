@@ -1,6 +1,8 @@
 import { svgElement, setAttributes } from './svg.js';
 
 const PIXELS_PER_KNOT = 4;
+const MINOR_TICK_STEP_KT = 2;
+const MAJOR_TICK_STEP_KT = 10;
 const DIGIT_HEIGHT = 22;
 const MAX_SPEED = 999;
 
@@ -70,7 +72,41 @@ export function rollingDigits(value) {
   });
 }
 
-export function createAirspeed(instrument, layers) {
+function calculateAirspeedGeometry(layout) {
+  const { x, y, width, height } = layout.airspeed;
+  const centerY = height / 2;
+  const digitCenterX = (width - 14) / 2;
+  const groundSpeedPanelY = layout.height - 24;
+  return {
+    tape: { originX: x, originY: y, width, centerY, clipTopY: 1, clipBottomY: height - 17,
+      backgroundHeight: groundSpeedPanelY - y, unitY: height - 6,
+      fallbackUnitY: groundSpeedPanelY - y - 80, fallbackFirstLabelY: groundSpeedPanelY - y - 64 },
+    readout: { width, centerY, digitCenterX, warningPanelX: x + digitCenterX, warningPanelY: y + centerY },
+    groundSpeed: { originX: x, originY: groundSpeedPanelY, width, valueX: width / 2 + 1,
+      warningPanelX: x + width / 2 + 1, warningPanelY: groundSpeedPanelY + 11 },
+  };
+}
+
+function deriveSpeedReadings(frame) {
+  const iasState = speedState(frame.ias_kt);
+  const gsState = speedState(frame.gs_kt);
+  const profile = frame.airspeed_profile;
+  return {
+    ias: { value: frame.ias_kt, state: iasState },
+    groundSpeed: { state: gsState, roundedValue: gsState === 'available' ? Math.round(frame.gs_kt) : null },
+    profile,
+    ...speedIndications(frame.ias_kt, frame.ias_acceleration_ktps, profile),
+    showBottomReferences: !!profile && iasState === 'unavailable',
+  };
+}
+
+function rangeBounds(iasKt, range, tape) {
+  const top = Math.max(tape.clipTopY, Math.min(tape.clipBottomY, tape.centerY + tapeOffset(iasKt, range.max)));
+  const bottom = Math.max(tape.clipTopY, Math.min(tape.clipBottomY, tape.centerY + tapeOffset(iasKt, range.min)));
+  return { y: top, height: Math.max(0, bottom - top) };
+}
+
+function createAirspeedElements(instrument, layers) {
   const defs = instrument.querySelector('defs');
   const tapeClip = svgElement('clipPath', { id: 'airspeed-tape-clip' });
   const tapeRect = svgElement('rect', {});
@@ -87,26 +123,29 @@ export function createAirspeed(instrument, layers) {
   const tape = svgElement('g', { class: 'airspeed-tape', 'clip-path': 'url(#airspeed-tape-clip)' });
   const scale = svgElement('g', { id: 'airspeed-scale' });
   const ticks = svgElement('path', { class: 'airspeed-ticks' });
-  const labels = Array.from({ length: 100 }, (_, index) =>
-    svgElement('text', { class: 'airspeed-label', y: -index * 40 }, String(index * 10)));
+  const labels = Array.from({ length: Math.floor(MAX_SPEED / MAJOR_TICK_STEP_KT) + 1 }, (_, index) => {
+    const speed = index * MAJOR_TICK_STEP_KT;
+    return svgElement('text', { class: 'airspeed-label', y: tapeOffset(0, speed) }, String(speed));
+  });
   scale.append(ticks, ...labels);
   const ranges = svgElement('g', { id: 'airspeed-ranges' });
-  const rangeRects = ['low', 'flaps', 'normal', 'caution', 'overspeed'].map(name => {
+  const rangeRects = Object.fromEntries(['low', 'flaps', 'normal', 'caution', 'overspeed'].map(name => {
     const rect = svgElement('rect', { 'data-range': name, class: `airspeed-range-${name}` });
-    ranges.append(rect); return rect;
-  });
+    ranges.append(rect); return [name, rect];
+  }));
   const trend = svgElement('path', { id: 'airspeed-trend', class: 'airspeed-trend' });
   const references = svgElement('g', { id: 'airspeed-references' });
-  const referenceKeys = ['vr_kt', 'vx_kt', 'vy_kt', 'vg_kt'];
-  const referenceNames = ['R', 'X', 'Y', 'G'];
-  const leaders = referenceNames.map(name => {
-    const path = svgElement('path', { class: 'airspeed-reference-leader', 'data-reference': name });
-    references.append(path); return path;
-  });
-  const markers = referenceNames.map(name => {
-    const text = svgElement('text', { 'data-reference': name, class: 'airspeed-reference' }, name);
-    references.append(text); return text;
-  });
+  const referenceRecords = [
+    { key: 'vr_kt', symbol: 'R', accessibleName: 'VR' },
+    { key: 'vx_kt', symbol: 'X', accessibleName: 'VX' },
+    { key: 'vy_kt', symbol: 'Y', accessibleName: 'VY' },
+    { key: 'vg_kt', symbol: 'G', accessibleName: 'VG' },
+  ].map(reference => ({ ...reference,
+    leader: svgElement('path', { class: 'airspeed-reference-leader', 'data-reference': reference.symbol }),
+    marker: svgElement('text', { 'data-reference': reference.symbol, class: 'airspeed-reference' }, reference.symbol),
+    fallbackLabel: svgElement('text', { class: 'airspeed-reference-value', 'data-reference': reference.symbol }),
+  }));
+  references.append(...referenceRecords.map(reference => reference.leader), ...referenceRecords.map(reference => reference.marker));
   tape.append(scale, ranges, trend, references);
   const window = svgElement('path', { class: 'airspeed-window' });
   const digits = svgElement('g', { id: 'airspeed-digits', 'clip-path': 'url(#airspeed-digits-clip)' });
@@ -120,8 +159,7 @@ export function createAirspeed(instrument, layers) {
   const unit = svgElement('text', { class: 'speed-unit' }, 'KT');
   const bottomReferences = svgElement('g', { id: 'airspeed-references-bottom', 'data-visible': 'false' });
   const bottomUnit = svgElement('text', { class: 'speed-unit' }, 'KT');
-  const bottomLabels = referenceNames.map(name => svgElement('text', { class: 'airspeed-reference-value', 'data-reference': name }));
-  bottomReferences.append(bottomUnit, ...bottomLabels);
+  bottomReferences.append(bottomUnit, ...referenceRecords.map(reference => reference.fallbackLabel));
   ias.append(background, tape, window, digits, unit, bottomReferences);
   layers.airspeed.append(ias);
   const iasWarning = svgElement('text', { id: 'airspeed-warning', class: 'speed-warning' }, 'X');
@@ -134,93 +172,131 @@ export function createAirspeed(instrument, layers) {
   gs.append(gsBackground, gsLabel, gsValue, gsUnit); layers.airspeed.append(gs);
   const gsWarning = svgElement('text', { id: 'ground-speed-warning', class: 'speed-warning' }, 'X');
   layers.warnings.append(gsWarning);
-  let center, digitX, tapeTop, tapeBottom, tapeWidth;
+  return {
+    ias, background,
+    tape: { clipRect: tapeRect, scale, ticks, labels, ranges: { group: ranges, rects: rangeRects }, trend,
+      references: { group: references, records: referenceRecords, bottomGroup: bottomReferences, bottomUnit } },
+    readout: { window, clipRect: digitRect, columns, unit, warning: iasWarning },
+    groundSpeed: { group: gs, background: gsBackground, label: gsLabel, value: gsValue, unit: gsUnit, warning: gsWarning },
+  };
+}
+
+function resizeAirspeedElements(elements, geometry) {
+  const { tape, readout, groundSpeed } = geometry;
+  elements.ias.setAttribute('transform', `translate(${tape.originX} ${tape.originY})`);
+  setAttributes(elements.background, { width: tape.width, height: tape.backgroundHeight });
+  setAttributes(elements.tape.clipRect, { x: 0, y: tape.clipTopY, width: tape.width, height: tape.clipBottomY - tape.clipTopY });
+  elements.tape.ticks.setAttribute('d', Array.from({ length: Math.floor(MAX_SPEED / MINOR_TICK_STEP_KT) + 1 }, (_, index) => {
+    const speed = index * MINOR_TICK_STEP_KT;
+    const major = speed % MAJOR_TICK_STEP_KT === 0;
+    return `M ${tape.width - (major ? 26 : 22)} ${tapeOffset(0, speed)} H ${tape.width - 18}`;
+  }).join(' '));
+  for (const label of elements.tape.labels) label.setAttribute('x', tape.width - 28);
+  const { width, centerY } = readout;
+  elements.readout.window.setAttribute('d', `M 1 ${centerY - 14} H ${width - 16} L ${width - 11} ${centerY} L ${width - 16} ${centerY + 14} H 1 Z`);
+  setAttributes(elements.readout.clipRect, { x: 2, y: centerY - DIGIT_HEIGHT / 2, width: width - 18, height: DIGIT_HEIGHT });
+  const references = elements.tape.references;
+  setAttributes(references.bottomUnit, { x: tape.width / 2, y: tape.fallbackUnitY });
+  references.records.forEach((reference, index) => {
+    reference.marker.setAttribute('x', tape.width - 4);
+    setAttributes(reference.fallbackLabel, { x: tape.width / 2, y: tape.fallbackFirstLabelY + index * 16 });
+  });
+  setAttributes(elements.readout.unit, { x: tape.width / 2, y: tape.unitY });
+  setAttributes(elements.readout.warning, { x: readout.warningPanelX, y: readout.warningPanelY });
+  elements.groundSpeed.group.setAttribute('transform', `translate(${groundSpeed.originX} ${groundSpeed.originY})`);
+  setAttributes(elements.groundSpeed.background, { width: groundSpeed.width, height: 22 });
+  setAttributes(elements.groundSpeed.label, { x: 2 });
+  setAttributes(elements.groundSpeed.value, { x: groundSpeed.valueX });
+  setAttributes(elements.groundSpeed.unit, { x: groundSpeed.width - 2 });
+  setAttributes(elements.groundSpeed.warning, { x: groundSpeed.warningPanelX, y: groundSpeed.warningPanelY });
+}
+
+function updateSpeedStates(elements, readings) {
+  const { ias, groundSpeed, profile, overspeed, approaching, showBottomReferences } = readings;
+  elements.ias.dataset.overspeed = String(overspeed);
+  elements.ias.dataset.approaching = String(approaching);
+  elements.tape.ranges.group.style.display = profile && ias.state === 'available' ? '' : 'none';
+  elements.tape.references.group.style.display = profile && ias.state === 'available' ? '' : 'none';
+  elements.tape.references.bottomGroup.dataset.visible = String(showBottomReferences);
+  elements.tape.references.bottomGroup.style.display = showBottomReferences ? '' : 'none';
+  elements.readout.unit.style.display = showBottomReferences ? 'none' : '';
+  elements.ias.dataset.state = ias.state;
+  elements.groundSpeed.group.dataset.state = groundSpeed.state;
+  elements.ias.setAttribute('aria-label', `Indicated airspeed ${ias.state === 'available' ? `${ias.value} knots` : ias.state}`);
+  elements.groundSpeed.group.setAttribute('aria-label', `Ground speed ${groundSpeed.state === 'available' ? `${groundSpeed.roundedValue} knots` : groundSpeed.state}`);
+  elements.readout.warning.style.display = ias.state === 'available' ? 'none' : '';
+  elements.groundSpeed.warning.style.display = groundSpeed.state === 'available' ? 'none' : '';
+  elements.readout.warning.textContent = ias.state === 'overflow' ? 'OVR' : 'X';
+  elements.groundSpeed.warning.textContent = groundSpeed.state === 'overflow' ? 'OVR' : 'X';
+}
+
+function renderTape(scale, tape, ias) {
+  if (ias.state === 'available') scale.setAttribute('transform', `translate(0 ${tape.centerY + tapeOffset(ias.value, 0)})`);
+}
+
+function renderRanges(rects, tape, ias, profile) {
+  if (!profile || ias.state !== 'available') return;
+  for (const range of speedRanges(profile)) {
+    setAttributes(rects[range.name], { x: tape.width - (range.name === 'flaps' ? 17 : 15),
+      width: range.name === 'flaps' ? 2 : 3, ...rangeBounds(ias.value, range, tape) });
+  }
+}
+
+function renderTrend(trend, tape, ias, prediction) {
+  trend.style.display = prediction === null ? 'none' : '';
+  trend.setAttribute('d', prediction === null ? '' : `M ${tape.width - 10} ${tape.centerY} V ${Math.max(tape.clipTopY + 1, Math.min(tape.clipBottomY - 1, tape.centerY + tapeOffset(ias.value, prediction)))}`);
+  if (prediction === null) trend.removeAttribute('data-prediction-kt');
+  else trend.setAttribute('data-prediction-kt', prediction);
+}
+
+function renderReferences(references, tape, ias, profile) {
+  if (!profile) return;
+  const values = references.records.map(reference => profile.references[reference.key]);
+  const positions = referenceGeometry(ias.value, values, tape.centerY, tape.clipTopY, tape.clipBottomY);
+  references.records.forEach((reference, index) => {
+    const value = values[index];
+    const { marker, leader, fallbackLabel, symbol, accessibleName } = reference;
+    fallbackLabel.textContent = `${symbol} ${referenceReadout(value)}`;
+    const { position, labelPosition, visible } = positions[index];
+    marker.style.display = ias.state === 'available' && visible ? '' : 'none';
+    marker.setAttribute('y', Number.isFinite(labelPosition) ? labelPosition : 0);
+    const displaced = ias.state === 'available' && visible && labelPosition !== position;
+    leader.setAttribute('d', displaced ? `M ${tape.width - 7} ${position} V ${labelPosition} H ${tape.width - 5}` : '');
+    marker.setAttribute('aria-label', `${accessibleName} ${value} knots`);
+  });
+  references.bottomGroup.setAttribute('aria-label', `Configured reference speeds in knots: ${references.records.map(reference => `${reference.accessibleName} ${profile.references[reference.key]}`).join(', ')}`);
+}
+
+function renderDigits(columns, readout, ias) {
+  if (ias.state !== 'available') return;
+  rollingDigits(ias.value).forEach((digit, index) => {
+    const { column, current, next } = columns[index];
+    column.setAttribute('transform', `translate(${readout.digitCenterX + (index - 1) * 10} ${readout.centerY + digit.offset * DIGIT_HEIGHT})`);
+    current.textContent = digit.current; next.textContent = digit.next;
+  });
+}
+
+function renderGroundSpeed(value, reading) {
+  value.textContent = reading.state === 'available' ? String(reading.roundedValue) : '';
+}
+
+export function createAirspeed(instrument, layers) {
+  const elements = createAirspeedElements(instrument, layers);
+  let geometry;
   return {
     resize(layout) {
-      const { x, y, width, height } = layout.airspeed;
-      center = height / 2;
-      digitX = (width - 14) / 2;
-      tapeWidth = width;
-      tapeTop = 1;
-      tapeBottom = height - 17;
-      const gsY = layout.height - 24;
-      ias.setAttribute('transform', `translate(${x} ${y})`);
-      setAttributes(background, { width, height: gsY - y });
-      setAttributes(tapeRect, { x: 0, y: 1, width, height: height - 18 });
-      ticks.setAttribute('d', Array.from({ length: 500 }, (_, index) => {
-        const major = index % 5 === 0;
-        return `M ${width - (major ? 26 : 22)} ${-index * 8} H ${width - 18}`;
-      }).join(' '));
-      for (const label of labels) label.setAttribute('x', width - 28);
-      window.setAttribute('d', `M 1 ${center - 14} H ${width - 16} L ${width - 11} ${center} L ${width - 16} ${center + 14} H 1 Z`);
-      setAttributes(digitRect, { x: 2, y: center - 11, width: width - 18, height: 22 });
-      markers.forEach(marker => marker.setAttribute('x', width - 4));
-      setAttributes(bottomUnit, { x: width / 2, y: gsY - y - 80 });
-      bottomLabels.forEach((label, i) => setAttributes(label, { x: width / 2, y: gsY - y - 64 + i * 16 }));
-      setAttributes(unit, { x: width / 2, y: height - 6 });
-      setAttributes(iasWarning, { x: x + digitX, y: y + center });
-      gs.setAttribute('transform', `translate(${x} ${gsY})`);
-      setAttributes(gsBackground, { width, height: 22 });
-      setAttributes(gsLabel, { x: 2 });
-      setAttributes(gsValue, { x: width / 2 + 1 });
-      setAttributes(gsUnit, { x: width - 2 });
-      setAttributes(gsWarning, { x: x + width / 2 + 1, y: gsY + 11 });
+      geometry = calculateAirspeedGeometry(layout);
+      resizeAirspeedElements(elements, geometry);
     },
     render(frame) {
-      const iasState = speedState(frame.ias_kt);
-      const gsState = speedState(frame.gs_kt);
-      const profile = frame.airspeed_profile;
-      const { prediction, overspeed, approaching } = speedIndications(frame.ias_kt, frame.ias_acceleration_ktps, profile);
-      ias.dataset.overspeed = String(overspeed);
-      ias.dataset.approaching = String(approaching);
-      ranges.style.display = profile && iasState === 'available' ? '' : 'none';
-      references.style.display = profile && iasState === 'available' ? '' : 'none';
-      const showBottom = !!profile && iasState === 'unavailable';
-      bottomReferences.dataset.visible = String(showBottom);
-      bottomReferences.style.display = showBottom ? '' : 'none';
-      unit.style.display = showBottom ? 'none' : '';
-      if (profile) {
-        const values = referenceKeys.map(key => profile.references[key]);
-        const positions = referenceGeometry(frame.ias_kt, values, center, tapeTop, tapeBottom);
-        referenceKeys.forEach((key, i) => {
-          const value = profile.references[key];
-          bottomLabels[i].textContent = `${referenceNames[i]} ${referenceReadout(value)}`;
-          const { position, labelPosition, visible } = positions[i];
-          markers[i].style.display = iasState === 'available' && visible ? '' : 'none';
-          markers[i].setAttribute('y', Number.isFinite(labelPosition) ? labelPosition : 0);
-          const displaced = iasState === 'available' && visible && labelPosition !== position;
-          leaders[i].setAttribute('d', displaced ? `M ${tapeWidth - 7} ${position} V ${labelPosition} H ${tapeWidth - 5}` : '');
-          markers[i].setAttribute('aria-label', `${referenceKeys[i].slice(0, -3).toUpperCase()} ${value} knots`);
-        });
-        bottomReferences.setAttribute('aria-label', `Configured reference speeds in knots: VR ${profile.references.vr_kt}, VX ${profile.references.vx_kt}, VY ${profile.references.vy_kt}, VG ${profile.references.vg_kt}`);
-        if (iasState === 'available') speedRanges(profile).forEach((range, i) => {
-          const top = Math.max(tapeTop, Math.min(tapeBottom, center + tapeOffset(frame.ias_kt, range.max)));
-          const bottom = Math.max(tapeTop, Math.min(tapeBottom, center + tapeOffset(frame.ias_kt, range.min)));
-          setAttributes(rangeRects[i], { x: tapeWidth - (range.name === 'flaps' ? 17 : 15),
-            width: range.name === 'flaps' ? 2 : 3, y: top, height: Math.max(0, bottom - top) });
-        });
-      }
-      trend.style.display = prediction === null ? 'none' : '';
-      trend.setAttribute('d', prediction === null ? '' : `M ${tapeWidth - 10} ${center} V ${Math.max(tapeTop + 1, Math.min(tapeBottom - 1, center + tapeOffset(frame.ias_kt, prediction)))}`);
-      if (prediction === null) trend.removeAttribute('data-prediction-kt');
-      else trend.setAttribute('data-prediction-kt', prediction);
-      ias.dataset.state = iasState;
-      gs.dataset.state = gsState;
-      ias.setAttribute('aria-label', `Indicated airspeed ${iasState === 'available' ? `${frame.ias_kt} knots` : iasState}`);
-      gs.setAttribute('aria-label', `Ground speed ${gsState === 'available' ? `${Math.round(frame.gs_kt)} knots` : gsState}`);
-      iasWarning.style.display = iasState === 'available' ? 'none' : '';
-      gsWarning.style.display = gsState === 'available' ? 'none' : '';
-      iasWarning.textContent = iasState === 'overflow' ? 'OVR' : 'X';
-      gsWarning.textContent = gsState === 'overflow' ? 'OVR' : 'X';
-      if (iasState === 'available') {
-        scale.setAttribute('transform', `translate(0 ${center + tapeOffset(frame.ias_kt, 0)})`);
-        rollingDigits(frame.ias_kt).forEach((digit, index) => {
-          const { column, current, next } = columns[index];
-          column.setAttribute('transform', `translate(${digitX + (index - 1) * 10} ${center + digit.offset * DIGIT_HEIGHT})`);
-          current.textContent = digit.current; next.textContent = digit.next;
-        });
-      }
-      gsValue.textContent = gsState === 'available' ? String(Math.round(frame.gs_kt)) : '';
+      const readings = deriveSpeedReadings(frame);
+      updateSpeedStates(elements, readings);
+      renderTape(elements.tape.scale, geometry.tape, readings.ias);
+      renderRanges(elements.tape.ranges.rects, geometry.tape, readings.ias, readings.profile);
+      renderTrend(elements.tape.trend, geometry.tape, readings.ias, readings.prediction);
+      renderReferences(elements.tape.references, geometry.tape, readings.ias, readings.profile);
+      renderDigits(elements.readout.columns, geometry.readout, readings.ias);
+      renderGroundSpeed(elements.groundSpeed.value, readings.groundSpeed);
     },
   };
 }

@@ -174,6 +174,26 @@ export async function checkAirspeedAvailabilityTransitions(page, setFixture, pro
 
 // Uses actual SVG paint and the fixture SSE path, with independent expected values.
 export async function checkAirspeedIndications(page, setFixture, profile) {
+  const scale = await page.evaluate(() => {
+    const labels = [...document.querySelectorAll('.airspeed-label')];
+    const ticks = [...document.querySelector('.airspeed-ticks').getAttribute('d').matchAll(/M [\d.]+ (-?[\d.]+) H [\d.]+/g)];
+    return {
+      labelCount: labels.length,
+      lastLabel: { text: labels.at(-1).textContent, y: Number(labels.at(-1).getAttribute('y')) },
+      tickCount: ticks.length, lastTickY: Number(ticks.at(-1)[1]),
+      referenceOrder: [...document.querySelector('#airspeed-references').children].map(node => [node.tagName, node.dataset.reference]),
+      rangeOrder: [...document.querySelector('#airspeed-ranges').children].map(node => node.dataset.range),
+    };
+  });
+  assert.equal(scale.labelCount, 100);
+  assert.deepEqual(scale.lastLabel, { text: '990', y: -3960 });
+  assert.equal(scale.tickCount, 500);
+  assert.equal(scale.lastTickY, -3992);
+  assert.deepEqual(scale.referenceOrder, [
+    ['path', 'R'], ['path', 'X'], ['path', 'Y'], ['path', 'G'],
+    ['text', 'R'], ['text', 'X'], ['text', 'Y'], ['text', 'G'],
+  ]);
+  assert.deepEqual(scale.rangeOrder, ['low', 'flaps', 'normal', 'caution', 'overspeed']);
   for (const [width, height] of [[320, 240], [320, 480], [568, 240]]) {
     await page.setViewportSize({ width, height });
     for (const [ias, acceleration, prediction, overspeed, approaching] of [
