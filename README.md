@@ -5,8 +5,8 @@ then open its address in a browser on the same network.
 
 **Windows x64** · **Read-only browser display** · **No phone app or account**
 
-> **Try the demo today.** The current executable displays synthetic attitude, slip/skid, and turn rate.
-> Airspeed, altitude, vertical speed, heading/track, and MSFS2024 integration remain planned. This is not a real-flight instrument.
+> **Try the demo today.** The current executable displays synthetic attitude, IAS, GS, slip/skid, and turn rate.
+> Altitude, vertical speed, heading/track, and MSFS2024 integration remain planned. This is not a real-flight instrument.
 
 [Start the demo](#start-the-demo) · [Use your phone](#use-your-phone) · [Development](CONTRIBUTING.md)
 
@@ -40,7 +40,7 @@ Cargo builds the application before starting it.
 ### 3. Open the display
 
 Open [http://127.0.0.1:8080](http://127.0.0.1:8080) on the PC.
-Expect a moving attitude display across the panel, without a source badge.
+Expect a moving attitude display, a left-side airspeed tape, and a separate ground-speed readout.
 Press `Ctrl+C` in PowerShell to stop the server gracefully.
 
 ## Use your phone
@@ -76,18 +76,21 @@ Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
 | --- | --- |
 | Instrument | Responsive attitude, 2.5-degree pitch ladder, extreme-pitch chevrons, bank scale, fixed aircraft reference, slip/skid and turn rate |
 | Motion | Repeating 18-second cycle: seven original attitudes, then +70/-50-degree pitch. Centered and both-direction slip/skid; +/-3 deg/s turns |
+| Speed | IAS accelerates from 0 to 150 kt, holds, then decelerates. GS follows a different profile up to 170 kt |
+| Speed display | Rolling IAS digits and tape labels every 10 kt. Separate rounded GS in kt. `X` means unavailable, `OVR` means above 999 kt |
 | Data | Synthetic samples at 20 Hz, without a source badge |
 | Presentation | Sky/ground across the full panel, centrally clipped pitch scale, no top status bar |
 | Connection loss | Opaque full-panel cover with the reason and automatic retry after two seconds |
 | Stale or unavailable data | Explicit status, no fabricated level-flight reading |
 | Background/resume | A fresh snapshot is required before live attitude returns |
 | Sizing | No fixed aspect ratio; minimum 320 CSS px width and 240 CSS px usable height after browser bars and safe areas |
-| Old snapshots | Attitude-only snapshots show attitude with unavailable slip/skid and turn rate |
+| Old snapshots | Attitude-only snapshots show attitude with unavailable IAS, GS, slip/skid and turn rate |
 
 > Real iOS Safari and Android Chrome acceptance requires [device evidence](docs/testing.md#attitude-display-real-device-phone-acceptance).
 > Issue #4 owns the original attitude acceptance, [#20](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/20) owns the attitude/turn extension, and [#37](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/37) owns layers and background opacity.
 
-The planned G5-inspired PFD adds airspeed, altitude, vertical speed, and heading/track indications.
+[#21](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/21) owns IAS/GS acceptance.
+The planned G5-inspired PFD adds speed ranges, altitude, vertical speed, and heading/track indications.
 See the [project brief](docs/project-brief.md) for coverage and exclusions, and the [roadmap](docs/roadmap.md) for delivery order.
 
 ## Options and troubleshooting

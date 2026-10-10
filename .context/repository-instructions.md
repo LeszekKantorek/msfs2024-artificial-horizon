@@ -41,3 +41,7 @@ Sources: repository CONTRIBUTING rules, moved here by an accepted documentation 
 Source: accepted PR checklist requirement and corrections, 2026-10-09. CONTRIBUTING owns this workflow rule.
 
 Source: cancellation cleanup verified in maintenance [#45](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/45), 2026-10-10.
+
+Source: user correction, 2026-10-10, to include automatic issue closure in implementation PRs and record pending verification separately.
+
+Source: accepted acceptance-tracking rule and simplified control, 2026-10-10: mark verified issue criteria, record remaining verification in the PR, and check both lists without comparing wording.
