@@ -33,7 +33,7 @@ async fn embedded_page_assets_and_liveness_match_the_contract() {
             "deriveSpeedReadings",
         ),
         ("/layout.js", "text/javascript; charset=utf-8", "pfdLayout"),
-        ("/math.js", "text/javascript; charset=utf-8", "clamp"),
+        ("/helpers.js", "text/javascript; charset=utf-8", "clamp"),
         ("/panel.js", "text/javascript; charset=utf-8", "createPanel"),
         (
             "/frame-scheduler.js",
@@ -60,14 +60,23 @@ async fn embedded_page_assets_and_liveness_match_the_contract() {
             "text/javascript; charset=utf-8",
             "createStatusView",
         ),
-        ("/svg.js", "text/javascript; charset=utf-8", "svgElement"),
+        (
+            "/helpers.js",
+            "text/javascript; charset=utf-8",
+            "svgElement",
+        ),
+        (
+            "/helpers.js",
+            "text/javascript; charset=utf-8",
+            "setAttributes",
+        ),
         (
             "/telemetry/validation.js",
             "text/javascript; charset=utf-8",
             "normalizeOptionalIndications",
         ),
         (
-            "/telemetry-client.js",
+            "/telemetry/client.js",
             "text/javascript; charset=utf-8",
             "EventSource",
         ),
@@ -98,6 +107,9 @@ async fn static_router_does_not_create_a_telemetry_source() {
         "/layout.html",
         "/layout-fixture.js",
         "/tests/layout-fixture.js",
+        "/math.js",
+        "/svg.js",
+        "/telemetry-client.js",
     ] {
         let response = router()
             .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())

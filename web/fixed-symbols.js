@@ -1,4 +1,4 @@
-import { svgElement } from './svg.js';
+import { svgElement } from './helpers.js';
 
 const BANK_ANGLES = [-60, -45, -30, -20, -10, 0, 10, 20, 30, 45, 60];
 const BANK_MAJOR_TICK = 12;

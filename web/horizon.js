@@ -1,4 +1,4 @@
-import { svgElement, setAttributes } from './svg.js';
+import { svgElement, setAttributes } from './helpers.js';
 
 const PITCH_MAJOR_HALF = 30;
 const PITCH_MEDIUM_HALF = 16;

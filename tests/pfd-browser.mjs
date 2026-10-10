@@ -42,6 +42,14 @@ function instrumentNodesUnchanged() {
     nodes.every((node, index) => node === window.initialInstrumentNodes[index]);
 }
 try {
+  for (const path of ['/helpers.js', '/telemetry/client.js']) {
+    const response = await fetch(url + path);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('content-type'), 'text/javascript; charset=utf-8');
+  }
+  for (const path of ['/math.js', '/svg.js', '/telemetry-client.js']) {
+    assert.equal((await fetch(url + path)).status, 404);
+  }
   browser = await chromium.launch({ headless: true, channel: process.env.BROWSER_CHANNEL || undefined });
   const page = await browser.newPage();
   await page.addInitScript(() => {

@@ -1,4 +1,4 @@
-import { clamp } from './math.js';
+import { clamp } from './helpers.js';
 
 // All coordinates are CSS pixels. Text and symbols do not stretch with the panel.
 export function pfdLayout(width, height) {

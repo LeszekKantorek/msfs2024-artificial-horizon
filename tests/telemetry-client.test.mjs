@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createTelemetryClient } from '../web/telemetry-client.js';
+import { createTelemetryClient } from '../web/telemetry/client.js';
 import { isValidSnapshot, normalizeOptionalIndications } from '../web/telemetry/validation.js';
 import { readFileSync } from 'node:fs';
 
@@ -35,6 +35,11 @@ function harness() {
   });
   return { client, connections, statuses, timers, attitudes, samples, events,
     get status() { return statuses.at(-1); },
+    fireNextTimerEarly() {
+      const [id, timer] = timers.entries().next().value;
+      timers.delete(id);
+      timer.fn();
+    },
     advance(ms) {
       time += ms;
       for (;;) {
@@ -213,6 +218,21 @@ test('freshness accounts for server age; duplicates and open events cannot refre
   assert.equal(h.connections.length, 1);
   connection.send(live(11, 1000)); assert.equal(h.status.state, 'stale');
   connection.send(live(12)); assert.equal(h.status.state, 'live');
+});
+
+test('an early age timer reschedules against the original sample deadline', () => {
+  const h = harness(); h.client.start();
+  const connection = h.connections[0]; connection.onopen();
+  connection.send(live(1, 400));
+  h.advance(200);
+  h.fireNextTimerEarly();
+  assert.equal(h.status.state, 'live');
+  assert.equal(h.samples.at(-1).expiresAt, 600);
+  assert.equal(h.timers.size, 1);
+  h.advance(399); assert.equal(h.status.state, 'live');
+  h.advance(1); assert.equal(h.status.state, 'stale');
+  assert.equal(h.samples.length, 1);
+  assert.equal(h.timers.size, 0);
 });
 
 test('invalid messages and explicit unavailable states never appear live', () => {

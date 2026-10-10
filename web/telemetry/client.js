@@ -1,4 +1,4 @@
-import { isValidSnapshot, normalizeOptionalIndications } from './telemetry/validation.js';
+import { isValidSnapshot, normalizeOptionalIndications } from './validation.js';
 
 // One read-only subscription, with independent source and transport status.
 const STALE_AFTER = 1000;
@@ -20,6 +20,41 @@ export function createTelemetryClient({
     onStatus({ ...status });
   }
   function clearAge() { cancel(ageTimer); ageTimer = null; }
+  function readMessage(event) {
+    try { return JSON.parse(event.data); } catch { return null; }
+  }
+  function expireSample(receivedAt, remaining) {
+    const left = remaining - (now() - receivedAt);
+    if (left > 0) {
+      ageTimer = schedule(() => expireSample(receivedAt, remaining), left);
+      return;
+    }
+    ageTimer = null;
+    report({ state: 'stale' });
+  }
+  function publishSample(snapshot, expiresAt) {
+    onAttitude({ attitude: { ...snapshot.attitude }, expiresAt });
+    onSample({ attitude: { ...snapshot.attitude }, ...normalizeOptionalIndications(snapshot),
+      expiresAt });
+  }
+  function acceptSample(snapshot) {
+    if (!isValidSnapshot(snapshot)) {
+      clearAge();
+      report({ state: 'invalid' });
+      return;
+    }
+    if (snapshot.sequence <= sequence) return;
+    sequence = snapshot.sequence;
+    clearAge();
+    const receivedAt = now();
+    const remaining = STALE_AFTER - (snapshot.sample_age_ms ?? 0);
+    report({ source: snapshot.source,
+      state: snapshot.state === 'live' && remaining <= 0 ? 'stale' : snapshot.state });
+    if (status.state === 'live') {
+      publishSample(snapshot, receivedAt + remaining);
+      ageTimer = schedule(() => expireSample(receivedAt, remaining), remaining);
+    }
+  }
   function retry() {
     clearAge();
     if (connection) connection.close();
@@ -41,32 +76,7 @@ export function createTelemetryClient({
     current.onerror = () => { if (connection === current) retry(); };
     current.addEventListener('telemetry', event => {
       if (connection !== current) return;
-      let snapshot;
-      try { snapshot = JSON.parse(event.data); } catch { snapshot = null; }
-      if (!isValidSnapshot(snapshot)) {
-        clearAge();
-        report({ state: 'invalid' });
-        return;
-      }
-      if (snapshot.sequence <= sequence) return;
-      sequence = snapshot.sequence;
-      clearAge();
-      const receivedAt = now();
-      const remaining = STALE_AFTER - (snapshot.sample_age_ms ?? 0);
-      report({ source: snapshot.source,
-        state: snapshot.state === 'live' && remaining <= 0 ? 'stale' : snapshot.state });
-      if (status.state === 'live') {
-        onAttitude({ attitude: { ...snapshot.attitude }, expiresAt: receivedAt + remaining });
-        onSample({ attitude: { ...snapshot.attitude }, ...normalizeOptionalIndications(snapshot),
-          expiresAt: receivedAt + remaining });
-        const expire = () => {
-          const left = remaining - (now() - receivedAt);
-          if (left > 0) { ageTimer = schedule(expire, left); return; }
-          ageTimer = null;
-          report({ state: 'stale' });
-        };
-        ageTimer = schedule(expire, remaining);
-      }
+      acceptSample(readMessage(event));
     });
   }
   return {

@@ -102,11 +102,11 @@ impl Server {
 pub fn router() -> Router {
     Router::new()
         .route(
-            "/math.js",
+            "/helpers.js",
             get(|| async {
                 (
                     [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
-                    include_str!("../../web/math.js"),
+                    include_str!("../../web/helpers.js"),
                 )
             }),
         )
@@ -192,15 +192,6 @@ pub fn router() -> Router {
             }),
         )
         .route(
-            "/svg.js",
-            get(|| async {
-                (
-                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
-                    include_str!("../../web/svg.js"),
-                )
-            }),
-        )
-        .route(
             "/horizon.js",
             get(|| async {
                 (
@@ -242,11 +233,11 @@ pub fn router() -> Router {
             }),
         )
         .route(
-            "/telemetry-client.js",
+            "/telemetry/client.js",
             get(|| async {
                 (
                     [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
-                    include_str!("../../web/telemetry-client.js"),
+                    include_str!("../../web/telemetry/client.js"),
                 )
             }),
         )

@@ -65,9 +65,12 @@ try {
   assert.equal(await page.locator('#slip-skid').getAttribute('data-available'), 'true');
   assert.equal(await page.locator('#turn-rate').getAttribute('data-available'), 'true');
   assert.deepEqual([...loadedModules].sort(), [
-    '/airspeed.js', '/airspeed/calculations.js', '/app.js', '/fixed-symbols.js', '/frame-scheduler.js', '/horizon.js', '/layout.js',
-    '/math.js', '/panel.js', '/slip-skid.js', '/status.js', '/svg.js', '/telemetry-client.js', '/telemetry/validation.js', '/turn-rate.js',
+    '/airspeed.js', '/airspeed/calculations.js', '/app.js', '/fixed-symbols.js', '/frame-scheduler.js', '/helpers.js', '/horizon.js', '/layout.js',
+    '/panel.js', '/slip-skid.js', '/status.js', '/telemetry/client.js', '/telemetry/validation.js', '/turn-rate.js',
   ]);
+  for (const path of ['/math.js', '/svg.js', '/telemetry-client.js']) {
+    assert.equal((await fetch(address + path)).status, 404);
+  }
   const response = await fetch(`${address}/api/v1/events`, { signal: AbortSignal.timeout(2000) });
   const reader = response.body.getReader();
   let wire = '';

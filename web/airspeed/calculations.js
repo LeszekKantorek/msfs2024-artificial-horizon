@@ -1,4 +1,4 @@
-import { clamp } from '../math.js';
+import { clamp } from '../helpers.js';
 
 const PIXELS_PER_KNOT = 4;
 export const MINOR_TICK_STEP_KT = 2;

@@ -1,5 +1,4 @@
-import { clamp } from './math.js';
-import { setAttributes } from './svg.js';
+import { clamp, setAttributes } from './helpers.js';
 
 const DISPLAY_LIMIT = 6;
 const STANDARD_RATE = 3;

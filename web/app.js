@@ -1,4 +1,4 @@
-import { createTelemetryClient } from './telemetry-client.js';
+import { createTelemetryClient } from './telemetry/client.js';
 import { createFrameScheduler } from './frame-scheduler.js';
 import { pfdLayout } from './layout.js';
 import { createPanel } from './panel.js';

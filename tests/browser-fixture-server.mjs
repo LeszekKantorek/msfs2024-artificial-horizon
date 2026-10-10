@@ -16,11 +16,11 @@ input.on('line', line => {
   catch { console.error('Expected a JSON object'); }
 });
 const types = { '/': 'text/html', '/styles.css': 'text/css', '/app.js': 'text/javascript',
-  '/telemetry-client.js': 'text/javascript', '/horizon.js': 'text/javascript',
+  '/telemetry/client.js': 'text/javascript', '/horizon.js': 'text/javascript',
   '/telemetry/validation.js': 'text/javascript',
   '/airspeed.js': 'text/javascript', '/airspeed/calculations.js': 'text/javascript',
-  '/math.js': 'text/javascript',
-  '/layout.js': 'text/javascript', '/panel.js': 'text/javascript', '/frame-scheduler.js': 'text/javascript', '/fixed-symbols.js': 'text/javascript', '/slip-skid.js': 'text/javascript', '/turn-rate.js': 'text/javascript', '/status.js': 'text/javascript', '/svg.js': 'text/javascript',
+  '/helpers.js': 'text/javascript',
+  '/layout.js': 'text/javascript', '/panel.js': 'text/javascript', '/frame-scheduler.js': 'text/javascript', '/fixed-symbols.js': 'text/javascript', '/slip-skid.js': 'text/javascript', '/turn-rate.js': 'text/javascript', '/status.js': 'text/javascript',
   '/layout.html': 'text/html', '/layout-fixture.js': 'text/javascript' };
 const server = createServer((request, response) => {
   const path = new URL(request.url, 'http://127.0.0.1').pathname;

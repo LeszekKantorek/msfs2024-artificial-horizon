@@ -1,4 +1,4 @@
-import { setAttributes } from './svg.js';
+import { setAttributes } from './helpers.js';
 
 // Geometry stays in the indication's local coordinates.
 export function slipPosition(value, travel) { return value * travel; }

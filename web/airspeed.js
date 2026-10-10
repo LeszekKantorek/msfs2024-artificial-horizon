@@ -1,5 +1,4 @@
-import { svgElement, setAttributes } from './svg.js';
-import { clamp } from './math.js';
+import { clamp, svgElement, setAttributes } from './helpers.js';
 import { MINOR_TICK_STEP_KT, MAJOR_TICK_STEP_KT, DIGIT_HEIGHT, MAX_SPEED,
   tapeOffset, referenceReadout, placeReferenceLabels, speedRanges, rollingDigits,
   calculateAirspeedGeometry, deriveSpeedReadings, rangeBounds } from './airspeed/calculations.js';
