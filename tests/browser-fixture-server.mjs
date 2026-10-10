@@ -5,7 +5,9 @@ import { isIP } from 'node:net';
 import { readFileSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 
-let fixture = { state: 'live', pitch_deg: 0, roll_deg: 0, slip_skid: 0, turn_rate_dps: 0, ias_kt: 123, gs_kt: 137, hold: false };
+const profile = JSON.parse(readFileSync(new URL('./fixtures/airspeed-profile.json', import.meta.url)));
+let fixture = { state: 'live', pitch_deg: 0, roll_deg: 0, slip_skid: 0, turn_rate_dps: 0,
+  ias_kt: 123, gs_kt: 137, airspeed_profile: profile, ias_acceleration_ktps: 5, hold: false };
 let sequence = 0;
 let clients = 0;
 const input = createInterface({ input: process.stdin });
@@ -34,6 +36,8 @@ const server = createServer((request, response) => {
         snapshot.turn_rate_dps = fixture.turn_rate_dps;
         snapshot.ias_kt = fixture.ias_kt;
         snapshot.gs_kt = fixture.gs_kt;
+        snapshot.airspeed_profile = fixture.airspeed_profile;
+        snapshot.ias_acceleration_ktps = fixture.ias_acceleration_ktps;
       }
       response.write(`event: telemetry\ndata: ${JSON.stringify(snapshot)}\n\n`);
     }, 50);

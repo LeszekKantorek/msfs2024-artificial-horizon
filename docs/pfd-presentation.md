@@ -213,10 +213,49 @@ Keep indications readable across the full panel:
 * Units roll from fractional IAS. Higher columns roll during the final knot before a decimal carry.
 * GS uses a separate labelled readout in kt, rounded to the nearest integer.
 * GS stays at the bottom of the panel, with the same left edge and width as IAS.
-* The IAS background extends to GS without a gap; the area below `KT` contains no production readings or scale markings.
+* The IAS background extends to GS without a gap. When IAS is available, the area below `KT` contains no readings or scale markings.
 * Display values span 0–999 kt. Above 999 kt, show `OVR`. Unavailable values show `X`.
 * Neither missing nor overflowing IAS leaves a visible numeric tape. GS availability remains independent.
 * No independent animation, timer, interpolation, or client-generated flight values are used.
+
+### Ranges, references, and trend
+
+The same module consumes the optional profile and acceleration from the complete frame.
+It creates all new SVG nodes once. Resize and render retain the existing panel lifecycle.
+
+| Range | Bounds in configured knots | Demo bounds |
+| --- | --- | --- |
+| Red low speed | `[0, VS0)` | 0-40 |
+| White flap range | `[VS0, VFE)` | 40-85 |
+| Green normal range | `[VS1, VNO)` | 50-110 |
+| Yellow caution range | `[VNO, VNE)` | 110-140 |
+| Red/white overspeed | `[VNE, infinity)` | From 140 |
+
+White and green use adjacent strips where they overlap. All ranges use the IAS scale's 4 CSS px/kt spacing and screen-space clip.
+The fixed window remains opaque. Digits use 17 px text to preserve three readable columns beside the new indications at minimum width.
+
+References and trend use these rules:
+
+* R, X, Y, and G denote VR, VX, VY, and VG. The synthetic demo references are 55, 65, 75, and 90 kt.
+* Each reference sits to the right of the scale at its configured speed. Markers outside the visible tape stay hidden, without an edge substitute.
+* An 8 px vertical inset preserves each marker's painted text and stroke at the tape boundaries.
+* Coincident or nearby references retain their exact speed anchors. Displaced labels use leader lines and 16 px spacing inside the tape.
+* Missing or invalid IAS shows a local `X` and the configured references in four rows above GS, with a `KT` heading.
+* Bottom reference values round to 0.1 kt. Positive values below 0.1 show `<0.1`, and values above 999 show `OVR`.
+* Accessible reference labels retain exact configured values. Marker positions use those exact values.
+* The fallback replaces the usual IAS unit label. The development badge hides while fallback references occupy its area.
+* Zero IAS is valid. `OVR` retains its existing meaning and hides the numeric tape and trend.
+* The magenta vector extends from current IAS toward the source-supplied six-second prediction. Its stroke stays inside the tape clip.
+* Constant speed, missing acceleration, or a non-finite prediction hides the vector. Missing configuration does not prevent a valid trend calculation.
+
+VNE changes the current-speed window and digits independently:
+
+* At or above VNE, the pointer window becomes red, including when the readout shows `OVR`.
+* Below VNE, a rising prediction at or above VNE makes the actual-speed digits yellow.
+* A new frame resets colors when the corresponding condition or required data is absent.
+* Profile loss removes both VNE warnings. Acceleration loss removes only the predictive warning.
+
+All new content stays inside the existing IAS allocation. GS and central attitude geometry retain their positions.
 
 ## Delivery boundaries
 

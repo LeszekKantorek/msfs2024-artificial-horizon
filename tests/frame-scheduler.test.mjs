@@ -24,6 +24,23 @@ const sample = (pitch = 0, roll = 0, expiresAt = 1000) => ({
   attitude: { pitch_deg: pitch, roll_deg: roll }, expiresAt,
 });
 
+test('speed indications stay in the same latest frame and retain their deadline through resize and expiry', () => {
+  const h = harness();
+  const first = { ...sample(0, 0, 500), ias_kt: 110, ias_acceleration_ktps: 5,
+    airspeed_profile: { vne_kt: 140 } };
+  const latest = { ...first, ias_kt: 150, ias_acceleration_ktps: 0 };
+  h.renderer.accept(first); h.renderer.accept(latest); h.flush();
+  assert.equal(h.drawn.length, 1);
+  assert.deepEqual(h.drawn[0], latest);
+  h.advance(499); h.renderer.resize(pfdLayout(568, 240)); h.flush();
+  assert.deepEqual(h.drawn.at(-1), latest);
+  h.advance(1); h.renderer.resize(pfdLayout(320, 480)); h.flush();
+  assert.equal(h.drawn.length, 2);
+  assert.deepEqual(h.obscured, ['stale']);
+  h.renderer.accept({ ...first, expiresAt: 500 }); h.flush();
+  assert.equal(h.drawn.length, 2);
+});
+
 test('a burst draws only its newest sample in one frame, without continuous animation', () => {
   const h = harness();
   h.renderer.accept(sample(15)); h.renderer.accept(sample(-15)); h.renderer.accept(sample(10, 25));

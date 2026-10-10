@@ -5,6 +5,7 @@ import { spawn } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
 import { once } from 'node:events';
 import { readFileSync } from 'node:fs';
+import { checkAirspeedIndications } from './airspeed-browser-checks.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
@@ -162,6 +163,9 @@ try {
     const panel = createPanel(doc.querySelector('.instrument'), createStatusView(doc));
     const frame = Object.freeze({ attitude: Object.freeze({ pitch_deg: 10, roll_deg: 25 }),
       slip_skid: 0.5, turn_rate_dps: 3, ias_kt: 99.5, gs_kt: 137.6, expiresAt: 1000,
+      ias_acceleration_ktps: 5, airspeed_profile: Object.freeze({ vs0_kt: 40, vs1_kt: 50,
+        vfe_kt: 85, vno_kt: 110, vne_kt: 140,
+        references: Object.freeze({ vr_kt: 55, vx_kt: 65, vy_kt: 75, vg_kt: 90 }) }),
       status: Object.freeze({ source: 'demo', state: 'live', transport: 'connected' }) });
     const original = JSON.stringify(frame);
     for (const layout of [pfdLayout(314, 474), pfdLayout(562, 234)]) {
@@ -182,6 +186,8 @@ try {
     { y: -24, length: 4 }, { y: -32, length: 4 }, { y: -40, length: 8 },
   ]);
   assert.deepEqual(scaleGeometry.labels, [{ text: '0', y: 0 }, { text: '10', y: -40 }, { text: '20', y: -80 }]);
+  await checkAirspeedIndications(page, setFixture,
+    JSON.parse(readFileSync(new URL('./fixtures/airspeed-profile.json', import.meta.url))));
   // Verify actual SVG columns and tape positions against independent expected values.
   for (const [width, height] of [[326, 246], [320, 480], [568, 240]]) {
     await page.setViewportSize({ width, height });

@@ -77,7 +77,9 @@ Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
 | Instrument | Responsive attitude, 2.5-degree pitch ladder, extreme-pitch chevrons, bank scale, fixed aircraft reference, slip/skid and turn rate |
 | Motion | Repeating 18-second cycle: seven original attitudes, then +70/-50-degree pitch. Centered and both-direction slip/skid; +/-3 deg/s turns |
 | Speed | IAS accelerates from 0 to 150 kt, holds, then decelerates. GS follows a different profile up to 170 kt |
-| Speed display | Rolling IAS digits and tape labels every 10 kt. Separate rounded GS in kt. `X` means unavailable, `OVR` means above 999 kt |
+| Speed display | Rolling IAS digits, tape labels every 10 kt, colored speed ranges, R/X/Y/G references, and a magenta six-second trend. Separate rounded GS in kt |
+| Speed warnings | Red current-speed pointer at or above 140 kt. Yellow IAS digits when the rising trend predicts reaching 140 kt |
+| Speed unavailable | `X` means unavailable, `OVR` means above 999 kt. Configured references appear above GS when IAS is unavailable |
 | Data | Synthetic samples at 20 Hz, without a source badge |
 | Presentation | Sky/ground across the full panel, centrally clipped pitch scale, no top status bar |
 | Connection loss | Opaque full-panel cover with the reason and automatic retry after two seconds |
@@ -90,7 +92,10 @@ Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
 > Issue #4 owns the original attitude acceptance, [#20](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/20) owns the attitude/turn extension, and [#37](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/37) owns layers and background opacity.
 
 [#21](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/21) owns IAS/GS acceptance.
-The planned G5-inspired PFD adds speed ranges, altitude, vertical speed, and heading/track indications.
+[#22](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/22) owns range, reference, and trend acceptance.
+The speed profile is fictional: VS0/VS1 40/50, VFE/VNO/VNE 85/110/140, and VR/VX/VY/VG 55/65/75/90 kt.
+These values are not verified performance of a real aircraft. See the [speed contract](docs/telemetry-contract.md#optional-airspeed-ranges-and-trend).
+The planned G5-inspired PFD adds altitude, vertical speed, and heading/track indications.
 See the [project brief](docs/project-brief.md) for coverage and exclusions, and the [roadmap](docs/roadmap.md) for delivery order.
 
 ## Options and troubleshooting

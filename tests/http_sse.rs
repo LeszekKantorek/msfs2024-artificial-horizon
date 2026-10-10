@@ -59,6 +59,11 @@ async fn extended_samples_reach_two_clients_with_shared_values_and_delivery_time
     assert_eq!(a["slip_skid"], -1.0);
     assert_eq!(a["turn_rate_dps"], -3.0);
     assert_eq!(a["ias_kt"], 100.0);
+    assert_eq!(a["ias_acceleration_ktps"], -25.0);
+    assert_eq!(
+        a["airspeed_profile"],
+        serde_json::from_str::<Value>(include_str!("fixtures/airspeed-profile.json")).unwrap()
+    );
     assert!((a["gs_kt"].as_f64().unwrap() - 113.33333333333333).abs() < 1e-10);
     assert_eq!(a["sample_age_ms"], 50);
     publisher.publish(State::Paused).unwrap();
@@ -69,6 +74,8 @@ async fn extended_samples_reach_two_clients_with_shared_values_and_delivery_time
         assert!(unavailable.get("turn_rate_dps").is_none());
         assert!(unavailable.get("ias_kt").is_none());
         assert!(unavailable.get("gs_kt").is_none());
+        assert!(unavailable.get("airspeed_profile").is_none());
+        assert!(unavailable.get("ias_acceleration_ktps").is_none());
     }
 }
 

@@ -326,6 +326,8 @@ These tests require no simulator or SDK.
 | `tests/fixtures/attitudes.json` | Independent degree/sign expectations for all seven demo poses |
 | `tests/fixtures/pfd-samples.json` | Nine independent extended samples, repeated every 360 publications |
 | `tests/fixtures/speed-samples.json` | Independent IAS/GS checkpoints during acceleration, hold, deceleration, and repeat |
+| `tests/fixtures/airspeed-profile.json` | Independent fictional thresholds and named reference configuration |
+| `tests/fixtures/speed-indications.json` | Source acceleration and six-second predictions at segment boundaries |
 | `tests/fixtures/snapshots.json` | v1 wire shape, including null attitude in unavailable states |
 | Telemetry tests | Age, stale threshold, fresh identical samples, cadence, skipped ticks, normalized bounds, roll wrap, non-finite rejection, source identity, slow independent consumers |
 | Library tests | Sequence exhaustion, shutdown ownership, subscription closure, listener reuse |
@@ -381,6 +383,58 @@ Open the printed address on the phone. Use `/layout.html` for all 18 elements. E
 
 The host defaults to loopback and accepts IP addresses only. HTTP has no fixture-control route, and fixture assets are absent from the Rust binary.
 Restrict firewall access to the trusted private subnet. Remove `PFD_FIXTURE_HOST` from the environment after the phone run.
+
+## Airspeed ranges, references, and trend acceptance
+
+Run the automated checks and both browser scripts above. The #22 checks use the existing demo and fixture transport.
+The [contract](telemetry-contract.md#optional-airspeed-ranges-and-trend) defines the fictional profile and source acceleration.
+
+| Area | Expected behavior |
+| --- | --- |
+| Profile | Five positive, strictly increasing thresholds and four named positive references at or below VNE. Invalid configuration affects only its indications |
+| Ranges | Red below 40, white 40-85, green 50-110, yellow 110-140, red/white from 140 kt. White and green appear in parallel |
+| Boundaries | Values below, at, and above every threshold retain coherent geometry. Marker positions match configured speeds |
+| Trend | Six-second prediction comes from source acceleration. Positive, negative, zero, missing, malformed, and overflowing calculations have independent expectations |
+| VNE | IAS 140 kt makes the pointer red. IAS 110 with +5 kt/s predicts exactly 140 and makes digits yellow. Current readings never become predictions |
+| References | R/X/Y/G appear at their scale positions. Off-tape markers hide without an edge substitute. Missing IAS shows R 55, X 65, Y 75, G 90 above GS |
+| Reference edge cases | Fractional, tiny, and above-display-range values retain exact accessible values with bounded fallback text. Coincident and nearby labels stay separate with exact leader anchors |
+| Partial loss | Invalid profile retains IAS/GS and a valid trend. Invalid acceleration retains profile and actual overspeed. Old snapshots retain attitude |
+| Freshness | Irregular message receipt does not change source acceleration. Equal fresh samples renew validity. Expiry before painting and resize preserve the original deadline |
+| Integration | Two SSE clients receive matching profile and acceleration. The release binary demonstrates a predictive warning, actual overspeed, hold with hidden trend, and restart recovery |
+| Layout | Three IAS columns fit the window. Marker strokes stay within the tape. Fallback rows stay below local X and above GS at the minimum viewport |
+
+The browser checks use independent expected positions and inspect computed colors, SVG bounds, clipping edges, and node identity.
+Screenshots include `speed-approaching-vne.png`, `speed-at-vne.png`, and fallback views under `.local/pfd-browser/`.
+
+### Real-phone checks for #22
+
+1. Run the compiled demo on the private LAN with the [phone procedure](../README.md#use-your-phone).
+2. Inspect ranges, references, acceleration/deceleration, yellow predictive digits, red overspeed pointer, and constant-speed trend removal.
+3. Inspect portrait and short landscape, rotation, safe areas, and browser bars. Check sky/ground contrast, undistorted symbols, and no scrolling or collisions.
+4. Use the [development fixture procedure](#real-phone-checks) for the controlled cases below. Check `/` and `/layout.html`.
+5. Test Wi-Fi loss/recovery, server restart, lock/background/resume, and fresh readings after the unavailable cover.
+6. Record device models, OS/browser versions, network, commit, observations, and screenshots in #22 for real iOS Safari and Android Chrome separately.
+
+Enter these JSON lines into the fixture terminal. The fixture initially supplies the configured profile.
+
+```json
+{"ias_kt":55,"ias_acceleration_ktps":0}
+{"ias_kt":65,"ias_acceleration_ktps":0}
+{"ias_kt":75,"ias_acceleration_ktps":0}
+{"ias_kt":90,"ias_acceleration_ktps":0}
+{"ias_kt":110,"ias_acceleration_ktps":5}
+{"ias_kt":139.99,"ias_acceleration_ktps":0}
+{"ias_kt":140,"ias_acceleration_ktps":0}
+{"ias_kt":140.01,"ias_acceleration_ktps":-5}
+{"ias_kt":null,"gs_kt":137}
+{"ias_kt":123,"ias_acceleration_ktps":null}
+{"ias_kt":123,"ias_acceleration_ktps":5,"airspeed_profile":null}
+{"attitude_only":true}
+```
+
+Restart the fixture to restore its initial profile after the partial-loss checks.
+Check immediately below and above the five thresholds with the same input mechanism.
+Real-phone acceptance requires passing records from both devices. Desktop checks provide separate evidence.
 
 ## Planned PFD demo acceptance
 

@@ -104,6 +104,11 @@ fn pfd_demo_matches_independent_fixtures_through_every_segment_and_repeat() {
                 let mut actual = serde_json::to_value(demo::sample(index + repeat)).unwrap();
                 actual.as_object_mut().unwrap().remove("ias_kt");
                 actual.as_object_mut().unwrap().remove("gs_kt");
+                actual.as_object_mut().unwrap().remove("airspeed_profile");
+                actual
+                    .as_object_mut()
+                    .unwrap()
+                    .remove("ias_acceleration_ktps");
                 assert_eq!(actual, fixture);
             }
         }
@@ -137,7 +142,8 @@ async fn extended_publication_shares_age_and_clears_absent_or_unavailable_indica
     assert_eq!(
         full,
         json!({"schema_version":1,"sequence":1,"source":"demo","state":"live",
-        "sample_age_ms":0,"attitude":{"pitch_deg":10.0,"roll_deg":25.0},"slip_skid":1.0,"turn_rate_dps":3.0,"ias_kt":150.0,"gs_kt":170.0})
+        "sample_age_ms":0,"attitude":{"pitch_deg":10.0,"roll_deg":25.0},"slip_skid":1.0,"turn_rate_dps":3.0,"ias_kt":150.0,"gs_kt":170.0,
+        "airspeed_profile": serde_json::from_str::<Value>(include_str!("fixtures/airspeed-profile.json")).unwrap(), "ias_acceleration_ktps":-25.0})
     );
     advance(Duration::from_millis(999)).await;
     assert_eq!(value(subscription.snapshot())["slip_skid"], 1.0);

@@ -81,6 +81,12 @@ try {
   assert.ok(Number.isFinite(snapshot.turn_rate_dps));
   assert.ok(Number.isFinite(snapshot.ias_kt));
   assert.ok(Number.isFinite(snapshot.gs_kt));
+  assert.ok(Number.isFinite(snapshot.ias_acceleration_ktps));
+  assert.equal(snapshot.airspeed_profile.vne_kt, 140);
+  // Observe source-supplied acceleration and the corresponding six-second warning.
+  await page.waitForFunction(() => document.querySelector('#airspeed').dataset.approaching === 'true' &&
+    Number(document.querySelector('#airspeed-trend').dataset.predictionKt) >= 140,
+    null, { timeout: 25000 });
   assert.equal(await page.locator('#airspeed').getAttribute('data-state'), 'available');
   assert.equal(await page.locator('#ground-speed').getAttribute('data-state'), 'available');
   // Wait for the Rust-owned right-bank/standard-rate segment, not a browser fixture.
@@ -94,6 +100,8 @@ try {
     gs: document.querySelector('#ground-speed-value').textContent,
   }));
   assert.deepEqual(speeds, { ias: 'Indicated airspeed 150 knots', digits: '150', gs: '170' });
+  assert.equal(await page.locator('#airspeed').getAttribute('data-overspeed'), 'true');
+  assert.equal(await page.locator('#airspeed-trend').evaluate(n => getComputedStyle(n).display), 'none');
   await page.screenshot({ path: '.local/pfd-runtime-landscape.png' });
   await stop();
   await page.locator('.instrument[data-available="false"]').waitFor();

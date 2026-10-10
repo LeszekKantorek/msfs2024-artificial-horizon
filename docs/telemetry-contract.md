@@ -11,6 +11,9 @@
 | `IndicatedAirspeed`, `GroundSpeed` | Independently validated finite nonnegative knots, with `new` and `knots` methods |
 | `FlightSample` | One acquisition with attitude and independently optional indications |
 | `FlightSample::with_speeds(ias, gs)` | Add independently optional speeds. The existing `new` constructor remains attitude/turn-only |
+| `AirspeedProfile`, `VSpeedReferences` | Validated positive speed thresholds and four named references in knots |
+| `IasAcceleration` | Validated finite IAS acceleration in kt/s. Negative values indicate deceleration |
+| `FlightSample::with_airspeed_indications(profile, acceleration)` | Add independently optional configuration and acceleration without requiring IAS |
 | `Publisher::publish_sample` | Atomically publish a fresh extended sample with shared sequence and age |
 | `Publisher::publish(State)` | Preserve attitude-only and lifecycle publication; clear prior optional values |
 | `State` | Typed lifecycle state. Only `State::Live` carries attitude |
@@ -84,6 +87,8 @@ These durations are initial tuning values.
 | `turn_rate_dps` | Optional finite degrees/second. Negative left, positive right. Standard rate is +/-3 deg/s |
 | `ias_kt` | Optional finite nonnegative indicated airspeed in knots |
 | `gs_kt` | Optional finite nonnegative ground speed in knots |
+| `airspeed_profile` | Optional validated speed configuration, defined below |
+| `ias_acceleration_ktps` | Optional finite source-supplied IAS acceleration in knots per second |
 
 * Providers convert SDK values to these conventions.
 * Check conversion in the SimConnect spike. Do not infer SimVar units from names alone.
@@ -138,7 +143,49 @@ Speed fields extend the live example above:
 {"ias_kt": 99.5, "gs_kt": 137.6}
 ```
 
-`tests/fixtures/speed-samples.json` defines independent speed-profile checkpoints. Speed ranges and trend fields belong to #22.
+`tests/fixtures/speed-samples.json` defines independent speed-profile checkpoints.
+
+### Optional airspeed ranges and trend
+
+The profile contains these fields:
+
+| Field | Validation / meaning |
+| --- | --- |
+| `vs0_kt`, `vs1_kt`, `vfe_kt`, `vno_kt`, `vne_kt` | Finite positive knots, strictly increasing in this order |
+| `references.vr_kt`, `references.vx_kt`, `references.vy_kt`, `references.vg_kt` | Four finite positive configured references, each at or below VNE |
+| `ias_acceleration_ktps` | Finite kt/s, including negative and zero. Optional independently of the profile |
+
+Rust types expose validated constructors. Profile fields remain private. The wire names identify their units and reference meanings.
+
+The demo supplies this fictional configuration. These values do not establish the performance of a real aircraft.
+
+```json
+{
+  "airspeed_profile": {
+    "vs0_kt": 40.0, "vs1_kt": 50.0, "vfe_kt": 85.0,
+    "vno_kt": 110.0, "vne_kt": 140.0,
+    "references": {"vr_kt": 55.0, "vx_kt": 65.0, "vy_kt": 75.0, "vg_kt": 90.0}
+  },
+  "ias_acceleration_ktps": 25.0
+}
+```
+
+These extensions follow the existing sample lifecycle:
+
+* Both fields share the sample sequence, monotonic age, and expiry deadline. Providers must supply acceleration from the same fresh acquisition as IAS.
+* Rust omits absent fields and all extensions outside `live`. Attitude-only publication clears both fields.
+* A new browser sample replaces the previous configuration and acceleration. Missing values never select a demo default.
+* Missing, null, or malformed profiles hide ranges, references, and VNE warnings while preserving valid IAS, GS, and attitude.
+* Missing, null, or malformed acceleration hides the trend and predictive warning. Valid profile ranges and actual overspeed remain available.
+* Unknown additive profile fields are ignored. All five known thresholds and four named references are required when a profile is supplied.
+* Source/transport loss invalidates the panel. Local IAS loss retains available configured references at the bottom of the instrument.
+
+The browser predicts `IAS + 6 * ias_acceleration_ktps`. It never computes acceleration from browser receipt intervals.
+Zero acceleration or a non-finite prediction hides the vector. A negative prediction remains a calculation result and is clipped at the tape boundary.
+The prediction does not replace or extrapolate the current IAS reading.
+
+The demo acceleration is +25 kt/s during acceleration, zero during hold and rest, and -25 kt/s during deceleration.
+At each segment boundary, the new segment supplies the acceleration. Independent fixtures reside in `airspeed-profile.json` and `speed-indications.json`.
 
 Unavailable state example:
 
