@@ -40,8 +40,10 @@ flowchart LR
 * Give a dedicated worker ownership of blocking SimConnect callbacks.
 * Send normalized state from that worker to the async runtime.
 * Support Rust builds, runtime, and CI on Windows x64 MSVC only.
-* Reject other targets at the library root; provider modules do not need separate platform gates.
-* Expose no Cargo features from this package; select the source through runtime configuration.
+* Reject other targets at the library root.
+* Provider modules do not need separate platform gates.
+* Expose no Cargo features from this package.
+* Select the source through runtime configuration.
 * Keep SimConnect integration inside the Windows provider module.
 * Keep Windows tests and demo builds independent of the SDK.
 
@@ -73,7 +75,8 @@ src/
     demo.rs
     simconnect.rs           # Windows SDK integration
   http/
-    mod.rs                  # routes and application state
+    mod.rs                  # asset/health composition, telemetry routes, application state
+    assets.rs               # explicit compile-time asset table and registration loop
     sse.rs
 web/
   index.html
@@ -133,7 +136,8 @@ Providers must not depend on application configuration.
 
 Run the application with the [README procedure](../README.md#start-the-demo).
 Future executables use their own binary names.
-Cargo names the current executable `msfs2024-artificial-horizon`; its entry point remains `src/bin/main.rs`.
+Cargo names the current executable `msfs2024-artificial-horizon`.
+Its entry point remains `src/bin/main.rs`.
 
 * Embed web assets in the release binary.
 * Use a relative, same-origin SSE URL.
@@ -203,7 +207,8 @@ The server owns validated samples and deterministic demo scenarios:
 * `FlightSample::with_airspeed_indications` adds optional configuration and acceleration. Demo configuration is fictional and shared by all clients.
 * `Publisher::publish_sample` uses the existing latest-value channel, sequence, and monotonic age.
 * `Publisher::publish(State)` keeps the attitude-only path and clears all optional indications.
-* `demo::sample` defines nine deterministic two-second segments; `demo::attitude` retains its original seven-pose helper contract.
+* `demo::sample` defines nine deterministic two-second segments.
+* `demo::attitude` retains its original seven-pose helper contract.
 * The same 18-second sample cycle supplies acceleration, a constant-speed segment, and deceleration for independently valued IAS and GS.
 
 The browser validates those samples and presents them within the available panel area:
@@ -213,7 +218,8 @@ The browser validates those samples and presents them within the available panel
 * `airspeed/index.js` composes IAS and GS visual objects. Each object owns its readings, geometry, and pure calculations.
 * The existing `onAttitude` callback retains its attitude-only shape.
 * `pfdLayout` allocates instrument regions from available CSS width/height.
-* `frame-scheduler.js` schedules fresh frames; `panel.js` composes instrument modules.
+* `frame-scheduler.js` schedules fresh frames.
+* `panel.js` composes instrument modules.
 * Resize preserves the latest accepted sample and its original deadline.
 * Sky/ground and pitch markings use separate transformed groups with separate screen-space clipping.
 * Future instrument regions contain no readings or scales in the production page.
@@ -222,10 +228,16 @@ The browser validates those samples and presents them within the available panel
 ### Panel boundary
 
 [Panel presentation](pfd-presentation.md) defines the module tree, frame lifecycle, and layer composition.
-[ADR 0004](adr/0004-modular-pfd-presentation.md) records instrument composition. #36 and #37 implement composition and layers.
-Maintenance [#54](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/54) separates pure calculations and validation.
-[#56](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/56) composes existing instruments from visual objects under [ADR 0005](adr/0005-visual-object-composition.md).
-The implemented application imports 24 JavaScript modules, all explicitly embedded and routed by the Rust HTTP module.
+
+The architecture records these distinct changes:
+
+| Record | Boundary |
+| --- | --- |
+| [ADR 0004](adr/0004-modular-pfd-presentation.md), #36 and #37 | Instrument composition and layers |
+| Maintenance [#54](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/54) | Historical separation of pure calculations and validation |
+| [#56](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/56) and [ADR 0005](adr/0005-visual-object-composition.md) | Visual-object composition with object-specific calculations in implementing modules |
+
+The implemented application imports 24 JavaScript modules.
 
 | Module | Responsibility |
 | --- | --- |
@@ -242,15 +254,33 @@ The implemented application imports 24 JavaScript modules, all explicitly embedd
 | Helpers | Export clamp, SVG creation, and attribute updates without import-time DOM access |
 | Status presentation | Show source/transport status and obscure invalid data |
 
+Presentation boundaries follow these rules:
+
 * [Panel presentation](pfd-presentation.md#panel-interface-and-frame-lifecycle) owns implemented interfaces and frame rules.
 * [Internal seams](pfd-presentation.md#internal-module-seams) define calculation and validation responsibilities.
 * The internal frame is not a new wire format.
-* Instrument entry points receive the same complete read-only frame. Children receive concrete hosts, geometry, and required readings.
-* Shared hosts and clips belong to their immediate common parent. Children hide their node updates behind operations.
-* Pure calculations and validation import in Node without DOM. Visual objects retain no telemetry frame or timer.
-* Independent consumers justify shared calculation modules. Pure tests alone do not require separate files.
-* Asset registration remains explicit. Replaced root module routes return 404 without compatibility facades.
+* Instrument entry points receive the same complete read-only frame.
+* Children receive concrete hosts, geometry, and required readings.
+* Shared hosts and clips belong to their immediate common parent.
+* Children hide their node updates behind operations.
+* Pure calculations and validation import in Node without DOM.
+* Visual objects retain no telemetry frame or timer.
+* Independent consumers justify shared calculation modules.
+* Pure tests alone do not require separate files.
 * Future instrument modules arrive with their feature slices.
+
+Embedded assets have a separate registration boundary:
+
+| Module | Responsibility |
+| --- | --- |
+| `src/http/assets.rs` | Explicit table of 26 literal path/MIME/compile-time body mappings: 24 JavaScript files, HTML, and CSS |
+| `assets::router()` | Register the table through one loop |
+| `src/http/mod.rs` | Compose the asset router and health route, with unchanged telemetry composition |
+
+* Preserve existing paths, MIME types, status codes, response bodies, and GET/HEAD behavior.
+* Keep static routes independent of telemetry.
+* Replaced root and calculation-module routes return 404 without compatibility facades.
+* Add no wildcard routes, directory serving, runtime file access, or dependencies.
 
 ## Library telemetry interface
 

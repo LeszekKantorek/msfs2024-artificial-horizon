@@ -7,17 +7,20 @@
 ## Context
 
 [ADR 0004](0004-modular-pfd-presentation.md) establishes instrument composition and one frame scheduler.
-Large internal creation, resize, and update operations still combine several visual responsibilities.
-The next boundary follows concrete visual objects while preserving appearance, accessibility, telemetry, and lifecycle.
+The visual-object decision addresses these internal boundaries:
 
-An initial split placed pure calculations in separate files.
-The accepted correction places object-specific functions with their implementing visual objects.
-Pure behavior and direct tests do not require a separate file.
+* Large internal creation, resize, and update operations still combine several visual responsibilities.
+* The next boundary follows concrete visual objects while preserving appearance, accessibility, telemetry, and lifecycle.
+* An initial split placed pure calculations in separate files.
+* The accepted correction places object-specific functions with their implementing visual objects.
+* Pure behavior and direct tests do not require a separate file.
 
 ## Decision
 
 Use JavaScript factories, composition, and small object interfaces within the existing modular architecture.
 The [presentation reference](../pfd-presentation.md#internal-module-seams) owns detailed interfaces, calculation locations, and resource ownership.
+
+Visual ownership defines the interfaces:
 
 * Keep complete read-only frames at instrument entry points and select required fields inside each instrument.
 * Give internal objects concrete hosts, geometry, and readings, with private nodes and their own operations.
@@ -36,23 +39,29 @@ The three shared speed exports have concrete callers:
 | `speedState` | IAS and GS |
 | `tapeOffset` | Tape and references |
 
-`web/helpers.js` combines `clamp`, `svgElement`, and `setAttributes` as named exports.
-This JavaScript compromise keeps actual shared utilities small without import-time DOM access.
-Pure functions can import clamp while SVG creation remains dormant until called.
-The compromise requires preserving that import boundary.
+`web/helpers.js` combines shared utilities under one import boundary:
+
+* Export `clamp`, `svgElement`, and `setAttributes` by name.
+* Keep actual shared utilities small without import-time DOM access.
+* Let pure functions import clamp while SVG creation remains dormant until called.
+* Preserve that import boundary as a condition of this JavaScript compromise.
 
 ## Rationale and consequences
 
-Single responsibilities follow visual ownership, including each object's calculations and state transitions.
-Small interfaces hide child nodes and prevent parents from controlling unrelated paths or attributes.
-Extensions change the relevant object and its explicit composition site, consistent with OCP/SOLID.
-OCP does not require a plugin registry or closed composition list.
+Visual ownership keeps responsibilities and extensions local:
 
-KISS keeps named range and trend operations inside the tape instead of creating modules for primitive shapes.
-DRY shares existing rules with actual callers and computes common transforms once.
-Meaningful pure tests import the owning modules in Node without DOM.
-SVG identity, paint order, clipping, and accessible meanings remain compatibility constraints.
-Visual objects add no frame cache, timer, subscription, or scheduler.
+* Single responsibilities follow visual ownership, including each object's calculations and state transitions.
+* Small interfaces hide child nodes and prevent parents from controlling unrelated paths or attributes.
+* Extensions change the relevant object and its explicit composition site, consistent with OCP/SOLID.
+* OCP does not require a plugin registry or closed composition list.
+
+The decision limits abstraction and preserves compatibility:
+
+* KISS keeps named range and trend operations inside the tape instead of creating modules for primitive shapes.
+* DRY shares existing rules with actual callers and computes common transforms once.
+* Meaningful pure tests import the owning modules in Node without DOM.
+* SVG identity, paint order, clipping, and accessible meanings remain compatibility constraints.
+* Visual objects add no frame cache, timer, subscription, or scheduler.
 
 | Alternative | Decision |
 | --- | --- |
@@ -62,6 +71,11 @@ Visual objects add no frame cache, timer, subscription, or scheduler.
 | Base classes, a control framework, or a plugin registry | Defer because current composition requires none |
 | Generic IAS/altitude tape | Defer until altitude supplies concrete scale, sign, digit, selection, and alert rules |
 
-Decision source: approved [#56](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/56) continuation of [PR #55](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/pull/55), including the calculation-ownership correction of 2026-10-11.
-ADR 0004 remains the historical instrument-level decision.
-Acceptance of this decision does not establish final validation or real-device acceptance.
+The decision and its evidence have separate scopes:
+
+| Record | Scope |
+| --- | --- |
+| Approved [#56](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/56) continuation of [PR #55](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/pull/55) | Visual-object composition, including the calculation-ownership correction of 2026-10-11 |
+| ADR 0004 | Historical instrument-level decision |
+
+> Acceptance of this decision does not establish final validation or real-device acceptance.

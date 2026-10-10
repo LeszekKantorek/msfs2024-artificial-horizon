@@ -15,6 +15,7 @@ status: active
 * Preserve requirements, units, limits, uncertainty, and planned/implemented distinctions.
 * Before removing moved or shortened text, verify where each requirement, constraint, and caveat remains in the canonical documentation.
 * Apply `asd-ste100` when available without claiming certified dictionary compliance.
+* Review Markdown structure separately from STE lint results because sentence checks do not enforce grouped rules, procedures, or tables.
 * Link to the canonical source instead of repeating commands or rules.
 
 ## Impersonal project records
@@ -47,3 +48,5 @@ Source: writing requirement recorded in [issue #31](https://github.com/LeszekKan
 Source: accepted writing style, document responsibilities, and setup decisions, 2026-10-09.
 
 Source: accepted documentation correction, 2026-10-10, to introduce long bullet groups with short sentences that explain their scope.
+
+Source: documentation structure correction for #56 and PR #55, 2026-10-11, to check Markdown conventions independently of STE lint.
