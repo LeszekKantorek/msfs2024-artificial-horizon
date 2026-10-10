@@ -2,7 +2,7 @@ import { createHorizon } from './horizon.js';
 import { createFixedSymbols } from './fixed-symbols.js';
 import { createSlipSkid } from './slip-skid.js';
 import { createTurnRate } from './turn-rate.js';
-import { createAirspeed } from './airspeed.js';
+import { createAirspeed } from './airspeed/index.js';
 
 // Delegation never selects instrument fields or computes instrument geometry.
 export function composePanel(svg, instruments, status) {

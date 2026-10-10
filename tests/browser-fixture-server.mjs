@@ -18,7 +18,7 @@ input.on('line', line => {
 const types = { '/': 'text/html', '/styles.css': 'text/css', '/app.js': 'text/javascript',
   '/telemetry/client.js': 'text/javascript', '/horizon.js': 'text/javascript',
   '/telemetry/validation.js': 'text/javascript',
-  '/airspeed.js': 'text/javascript', '/airspeed/calculations.js': 'text/javascript',
+  '/airspeed/index.js': 'text/javascript', '/airspeed/ias.js': 'text/javascript', '/airspeed/ground-speed.js': 'text/javascript', '/airspeed/tape.js': 'text/javascript', '/airspeed/readout.js': 'text/javascript', '/airspeed/references.js': 'text/javascript', '/airspeed/calculations.js': 'text/javascript',
   '/helpers.js': 'text/javascript',
   '/layout.js': 'text/javascript', '/panel.js': 'text/javascript', '/frame-scheduler.js': 'text/javascript', '/fixed-symbols.js': 'text/javascript', '/slip-skid.js': 'text/javascript', '/turn-rate.js': 'text/javascript', '/status.js': 'text/javascript',
   '/layout.html': 'text/html', '/layout-fixture.js': 'text/javascript' };

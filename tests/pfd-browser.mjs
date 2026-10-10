@@ -42,12 +42,14 @@ function instrumentNodesUnchanged() {
     nodes.every((node, index) => node === window.initialInstrumentNodes[index]);
 }
 try {
-  for (const path of ['/helpers.js', '/telemetry/client.js']) {
+  for (const path of ['/helpers.js', '/telemetry/client.js', '/airspeed/index.js', '/airspeed/ias.js',
+    '/airspeed/ground-speed.js', '/airspeed/tape.js', '/airspeed/readout.js', '/airspeed/references.js',
+    '/airspeed/calculations.js']) {
     const response = await fetch(url + path);
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('content-type'), 'text/javascript; charset=utf-8');
   }
-  for (const path of ['/math.js', '/svg.js', '/telemetry-client.js']) {
+  for (const path of ['/math.js', '/svg.js', '/telemetry-client.js', '/airspeed.js']) {
     assert.equal((await fetch(url + path)).status, 404);
   }
   browser = await chromium.launch({ headless: true, channel: process.env.BROWSER_CHANNEL || undefined });
@@ -156,6 +158,29 @@ try {
   await page.goto(url);
   await page.locator('.instrument[data-available="true"]').waitFor();
   // Instrument nodes survive samples and orientation changes.
+  const airspeedOrder = await page.evaluate(() => {
+    const names = nodes => [...nodes].map(node => node.id || node.getAttribute('class'));
+    return {
+      defs: [...document.querySelector('defs').children].map(node => node.id).filter(id => id.startsWith('airspeed-')),
+      ias: names(document.querySelector('#airspeed').children),
+      tape: names(document.querySelector('.airspeed-tape').children),
+      references: [...document.querySelector('#airspeed-references').children].map(node => [node.tagName, node.dataset.reference]),
+      bottom: names(document.querySelector('#airspeed-references-bottom').children),
+      instruments: names(document.querySelector('#layer-airspeed').children),
+      warnings: [...document.querySelector('#layer-warnings').children].map(node => node.id)
+        .filter(id => id === 'airspeed-warning' || id === 'ground-speed-warning'),
+    };
+  });
+  assert.deepEqual(airspeedOrder, {
+    defs: ['airspeed-tape-clip', 'airspeed-digits-clip', 'airspeed-barber-pole'],
+    ias: ['instrument-background', 'airspeed-tape', 'airspeed-window', 'airspeed-digits', 'speed-unit', 'airspeed-references-bottom'],
+    tape: ['airspeed-scale', 'airspeed-ranges', 'airspeed-trend', 'airspeed-references'],
+    references: [['path', 'R'], ['path', 'X'], ['path', 'Y'], ['path', 'G'],
+      ['text', 'R'], ['text', 'X'], ['text', 'Y'], ['text', 'G']],
+    bottom: ['speed-unit', 'airspeed-reference-value', 'airspeed-reference-value', 'airspeed-reference-value', 'airspeed-reference-value'],
+    instruments: ['airspeed', 'ground-speed'],
+    warnings: ['airspeed-warning', 'ground-speed-warning'],
+  });
   await page.evaluate(() => { window.initialInstrumentNodes = [...document.querySelectorAll('svg *')]; });
   for (const viewport of [{ width: 320, height: 480 }, { width: 844, height: 320 }]) {
     await page.setViewportSize(viewport);

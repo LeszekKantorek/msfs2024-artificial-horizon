@@ -23,9 +23,34 @@ async fn embedded_page_assets_and_liveness_match_the_contract() {
             "createHorizon",
         ),
         (
-            "/airspeed.js",
+            "/airspeed/index.js",
             "text/javascript; charset=utf-8",
             "createAirspeed",
+        ),
+        (
+            "/airspeed/ias.js",
+            "text/javascript; charset=utf-8",
+            "createIas",
+        ),
+        (
+            "/airspeed/ground-speed.js",
+            "text/javascript; charset=utf-8",
+            "createGroundSpeed",
+        ),
+        (
+            "/airspeed/tape.js",
+            "text/javascript; charset=utf-8",
+            "createTape",
+        ),
+        (
+            "/airspeed/readout.js",
+            "text/javascript; charset=utf-8",
+            "createReadout",
+        ),
+        (
+            "/airspeed/references.js",
+            "text/javascript; charset=utf-8",
+            "createReferences",
         ),
         (
             "/airspeed/calculations.js",
@@ -110,6 +135,7 @@ async fn static_router_does_not_create_a_telemetry_source() {
         "/math.js",
         "/svg.js",
         "/telemetry-client.js",
+        "/airspeed.js",
     ] {
         let response = router()
             .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())

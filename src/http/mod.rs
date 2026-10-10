@@ -120,11 +120,56 @@ pub fn router() -> Router {
             }),
         )
         .route(
-            "/airspeed.js",
+            "/airspeed/index.js",
             get(|| async {
                 (
                     [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
-                    include_str!("../../web/airspeed.js"),
+                    include_str!("../../web/airspeed/index.js"),
+                )
+            }),
+        )
+        .route(
+            "/airspeed/ias.js",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
+                    include_str!("../../web/airspeed/ias.js"),
+                )
+            }),
+        )
+        .route(
+            "/airspeed/ground-speed.js",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
+                    include_str!("../../web/airspeed/ground-speed.js"),
+                )
+            }),
+        )
+        .route(
+            "/airspeed/tape.js",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
+                    include_str!("../../web/airspeed/tape.js"),
+                )
+            }),
+        )
+        .route(
+            "/airspeed/readout.js",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
+                    include_str!("../../web/airspeed/readout.js"),
+                )
+            }),
+        )
+        .route(
+            "/airspeed/references.js",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
+                    include_str!("../../web/airspeed/references.js"),
                 )
             }),
         )

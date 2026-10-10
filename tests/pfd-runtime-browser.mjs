@@ -65,10 +65,11 @@ try {
   assert.equal(await page.locator('#slip-skid').getAttribute('data-available'), 'true');
   assert.equal(await page.locator('#turn-rate').getAttribute('data-available'), 'true');
   assert.deepEqual([...loadedModules].sort(), [
-    '/airspeed.js', '/airspeed/calculations.js', '/app.js', '/fixed-symbols.js', '/frame-scheduler.js', '/helpers.js', '/horizon.js', '/layout.js',
+    '/airspeed/calculations.js', '/airspeed/ground-speed.js', '/airspeed/ias.js', '/airspeed/index.js',
+    '/airspeed/readout.js', '/airspeed/references.js', '/airspeed/tape.js', '/app.js', '/fixed-symbols.js', '/frame-scheduler.js', '/helpers.js', '/horizon.js', '/layout.js',
     '/panel.js', '/slip-skid.js', '/status.js', '/telemetry/client.js', '/telemetry/validation.js', '/turn-rate.js',
   ]);
-  for (const path of ['/math.js', '/svg.js', '/telemetry-client.js']) {
+  for (const path of ['/math.js', '/svg.js', '/telemetry-client.js', '/airspeed.js']) {
     assert.equal((await fetch(address + path)).status, 404);
   }
   const response = await fetch(`${address}/api/v1/events`, { signal: AbortSignal.timeout(2000) });
