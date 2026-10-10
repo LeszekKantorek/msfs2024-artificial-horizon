@@ -1,31 +1,31 @@
 # PFD presentation
 
 Instrument modules, panel composition, rendering lifecycle, and SVG layers.
-System context: [architecture](architecture.md). Decision: [ADR 0004](adr/0004-modular-pfd-presentation.md).
+System context: [architecture](architecture.md). Decisions: [instrument composition](adr/0004-modular-pfd-presentation.md) and [visual-object composition](adr/0005-visual-object-composition.md).
 Delivery order: [roadmap](roadmap.md). Validation: [testing](testing.md#modular-and-layered-pfd-acceptance).
 
 ## Current implementation and planned changes
 
 The panel implements attitude, slip/skid, and turn rate from #20, plus IAS and GS from #21 and ranges/trend from #22.
-#36 separates rendering from scheduling. Maintenance [#54](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/54) organizes internals within the accepted design:
+#36 separates rendering from scheduling. #37 implements layers and full-panel background coverage.
+Maintenance [#54](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/54) introduced internal calculation and validation seams.
+[#56](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/56) composes visual objects and places object-specific calculations with their implementing modules:
 
 | Module | Implemented responsibility |
 | --- | --- |
 | `app.js` | Assemble telemetry, status, panel, resize observation, and page lifecycle |
-| `telemetry-client.js` | Own EventSource, sequence handling, retries, expiry, status, and start/stop lifecycle |
+| `telemetry/client.js` | Own EventSource, sequence handling, retries, expiry, status, and start/stop lifecycle |
 | `telemetry/validation.js` | Pure snapshot validation and independent optional-value normalization |
 | `frame-scheduler.js` | Retain the latest frame, coalesce draws, check expiry, and cancel invalid work |
-| `panel.js` | Compose instruments and delegate resize, render, and invalidation |
-| `horizon.js` | Sky/ground, pitch scale, chevrons, and bank pointer, with private world/pitch/bank resize operations |
-| `fixed-symbols.js` | Fixed bank scale and aircraft references |
+| `panel.js` | Compose instruments, own the common attitude clip, and delegate resize/render/invalidation |
+| `horizon/` | Compose world, pitch scale with chevrons, and bank pointer. Calculate common attitude transforms |
+| `fixed-symbols/` | Compose fixed bank scale and aircraft reference with outline |
 | `slip-skid.js`, `turn-rate.js` | Local geometry, readings, and indication availability |
-| `airspeed.js` | Airspeed factory, private SVG creation/resize, state resets, and indication updates |
-| `airspeed/calculations.js` | Pure speed states, ranges, trend, digits, reference formatting/placement, and local geometry |
+| `airspeed/` | Compose IAS and independent GS; each visual object owns its SVG operations and calculations |
 | `status.js` | Accessible status, and global unavailability |
-| `svg.js` | Shared SVG creation and attribute helpers |
-| `math.js` | Shared mathematical clamp for layout, turn rate, IAS range bounds, and trend clipping |
+| `helpers.js` | Named clamp, SVG creation, and attribute updates without import-time DOM access |
 
-* #37 adds full-panel background coverage, explicit layers, and translucent instrument backgrounds. Final opacity acceptance requires real-phone evidence.
+* Final background opacity acceptance requires real-phone evidence.
 * Later feature issues add their instrument modules with real demo data.
 * Implementation does not establish real-device acceptance. GitHub issues own that evidence.
 
@@ -34,31 +34,34 @@ The panel implements attitude, slip/skid, and turn rate from #20, plus IAS and G
 ```text
 Panel
 |-- Horizon
-|   |-- Sky and ground
-|   `-- Pitch scale
-|-- Airspeed tape                         (#21, extended by #22)
-|   `-- Pure airspeed calculations        (internal)
-|-- Altitude tape and selected-altitude alerts (planned #23/#24)
-|-- Vertical speed                       (planned #25)
-|-- Heading and track                    (planned #26)
+|   |-- World (sky, ground, horizon line)
+|   |-- Pitch scale and chevrons
+|   `-- Bank pointer
+|-- Airspeed
+|   |-- IAS
+|   |   |-- Tape (scale, ranges, trend)
+|   |   |-- Readout (window, digits, unit, warning)
+|   |   `-- References (markers, leaders, fallback values)
+|   `-- Ground speed
 |-- Slip/skid
 |-- Turn rate
-|-- Fixed symbols
+|-- Fixed symbols (bank scale, aircraft and outline)
 `-- Status and data availability
 ```
 
-* Sky/ground and the pitch scale can remain internal parts of the horizon module.
 * A module does not require one file per graphic element.
 * Add future instruments in their feature issues, without empty implementations or production placeholder readings.
+* Altitude/selected-altitude alerts, vertical speed, and heading/track remain planned in #23–#26.
 
 | Owner | Responsibility |
 | --- | --- |
 | Application assembly | Connect telemetry, panel, resize observation, and page lifecycle |
 | Telemetry client | Validate messages, preserve source/transport status, and expire data without new samples |
 | Frame scheduler | Retain the latest sample, coalesce redraws, check expiry, and cancel pending work |
-| Panel | Compose instrument modules and assign their layer containers |
+| Panel | Compose instruments, assign layers, and resize their shared attitude clip |
 | Layout | Allocate CSS-pixel regions, including the background extent and central readable area |
-| Instrument | Own its SVG and pure calculations for scales, positions, labels, and local availability |
+| Instrument composition | Select frame fields and delegate concrete geometry/readings to visual objects |
+| Visual object | Own its nodes, geometry, calculations, and local availability |
 | Fixed symbols | Draw references that do not move with the world |
 | Status | Present source/transport status and global unavailability without owning the connection |
 
@@ -75,23 +78,92 @@ Keep data conversion and rendering responsibilities within these boundaries:
 
 ## Internal module seams
 
-The public airspeed module exports only `createAirspeed` and returns `resize(layout)` and `render(frame)`.
-Its closure retains the created SVG nodes and latest geometry. It retains no second telemetry frame or timer.
+The instrument factories retain their external interfaces:
 
-| Internal implementation | Responsibility |
+| Factory | Returned operations |
 | --- | --- |
-| Private SVG operations in `airspeed.js` | Create nodes once, apply resize geometry, reset states, and update tape, ranges, trend, references, digits, and GS |
-| `airspeed/calculations.js` | Pure speed classification, readings, ranges, six-second prediction, rolling digits, reference text/placement, tape conversion, and geometry |
-| Reference records | Associate each key, symbol, accessible name, leader, marker, and fallback label without parallel node arrays |
-| Named range rectangles | Associate each SVG rectangle with its range name |
-| Geometry groups | Separate `tape`, `readout`, and `groundSpeed`, with explicit panel coordinates for warnings |
+| `createAirspeed(instrument, layers)` in `airspeed/index.js` | `resize(layout)`, `render(frame)` |
+| `createHorizon(instrument, layers)` in `horizon/index.js` | `resize(layout)`, `render(frame)` |
+| `createFixedSymbols(instrument, symbols)` in `fixed-symbols/index.js` | `resize(layout)` only |
 
-Scale counts and positions derive from one 4 px/kt conversion, 2/10 kt steps, and the 999 kt maximum.
-The digit clip uses `DIGIT_HEIGHT`. Other dimensions retain their distinct meanings.
-Calculation tests import the internal module directly. The factory adds no calculation re-exports.
-The calculation module has no DOM, transport, or timer dependencies. It imports only mathematical `clamp`.
+Instrument entry points receive the complete read-only frame.
+Internal objects receive concrete SVG hosts, geometry, and the readings their operations require.
+Factories select existing owned nodes or create dynamic nodes once. Returned objects expose operations, without public node bags.
+Parents update their own shared hosts and clips, then invoke child operations.
+Visual closures retain nodes and initialized geometry, without a latest-frame cache or timer.
 
-The telemetry client exports only `createTelemetryClient`. Its internal validation module exposes these pure functions:
+### Airspeed objects
+
+`airspeed/index.js` composes IAS and GS and computes their shared GS panel position once per resize.
+It passes `layout.airspeed` and that position to IAS, and `{ x, y, width }` to GS.
+Its render selects IAS/profile/acceleration and GS from the complete frame.
+IAS derives its coherent readings and child geometry. GS derives its own state, rounding, and geometry.
+
+| Object / factory | Owned content | Resize input | Render input |
+| --- | --- | --- | --- |
+| IAS: `createIas(defs, parent, warnings)` | IAS root/background, shared tape host and tape clip, state/ARIA flags, child composition | IAS allocation and shared GS panel Y | IAS value, profile, acceleration |
+| Tape: `createTape(defs, tapeHost)` | Barber pattern, scale/ticks/labels, named range rectangles, trend | Tape geometry | IAS reading, profile, prediction |
+| Readout: `createReadout(defs, iasHost, warnings)` | Exclusive digit clip, window, columns, unit, IAS warning | Readout geometry and unit position | IAS reading and fallback-reference flag |
+| References: `createReferences(tapeHost, iasHost)` | Markers/leaders and bottom group/unit/values | Tape geometry | IAS reading, profile, fallback-reference flag |
+| GS: `createGroundSpeed(parent, warnings)` | Independent GS group/background/label/value/unit and warning | `{ x, y, width }` | GS value |
+
+IAS owns the clip shared by tape and reference markers. Readout owns its exclusive digit clip.
+References owns both tape markers/leaders and fallback values, keeping each reference in one record.
+Tape retains named `renderRanges` and `renderTrend` operations inside the same object.
+IAS, GS, profile, and acceleration availability remain independent.
+Every frame resets relevant warning, visibility, unit, fallback, and trend states, including missing data.
+
+### Horizon and fixed objects
+
+Horizon owns the common world/warning origins, background clip, and pitch clip.
+It calculates `attitudeTransforms` once per frame from attitude and initialized local pitch geometry.
+World, pitch scale, and bank pointer receive the same transforms object.
+
+| Object / factory | Owned content | Operations and concrete inputs |
+| --- | --- | --- |
+| World: `createWorld(rotationHost)` | World rotation/pitch hosts and sky/ground/horizon paths | `resize({ width, height, pitchScale })`, `render(transforms)` |
+| Pitch: `createPitchScale(scaleRotationHost, warningRotationHost)` | Scale/warning rotation/pitch hosts, ticks, labels, chevrons | `resize({ pitchScale, labelSize })`, `render(transforms)` |
+| Pointer: `createBankPointer(originHost)` | Exclusive pointer origin and path | `resize({ cx, cy, bankRadius })`, `render(transforms)` |
+| Fixed composition | Common fixed-symbol origin and layer mounting | `resize(layout)` |
+| Bank: `createBankScale(bankHost)` | Bank zero mark, ticks, and local constants | `resize(radius)` |
+| Aircraft: `createAircraft(fixedHost)` | Aircraft shape/outline and common path calculation | `resize(width)` |
+
+The panel owns `#attitude-clip`, shared by horizon's bank pointer and fixed symbols.
+`composePanel(svg, instruments, status)` retains its API and assigns existing `layout.attitude` before instrument resize.
+No instrument scale or path calculation moves into panel delegation.
+Fixed objects have no per-frame render operation. Aircraft calculates its common shape/outline path once per resize.
+
+### Pure calculations and helpers
+
+Object-specific calculations remain in the modules that implement their objects:
+
+| Module | Calculations |
+| --- | --- |
+| `horizon/index.js` | `attitudeTransforms` |
+| `airspeed/ias.js` | IAS readings, `speedIndications`, and child geometry |
+| `airspeed/ground-speed.js` | GS state, rounding, and geometry |
+| `airspeed/readout.js` | `rollingDigits` and local `DIGIT_HEIGHT` |
+| `airspeed/tape.js` | `speedRanges`, `rangeBounds`, and local tick constants |
+| `airspeed/references.js` | `referenceReadout` and `placeReferenceLabels` |
+
+Named pure exports support direct behavioral tests in Node without DOM.
+IAS child geometry and GS geometry stay inside their owning resize operations.
+Purity does not require a separate calculation file.
+`airspeed/helpers.js` exports only `MAX_SPEED`, `speedState`, and `tapeOffset` for actual shared rules.
+IAS/GS use `speedState`. Tape/references use `tapeOffset` and `MAX_SPEED`, which also governs speed classification.
+The shared conversion is 4 px/kt. Tape owns 2/10 kt steps, and readout owns its 22 px digit height.
+
+`helpers.js` exports `clamp(value, min, max)`, `svgElement(name, attributes, text)`, and `setAttributes(element, values)`.
+Clamp clips infinities and preserves `NaN` propagation, without normalizing invalid telemetry.
+DOM access occurs when SVG creation executes, never during module import.
+The [visual-object decision](adr/0005-visual-object-composition.md) records this mixed-helper compromise.
+
+### Telemetry operations
+
+`telemetry/client.js` exports only `createTelemetryClient`.
+Its private `readMessage`, `acceptSample`, `publishSample`, and `expireSample` operations preserve the connection lifecycle.
+The current-connection guard precedes parsing. Parsing catches message decoding failures without swallowing callback exceptions.
+The adjacent validation module exposes these pure functions:
 
 | Function | Result |
 | --- | --- |
@@ -105,9 +177,9 @@ For an accepted live sample, `onStatus` precedes `onAttitude`, which precedes `o
 Both sample callbacks receive separate attitude copies and the same deadline. `onAttitude` retains its attitude-only shape.
 The application attaches the current copied status when accepting the complete sample into the scheduler.
 
-`math.js` supplies only `clamp(value, min, max)`. It clips infinities and preserves `NaN` propagation without normalizing invalid telemetry.
-Slip/skid and turn rate retain separate availability and limit rules. Existing SVG helpers cover their related attribute writes.
-Fixed symbols, panel delegation, frame scheduling, application assembly, status, and SVG helpers retain their responsibilities.
+Expiry retains the original received time and deadline, including rescheduling an early timer.
+One client owns the subscription, retry timer, and age timer. One scheduler owns the retained frame and pending draw.
+Slip/skid, turn rate, layout, status, and scheduler remain small standalone modules.
 
 A general IAS/altitude tape remains deferred until actual altitude implementation.
 Compare concrete scale, sign, digit, selection, and alert rules before sharing an operation.
@@ -164,7 +236,7 @@ function renderPanel(frame) {
 | --- | --- | --- | --- |
 | Instruments | Create SVG nodes once | Update geometry attributes on existing nodes | Apply pure calculations to SVG using the complete frame |
 | Fixed symbols | Create references once | Update reference geometry | No per-frame render method |
-| Panel | Compose implemented modules | Delegate geometry updates | Delegate the same frame without scale formulas or path construction |
+| Panel | Compose implemented modules | Assign shared attitude clip, then delegate geometry updates | Delegate the same frame without scale formulas or path construction |
 
 * Adding a data dependency inside an instrument does not change its call in the panel.
 * Adding an instrument requires explicit composition in the panel.
@@ -214,13 +286,15 @@ Instrument backgrounds use these opacity rules:
 
 > This architecture does not prescribe a final numeric opacity value.
 
-| Element | Layer / origin | Clip |
+| Element | Layer / origin | Clip and owner |
 | --- | --- | --- |
-| Sky/ground | Horizon, layer 0, origin at attitude center | `layout.background` covers the full SVG |
-| Pitch scale | Horizon, layer 0, origin at attitude center | Pitch clip fixed relative to horizon origin |
-| Bank pointer | Horizon, layer 3, origin at attitude center | Attitude clip in panel coordinates |
-| Chevrons | Horizon, layer 4, origin at attitude center | Pitch clip fixed relative to horizon origin |
-| Fixed symbols | Layer 3, origin at attitude center | `layout.attitude` defines the central reference area |
+| Sky/ground | Horizon, layer 0, origin at attitude center | Horizon background clip uses `layout.background` across the full SVG |
+| Pitch scale | Horizon, layer 0, origin at attitude center | Horizon pitch clip fixed relative to horizon origin |
+| Bank pointer | Horizon, layer 3, origin at attitude center | Panel attitude clip in panel coordinates |
+| Chevrons | Horizon, layer 4, origin at attitude center | Horizon pitch clip fixed relative to horizon origin |
+| Fixed symbols | Layer 3, origin at attitude center | Same panel attitude clip uses `layout.attitude` |
+| IAS scale/ranges/trend/reference markers | Layer 1, IAS origin | IAS shared tape clip |
+| IAS rolling digits | Layer 1, IAS origin | Readout exclusive digit clip |
 | Slip/skid and turn rate | Own translated origins | Panel bounds |
 
 Layer ownership, clipping, and transforms follow these rules:
@@ -257,6 +331,11 @@ IDs, classes, node order, layer placement, clipping, and accessible meanings for
 SVG nodes retain their identity through samples, loss, recovery, and resize.
 Within the IAS tape, scale, ranges, trend, and references retain their paint order.
 Reference leaders precede markers so labels remain above their leaders.
+Definitions retain background, attitude, and pitch clips, followed by IAS tape clip, digit clip, and barber pattern.
+IAS paint order remains background, tape, window, digits, unit, and fallback references.
+The symbols layer retains bank pointer, fixed symbols, slip/skid, and turn rate.
+Fixed children retain bank scale, aircraft outline, and aircraft shape in that order.
+The warnings layer retains pitch warnings, IAS warning, GS warning, slip warning, and turn warning.
 
 | State written by JavaScript | CSS or presentation effect |
 | --- | --- |
@@ -266,7 +345,7 @@ Reference leaders precede markers so labels remain above their leaders.
 | IAS `data-overspeed`, `data-approaching` | Red pointer window and yellow predictive-warning digits |
 | Bottom references `data-visible` | Hide the development badge while fallback references occupy its area |
 
-Speed state updates run before conditional indication updates on every frame.
+IAS root state updates run before its child indication updates on every frame. GS updates its state independently.
 They reset warning colors, availability, local X/OVR marks, profile visibility, fallback flags, and unit visibility.
 Trend updates clear the path and prediction attribute when no prediction exists.
 Accessible speed labels retain current values or unavailable/overflow states. Reference labels retain exact configured values despite compact visible text.
@@ -274,7 +353,7 @@ Status announcements change only when their text changes, as defined in [unavail
 
 ## Airspeed and ground speed
 
-* `airspeed.js` creates SVG once and exposes `resize(layout)` and `render(frame)`.
+* `airspeed/index.js` composes objects once and exposes `resize(layout)` and `render(frame)`.
 * IAS and GS use layer 1. Their local failure and overflow marks use layer 4.
 * The existing airspeed rectangle defines tape geometry. The central attitude allocation remains unchanged.
 * Tape spacing is 4 CSS px/kt, with major labels every 10 kt and minor ticks every 2 kt.

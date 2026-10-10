@@ -112,9 +112,11 @@ These checks run in Windows CI.
 | Browser controller | Independent fixtures, one EventSource/retry timer, two-second retry, sequence reset, freshness, malformed messages, suspend/resume |
 | Telemetry validation | Direct internal-module tests, independent optional fields, old snapshots, copied profile/reference values, and unbounded finite speed input |
 | Sample callbacks | Current status before attitude before full sample; separate attitude copies, original attitude-only shape, and matching deadlines |
-| Horizon | Pose signs, nested transforms, angle bounds, local-to-panel geometry |
+| DOM-free imports | `tests/helpers.test.mjs` imports visual owners/helpers/telemetry without `document` and exercises meaningful pure behavior |
+| Speed calculations | `tests/airspeed.test.mjs` and `tests/airspeed-ranges.test.mjs` import readout, tape, references, IAS, and shared speed helpers directly |
+| Horizon | `tests/horizon.test.mjs` imports `attitudeTransforms` from `web/horizon/index.js`; independent pose signs and extreme/default transforms |
 | Frame scheduler | Latest-frame/layout coalescing, coherent resize and render, expiry before draw, cancellation on data loss, resize without renewing age, fresh identical values |
-| Panel/status | Complete read-only frame delegation, status without a sample, immediate stale obscuring, independent source/transport state and accessible announcements |
+| Panel/status | Complete read-only frame delegation, shared attitude clip through resize/expiry, status without a sample, stale obscuring, separate source/transport state and announcements |
 | Coordinated turn | Typed bounds, independent optional failures, old snapshots, shared sample age, +/-3 deg/s, resize without refreshing age |
 
 ### Desktop exploration
@@ -251,13 +253,13 @@ npm install --prefix .local/browser --no-save playwright
 $env:PLAYWRIGHT_MODULE = Join-Path $PWD '.local/browser/node_modules/playwright'
 $env:BROWSER_CHANNEL = 'msedge'
 node tests/pfd-browser.mjs
-node tests/pfd-runtime-browser.mjs
+node tests/pfd-runtime-browser.mjs target/x86_64-pc-windows-msvc/release/msfs2024-artificial-horizon.exe
 ```
 
 | Script | Input | Checks | Output |
 | --- | --- | --- | --- |
-| `pfd-browser.mjs` | Real web assets and isolated loopback fixture on an OS-assigned port | Viewports, poses, partial/old snapshots, stale states, resize, lifecycle, node identity, read-only frames, and clipping-aware background coverage | Screenshots under `.local/pfd-browser/`, including opacity candidates in both orientations against sky and ground |
-| `pfd-runtime-browser.mjs` | Compiled Windows binary from the required build | All 15 imported modules with response status/MIME, Rust demo SSE, coherent bank/turn state within 25 seconds, and restart recovery without reload | `.local/pfd-runtime-landscape.png` |
+| `pfd-browser.mjs` | Real web assets and isolated loopback fixture on an OS-assigned port | Viewports, poses, partial/old snapshots, stale states, resize, lifecycle, identity, frozen frames, hierarchy/paint order, shared clips, and background coverage | Screenshots under `.local/pfd-browser/`, including opacity candidates in both orientations against sky and ground |
+| `pfd-runtime-browser.mjs` | Fresh compiled release binary passed explicitly | All 24 imported modules with HTTP 200/JavaScript MIME, Rust demo SSE, coherent bank/turn state within 25 seconds, and restart recovery without reload | `.local/pfd-runtime-landscape.png` |
 
 The scripted geometry checks include these regression cases:
 
@@ -265,6 +267,24 @@ The scripted geometry checks include these regression cases:
 * Check pitch geometry immediately after `ResizeObserver`, before the next animation callback.
 * The 326x246 viewport provides a 320x240 usable panel with the normal 3-pixel margins.
 * Import changes require matching Rust embedded routes, fixture allowlist/MIME, HTTP asset tests, and the runtime expected-module set.
+* Check the shared panel attitude clip used by the bank pointer and fixed symbols, including resize while data is expired.
+* Check matching world/pitch/chevron transforms, fixed aircraft/outline paths, and original SVG hierarchy across poses and resize.
+
+The [architecture tree](architecture.md#intended-source-layout) lists the current 24 runtime modules.
+`tests/http.rs` checks their explicit embedded routes and JavaScript MIME.
+Both browser scripts check retired routes return 404, without compatibility facades:
+
+| Retired route | Current owner |
+| --- | --- |
+| `/math.js`, `/svg.js` | `/helpers.js` |
+| `/telemetry-client.js` | `/telemetry/client.js` |
+| `/airspeed.js` | `/airspeed/index.js` and its visual objects |
+| `/horizon.js`, `/fixed-symbols.js` | Their feature directories |
+| `/airspeed/calculations.js`, `/horizon/calculations.js` | Pure functions in the implementing visual objects |
+
+Pure functions remain testable from their visual modules in Node without DOM.
+Separate calculation files are not required for tests.
+Check observable boundaries, carry behavior, references, warnings, clipping, and recovery instead of duplicating private implementation formulas.
 
 > Review the screenshots: geometry checks alone do not establish readability.
 > Synthetic padding and page events do not establish actual cutout, browser-bar, or background behavior on phones.
@@ -481,6 +501,7 @@ Real-phone acceptance requires passing records from both devices. Desktop checks
 ## Modular and layered PFD acceptance
 
 * #36 implements modular rendering; #37 implements layer containers and full-panel background coverage.
+* #56 composes visual objects and keeps object-specific calculations with their implementations under [ADR 0005](adr/0005-visual-object-composition.md).
 * Opacity acceptance requires real-phone results.
 * Run the required automated checks above for each implementation PR.
 * Record real iOS Safari and Android Chrome results separately from desktop evidence.
@@ -499,6 +520,16 @@ Real-phone acceptance requires passing records from both devices. Desktop checks
 | #37: bounds | Permit intentional background overlap; reject content collisions; include painted strokes in bounds checks |
 | #37: status | No top bar or success labels; no DEMO label; unavailable reasons on an opaque full-panel cover; accessible state changes |
 | #37: invalidation | Obscure the expanded background on global loss; keep optional failures local |
+| #56: ownership | Same complete read-only frame at instrument entry points; concrete child inputs; immediate-parent shared hosts/clips; no visual frame cache/timer |
+| #56: composition | Preserve hierarchy, defs/paint order, SVG identity, ARIA, common attitude clip, and coherent once-per-frame transforms |
+| #56: recovery | Repeat IAS/profile loss during resize and both recovery orders, with independently painted GS and reset warnings/references |
+| #56: assets | Verify all 24 modules through explicit Rust/fixture registration and HTTP/MIME checks; all eight retired routes return 404 |
+
+For refactor validation, preserve baseline screenshots and record the tested commit, environment, complete logs, native exits, and raw comparisons.
+Explain every screenshot difference with quantitative and visual evidence.
+Historical stage results do not replace fresh checks on the final revision.
+Keep actual iOS Safari and Android Chrome acceptance unchecked until passing device evidence exists.
+Record remaining checks under the issue and PR `Additional verification`.
 
 Use the development fixture to assess layout and compare opacity on real phones:
 

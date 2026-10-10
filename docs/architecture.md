@@ -79,21 +79,32 @@ web/
   index.html
   styles.css
   app.js                    # telemetry, panel, resize, and page lifecycle assembly
-  telemetry-client.js       # EventSource, status, freshness, retries, and lifecycle
   telemetry/
+    client.js               # EventSource, status, freshness, retries, and lifecycle
     validation.js           # pure snapshot validation and optional-value normalization
   frame-scheduler.js        # latest-frame scheduling and expiry checks
-  panel.js                  # instrument composition and delegation
-  horizon.js                # local attitude geometry and transforms
-  fixed-symbols.js          # fixed bank scale and aircraft references
+  panel.js                  # composition, shared attitude clip, and delegation
+  horizon/
+    index.js                # composition, shared origins/clips, pure attitude transforms
+    world.js                # sky, ground, and horizon line
+    pitch-scale.js          # pitch ticks, labels, and extreme-pitch chevrons
+    bank-pointer.js         # moving bank pointer
+  fixed-symbols/
+    index.js                # fixed-symbol composition and common origin
+    bank-scale.js           # fixed bank scale
+    aircraft.js             # aircraft reference and outline
   slip-skid.js              # local slip/skid presentation
   turn-rate.js              # local turn-rate presentation
-  airspeed.js               # airspeed factory and private SVG operations
   airspeed/
-    calculations.js         # pure speed readings, scale, references, and geometry
+    index.js                # IAS/GS composition and shared GS vertical position
+    ias.js                  # IAS readings/geometry, composition, shared tape host/clip
+    ground-speed.js         # independent GS readout and warning
+    tape.js                 # scale, ranges, and trend
+    readout.js              # window, rolling digits, unit, and IAS warning
+    references.js           # tape markers/leaders and fallback values
+    helpers.js              # shared speed state, display limit, and tape offset
   status.js                 # accessible status and unavailability
-  svg.js                    # shared SVG helpers
-  math.js                   # shared clamp for implemented presentation callers
+  helpers.js                # clamp, SVG creation, and attribute updates
   layout.js                 # responsive instrument regions in CSS pixels
 tests/
   http_sse.rs
@@ -199,7 +210,7 @@ The browser validates those samples and presents them within the available panel
 
 * `telemetry/validation.js` validates the snapshot and normalizes optional values independently, including copied profile references.
 * `createTelemetryClient` owns the connection and publishes normalized samples with one expiry deadline.
-* `airspeed.js` owns private SVG operations. `airspeed/calculations.js` derives IAS/GS states, ranges, references, trend, rolling digits, and local geometry.
+* `airspeed/index.js` composes IAS and GS visual objects. Each object owns its readings, geometry, and pure calculations.
 * The existing `onAttitude` callback retains its attitude-only shape.
 * `pfdLayout` allocates instrument regions from available CSS width/height.
 * `frame-scheduler.js` schedules fresh frames; `panel.js` composes instrument modules.
@@ -211,8 +222,10 @@ The browser validates those samples and presents them within the available panel
 ### Panel boundary
 
 [Panel presentation](pfd-presentation.md) defines the module tree, frame lifecycle, and layer composition.
-[ADR 0004](adr/0004-modular-pfd-presentation.md) records the accepted design. #36 and #37 implement composition and layers.
-Maintenance [#54](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/54) organizes instrument internals within that design.
+[ADR 0004](adr/0004-modular-pfd-presentation.md) records instrument composition. #36 and #37 implement composition and layers.
+Maintenance [#54](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/54) separates pure calculations and validation.
+[#56](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/56) composes existing instruments from visual objects under [ADR 0005](adr/0005-visual-object-composition.md).
+The implemented application imports 24 JavaScript modules, all explicitly embedded and routed by the Rust HTTP module.
 
 | Module | Responsibility |
 | --- | --- |
@@ -220,15 +233,23 @@ Maintenance [#54](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/
 | Telemetry client | Own EventSource, sequence, retries, expiry, status, and lifecycle |
 | Telemetry validation | Pure envelope validation and independent optional-value normalization |
 | Frame scheduler | Coalesce latest samples, retain deadlines, cancel invalid work |
-| Panel | Compose instruments through resize, render, and invalidate operations |
-| Instruments | Own local geometry, SVG updates, and indication availability |
-| Airspeed calculations | Derive pure speed readings and instrument geometry behind the airspeed factory |
-| Shared math | Clamp layout, turn-rate, IAS range, and trend coordinates |
+| Panel | Compose instruments, own their shared attitude clip, and delegate resize/render/invalidate |
+| Instrument composition | Select required frame fields, own shared origins/hosts/clips, and invoke visual-object operations |
+| Visual objects | Own their nodes, local geometry, SVG updates, and indication availability |
+| Object-specific calculations | Remain in the implementing visual module, including geometry inside its resize operation |
+| Airspeed helpers | Share speed classification between IAS/GS and tape conversion between tape/references |
+| Horizon composition | Derive common attitude transforms once per horizon frame |
+| Helpers | Export clamp, SVG creation, and attribute updates without import-time DOM access |
 | Status presentation | Show source/transport status and obscure invalid data |
 
 * [Panel presentation](pfd-presentation.md#panel-interface-and-frame-lifecycle) owns implemented interfaces and frame rules.
 * [Internal seams](pfd-presentation.md#internal-module-seams) define calculation and validation responsibilities.
 * The internal frame is not a new wire format.
+* Instrument entry points receive the same complete read-only frame. Children receive concrete hosts, geometry, and required readings.
+* Shared hosts and clips belong to their immediate common parent. Children hide their node updates behind operations.
+* Pure calculations and validation import in Node without DOM. Visual objects retain no telemetry frame or timer.
+* Independent consumers justify shared calculation modules. Pure tests alone do not require separate files.
+* Asset registration remains explicit. Replaced root module routes return 404 without compatibility facades.
 * Future instrument modules arrive with their feature slices.
 
 ## Library telemetry interface
