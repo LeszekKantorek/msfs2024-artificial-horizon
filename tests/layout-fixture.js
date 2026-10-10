@@ -38,7 +38,7 @@ function render() {
   const { width, height } = svg.getBoundingClientRect();
   if (width <= 0 || height <= 0) return;
   const layout = pfdLayout(width, height);
-  badge.setAttribute('transform', `translate(6 ${height - 36})`);
+  badge.setAttribute('transform', `translate(6 ${height - 12})`);
   for (const group of Object.values(groups)) group.replaceChildren();
   const layer = groups.supplemental;
   for (const name of ['altitude', 'vsi', 'heading']) {

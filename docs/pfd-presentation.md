@@ -196,7 +196,7 @@ Keep indications readable across the full panel:
 
 * The panel has no top status bar or reserved header space.
 * The production panel has no source badge or DEMO announcement.
-* Only the development fixture uses a two-line `LAYOUT FIXTURE` badge, in the lower left above ground speed.
+* Only the development fixture uses a two-line `LAYOUT FIXTURE` badge, in the lower left below ground speed; it does not reserve production layout space.
 * Successful source and transport messages have no visible labels.
 * Source and transport states remain separate internally; a polite live region announces only changed text.
 * Waiting, reconnecting, stale, suspended, paused, disconnected, and invalid states show an opaque full-panel cover with the applicable reason.
@@ -212,6 +212,7 @@ Keep indications readable across the full panel:
 * The fixed opaque window clips three rolling digit columns. Leading zeros are blank.
 * Units roll from fractional IAS. Higher columns roll during the final knot before a decimal carry.
 * GS uses a separate labelled readout in kt, rounded to the nearest integer.
+* GS starts at the bottom edge of the IAS tape, with the same left edge and width and no gap.
 * Display values span 0–999 kt. Above 999 kt, show `OVR`. Unavailable values show `X`.
 * Neither missing nor overflowing IAS leaves a visible numeric tape. GS availability remains independent.
 * No independent animation, timer, interpolation, or client-generated flight values are used.

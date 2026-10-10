@@ -82,7 +82,7 @@ export function createAirspeed(instrument, layers) {
       setAttributes(digitRect, { x: 2, y: center - 11, width: width - 10, height: 22 });
       setAttributes(unit, { x: width / 2, y: height - 6 });
       setAttributes(iasWarning, { x: x + digitX, y: y + center });
-      const gsY = layout.height - 24;
+      const gsY = y + height;
       gs.setAttribute('transform', `translate(${x} ${gsY})`);
       setAttributes(gsBackground, { width, height: 22 });
       setAttributes(gsLabel, { x: 2 });

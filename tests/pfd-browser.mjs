@@ -77,10 +77,14 @@ try {
         const [,, w, h] = svg.getAttribute('viewBox').split(' ').map(Number);
         const ball = document.querySelector('.slip-ball').getBoundingClientRect();
         const triangle = document.querySelector('.bank-zero').getBBox();
+        const ias = document.querySelector('#airspeed .instrument-background').getBoundingClientRect();
+        const gs = document.querySelector('#ground-speed .instrument-background').getBoundingClientRect();
         const clipTop = Number(document.querySelector('#attitude-clip rect').getAttribute('y'));
         return { scrollWidth: root.scrollWidth, scrollHeight: root.scrollHeight,
           w, h, width: rect.width, height: rect.height, ballWidth: ball.width, ballHeight: ball.height,
-          bankZeroPaintedTop: triangle.y + document.querySelector('#fixed-symbols').transform.baseVal.consolidate().matrix.f - 1, clipTop };
+          bankZeroPaintedTop: triangle.y + document.querySelector('#fixed-symbols').transform.baseVal.consolidate().matrix.f - 1, clipTop,
+          speedGap: gs.top - ias.bottom, speedLeftDifference: gs.left - ias.left,
+          speedWidthDifference: gs.width - ias.width };
       });
       assert.equal(dimensions.scrollWidth, width);
       assert.equal(dimensions.scrollHeight, height);
@@ -88,6 +92,9 @@ try {
       assert.ok(Math.abs(dimensions.h - dimensions.height) < 0.01);
       assert.ok(Math.abs(dimensions.ballWidth - dimensions.ballHeight) < 0.01);
       assert.ok(dimensions.bankZeroPaintedTop >= dimensions.clipTop);
+      assert.ok(Math.abs(dimensions.speedGap) < 0.01, 'GS must touch the IAS tape in production and the fixture');
+      assert.ok(Math.abs(dimensions.speedLeftDifference) < 0.01);
+      assert.ok(Math.abs(dimensions.speedWidthDifference) < 0.01);
       if (path === '/layout.html') {
         const collisions = await page.evaluate(() => {
           const failures = [];
@@ -102,8 +109,8 @@ try {
           }
           // Background overlap is intentional; compare painted label content.
           const badge = document.querySelector('#layout-badge .fixture-label').getBoundingClientRect();
-          const gs = document.querySelector('.ground-speed-label').getBoundingClientRect();
-          if (badge.bottom >= gs.top) failures.push('Fixture badge collides with ground speed');
+          const gs = document.querySelector('#ground-speed').getBoundingClientRect();
+          if (badge.top <= gs.bottom) failures.push('Fixture badge must stay below ground speed');
           return failures;
         });
         assert.deepEqual(collisions, [], `${width}x${height} painted content`);
