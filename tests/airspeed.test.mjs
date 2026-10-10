@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { speedState, rollingDigits, tapeOffset } from '../web/airspeed.js';
+import { speedState, rollingDigits, tapeOffset } from '../web/airspeed/calculations.js';
 
 test('speed availability distinguishes invalid data, zero and display overflow without clamping', () => {
   for (const value of [undefined, null, false, '0', {}, [], NaN, Infinity, -Infinity, -0.01])

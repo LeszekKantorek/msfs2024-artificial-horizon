@@ -27,6 +27,11 @@ async fn embedded_page_assets_and_liveness_match_the_contract() {
             "text/javascript; charset=utf-8",
             "createAirspeed",
         ),
+        (
+            "/airspeed/calculations.js",
+            "text/javascript; charset=utf-8",
+            "deriveSpeedReadings",
+        ),
         ("/layout.js", "text/javascript; charset=utf-8", "pfdLayout"),
         ("/panel.js", "text/javascript; charset=utf-8", "createPanel"),
         (

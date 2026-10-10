@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { speedRanges, speedIndications, referenceReadout, referenceGeometry } from '../web/airspeed.js';
+import { speedRanges, speedIndications, referenceReadout, placeReferenceLabels } from '../web/airspeed/calculations.js';
 import { validateAirspeedProfile, optionalIndications } from '../web/telemetry-client.js';
 
 const profile = JSON.parse(readFileSync(new URL('./fixtures/airspeed-profile.json', import.meta.url)));
@@ -80,11 +80,11 @@ test('fallback references stay compact and colliding labels retain their exact s
   for (const [value, expected] of [[55, '55'], [55.123456789, '55.1'], [0.01, '<0.1'],
     [1e-300, '<0.1'], [998.99, '999'], [999, '999'], [1234.5678, 'OVR'], [Number.MAX_VALUE, 'OVR']])
     assert.equal(referenceReadout(value), expected);
-  const ordinary = referenceGeometry(75, [55, 65, 75, 90], 200, 1, 383);
+  const ordinary = placeReferenceLabels(75, [55, 65, 75, 90], { centerY: 200, clipTopY: 1, clipBottomY: 383 });
   assert.deepEqual(ordinary.map(p => p.labelPosition), [280, 240, 200, 140]);
   for (const values of [[60, 60, 60, 60], [60, 60.1, 60.2, 60.3]]) {
     for (const ias of [44, 60, 74]) {
-      const positions = referenceGeometry(ias, values, 77, 1, 137);
+      const positions = placeReferenceLabels(ias, values, { centerY: 77, clipTopY: 1, clipBottomY: 137 });
       const visible = positions.filter(p => p.visible).sort((a, b) => a.labelPosition - b.labelPosition);
       positions.forEach((p, i) => assert.equal(p.position, 77 + (ias - values[i]) * 4));
       assert.ok(visible.every(p => p.labelPosition >= 9 && p.labelPosition <= 129));
