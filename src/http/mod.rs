@@ -111,11 +111,11 @@ pub fn router() -> Router {
             }),
         )
         .route(
-            "/airspeed/calculations.js",
+            "/airspeed/helpers.js",
             get(|| async {
                 (
                     [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
-                    include_str!("../../web/airspeed/calculations.js"),
+                    include_str!("../../web/airspeed/helpers.js"),
                 )
             }),
         )
@@ -287,15 +287,6 @@ pub fn router() -> Router {
                 (
                     [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
                     include_str!("../../web/horizon/bank-pointer.js"),
-                )
-            }),
-        )
-        .route(
-            "/horizon/calculations.js",
-            get(|| async {
-                (
-                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
-                    include_str!("../../web/horizon/calculations.js"),
                 )
             }),
         )

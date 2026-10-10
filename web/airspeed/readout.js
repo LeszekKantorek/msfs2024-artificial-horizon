@@ -1,5 +1,19 @@
 import { svgElement, setAttributes } from '../helpers.js';
-import { DIGIT_HEIGHT, rollingDigits } from './calculations.js';
+const DIGIT_HEIGHT = 22;
+
+// Higher columns roll only during the final knot before a decimal carry.
+export function rollingDigits(value) {
+  const whole = Math.floor(value);
+  const fraction = value - whole;
+  return [100, 10, 1].map(place => {
+    const digit = Math.floor(whole / place) % 10;
+    const rolling = place === 1 || whole % place === place - 1;
+    const visible = place === 1 || whole >= place;
+    return { current: visible ? String(digit) : '',
+      next: whole + 1 >= place ? String((digit + 1) % 10) : '',
+      offset: rolling ? fraction : 0 };
+  });
+}
 
 export function createReadout(defs, parent, warnings) {
   const digitClip = svgElement('clipPath', { id: 'airspeed-digits-clip' });

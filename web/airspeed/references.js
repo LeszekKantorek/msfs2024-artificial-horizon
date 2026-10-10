@@ -1,5 +1,30 @@
 import { svgElement, setAttributes } from '../helpers.js';
-import { referenceReadout, placeReferenceLabels } from './calculations.js';
+import { MAX_SPEED, tapeOffset } from './helpers.js';
+
+// Compact fallback text preserves the configured value in the accessible label.
+export function referenceReadout(value) {
+  if (value > MAX_SPEED) return 'OVR';
+  if (value < 0.1) return '<0.1';
+  return String(Math.round(value * 10) / 10);
+}
+
+export function placeReferenceLabels(ias, values, tape) {
+  const { centerY: center, clipTopY: top, clipBottomY: bottom } = tape;
+  const positions = values.map(value => {
+    const position = center + tapeOffset(ias, value);
+    return { position, labelPosition: position, visible: position >= top + 8 && position <= bottom - 8 };
+  });
+  const visible = positions.filter(p => p.visible).sort((a, b) => a.position - b.position);
+  // Pack colliding labels, then move the packed set back inside the clip if needed.
+  for (let i = 1; i < visible.length; i++)
+    visible[i].labelPosition = Math.max(visible[i].position, visible[i - 1].labelPosition + 16);
+  if (visible.length && visible.at(-1).labelPosition > bottom - 8) {
+    visible.at(-1).labelPosition = bottom - 8;
+    for (let i = visible.length - 2; i >= 0; i--)
+      visible[i].labelPosition = Math.min(visible[i].labelPosition, visible[i + 1].labelPosition - 16);
+  }
+  return positions;
+}
 
 export function createReferences(tapeHost, bottomHost) {
   const group = svgElement('g', { id: 'airspeed-references' });

@@ -65,11 +65,11 @@ try {
   assert.equal(await page.locator('#slip-skid').getAttribute('data-available'), 'true');
   assert.equal(await page.locator('#turn-rate').getAttribute('data-available'), 'true');
   assert.deepEqual([...loadedModules].sort(), [
-    '/airspeed/calculations.js', '/airspeed/ground-speed.js', '/airspeed/ias.js', '/airspeed/index.js',
-    '/airspeed/readout.js', '/airspeed/references.js', '/airspeed/tape.js', '/app.js', '/fixed-symbols/aircraft.js', '/fixed-symbols/bank-scale.js', '/fixed-symbols/index.js', '/frame-scheduler.js', '/helpers.js', '/horizon/bank-pointer.js', '/horizon/calculations.js', '/horizon/index.js', '/horizon/pitch-scale.js', '/horizon/world.js', '/layout.js',
+    '/airspeed/ground-speed.js', '/airspeed/helpers.js', '/airspeed/ias.js', '/airspeed/index.js',
+    '/airspeed/readout.js', '/airspeed/references.js', '/airspeed/tape.js', '/app.js', '/fixed-symbols/aircraft.js', '/fixed-symbols/bank-scale.js', '/fixed-symbols/index.js', '/frame-scheduler.js', '/helpers.js', '/horizon/bank-pointer.js', '/horizon/index.js', '/horizon/pitch-scale.js', '/horizon/world.js', '/layout.js',
     '/panel.js', '/slip-skid.js', '/status.js', '/telemetry/client.js', '/telemetry/validation.js', '/turn-rate.js',
   ]);
-  for (const path of ['/math.js', '/svg.js', '/telemetry-client.js', '/airspeed.js', '/horizon.js', '/fixed-symbols.js']) {
+  for (const path of ['/math.js', '/svg.js', '/telemetry-client.js', '/airspeed.js', '/horizon.js', '/fixed-symbols.js', '/airspeed/calculations.js', '/horizon/calculations.js']) {
     assert.equal((await fetch(address + path)).status, 404);
   }
   const response = await fetch(`${address}/api/v1/events`, { signal: AbortSignal.timeout(2000) });

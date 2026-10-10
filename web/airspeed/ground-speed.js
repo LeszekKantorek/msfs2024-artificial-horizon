@@ -1,4 +1,5 @@
 import { svgElement, setAttributes } from '../helpers.js';
+import { speedState } from './helpers.js';
 
 export function createGroundSpeed(parent, warnings) {
   const group = svgElement('g', { id: 'ground-speed', 'data-state': 'unavailable' });
@@ -10,15 +11,18 @@ export function createGroundSpeed(parent, warnings) {
   const warning = svgElement('text', { id: 'ground-speed-warning', class: 'speed-warning' }, 'X');
   warnings.append(warning);
   return {
-    resize(geometry) {
-      group.setAttribute('transform', `translate(${geometry.originX} ${geometry.originY})`);
-      setAttributes(background, { width: geometry.width, height: 22 });
+    resize({ x, y, width }) {
+      const valueX = width / 2 + 1;
+      group.setAttribute('transform', `translate(${x} ${y})`);
+      setAttributes(background, { width, height: 22 });
       setAttributes(label, { x: 2 });
-      setAttributes(value, { x: geometry.valueX });
-      setAttributes(unit, { x: geometry.width - 2 });
-      setAttributes(warning, { x: geometry.warningPanelX, y: geometry.warningPanelY });
+      setAttributes(value, { x: valueX });
+      setAttributes(unit, { x: width - 2 });
+      setAttributes(warning, { x: x + valueX, y: y + 11 });
     },
-    render(reading) {
+    render(speed) {
+      const state = speedState(speed);
+      const reading = { state, roundedValue: state === 'available' ? Math.round(speed) : null };
       group.dataset.state = reading.state;
       group.setAttribute('aria-label', `Ground speed ${reading.state === 'available' ? `${reading.roundedValue} knots` : reading.state}`);
       warning.style.display = reading.state === 'available' ? 'none' : '';

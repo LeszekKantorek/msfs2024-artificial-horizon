@@ -1,6 +1,24 @@
 import { clamp, svgElement, setAttributes } from '../helpers.js';
-import { MINOR_TICK_STEP_KT, MAJOR_TICK_STEP_KT, MAX_SPEED, tapeOffset,
-  speedRanges, rangeBounds } from './calculations.js';
+import { MAX_SPEED, tapeOffset } from './helpers.js';
+
+const MINOR_TICK_STEP_KT = 2;
+const MAJOR_TICK_STEP_KT = 10;
+
+export function speedRanges(profile) {
+  return [
+    { name: 'low', min: 0, max: profile.vs0_kt },
+    { name: 'flaps', min: profile.vs0_kt, max: profile.vfe_kt },
+    { name: 'normal', min: profile.vs1_kt, max: profile.vno_kt },
+    { name: 'caution', min: profile.vno_kt, max: profile.vne_kt },
+    { name: 'overspeed', min: profile.vne_kt, max: Infinity },
+  ];
+}
+
+export function rangeBounds(iasKt, range, tape) {
+  const top = clamp(tape.centerY + tapeOffset(iasKt, range.max), tape.clipTopY, tape.clipBottomY);
+  const bottom = clamp(tape.centerY + tapeOffset(iasKt, range.min), tape.clipTopY, tape.clipBottomY);
+  return { y: top, height: Math.max(0, bottom - top) };
+}
 
 export function createTape(defs, parent) {
   const barberPole = svgElement('pattern', { id: 'airspeed-barber-pole', patternUnits: 'userSpaceOnUse', patternTransform: 'rotate(30)', width: 6, height: 12 });

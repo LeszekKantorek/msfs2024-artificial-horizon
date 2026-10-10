@@ -1,8 +1,15 @@
 import { setAttributes } from '../helpers.js';
-import { attitudeTransforms } from './calculations.js';
 import { createWorld } from './world.js';
 import { createPitchScale } from './pitch-scale.js';
 import { createBankPointer } from './bank-pointer.js';
+
+// Positive pitch lowers the world. Positive bank rotates it counterclockwise.
+export function attitudeTransforms({ pitch_deg, roll_deg }, layout = { cx: 0, cy: 0, pitchScale: 4 }) {
+  return {
+    rotation: `rotate(${-roll_deg} ${layout.cx} ${layout.cy})`,
+    translation: `translate(0 ${layout.pitchScale * pitch_deg})`,
+  };
+}
 
 export function createHorizon(instrument, layers) {
   const get = selector => instrument.querySelector(selector);

@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { speedRanges, speedIndications, referenceReadout, placeReferenceLabels, rangeBounds } from '../web/airspeed/calculations.js';
+import { speedRanges, rangeBounds } from '../web/airspeed/tape.js';
+import { speedIndications } from '../web/airspeed/ias.js';
+import { referenceReadout, placeReferenceLabels } from '../web/airspeed/references.js';
 import { normalizeAirspeedProfile, normalizeOptionalIndications } from '../web/telemetry/validation.js';
 
 const profile = JSON.parse(readFileSync(new URL('./fixtures/airspeed-profile.json', import.meta.url)));

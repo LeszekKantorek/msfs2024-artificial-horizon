@@ -38,11 +38,6 @@ async fn embedded_page_assets_and_liveness_match_the_contract() {
             "createBankPointer",
         ),
         (
-            "/horizon/calculations.js",
-            "text/javascript; charset=utf-8",
-            "attitudeTransforms",
-        ),
-        (
             "/airspeed/index.js",
             "text/javascript; charset=utf-8",
             "createAirspeed",
@@ -73,9 +68,9 @@ async fn embedded_page_assets_and_liveness_match_the_contract() {
             "createReferences",
         ),
         (
-            "/airspeed/calculations.js",
+            "/airspeed/helpers.js",
             "text/javascript; charset=utf-8",
-            "deriveSpeedReadings",
+            "speedState",
         ),
         ("/layout.js", "text/javascript; charset=utf-8", "pfdLayout"),
         ("/helpers.js", "text/javascript; charset=utf-8", "clamp"),
@@ -168,6 +163,8 @@ async fn static_router_does_not_create_a_telemetry_source() {
         "/airspeed.js",
         "/horizon.js",
         "/fixed-symbols.js",
+        "/airspeed/calculations.js",
+        "/horizon/calculations.js",
     ] {
         let response = router()
             .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())

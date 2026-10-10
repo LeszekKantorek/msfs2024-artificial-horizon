@@ -1,4 +1,3 @@
-import { calculateAirspeedGeometry, deriveSpeedReadings } from './calculations.js';
 import { createIas } from './ias.js';
 import { createGroundSpeed } from './ground-speed.js';
 
@@ -7,14 +6,13 @@ export function createAirspeed(instrument, layers) {
   const groundSpeed = createGroundSpeed(layers.airspeed, layers.warnings);
   return {
     resize(layout) {
-      const geometry = calculateAirspeedGeometry(layout);
-      ias.resize(geometry.tape, geometry.readout);
-      groundSpeed.resize(geometry.groundSpeed);
+      const groundSpeedPanelY = layout.height - 24;
+      ias.resize(layout.airspeed, groundSpeedPanelY);
+      groundSpeed.resize({ x: layout.airspeed.x, width: layout.airspeed.width, y: groundSpeedPanelY });
     },
     render(frame) {
-      const { groundSpeed: gs, ...iasReadings } = deriveSpeedReadings(frame);
-      ias.render(iasReadings);
-      groundSpeed.render(gs);
+      ias.render(frame.ias_kt, frame.airspeed_profile, frame.ias_acceleration_ktps);
+      groundSpeed.render(frame.gs_kt);
     },
   };
 }
