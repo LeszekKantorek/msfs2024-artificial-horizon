@@ -5,7 +5,7 @@ import { spawn } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
 import { once } from 'node:events';
 import { readFileSync } from 'node:fs';
-import { checkAirspeedIndications } from './airspeed-browser-checks.mjs';
+import { checkAirspeedIndications, checkAirspeedAvailabilityTransitions } from './airspeed-browser-checks.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
@@ -125,6 +125,8 @@ try {
       }
       await page.screenshot({ path: `.local/pfd-browser/${path === '/' ? 'g1' : 'layout'}-${width}x${height}.png` });
     }
+    await checkAirspeedAvailabilityTransitions(page, setFixture,
+      JSON.parse(readFileSync(new URL('./fixtures/airspeed-profile.json', import.meta.url))));
   }
   // Candidate opacity is a development experiment; mobile evidence selects the final value.
   for (const opacity of [0.50, 0.65, 0.80]) {
