@@ -1,45 +1,8 @@
+import { isValidSnapshot, normalizeOptionalIndications } from './telemetry/validation.js';
+
 // One read-only subscription, with independent source and transport status.
-const STATES = new Set(['waiting', 'live', 'paused', 'stale', 'disconnected', 'invalid']);
 const STALE_AFTER = 1000;
 const RETRY_AFTER = 2000;
-
-export function validateSnapshot(value) {
-  if (!value || value.schema_version !== 1 ||
-      !Number.isSafeInteger(value.sequence) || value.sequence < 0 ||
-      !['demo', 'simconnect'].includes(value.source) || !STATES.has(value.state) ||
-      !(value.sample_age_ms === null ||
-        (Number.isInteger(value.sample_age_ms) && value.sample_age_ms >= 0))) return false;
-  if (value.state !== 'live') return value.attitude === null;
-  const a = value.attitude;
-  return value.sample_age_ms !== null && a !== null && typeof a === 'object' &&
-    Number.isFinite(a.pitch_deg) && a.pitch_deg >= -90 && a.pitch_deg <= 90 &&
-    Number.isFinite(a.roll_deg) && a.roll_deg >= -180 && a.roll_deg < 180;
-}
-
-// Optional instruments fail independently of the envelope and attitude.
-export function validateAirspeedProfile(value) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const keys = ['vs0_kt', 'vs1_kt', 'vfe_kt', 'vno_kt', 'vne_kt'];
-  const thresholds = keys.map(key => value[key]);
-  if (thresholds.some((v, i) => !Number.isFinite(v) || v <= 0 || (i > 0 && v <= thresholds[i - 1]))) return null;
-  const references = value.references;
-  if (!references || typeof references !== 'object' || Array.isArray(references)) return null;
-  const refKeys = ['vr_kt', 'vx_kt', 'vy_kt', 'vg_kt'];
-  if (refKeys.some(key => !Number.isFinite(references[key]) || references[key] <= 0 || references[key] > value.vne_kt)) return null;
-  return { ...Object.fromEntries(keys.map(key => [key, value[key]])),
-    references: Object.fromEntries(refKeys.map(key => [key, references[key]])) };
-}
-
-export function optionalIndications(value) {
-  return {
-    slip_skid: Number.isFinite(value.slip_skid) && Math.abs(value.slip_skid) <= 1 ? value.slip_skid : null,
-    turn_rate_dps: Number.isFinite(value.turn_rate_dps) ? value.turn_rate_dps : null,
-    ias_kt: Number.isFinite(value.ias_kt) && value.ias_kt >= 0 ? value.ias_kt : null,
-    gs_kt: Number.isFinite(value.gs_kt) && value.gs_kt >= 0 ? value.gs_kt : null,
-    airspeed_profile: validateAirspeedProfile(value.airspeed_profile),
-    ias_acceleration_ktps: Number.isFinite(value.ias_acceleration_ktps) ? value.ias_acceleration_ktps : null,
-  };
-}
 
 export function createTelemetryClient({
   onStatus, onAttitude = () => {}, onSample = () => {}, makeEventSource = url => new EventSource(url),
@@ -80,7 +43,7 @@ export function createTelemetryClient({
       if (connection !== current) return;
       let snapshot;
       try { snapshot = JSON.parse(event.data); } catch { snapshot = null; }
-      if (!validateSnapshot(snapshot)) {
+      if (!isValidSnapshot(snapshot)) {
         clearAge();
         report({ state: 'invalid' });
         return;
@@ -94,7 +57,7 @@ export function createTelemetryClient({
         state: snapshot.state === 'live' && remaining <= 0 ? 'stale' : snapshot.state });
       if (status.state === 'live') {
         onAttitude({ attitude: { ...snapshot.attitude }, expiresAt: receivedAt + remaining });
-        onSample({ attitude: { ...snapshot.attitude }, ...optionalIndications(snapshot),
+        onSample({ attitude: { ...snapshot.attitude }, ...normalizeOptionalIndications(snapshot),
           expiresAt: receivedAt + remaining });
         const expire = () => {
           const left = remaining - (now() - receivedAt);

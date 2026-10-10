@@ -62,6 +62,11 @@ async fn embedded_page_assets_and_liveness_match_the_contract() {
         ),
         ("/svg.js", "text/javascript; charset=utf-8", "svgElement"),
         (
+            "/telemetry/validation.js",
+            "text/javascript; charset=utf-8",
+            "normalizeOptionalIndications",
+        ),
+        (
             "/telemetry-client.js",
             "text/javascript; charset=utf-8",
             "EventSource",

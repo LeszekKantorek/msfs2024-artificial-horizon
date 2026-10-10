@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createTelemetryClient, validateSnapshot, optionalIndications } from '../web/telemetry-client.js';
+import { createTelemetryClient } from '../web/telemetry-client.js';
+import { isValidSnapshot, normalizeOptionalIndications } from '../web/telemetry/validation.js';
 import { readFileSync } from 'node:fs';
 
 const live = (sequence = 1, age = 0) => ({ schema_version: 1, sequence,
@@ -16,9 +17,10 @@ function harness() {
   const statuses = [];
   const attitudes = [];
   const samples = [];
-  const client = createTelemetryClient({ onStatus: value => statuses.push(value),
-    onAttitude: value => attitudes.push(value),
-    onSample: value => samples.push(value),
+  const events = [];
+  const client = createTelemetryClient({ onStatus: value => { statuses.push(value); events.push({ type: 'status', value }); },
+    onAttitude: value => { attitudes.push(value); events.push({ type: 'attitude', value, status: statuses.at(-1) }); },
+    onSample: value => { samples.push(value); events.push({ type: 'sample', value, status: statuses.at(-1) }); },
     now: () => time,
     schedule: (fn, ms) => { const id = ++nextId; timers.set(id, { fn, at: time + ms }); return id; },
     cancel: id => timers.delete(id),
@@ -31,7 +33,7 @@ function harness() {
       return connection;
     },
   });
-  return { client, connections, statuses, timers, attitudes, samples,
+  return { client, connections, statuses, timers, attitudes, samples, events,
     get status() { return statuses.at(-1); },
     advance(ms) {
       time += ms;
@@ -46,7 +48,7 @@ function harness() {
 
 test('validator accepts independent fixtures and rejects malformed/unsupported telemetry', () => {
   const fixtures = JSON.parse(readFileSync(new URL('./fixtures/snapshots.json', import.meta.url)));
-  for (const fixture of fixtures) assert.ok(validateSnapshot(fixture));
+  for (const fixture of fixtures) assert.ok(isValidSnapshot(fixture));
   for (const invalid of [null, {}, { ...live(), schema_version: 2 },
     { ...live(), state: 'unknown' }, { ...live(), source: 'other' },
     { ...live(), sequence: 1.5 }, { ...live(), sequence: Number.MAX_SAFE_INTEGER + 1 },
@@ -54,22 +56,22 @@ test('validator accepts independent fixtures and rejects malformed/unsupported t
     { ...live(), attitude: { pitch_deg: 91, roll_deg: 0 } },
     { ...live(), attitude: { pitch_deg: 0, roll_deg: 180 } },
     { ...live(), attitude: { pitch_deg: NaN, roll_deg: 0 } },
-    { ...live(), state: 'paused' }]) assert.ok(!validateSnapshot(invalid));
+    { ...live(), state: 'paused' }]) assert.ok(!isValidSnapshot(invalid));
 });
 
 test('optional values fail independently and never coerce missing values to zero', () => {
-  assert.deepEqual(optionalIndications(live()), { slip_skid: null, turn_rate_dps: null, ias_kt: null, gs_kt: null, airspeed_profile: null, ias_acceleration_ktps: null, airspeed_profile: null, ias_acceleration_ktps: null });
+  assert.deepEqual(normalizeOptionalIndications(live()), { slip_skid: null, turn_rate_dps: null, ias_kt: null, gs_kt: null, airspeed_profile: null, ias_acceleration_ktps: null, airspeed_profile: null, ias_acceleration_ktps: null });
   for (const invalid of [undefined, null, false, '0', {}, [], NaN, Infinity, -Infinity]) {
-    assert.deepEqual(optionalIndications({ slip_skid: invalid, turn_rate_dps: 3 }),
+    assert.deepEqual(normalizeOptionalIndications({ slip_skid: invalid, turn_rate_dps: 3 }),
       { slip_skid: null, turn_rate_dps: 3, ias_kt: null, gs_kt: null, airspeed_profile: null, ias_acceleration_ktps: null, airspeed_profile: null, ias_acceleration_ktps: null });
-    assert.deepEqual(optionalIndications({ slip_skid: -1, turn_rate_dps: invalid }),
+    assert.deepEqual(normalizeOptionalIndications({ slip_skid: -1, turn_rate_dps: invalid }),
       { slip_skid: -1, turn_rate_dps: null, ias_kt: null, gs_kt: null, airspeed_profile: null, ias_acceleration_ktps: null, airspeed_profile: null, ias_acceleration_ktps: null });
   }
-  for (const invalid of [-1.001, 1.001]) assert.equal(optionalIndications({ slip_skid: invalid }).slip_skid, null);
+  for (const invalid of [-1.001, 1.001]) assert.equal(normalizeOptionalIndications({ slip_skid: invalid }).slip_skid, null);
   for (const row of JSON.parse(readFileSync(new URL('./fixtures/pfd-samples.json', import.meta.url)))) {
-    assert.deepEqual(optionalIndications(row), { slip_skid: row.slip_skid, turn_rate_dps: row.turn_rate_dps, ias_kt: null, gs_kt: null, airspeed_profile: null, ias_acceleration_ktps: null, airspeed_profile: null, ias_acceleration_ktps: null });
+    assert.deepEqual(normalizeOptionalIndications(row), { slip_skid: row.slip_skid, turn_rate_dps: row.turn_rate_dps, ias_kt: null, gs_kt: null, airspeed_profile: null, ias_acceleration_ktps: null, airspeed_profile: null, ias_acceleration_ktps: null });
   }
-  assert.equal(optionalIndications({ turn_rate_dps: 12 }).turn_rate_dps, 12);
+  assert.equal(normalizeOptionalIndications({ turn_rate_dps: 12 }).turn_rate_dps, 12);
 });
 
 test('new sample callback supports old snapshots and clears previously valid optional data', () => {
@@ -86,6 +88,29 @@ test('new sample callback supports old snapshots and clears previously valid opt
   connection.send({ ...live(4), schema_version: 2, turn_rate_dps: 3 });
   assert.equal(h.status.state, 'invalid');
   assert.equal(h.samples.length, 3);
+});
+
+test('accepted samples report current status before attitude and sample callbacks with separate copies', () => {
+  const h = harness(); h.client.start();
+  const connection = h.connections[0]; connection.onopen();
+  connection.send(live(1));
+  h.events.length = 0;
+  h.advance(125);
+  connection.send({ ...live(2, 400), source: 'simconnect', ias_kt: 1000,
+    airspeed_profile: profile, ias_acceleration_ktps: -5 });
+  const status = { transport: 'connected', source: 'simconnect', state: 'live' };
+  assert.deepEqual(h.events.map(event => event.type), ['status', 'attitude', 'sample']);
+  assert.deepEqual(h.events[0].value, status);
+  assert.deepEqual(h.events[1].status, status);
+  assert.deepEqual(h.events[2].status, status);
+  assert.deepEqual(h.events[1].value, { attitude: { pitch_deg: 5, roll_deg: 15 }, expiresAt: 725 });
+  assert.deepEqual(h.events[2].value, { attitude: { pitch_deg: 5, roll_deg: 15 },
+    slip_skid: null, turn_rate_dps: null, ias_kt: 1000, gs_kt: null,
+    airspeed_profile: profile, ias_acceleration_ktps: -5, expiresAt: 725 });
+  assert.notStrictEqual(h.events[1].value.attitude, h.events[2].value.attitude);
+  h.events[1].value.attitude.pitch_deg = 90;
+  assert.deepEqual(h.events[2].value.attitude, { pitch_deg: 5, roll_deg: 15 });
+  h.client.stop();
 });
 
 test('one subscription retries after two seconds and accepts sequence restart', () => {
@@ -111,14 +136,14 @@ test('one subscription retries after two seconds and accepts sequence restart', 
 
 test('IAS and GS validate independently, preserve overflow values and clear omitted readings', () => {
   for (const invalid of [undefined, null, false, '0', {}, [], NaN, Infinity, -Infinity, -1]) {
-    assert.equal(optionalIndications({ ias_kt: invalid, gs_kt: 137 }).ias_kt, null);
-    assert.equal(optionalIndications({ ias_kt: invalid, gs_kt: 137 }).gs_kt, 137);
-    assert.equal(optionalIndications({ ias_kt: 123, gs_kt: invalid }).ias_kt, 123);
-    assert.equal(optionalIndications({ ias_kt: 123, gs_kt: invalid }).gs_kt, null);
+    assert.equal(normalizeOptionalIndications({ ias_kt: invalid, gs_kt: 137 }).ias_kt, null);
+    assert.equal(normalizeOptionalIndications({ ias_kt: invalid, gs_kt: 137 }).gs_kt, 137);
+    assert.equal(normalizeOptionalIndications({ ias_kt: 123, gs_kt: invalid }).ias_kt, 123);
+    assert.equal(normalizeOptionalIndications({ ias_kt: 123, gs_kt: invalid }).gs_kt, null);
   }
   for (const speed of [0, 99.5, 999, 1000]) {
-    assert.equal(optionalIndications({ ias_kt: speed, gs_kt: speed }).ias_kt, speed);
-    assert.equal(optionalIndications({ ias_kt: speed, gs_kt: speed }).gs_kt, speed);
+    assert.equal(normalizeOptionalIndications({ ias_kt: speed, gs_kt: speed }).ias_kt, speed);
+    assert.equal(normalizeOptionalIndications({ ias_kt: speed, gs_kt: speed }).gs_kt, speed);
   }
   const h = harness(); h.client.start();
   const connection = h.connections[0]; connection.onopen();
