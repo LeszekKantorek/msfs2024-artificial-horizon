@@ -5,8 +5,8 @@ then open its address in a browser on the same network.
 
 **Windows x64** · **Read-only browser display** · **No phone app or account**
 
-> **Try the demo today.** The current executable displays synthetic pitch and bank.
-> MSFS2024 integration and the expanded PFD demo are planned. This is not a real-flight instrument.
+> **Try the demo today.** The current executable displays synthetic attitude, slip/skid, and turn rate.
+> Airspeed, altitude, vertical speed, heading/track, and MSFS2024 integration remain planned. This is not a real-flight instrument.
 
 [Start the demo](#start-the-demo) · [Use your phone](#use-your-phone) · [Development](CONTRIBUTING.md)
 

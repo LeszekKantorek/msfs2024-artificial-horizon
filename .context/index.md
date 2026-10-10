@@ -3,6 +3,7 @@
 | [Repository rules](repository-instructions.md) | Implementing or validating a change, or preparing a PR. |
 | [Iterative development](iterative-development.md) | Choosing module boundaries for agreed delivery steps. |
 | [Windows validation](windows-validation.md) | Diagnosing SAC blocking, error 4551, or Rust E0463. |
+| [Local validation environment](local-validation-environment.md) | Diagnosing error 5 when replacing a running executable, browser launch failures, or local fixture reachability. |
 | [Browser presentation](browser-presentation.md) | Changing rendering or preparing phone acceptance. |
 | [PFD layout validation](pfd-layout-validation.md) | Changing PFD geometry or adding the next instrument. |
 | [PFD demo scope](pfd-demo-scope.md) | Planning or implementing PFD demo features. |

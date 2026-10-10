@@ -115,6 +115,15 @@ See [agent maintenance](.context/agent-maintenance.md) for reinstalls and integr
 > Use `Closes #N` only when evidence satisfies all acceptance criteria.
 > Keep unverified hardware acceptance open or create an explicit linked follow-up.
 
+### Promote agreed findings
+
+1. Review a finding after its originating task closes and agree on the follow-up scope.
+2. Create the agreed issue with an outcome, acceptance criteria, and a link to the originating task.
+3. Apply the requested labels and set the actual parent/sub-issue relationship when a parent is required.
+4. Verify the saved labels and the parent shown in GitHub's Relationships section.
+
+> A reference in the description or an epic task list does not establish a parent/sub-issue relationship.
+
 ## Project guidance
 
 * Check [repository rules and acceptance criteria](.context/repository-instructions.md#repository-rules) before submitting a change.
