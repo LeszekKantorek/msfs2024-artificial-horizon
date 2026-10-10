@@ -204,6 +204,7 @@ See [ADR 0001](adr/0001-rust-http-sse.md) and the [wire contract](telemetry-cont
 | Status presentation | Show source/transport status and obscure invalid data |
 
 The target interface is `panel.resize(layout)`, `panel.render(frame)`, and `panel.invalidate(reason)`.
+Each instrument receives the same complete frame as read-only input and selects its own fields.
 The internal frame is not a new wire format.
 The current implementation described above remains in place until #36.
 Future instrument modules arrive with their feature slices.

@@ -16,6 +16,8 @@ The target composition places side instruments over a shared attitude background
 * Keep plain JavaScript, SVG, SSE, and latest-sample rendering without interpolation.
 * Compose the panel from instrument modules with local coordinates and pure geometry calculations.
 * Use `panel.resize(layout)`, `panel.render(frame)`, and `panel.invalidate(reason)` as the presentation interface.
+* Pass the same complete, read-only frame to every instrument render method.
+* Let each instrument select its data without changing panel delegation when its data needs expand.
 * Keep frame scheduling independent of attitude mathematics.
 * Preserve one sample deadline through layout changes and cancel pending drawing on invalidation.
 * Put the opaque attitude background behind translucent tape backgrounds.

@@ -80,18 +80,22 @@ The final composition has this shape; only implemented instruments participate a
 
 ```js
 function renderPanel(frame) {
-  horizon.render(frame.attitude);
-  airspeedTape.render(frame.airspeed);
-  altitudeTape.render(frame.altitude);
-  verticalSpeed.render(frame.verticalSpeed);
-  direction.render(frame.direction);
-  slipSkid.render(frame.slipSkid);
-  turnRate.render(frame.turnRate);
-  status.render(frame.status);
+  horizon.render(frame);
+  airspeedTape.render(frame);
+  altitudeTape.render(frame);
+  verticalSpeed.render(frame);
+  direction.render(frame);
+  slipSkid.render(frame);
+  turnRate.render(frame);
+  status.render(frame);
 }
 ```
 
 Fixed symbols are built at initialization and positioned during resize.
+Every render method receives the same complete frame as read-only input.
+Each module selects its required fields without mutating the frame or another module.
+Adding a data dependency inside an instrument does not change its call in the panel coordinator.
+Adding a new instrument still requires explicit composition in the panel.
 The panel coordinator contains no scale formulas or SVG path construction.
 Instrument calculations are pure; applying their results to SVG changes DOM state.
 
