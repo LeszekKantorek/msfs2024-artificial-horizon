@@ -1,6 +1,7 @@
 | Entry | Use when |
 | --- | --- |
 | [Repository rules](repository-instructions.md) | Implementing or validating a change, or preparing a PR. |
+| [Skill selection](skill-selection.md) | Choosing skills for planning, development, testing, review, verification, writing, security, or major architecture decisions. |
 | [Iterative development](iterative-development.md) | Choosing module boundaries for agreed delivery steps. |
 | [Windows validation](windows-validation.md) | Diagnosing SAC blocking, error 4551, or Rust E0463. |
 | [Local validation environment](local-validation-environment.md) | Diagnosing error 5 when replacing a running executable, browser launch failures, or local fixture reachability. |
