@@ -40,8 +40,10 @@ flowchart LR
 * Give a dedicated worker ownership of blocking SimConnect callbacks.
 * Send normalized state from that worker to the async runtime.
 * Support Rust builds, runtime, and CI on Windows x64 MSVC only.
-* Gate SDK dependencies behind the opt-in `simconnect` feature.
-* Keep default Windows tests and demo builds independent of the SDK.
+* Reject other targets at the library root; provider modules do not need separate platform gates.
+* Expose no Cargo features from this package; select the source through runtime configuration.
+* Keep SimConnect integration inside the Windows provider module.
+* Keep Windows tests and demo builds independent of the SDK.
 
 ### State distribution
 
@@ -114,6 +116,7 @@ Providers must not depend on application configuration.
 
 Run the application with the [README procedure](../README.md#start-the-demo).
 Future executables use their own binary names.
+Cargo names the current executable `msfs2024-artificial-horizon`; its entry point remains `src/bin/main.rs`.
 
 * Embed web assets in the release binary.
 * Use a relative, same-origin SSE URL.

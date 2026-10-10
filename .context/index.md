@@ -5,6 +5,7 @@
 | [Skill selection](skill-selection.md) | Choosing skills for planning, development, testing, review, verification, writing, security, or major architecture decisions. |
 | [Iterative development](iterative-development.md) | Choosing module boundaries for agreed delivery steps. |
 | [Windows validation](windows-validation.md) | Diagnosing SAC blocking, error 4551, or Rust E0463. |
+| [Build validation](build-validation.md) | Changing Cargo features, build commands, CI caching, or the build status name. |
 | [Local validation environment](local-validation-environment.md) | Diagnosing error 5 when replacing a running executable, browser launch failures, or local fixture reachability. |
 | [Browser presentation](browser-presentation.md) | Changing rendering or preparing phone acceptance. |
 | [PFD layout validation](pfd-layout-validation.md) | Changing PFD geometry or adding the next instrument. |

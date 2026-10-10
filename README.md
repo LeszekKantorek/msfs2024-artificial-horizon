@@ -32,7 +32,7 @@ cd msfs2024-artificial-horizon
 
 ```powershell
 rustup default stable
-cargo run --locked --bin main
+cargo run --locked --bin msfs2024-artificial-horizon
 ```
 
 Cargo builds the application before starting it.
@@ -50,7 +50,7 @@ Press `Ctrl+C` in PowerShell to stop the server gracefully.
 3. Start the server with LAN access:
 
    ```powershell
-   cargo run --locked --bin main -- --source demo --listen-address 0.0.0.0 --port 8080
+   cargo run --locked --bin msfs2024-artificial-horizon -- --source demo --listen-address 0.0.0.0 --port 8080
    ```
 
 4. Allow inbound TCP port `8080` in Windows Defender Firewall for the Private profile and local subnet.
@@ -96,9 +96,9 @@ See the [project brief](docs/project-brief.md) for coverage and exclusions, and 
 ## Options and troubleshooting
 
 ```powershell
-cargo run --locked --bin main -- --help
-cargo run --locked --bin main -- --version
-cargo run --locked --bin main -- --source demo --listen-address 127.0.0.1 --port 9000
+cargo run --locked --bin msfs2024-artificial-horizon -- --help
+cargo run --locked --bin msfs2024-artificial-horizon -- --version
+cargo run --locked --bin msfs2024-artificial-horizon -- --source demo --listen-address 127.0.0.1 --port 9000
 ```
 
 | Situation | Action / constraint |
@@ -106,7 +106,7 @@ cargo run --locked --bin main -- --source demo --listen-address 127.0.0.1 --port
 | Port occupied | Select another `--port` from `1` to `65535` |
 | Invalid address | Use an IPv4/IPv6 address, not a hostname, multicast address, or IPv4 broadcast address |
 | Phone cannot connect | Check the private network, PC address, port, VPN interface, and firewall scope |
-| SimConnect selection fails | `--source simconnect` is not implemented, even with `--features simconnect`. Demo never replaces it automatically |
+| SimConnect selection fails | `--source simconnect` is not implemented. Demo never replaces it automatically |
 
 ## Project guide
 

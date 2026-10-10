@@ -89,11 +89,11 @@ See [agent maintenance](.context/agent-maintenance.md) for reinstalls and integr
 
 ### 4. Check the environment
 
-1. Run the [automated checks](docs/testing.md#automated-checks), including the build and current SDK-free SimConnect checks.
+1. Run the [automated checks](docs/testing.md#automated-checks), including the build and tests.
 2. Start the demo:
 
    ```powershell
-   cargo run --locked --bin main
+   cargo run --locked --bin msfs2024-artificial-horizon
    ```
 
 3. Open [http://127.0.0.1:8080](http://127.0.0.1:8080).

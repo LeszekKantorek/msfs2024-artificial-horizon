@@ -5,9 +5,9 @@ edition = "2024"
 license = "MIT"
 description = "A Windows HTTP companion for MSFS2024 attitude telemetry"
 
-[features]
-default = []
-simconnect = []
+[[bin]]
+name = "msfs2024-artificial-horizon"
+path = "src/bin/main.rs"
 
 [dependencies]
 axum = "0.8"
