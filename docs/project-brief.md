@@ -86,7 +86,7 @@ Use original graphics. Do not embed PDF screenshots or copy the bezel.
 | Landscape | Use extra width and reduced height. Retain familiar instrument positions |
 | Instrument sizing | Size digits, symbols, tapes, and horizon independently. Preserve undistorted symbols and readable central attitude |
 | Page chrome | Minimize bezel, headings, and margins |
-| Status | Show a small DEMO badge in the lower left for demo data. Show unavailable reasons on the full-panel cover; retain accessible source/transport state |
+| Status | Do not show a source badge. Show unavailable reasons on the full-panel cover; retain accessible source/transport state |
 | Viewport | Account for safe areas, cutouts, and browser bars. Fit without scrolling from 320 CSS px in both orientations |
 | Minimum usable height | 240 CSS px after browser bars and safe areas, including short landscape |
 | First slice (#20) | Assess all intended elements with development-only layout fixtures before later additions reduce horizon space |

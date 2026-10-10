@@ -38,7 +38,8 @@ try {
       if (path === '/layout.html') await page.locator('#layout-fixtures[data-items]').waitFor({ state: 'attached' });
       // Flush ResizeObserver geometry and the scheduled sample before capturing paint.
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-      assert.equal(await page.locator('header, #data-status, #transport').count(), 0);
+      assert.equal(await page.locator('header, #data-status, #transport, #source-badge').count(), 0);
+      assert.equal(await page.locator('#telemetry-status').textContent().then(text => text.includes('DEMO')), false);
       assert.deepEqual(await page.locator('svg > g').evaluateAll(nodes => nodes.map(n => Number(n.dataset.layer))), [0, 1, 2, 3, 4]);
       const dimensions = await page.evaluate(() => {
         const root = document.documentElement;
@@ -71,7 +72,7 @@ try {
               failures.push(`${name} readout crosses its painted window`);
           }
           // Background overlap is intentional; compare painted label content.
-          const badge = document.querySelector('#source-badge .source').getBoundingClientRect();
+          const badge = document.querySelector('#layout-badge .fixture-label').getBoundingClientRect();
           const gs = [...document.querySelectorAll('#fixture-supplemental text')].find(n => n.textContent.startsWith('GS')).getBoundingClientRect();
           if (badge.bottom >= gs.top) failures.push('Fixture badge collides with ground speed');
           return failures;

@@ -20,7 +20,9 @@ Sources: accepted decisions for [#4](https://github.com/LeszekKantorek/msfs2024-
 Procedures: [testing](../docs/testing.md). Freshness/status: [contract](../docs/telemetry-contract.md).
 
 * For #37 and later, fill the entire panel with sky/ground and retain a separate central pitch clip.
-* Keep the top status bar removed; show small DEMO in the lower left only for demo data and unavailable reasons on the full-panel cover.
+* Keep the top status bar removed; show no DEMO label and keep unavailable reasons on the full-panel cover.
 * Use the development fixture to compare background opacity candidates; `0.65` is provisional until real-phone acceptance selects a value.
 
 Source: approved #37 implementation plan and explicit full-panel/background and source-badge choices, 2026-10-10; implementation details belong in [panel presentation](../docs/pfd-presentation.md).
+
+Source: explicit #37 correction removing all DEMO labels and announcements, 2026-10-10; the development-only LAYOUT FIXTURE marker remains.

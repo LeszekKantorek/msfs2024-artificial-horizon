@@ -34,7 +34,7 @@ test('all render methods receive the same complete read-only frame', () => {
 
 function statusHarness() {
   const elements = new Map();
-  for (const selector of ['.source', '#source-badge', '#telemetry-status', '.instrument', '#unavailable']) {
+  for (const selector of ['#telemetry-status', '.instrument', '#unavailable']) {
     let text = '', writes = 0;
     elements.set(selector, { dataset: { available: 'false' }, style: {},
       querySelector() { return { setAttribute() {} }; }, setAttribute() {},
@@ -59,7 +59,6 @@ test('status without a sample stays obscured and unchanged labels are not announ
   assert.equal(h.get('#telemetry-status').writes, writes);
   h.view.update({ ...liveStatus, transport: 'reconnecting', state: 'waiting' });
   h.view.invalidate('reconnecting');
-  assert.equal(h.get('.source').textContent, 'DEMO');
   assert.equal(h.get('.instrument').dataset.state, 'waiting');
   assert.equal(h.get('#unavailable').textContent, 'Connection lost. Retrying…');
   assert.equal(h.get('.instrument').dataset.available, 'false');
@@ -102,18 +101,11 @@ test('local slip and turn geometry matches independent direction and range expec
   }
 });
 
-test('DEMO is shown only for demo data and fixture labels are preserved', () => {
+test('source identity stays internal without a DEMO announcement', () => {
   const h = statusHarness();
-  h.view.update(liveStatus);
-  assert.equal(h.get('.source').textContent, 'DEMO');
-  assert.equal(h.get('#source-badge').style.display, '');
-  h.view.update({ ...liveStatus, source: 'simconnect' });
-  assert.equal(h.get('.source').textContent, '');
-  assert.equal(h.get('#source-badge').style.display, 'none');
-  h.get('.instrument').dataset.fixture = 'true';
-  h.get('.source').textContent = 'LAYOUT FIXTURE';
   h.view.render({ status: liveStatus });
-  assert.equal(h.get('.source').textContent, 'LAYOUT FIXTURE');
+  assert.equal(h.get('.instrument').dataset.source, 'demo');
+  assert.equal(h.get('#telemetry-status').textContent.includes('DEMO'), false);
 });
 
 test('repeated unavailable snapshots announce the same status only once', () => {

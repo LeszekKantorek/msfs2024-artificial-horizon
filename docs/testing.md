@@ -110,7 +110,7 @@ These checks run in Windows CI.
 ### Desktop exploration
 
 1. Start demo and open the page.
-2. Check a small `DEMO` badge in the lower left, full-panel sky/ground, and no top status bar.
+2. Check full-panel sky/ground, no source badge, and no top status bar.
 3. Stop the server.
 4. Check connection loss and retry indication.
 5. Restart on the same port without reloading the page.
@@ -147,7 +147,7 @@ Label desktop findings and automated tests separately.
 
 * [ ] Start demo on the PC's private LAN address with the [README command](../README.md#use-your-phone).
 * [ ] Open the printed URL on each phone.
-* [ ] Check that DEMO remains visible in the lower left for demo data, with no top status bar.
+* [ ] Check that no DEMO label or top status bar appears.
 * [ ] Observe the full current cycle and indications listed in [Demo behavior](#demo-behavior).
 * [ ] Check that nose up lowers the horizon and right bank rotates it counterclockwise.
 * [ ] Rotate between portrait and landscape.
@@ -361,7 +361,7 @@ Record real iOS Safari and Android Chrome results separately from desktop eviden
 | #37: layers | Fill the entire panel with sky/ground; clip pitch markings centrally; preserve fixed references and layer order |
 | #37: readability | Check digits, ticks, and value windows against sky and ground; record the selected background opacity |
 | #37: bounds | Permit intentional background overlap; reject content collisions; include painted strokes in bounds checks |
-| #37: status | No top bar or success labels; DEMO only for demo data; unavailable reasons on an opaque full-panel cover; accessible state changes |
+| #37: status | No top bar or success labels; no DEMO label; unavailable reasons on an opaque full-panel cover; accessible state changes |
 | #37: invalidation | Obscure the expanded background on global loss; keep optional failures local |
 
 1. Use the full 18-element development fixture without shipping unfinished readings. Compare `/layout.html?opacity=0.50`, `0.65`, and `0.80` on both sky and ground; record the chosen value and device evidence in #37.

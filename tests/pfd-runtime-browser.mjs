@@ -60,7 +60,8 @@ try {
   });
   await page.goto(address);
   await page.locator('.instrument[data-available="true"]').waitFor();
-  assert.equal(await page.locator('.source').textContent(), 'DEMO');
+  assert.equal(await page.locator('#source-badge, .source').count(), 0);
+  assert.equal(await page.locator('#telemetry-status').textContent().then(text => text.includes('DEMO')), false);
   assert.equal(await page.locator('#slip-skid').getAttribute('data-available'), 'true');
   assert.equal(await page.locator('#turn-rate').getAttribute('data-available'), 'true');
   assert.deepEqual([...loadedModules].sort(), [

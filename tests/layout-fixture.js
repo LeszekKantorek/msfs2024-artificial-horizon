@@ -6,11 +6,6 @@ const svg = document.querySelector('svg');
 const instrument = document.querySelector('.instrument');
 instrument.dataset.fixture = 'true';
 document.querySelector('#instrument-title').textContent = 'Development layout fixture';
-const badge = document.querySelector('#source-badge');
-badge.style.display = '';
-const label = badge.querySelector('.source');
-label.replaceChildren(svgElement('tspan', { x: 3, y: -7 }, 'LAYOUT'),
-  svgElement('tspan', { x: 3, y: 5 }, 'FIXTURE'));
 const candidate = Number(new URLSearchParams(location.search).get('opacity'));
 if ([0.50, 0.65, 0.80].includes(candidate)) {
   instrument.style.setProperty('--instrument-background-opacity', candidate);
@@ -20,6 +15,12 @@ const layers = {
   altitude: document.querySelector('#layer-altitude'),
   symbols: document.querySelector('#layer-symbols'),
 };
+const badge = svgElement('g', { id: 'layout-badge' });
+badge.append(svgElement('rect', { x: 0, y: -16, width: 46, height: 30, class: 'instrument-background' }));
+const label = svgElement('text', { class: 'fixture-label' });
+label.append(svgElement('tspan', { x: 3, y: -7 }, 'LAYOUT'), svgElement('tspan', { x: 3, y: 5 }, 'FIXTURE'));
+badge.append(label);
+layers.symbols.append(badge);
 const marker = svgElement('g', { id: 'layout-fixtures' });
 layers.symbols.append(marker);
 const groups = {};
@@ -37,6 +38,7 @@ function render() {
   const { width, height } = svg.getBoundingClientRect();
   if (width <= 0 || height <= 0) return;
   const layout = pfdLayout(width, height);
+  badge.setAttribute('transform', `translate(6 ${height - 36})`);
   for (const group of Object.values(groups)) group.replaceChildren();
   const layer = groups.supplemental;
   for (const name of ['airspeed', 'altitude', 'vsi', 'heading']) {

@@ -40,7 +40,7 @@ Cargo builds the application before starting it.
 ### 3. Open the display
 
 Open [http://127.0.0.1:8080](http://127.0.0.1:8080) on the PC.
-Expect a small `DEMO` badge in the lower left and a moving attitude display across the panel.
+Expect a moving attitude display across the panel, without a source badge.
 Press `Ctrl+C` in PowerShell to stop the server gracefully.
 
 ## Use your phone
@@ -76,7 +76,7 @@ Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
 | --- | --- |
 | Instrument | Responsive attitude, 2.5-degree pitch ladder, extreme-pitch chevrons, bank scale, fixed aircraft reference, slip/skid and turn rate |
 | Motion | Repeating 18-second cycle: seven original attitudes, then +70/-50-degree pitch. Centered and both-direction slip/skid; +/-3 deg/s turns |
-| Data | Synthetic samples at 20 Hz, marked by a small DEMO badge in the lower left |
+| Data | Synthetic samples at 20 Hz, without a source badge |
 | Presentation | Sky/ground across the full panel, centrally clipped pitch scale, no top status bar |
 | Connection loss | Opaque full-panel cover with the reason and automatic retry after two seconds |
 | Stale or unavailable data | Explicit status, no fabricated level-flight reading |

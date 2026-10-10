@@ -25,7 +25,7 @@ main {
   display: grid;
   grid-template-rows: minmax(0, 1fr);
 }
-.source { fill: var(--warning); font-size: 11px; font-weight: 700; dominant-baseline: middle; }
+.fixture-label { fill: var(--warning); font-size: 11px; font-weight: 700; dominant-baseline: middle; }
 .instrument-background { fill: var(--surface); fill-opacity: var(--instrument-background-opacity); }
 .sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;

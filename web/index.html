@@ -13,7 +13,7 @@
       <section class="instrument" data-available="false" aria-label="Primary flight display">
         <svg role="img" aria-labelledby="instrument-title instrument-description">
           <title id="instrument-title">Aircraft attitude and coordinated turn</title>
-          <desc id="instrument-description">Moving sky, ground and pitch ladder around a fixed aircraft reference. Bank scale, slip/skid ball and turn rate vector. Demo data is marked in the panel. Unavailable data obscures the entire panel.</desc>
+          <desc id="instrument-description">Moving sky, ground and pitch ladder around a fixed aircraft reference. Bank scale, slip/skid ball and turn rate vector. Unavailable data obscures the entire panel.</desc>
           <defs>
             <clipPath id="background-clip"><rect/></clipPath>
             <clipPath id="attitude-clip"><rect/></clipPath>
@@ -43,7 +43,6 @@
             <g id="turn-rate" class="indication" data-available="false" aria-label="Turn rate unavailable">
               <rect class="instrument-background"/><path class="turn-scale"/><path class="turn-vector"/><path class="turn-overflow"/>
             </g>
-            <g id="source-badge"><rect class="instrument-background"/><text class="source"/></g>
           </g>
           <g id="layer-warnings" data-layer="4">
             <g id="warning-origin"><g clip-path="url(#pitch-clip)">

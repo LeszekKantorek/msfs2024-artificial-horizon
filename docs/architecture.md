@@ -87,7 +87,7 @@ web/
   fixed-symbols.js          # fixed bank scale and aircraft references
   slip-skid.js               # local slip/skid presentation
   turn-rate.js               # local turn-rate presentation
-  status.js                  # source badge, accessible status, and unavailability
+  status.js                  # accessible status, and unavailability
   svg.js                     # shared SVG helpers
   layout.js                  # responsive instrument regions in CSS pixels
 tests/

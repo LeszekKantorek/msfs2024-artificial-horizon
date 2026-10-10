@@ -171,7 +171,7 @@ stale         = estimated age >= 1,000 ms
 * Keep transport states (`connecting` / `reconnecting`) separate from source state.
 * Obscure or flag attitude after errors, timeout, background/resume, or unavailable source.
 * Never replace unavailable attitude with a credible level horizon.
-* Keep DEMO visible in demo mode, including while source state is `live`.
+* Keep source identity in telemetry and internal client state; show no DEMO label or announcement.
 
 ## Further PFD extension boundary
 

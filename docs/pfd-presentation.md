@@ -17,7 +17,7 @@ The panel implements attitude, slip/skid, and turn rate from #20.
 | `horizon.js` | Sky/ground, pitch scale, chevrons, and moving bank pointer |
 | `fixed-symbols.js` | Fixed bank scale and aircraft references |
 | `slip-skid.js`, `turn-rate.js` | Local geometry, readings, and indication availability |
-| `status.js` | Source badge, accessible status, and global unavailability |
+| `status.js` | Accessible status, and global unavailability |
 | `svg.js` | Shared SVG creation and attribute helpers |
 
 * #37 adds full-panel background coverage, explicit layers, and translucent instrument backgrounds. Final opacity acceptance requires real-phone evidence.
@@ -163,11 +163,11 @@ Check painted extents, including stroke clearance, rather than only allocated re
 Use the full 18-element development fixture before later instruments reduce usable space.
 Preserve responsive sizing, safe areas, and the minima in the [brief](project-brief.md#mobile-presentation).
 
-## Source badge and unavailable status
+## Unavailable status
 
 The panel has no top status bar or reserved header space.
-A small `DEMO` badge appears in the lower left above the future ground-speed indication only for the demo source.
-The development fixture uses a two-line `LAYOUT FIXTURE` badge at the same position.
+The production panel has no source badge or DEMO announcement.
+The development fixture alone uses a two-line `LAYOUT FIXTURE` badge in the lower left above future ground speed.
 Successful source and transport messages have no visible labels.
 Source and transport remain separate internal states and are announced through a polite live region only when their text changes.
 Waiting, reconnecting, stale, suspended, paused, disconnected, and invalid states obscure the entire panel with the applicable reason.
