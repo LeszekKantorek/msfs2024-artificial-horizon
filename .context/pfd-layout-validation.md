@@ -8,6 +8,7 @@ status: active
 * The accepted minimum is 320 CSS px wide and 240 CSS px of usable height after browser bars and safe areas.
 * Preserve the sample deadline during resize and redraw through the latest-sample frame scheduler.
 * Test painted symbol extents, including stroke clearance, rather than only instrument-region bounds.
+* For #37 and later, distinguish overlapping background coverage from non-overlapping indication content using the [module plan](pfd-module-plan.md).
 * Keep desktop Edge evidence separate from required real iOS Safari and Android Chrome acceptance.
 
 Sources: accepted #20 implementation plan, 2026-10-09; bank-zero clipping reproduced in 568x240 desktop viewport and covered by `tests/layout.test.mjs`.

@@ -91,9 +91,20 @@ Use original graphics. Do not embed PDF screenshots or copy the bezel.
 | Minimum usable height | 240 CSS px after browser bars and safe areas, including short landscape |
 | First slice (#20) | Assess all intended elements with development-only layout fixtures before later additions reduce horizon space |
 
+### Planned layered composition
+
+The opaque sky/ground background extends behind the side instruments.
+Tape backgrounds are translucent; digits, ticks, and value windows remain readable.
+Central pitch markings have separate clipping, and invalid data remains obscured.
+The [panel presentation](pfd-presentation.md#layers-and-clipping) defines layer ownership and clipping.
+
+[#36](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/36) first separates existing modules without changing the image.
+[#37](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/37) then implements the composition and selects opacity through mobile acceptance.
+These steps add no telemetry fields or functional tape readings.
+
 ### Acceptance ownership
 
-Each feature issue owns:
+Each instrument feature issue owns:
 
 * Typed data, shared deterministic demo, SSE consumer, and visible indication.
 * Focused tests and affected documentation.
