@@ -190,29 +190,24 @@ See [ADR 0001](adr/0001-rust-http-sse.md) and the [wire contract](telemetry-cont
 * Future instrument regions contain no readings or scales in the production page.
 * `tests/layout-fixture.js` adds the complete intended arrangement only through the development fixture server.
 
-### Validation and rendering
+### Planned panel boundary
 
-| Responsibility | Rule |
+[Panel presentation](pfd-presentation.md) defines the module tree, frame lifecycle, and layer composition.
+[ADR 0004](adr/0004-modular-pfd-presentation.md) records the decision; #36 and #37 own implementation.
+
+| Module | Responsibility |
 | --- | --- |
-| Optional values | Validate independently. One invalid value must not hide unrelated instruments |
-| Global state | Source/transport loss invalidates the panel |
-| Missing values | Never display a credible zero |
-| Existing contract | Preserve envelope/attitude validation and sample-age rules |
-| Trends | Derive from source time, not browser arrival intervals |
-| Layout geometry | Use available width/height, safe areas, and orientation. Do not mutate telemetry or impose 4:3 |
-| Instrument geometry | Map values to scales, positions, digits, and alerts independently of DOM/layout lifecycle |
-| Rendering | Draw the latest sample on the next animation frame. Check freshness at draw time. Do not interpolate |
+| Application assembly | Connect telemetry, layout, lifecycle, and presentation |
+| Frame scheduler | Coalesce latest samples, retain deadlines, cancel invalid work |
+| Panel | Compose instruments through resize, render, and invalidate operations |
+| Instruments | Own local geometry, SVG updates, and indication availability |
+| Status presentation | Show source/transport status and obscure invalid data |
 
-* Use explicit SVG groups and clipping for moving sky/ground/pitch, tapes, fixed references, markers, and warnings.
-* Transform only moving elements.
-* Preserve rotation centers and undistorted symbols during resize.
-* Size labels, symbols, and scales independently.
-* Let CSS own page composition and compact DEMO/source/transport status.
-* Do not add Canvas, a frontend framework, or a build pipeline.
-
-The first slice assesses all 18 intended elements with development-only layout fixtures.
-Add shared helpers only for the next agreed slice.
-Do not create a general avionics framework or reserve battery/navigation regions.
+The target interface is `panel.resize(layout)`, `panel.render(frame)`, and `panel.invalidate(reason)`.
+Each instrument receives the same complete frame as read-only input and selects its own fields.
+The internal frame is not a new wire format.
+The current implementation described above remains in place until #36.
+Future instrument modules arrive with their feature slices.
 
 ## Library telemetry interface
 
@@ -248,6 +243,7 @@ Browser: SSE -> validate -> latest sample -> animation frame -> SVG/DOM
 * `onAttitude` optionally delivers fresh attitude with a local monotonic expiry deadline.
 * The renderer retains one latest sample and one pending animation frame.
 * It checks expiry before drawing and cancels pending work when data becomes unavailable.
-* `horizon.js` owns pure SVG transforms. `app.js` owns DOM updates and page lifecycle.
+* Currently, `horizon.js` owns attitude transforms and frame scheduling; `pfd-view.js` owns instrument SVG updates.
+* `app.js` connects these modules and presents status; #36 separates these responsibilities as described in [panel presentation](pfd-presentation.md).
 * Nest pitch translation inside bank rotation so combined attitudes move in world-local coordinates.
 * Apply no interpolation or extrapolation.

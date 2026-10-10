@@ -342,3 +342,29 @@ These tests require no simulator or SDK.
 4. Update the feature's contract fixtures and procedures in the same PR.
 
 > Desktop viewport checks do not establish mobile acceptance.
+
+## Modular and layered PFD acceptance
+
+These checks are planned for #36 and #37; this document does not record passing results.
+Run the required automated checks above for each implementation PR.
+Record real iOS Safari and Android Chrome results separately from desktop evidence.
+
+| Owner | Checks |
+| --- | --- |
+| #36: modules | Preserve the current image, pose signs, combined transforms, slip/skid, turn rate, and local unavailable indications |
+| #36: lifecycle | Coalesce latest samples; preserve deadlines through resize; cancel invalid work; renew freshness for unchanged fresh values |
+| #36: recovery | Expire without new samples; reject an expired sample before paint; recover after reconnect and resume only with fresh data |
+| #36: assets | Serve every imported module through the compiled Rust server and the development fixture server |
+| #37: layers | Extend sky/ground behind tapes; clip pitch markings centrally; preserve fixed references and layer order |
+| #37: readability | Check digits, ticks, and value windows against sky and ground; record the selected background opacity |
+| #37: bounds | Permit intentional background overlap; reject content collisions; include painted strokes in bounds checks |
+| #37: invalidation | Obscure the expanded background on global loss; keep optional failures local |
+
+1. Use the full 18-element development fixture without shipping unfinished readings.
+2. Check 320 CSS px page width and 240 CSS px usable height after browser bars and safe areas, as defined in the brief.
+3. Check portrait, short landscape, orientation changes, extreme poses, and no scrolling.
+4. Repeat lifecycle checks after geometry changes without renewing the sample deadline.
+
+Later feature slices repeat relevant layer checks with real demo indications.
+#24 additionally tests timed alert cancellation with a controlled monotonic clock.
+#26 collects full-panel acceptance after all preceding instrument steps.
