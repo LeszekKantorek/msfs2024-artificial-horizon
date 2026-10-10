@@ -105,3 +105,35 @@ test('resize updates geometry immediately while unavailable and never restores d
   assert.deepEqual(resized, [layout]); assert.deepEqual(drawn, []);
   assert.deepEqual(obscured, ['suspended']);
 });
+
+test('resize and fresh values commit together using the newest layout and sample', () => {
+  const events = [], frames = [];
+  const scheduler = createFrameScheduler({
+    panel: { resize: layout => events.push(['resize', layout]),
+      render: frame => events.push(['render', frame]), invalidate() {} },
+    now: () => 0, requestFrame: fn => { frames.push(fn); return frames.length; },
+  });
+  scheduler.accept(sample(10)); frames.shift()(); events.length = 0;
+  const layout = pfdLayout(568, 240);
+  scheduler.resize(pfdLayout(320, 480)); scheduler.resize(layout);
+  scheduler.accept(sample(15));
+  assert.deepEqual(events, []);
+  assert.equal(frames.length, 1);
+  frames.shift()();
+  assert.deepEqual(events, [['resize', layout], ['render', sample(15)]]);
+});
+
+test('invalidation applies pending geometry under the cover and discards pending values', () => {
+  const events = [];
+  let callback;
+  const scheduler = createFrameScheduler({
+    panel: { resize: layout => events.push(['resize', layout]),
+      render: () => events.push(['render']), invalidate: reason => events.push(['cover', reason]) },
+    requestFrame: fn => { callback = fn; return 1; }, cancelFrame() {}, now: () => 0,
+  });
+  scheduler.accept(sample()); callback(); events.length = 0;
+  const layout = pfdLayout(568, 240);
+  scheduler.resize(layout);
+  scheduler.invalidate('suspended'); callback();
+  assert.deepEqual(events, [['cover', 'suspended'], ['resize', layout]]);
+});

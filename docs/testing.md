@@ -35,8 +35,13 @@ Use committed `Cargo.lock`. These checks require no simulator or SDK.
 | Page without telemetry | Unavailable indication, no credible attitude |
 | Explicit LAN bind: private interface or `0.0.0.0` | Printed URL uses the correct interface |
 
-Library tests signal shutdown independently and rebind within a five-second completion timeout.
-Public configuration rejects port zero. Internal listener tests use OS-assigned ports to avoid collisions.
+Automated lifecycle tests cover normal shutdown and cancellation:
+
+* Library tests signal shutdown independently and rebind within a five-second completion timeout.
+* Cancellation tests abort a task or drop a polled server future after publication with two active SSE clients.
+* Check producer/subscription closure, client EOF, and port reuse after cancellation.
+* Permit the final pending sample before subscription closure.
+* Public configuration rejects port zero; internal listener tests use OS-assigned ports to avoid collisions.
 
 > Desktop checks do not establish real-phone or simulator compatibility.
 
@@ -103,7 +108,7 @@ These checks run in Windows CI.
 | Local TCP | Two active SSE connections and port reuse after shutdown |
 | Browser controller | Independent fixtures, one EventSource/retry timer, two-second retry, sequence reset, freshness, malformed messages, suspend/resume |
 | Horizon | Pose signs, nested transforms, angle bounds, local-to-panel geometry |
-| Frame scheduler | Latest-frame coalescing, expiry before draw, cancellation on data loss, resize without renewing age, fresh identical values |
+| Frame scheduler | Latest-frame/layout coalescing, coherent resize and render, expiry before draw, cancellation on data loss, resize without renewing age, fresh identical values |
 | Panel/status | Complete read-only frame delegation, status without a sample, immediate stale obscuring, independent source/transport state and accessible announcements |
 | Coordinated turn | Typed bounds, independent optional failures, old snapshots, shared sample age, +/-3 deg/s, resize without refreshing age |
 
@@ -224,7 +229,7 @@ No fixture page, script, or future instrument values enter the Rust binary.
 
 | Check | Expected result |
 | --- | --- |
-| 320x240, 326x246, 320x480, 390x664, 568x240, 667x280, 844x320 CSS px | No scrolling or overlap; readable central attitude and supplemental values |
+| 320x240, 326x246, 320x480, 390x664, 568x240, 667x280, 844x320 CSS px | No scrolling or indication-content collisions; readable central attitude and supplemental values |
 | Minimum usable area | 320 CSS px wide and 240 CSS px high after browser bars/safe areas |
 | Rotation / viewport changes during streaming | Preserve values and sample deadline; round ball and undistorted symbols |
 | Pitch scale / warnings | 2.5-degree intervals; red chevrons start at +60/-40 scale positions and point toward the horizon |
@@ -244,18 +249,26 @@ node tests/pfd-browser.mjs
 node tests/pfd-runtime-browser.mjs
 ```
 
-The script starts an isolated loopback fixture server on an OS-assigned port.
-It checks real assets, viewports, known poses, old/partial snapshots, stale states, resize, and page lifecycle handlers.
-Screenshots, including opacity candidates in both orientations against sky and ground, are saved under `.local/pfd-browser/` for visual inspection. The 326x246 viewport provides a 320x240 usable panel with the normal 3-pixel margins.
-Review the screenshots; passing geometry checks alone do not establish readability.
-Synthetic padding and page events do not establish actual cutout, browser-bar, or background behavior on phones.
-The runtime script uses the compiled Windows binary from the required build.
-It checks embedded assets and Rust demo SSE, then stops and restarts its server to check recovery without reloading the page.
+| Script | Input | Checks | Output |
+| --- | --- | --- | --- |
+| `pfd-browser.mjs` | Real web assets and isolated loopback fixture on an OS-assigned port | Viewports, poses, partial/old snapshots, stale states, resize, lifecycle, node identity, read-only frames, and clipping-aware background coverage | Screenshots under `.local/pfd-browser/`, including opacity candidates in both orientations against sky and ground |
+| `pfd-runtime-browser.mjs` | Compiled Windows binary from the required build | Embedded assets, Rust demo SSE, coherent bank/turn state within 25 seconds, and restart recovery without page reload | `.local/pfd-runtime-landscape.png` |
 
-Run the documented real-device procedure on iOS Safari and Android Chrome for #20.
-Include centered/left/right slip, both standard-rate turns, both chevron scenarios, orientation, browser bars, lock/resume, Wi-Fi and server recovery.
-Record device, OS/browser, build and network details in the issue.
-Keep #20 open while this hardware evidence is missing.
+The scripted geometry checks include these regression cases:
+
+* The coverage check must reject a deliberately narrowed background clip and pass after restoration.
+* Check pitch geometry immediately after `ResizeObserver`, before the next animation callback.
+* The 326x246 viewport provides a 320x240 usable panel with the normal 3-pixel margins.
+
+> Review the screenshots: geometry checks alone do not establish readability.
+> Synthetic padding and page events do not establish actual cutout, browser-bar, or background behavior on phones.
+
+Complete the separate phone acceptance for #20:
+
+1. Run the real-device procedure on iOS Safari and Android Chrome for #20.
+2. Include centered/left/right slip, both standard-rate turns, both chevron scenarios, orientation, browser bars, lock/resume, Wi-Fi and server recovery.
+3. Record device, OS/browser, build and network details in the issue.
+4. Keep #20 open while this hardware evidence is missing.
 
 ## Measurements and evidence
 
@@ -312,6 +325,8 @@ These tests require no simulator or SDK.
 | Telemetry tests | Age, stale threshold, fresh identical samples, cadence, skipped ticks, normalized bounds, roll wrap, non-finite rejection, source identity, slow independent consumers |
 | Library tests | Sequence exhaustion, shutdown ownership, subscription closure, listener reuse |
 
+Maintain fixtures and timing checks as follows:
+
 * Keep fixtures synchronized with contract changes.
 * Reuse fixtures for future browser tests.
 * Use a paused monotonic Tokio clock instead of wall-clock sleeps for timing checks.
@@ -334,7 +349,7 @@ These tests require no simulator or SDK.
 | Attitude/turn geometry | Pitch/bank signs and extremes, slip/skid both ways, +/-3 deg/s turns |
 | Tape geometry | IAS/altitude rolling digits, speed boundaries, six-second trend, altitude bugs outside tape, VSI limits, heading wrap at 359/0 |
 | Mobile layout | From 320 CSS px, portrait, short landscape, safe areas, browser-bar changes, rotation while streaming |
-| Layout acceptance | No scrolling, overlap, clipped warnings, or distorted symbols |
+| Layout acceptance | No scrolling, indication-content collisions, clipped warnings, or distorted symbols; intentional background overlap is allowed |
 | Lifecycle | Wi-Fi recovery, server restart, lock/background/resume, source pause/stale/invalid states, partial failures |
 | Recovery | Fresh sample before valid readings return. No duplicate subscription |
 
@@ -347,9 +362,12 @@ These tests require no simulator or SDK.
 
 ## Modular and layered PFD acceptance
 
-#36 implements modular rendering. #37 implements layer containers and full-panel background coverage; opacity acceptance requires real-phone results. This document defines procedures, not passing results.
-Run the required automated checks above for each implementation PR.
-Record real iOS Safari and Android Chrome results separately from desktop evidence.
+* #36 implements modular rendering; #37 implements layer containers and full-panel background coverage.
+* Opacity acceptance requires real-phone results.
+* Run the required automated checks above for each implementation PR.
+* Record real iOS Safari and Android Chrome results separately from desktop evidence.
+
+> This document defines procedures, not passing results.
 
 | Owner | Checks |
 | --- | --- |
@@ -364,10 +382,14 @@ Record real iOS Safari and Android Chrome results separately from desktop eviden
 | #37: status | No top bar or success labels; no DEMO label; unavailable reasons on an opaque full-panel cover; accessible state changes |
 | #37: invalidation | Obscure the expanded background on global loss; keep optional failures local |
 
-1. Use the full 18-element development fixture without shipping unfinished readings. Compare `/layout.html?opacity=0.50`, `0.65`, and `0.80` on both sky and ground; record the chosen value and device evidence in #37.
-2. Check 320 CSS px page width and 240 CSS px usable height after browser bars and safe areas, as defined in the brief.
-3. Check portrait, short landscape, orientation changes, extreme poses, and no scrolling.
-4. Repeat lifecycle checks after geometry changes without renewing the sample deadline.
+Use the development fixture to assess layout and compare opacity on real phones:
+
+1. Open the full 18-element development fixture; keep unfinished readings out of production.
+2. Compare `/layout.html?opacity=0.50`, `0.65`, and `0.80` against sky and ground.
+3. Record the selected value and real-device evidence in #37.
+4. Check 320 CSS px page width and 240 CSS px usable height after browser bars and safe areas, as defined in the brief.
+5. Check portrait, short landscape, orientation changes, extreme poses, and no scrolling.
+6. Repeat lifecycle checks after geometry changes without renewing the sample deadline.
 
 Later feature slices repeat relevant layer checks with real demo indications.
 #24 additionally tests timed alert cancellation with a controlled monotonic clock.

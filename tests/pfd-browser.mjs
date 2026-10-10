@@ -25,9 +25,38 @@ const url = await new Promise((resolve, reject) => {
 const errors = [];
 let browser;
 const setFixture = value => server.stdin.write(`${JSON.stringify(value)}\n`);
+// Executed in the page: hit testing includes every ancestor clip.
+function backgroundCovered() {
+  const svg = document.querySelector('svg');
+  const [,, width, height] = svg.getAttribute('viewBox').split(' ').map(Number);
+  return [0.01, 0.25, 0.5, 0.75, 0.99].every(x =>
+    [0.01, 0.25, 0.5, 0.75, 0.99].every(y => {
+      const point = new DOMPoint(x * width, y * height).matrixTransform(svg.getScreenCTM());
+      return document.elementsFromPoint(point.x, point.y).some(node => node.matches('.sky, .ground'));
+    }));
+}
+function instrumentNodesUnchanged() {
+  const nodes = [...document.querySelectorAll('svg *')];
+  return nodes.length === window.initialInstrumentNodes.length &&
+    nodes.every((node, index) => node === window.initialInstrumentNodes[index]);
+}
 try {
   browser = await chromium.launch({ headless: true, channel: process.env.BROWSER_CHANNEL || undefined });
   const page = await browser.newPage();
+  await page.addInitScript(() => {
+    const Original = window.ResizeObserver;
+    window.ResizeObserver = class extends Original {
+      constructor(callback) {
+        super((entries, observer) => {
+          callback(entries, observer);
+          if (!window.resizeChecks) return;
+          const pitch = document.querySelector('#world-pitch').transform.baseVal.consolidate().matrix.f;
+          const tick = document.querySelector('#pitch-ladder [data-pitch="10"]').getPointAtLength(0).y;
+          window.resizeChecks.push(Math.abs(pitch + tick) < 1e-4);
+        });
+      }
+    };
+  });
   page.on('pageerror', error => errors.push(String(error)));
   await mkdir('.local/pfd-browser', { recursive: true });
   for (const path of ['/', '/layout.html']) {
@@ -106,12 +135,44 @@ try {
   for (const viewport of [{ width: 320, height: 480 }, { width: 844, height: 320 }]) {
     await page.setViewportSize(viewport);
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-    assert.equal(await page.evaluate(() => {
-      const nodes = [...document.querySelectorAll('svg *')];
-      return nodes.length === window.initialInstrumentNodes.length &&
-        nodes.every((node, index) => node === window.initialInstrumentNodes[index]);
-    }), true);
+    assert.equal(await page.evaluate(instrumentNodesUnchanged), true);
   }
+  assert.equal(await page.evaluate(() =>
+    document.querySelector('#world-pitch').parentElement === document.querySelector('#world-rotation')), true);
+  // Check real instruments against a pristine detached DOM, without a second live controller.
+  assert.equal(await page.evaluate(async () => {
+    const { createPanel } = await import('/panel.js');
+    const { createStatusView } = await import('/status.js');
+    const { pfdLayout } = await import('/layout.js');
+    const doc = new DOMParser().parseFromString(await (await fetch('/')).text(), 'text/html');
+    const panel = createPanel(doc.querySelector('.instrument'), createStatusView(doc));
+    const frame = Object.freeze({ attitude: Object.freeze({ pitch_deg: 10, roll_deg: 25 }),
+      slip_skid: 0.5, turn_rate_dps: 3, expiresAt: 1000,
+      status: Object.freeze({ source: 'demo', state: 'live', transport: 'connected' }) });
+    const original = JSON.stringify(frame);
+    for (const layout of [pfdLayout(314, 474), pfdLayout(562, 234)]) {
+      panel.resize(layout); panel.render(frame);
+    }
+    return JSON.stringify(frame) === original;
+  }), true);
+  // Independent pitch offsets for two actual usable panel sizes; no layout formula copy.
+  setFixture({ pitch_deg: 10, roll_deg: 0 });
+  await page.waitForFunction(() => {
+    const pitch = document.querySelector('#world-pitch').transform.baseVal.consolidate().matrix.f;
+    const tick = document.querySelector('#pitch-ladder [data-pitch="10"]').getPointAtLength(0).y;
+    return Math.abs(pitch + tick) < 1e-4 &&
+      document.querySelector('#world-rotation').getAttribute('transform').startsWith('rotate(0 ');
+  });
+  await page.evaluate(() => { window.resizeChecks = []; });
+  for (const [width, height, offset] of [[320, 480, 71.6363636364], [568, 240, 32]]) {
+    await page.setViewportSize({ width, height });
+    await page.waitForFunction(offset => Math.abs(
+      document.querySelector('#world-pitch').transform.baseVal.consolidate().matrix.f - offset) < 1e-4, offset);
+    assert.equal(await page.evaluate(instrumentNodesUnchanged), true);
+  }
+  const resizeChecks = await page.evaluate(() => { const checks = window.resizeChecks; window.resizeChecks = null; return checks; });
+  assert.ok(resizeChecks.length >= 2);
+  assert.ok(resizeChecks.every(Boolean), 'ResizeObserver must leave a coherent pitch scale and reading');
   const poses = JSON.parse(readFileSync(new URL('./fixtures/pfd-samples.json', import.meta.url)));
   for (const [index, pose] of poses.entries()) {
     setFixture({ ...pose.attitude, slip_skid: pose.slip_skid, turn_rate_dps: pose.turn_rate_dps });
@@ -121,10 +182,8 @@ try {
       document.querySelector('#turn-rate').getAttribute('aria-label') === `Turn rate ${turn} degrees per second`,
       { slip: pose.slip_skid, turn: pose.turn_rate_dps });
     await page.waitForFunction(({ pitch, roll }) => {
-      const svg = document.querySelector('svg');
-      const h = Number(svg.getAttribute('viewBox').split(' ')[3]);
-      const scale = Math.max(3.2, (h - 80) / 55);
-      return document.querySelector('#world-pitch').getAttribute('transform') === `translate(0 ${pitch * scale})` &&
+      const scale = -document.querySelector('#pitch-ladder [data-pitch="10"]').getPointAtLength(0).y / 10;
+      return Math.abs(document.querySelector('#world-pitch').transform.baseVal.consolidate().matrix.f - pitch * scale) < 1e-4 &&
         document.querySelector('#world-rotation').getAttribute('transform').startsWith(`rotate(${-roll} `);
     }, { pitch: pose.attitude.pitch_deg, roll: pose.attitude.roll_deg });
     const directions = await page.evaluate(() => ({
@@ -137,10 +196,8 @@ try {
     const geometry = await page.evaluate(() => {
       const fixed = document.querySelector('#fixed-symbols').getCTM();
       const world = document.querySelector('#world-pitch').getCTM();
-      const svg = document.querySelector('svg');
-      const height = Number(svg.getAttribute('viewBox').split(' ')[3]);
       return { cx: fixed.e, cy: fixed.f, x: world.e, y: world.f,
-        scale: Math.max(3.2, (height - 80) / 55) };
+        scale: -document.querySelector('#pitch-ladder [data-pitch="10"]').getPointAtLength(0).y / 10 };
     });
     const bank = pose.attitude.roll_deg * Math.PI / 180;
     const displacement = pose.attitude.pitch_deg * geometry.scale;
@@ -148,17 +205,26 @@ try {
     assert.ok(Math.abs(geometry.x - (geometry.cx + Math.sin(bank) * displacement)) < 1e-4);
     assert.ok(Math.abs(geometry.y - (geometry.cy + Math.cos(bank) * displacement)) < 1e-4,
       JSON.stringify({ index, geometry, expectedY: geometry.cy + Math.cos(bank) * displacement }));
-    // Test painted background coverage with independent points in panel coordinates.
-    assert.equal(await page.evaluate(() => {
-      const svg = document.querySelector('svg');
-      const [,, width, height] = svg.getAttribute('viewBox').split(' ').map(Number);
-      const paths = [...document.querySelectorAll('.sky, .ground')];
-      return [0.01, 0.25, 0.5, 0.75, 0.99].every(x =>
-        [0.01, 0.25, 0.5, 0.75, 0.99].every(y => paths.some(path =>
-          path.isPointInFill(new DOMPoint(x * width, y * height).matrixTransform(path.getCTM().inverse())))));
-    }), true, `Full background coverage for pose ${index}`);
+    assert.equal(await page.evaluate(backgroundCovered), true, `Full background coverage for pose ${index}`);
+    assert.equal(await page.evaluate(instrumentNodesUnchanged), true);
     await page.screenshot({ path: `.local/pfd-browser/pose-${index}.png` });
   }
+  // Prove that the coverage check rejects the regression it is intended to catch.
+  const clip = page.locator('#background-clip rect');
+  const originalClip = await clip.evaluate(node => Object.fromEntries(
+    ['x', 'y', 'width', 'height'].map(key => [key, node.getAttribute(key)])));
+  try {
+    await clip.evaluate(node => {
+      const central = document.querySelector('#attitude-clip rect');
+      for (const key of ['x', 'y', 'width', 'height']) node.setAttribute(key, central.getAttribute(key));
+    });
+    assert.equal(await page.evaluate(backgroundCovered), false, 'Narrowed clip must fail coverage');
+  } finally {
+    await clip.evaluate((node, values) => {
+      for (const [key, value] of Object.entries(values)) node.setAttribute(key, value);
+    }, originalClip);
+  }
+  assert.equal(await page.evaluate(backgroundCovered), true);
   const ticks = await page.locator('#pitch-ladder path').evaluateAll(nodes => nodes.map(n => Number(n.dataset.pitch)));
   assert.deepEqual(ticks, Array.from({ length: 73 }, (_, i) => -90 + i * 2.5).filter(n => n !== 0));
   const chevrons = await page.locator('#pitch-warnings path').evaluateAll(nodes => nodes.map(n => Number(n.dataset.pitch)));
@@ -178,10 +244,10 @@ try {
   for (const value of [90, -90]) {
     setFixture({ pitch_deg: value, roll_deg: value > 0 ? 179.999 : -180 });
     await page.waitForFunction(value => {
-      const h = Number(document.querySelector('svg').getAttribute('viewBox').split(' ')[3]);
-      const scale = Math.max(3.2, (h - 80) / 55);
-      return document.querySelector('#world-pitch').getAttribute('transform') === `translate(0 ${value * scale})`;
+      const scale = -document.querySelector('#pitch-ladder [data-pitch="10"]').getPointAtLength(0).y / 10;
+      return Math.abs(document.querySelector('#world-pitch').transform.baseVal.consolidate().matrix.f - value * scale) < 1e-4;
     }, value);
+    assert.equal(await page.evaluate(backgroundCovered), true, `Full background coverage at pitch ${value}`);
     await page.screenshot({ path: `.local/pfd-browser/extreme-${value}.png` });
   }
   setFixture({ hold: true });

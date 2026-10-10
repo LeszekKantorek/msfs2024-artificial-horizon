@@ -22,6 +22,7 @@ status: active
 * Target Windows x64 MSVC for Rust development and CI.
 * Keep default checks independent of the simulator.
 * Test behavior, not assertions that repeat implementation details.
+* Preserve cancellation cleanup for `Server::run`; verify producer, subscription, and connection closure as defined in [testing](../docs/testing.md#http-startup-checks).
 * Follow [PR preparation](../CONTRIBUTING.md#workflow), including the manual checklist requirement for new features.
 
 ## Definition of done
@@ -36,3 +37,5 @@ status: active
 Sources: repository CONTRIBUTING rules, moved here by an accepted documentation decision on 2026-10-09, and the linked project documents.
 
 Source: accepted PR checklist requirement and corrections, 2026-10-09. CONTRIBUTING owns this workflow rule.
+
+Source: cancellation cleanup verified in maintenance [#45](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/45), 2026-10-10.

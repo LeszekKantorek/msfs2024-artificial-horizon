@@ -18,6 +18,33 @@ pub struct Server {
     subscription: Subscription,
 }
 
+// Each owner signals shutdown on drop, including cancellation of Server::run.
+// Clones share the first deadline; repeated shutdown never extends the grace period.
+#[derive(Clone)]
+struct ShutdownGuard {
+    stop: tokio::sync::watch::Sender<bool>,
+    closing: tokio::sync::watch::Sender<Option<tokio::time::Instant>>,
+}
+
+impl ShutdownGuard {
+    fn signal(&self) {
+        self.closing.send_if_modified(|started| {
+            if started.is_some() {
+                return false;
+            }
+            *started = Some(tokio::time::Instant::now());
+            true
+        });
+        self.stop.send_replace(true);
+    }
+}
+
+impl Drop for ShutdownGuard {
+    fn drop(&mut self) {
+        self.signal();
+    }
+}
+
 impl Server {
     pub async fn bind(config: Config) -> Result<Self, ServerError> {
         config.validate()?;
@@ -46,6 +73,7 @@ impl Server {
     pub async fn run(self, shutdown: impl Future<Output = ()> + Send + 'static) -> io::Result<()> {
         let (stop, stopped) = tokio::sync::watch::channel(false);
         let (closing, closed) = tokio::sync::watch::channel(None);
+        let shutdown_guard = ShutdownGuard { stop, closing };
         let (finished, completion) = tokio::sync::oneshot::channel();
         let producer = tokio::spawn(async move {
             let result = crate::providers::demo::run(self.publisher, async move {
@@ -56,16 +84,15 @@ impl Server {
             let _ = finished.send(());
             result
         });
-        let stop_on_shutdown = stop.clone();
+        let stop_on_shutdown = shutdown_guard.clone();
         let listener = connection::DeadlineListener::new(self.listener, closed);
         let http_result = axum::serve(listener, router_with_telemetry(self.subscription))
             .with_graceful_shutdown(async move {
                 tokio::select! { _ = shutdown => {}, _ = completion => {} }
-                closing.send_replace(Some(tokio::time::Instant::now()));
-                let _ = stop_on_shutdown.send(true);
+                stop_on_shutdown.signal();
             })
             .await;
-        let _ = stop.send(true);
+        shutdown_guard.signal();
         let producer_result = producer.await.map_err(io::Error::other)?;
         producer_result.map_err(io::Error::other)?;
         http_result
@@ -224,6 +251,94 @@ mod tests {
         sync::oneshot,
         time::{Duration, timeout},
     };
+
+    #[tokio::test(start_paused = true)]
+    async fn repeated_shutdown_preserves_the_first_deadline() {
+        let (stop, stopped) = tokio::sync::watch::channel(false);
+        let (closing, closed) = tokio::sync::watch::channel(None);
+        let guard = ShutdownGuard { stop, closing };
+        let other = guard.clone();
+        guard.signal();
+        let first = closed.borrow().unwrap();
+        tokio::time::advance(Duration::from_secs(2)).await;
+        drop(other);
+        guard.signal();
+        assert_eq!(*closed.borrow(), Some(first));
+        assert!(*stopped.borrow());
+    }
+
+    async fn check_cancelled_server(abort: bool) {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let (publisher, subscription) = telemetry::channel(crate::Source::Demo);
+        let server = Server {
+            listener,
+            publisher,
+            subscription,
+        };
+        let mut telemetry = server.telemetry();
+        let (drop_run, dropped) = oneshot::channel();
+        let task = tokio::spawn(async move {
+            tokio::select! {
+                result = server.run(std::future::pending()) => result,
+                _ = dropped => Ok(()),
+            }
+        });
+        let mut clients = Vec::new();
+        for _ in 0..2 {
+            let mut client = TcpStream::connect(address).await.unwrap();
+            client
+                .write_all(b"GET /api/v1/events HTTP/1.1\r\nHost: localhost\r\n\r\n")
+                .await
+                .unwrap();
+            timeout(Duration::from_secs(5), async {
+                let mut received = String::new();
+                while !received.contains("event: telemetry") {
+                    let mut bytes = [0; 4096];
+                    let count = client.read(&mut bytes).await.unwrap();
+                    assert!(count > 0);
+                    received.push_str(&String::from_utf8_lossy(&bytes[..count]));
+                }
+            })
+            .await
+            .unwrap();
+            clients.push(client);
+        }
+        timeout(Duration::from_secs(5), telemetry.changed())
+            .await
+            .unwrap()
+            .unwrap();
+        if abort {
+            task.abort();
+            assert!(task.await.unwrap_err().is_cancelled());
+        } else {
+            drop_run.send(()).unwrap();
+            task.await.unwrap().unwrap();
+        }
+        timeout(Duration::from_secs(1), async {
+            while telemetry.changed().await.is_ok() {}
+        })
+        .await
+        .expect("cancelling the server must stop its producer");
+        for mut client in clients {
+            timeout(Duration::from_secs(7), client.read_to_end(&mut Vec::new()))
+                .await
+                .unwrap()
+                .unwrap();
+        }
+        let rebound = TcpListener::bind(address).await.unwrap();
+        assert_eq!(rebound.local_addr().unwrap(), address);
+    }
+
+    #[tokio::test]
+    async fn aborting_server_stops_producer_and_closes_clients() {
+        check_cancelled_server(true).await;
+    }
+
+    #[tokio::test]
+    async fn dropping_polled_server_stops_producer_and_closes_clients() {
+        check_cancelled_server(false).await;
+    }
 
     #[tokio::test]
     async fn shutdown_closes_active_sse_and_releases_port() {

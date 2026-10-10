@@ -6,6 +6,9 @@ status: active
 * Apply these writing rules to documentation, knowledge entries, code comments, commit messages, and GitHub issues, comments, and PRs.
 * Use short English sentences and consistent terms.
 * Use `*` bullets for parallel rules and numbered steps for sequences.
+* Introduce long lists or distinct groups of bullets with one short sentence that states their topic or purpose.
+* A heading can introduce a list when its scope is clear, but a short lead-in can add useful context.
+* Separate groups by subject instead of creating one uninterrupted list or repeating the heading in a filler sentence.
 * Use tables for comparisons, `>` notes for constraints, and diagrams for flows.
 * Format identifiers as inline code and commands as fenced code blocks.
 * Use `[ ]` checklists for procedures or criteria, not duplicate task status.
@@ -34,6 +37,7 @@ Source: writing requirement recorded in [issue #31](https://github.com/LeszekKan
 | [CONTRIBUTING](../CONTRIBUTING.md) | Developer setup, tools, skill sources, workflow |
 | [Brief](../docs/project-brief.md) | Requirements, scope, assumptions, success criteria |
 | [Architecture](../docs/architecture.md) | Target design, boundaries, library API |
+| [Panel presentation](../docs/pfd-presentation.md) | Instrument interfaces, frame lifecycle, layer ownership, clipping |
 | [Contract](../docs/telemetry-contract.md) | Wire interface, units, validity, freshness |
 | [Testing](../docs/testing.md) | Check commands, procedures, criteria, evidence templates |
 | [Roadmap](../docs/roadmap.md) | Order and dependencies |
@@ -41,3 +45,5 @@ Source: writing requirement recorded in [issue #31](https://github.com/LeszekKan
 | GitHub Issues / PRs | Task status, execution results, acceptance evidence |
 
 Source: accepted writing style, document responsibilities, and setup decisions, 2026-10-09.
+
+Source: accepted documentation correction, 2026-10-10, to introduce long bullet groups with short sentences that explain their scope.
