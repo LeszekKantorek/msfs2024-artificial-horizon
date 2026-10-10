@@ -78,17 +78,23 @@ src/
 web/
   index.html
   styles.css
-  app.js                    # EventSource, DOM, page lifecycle
+  app.js                    # telemetry, panel, resize, and page lifecycle assembly
+  telemetry-client.js       # EventSource, status, freshness, retries, and lifecycle
+  telemetry/
+    validation.js           # pure snapshot validation and optional-value normalization
   frame-scheduler.js        # latest-frame scheduling and expiry checks
   panel.js                  # instrument composition and delegation
   horizon.js                # local attitude geometry and transforms
   fixed-symbols.js          # fixed bank scale and aircraft references
-  slip-skid.js               # local slip/skid presentation
-  turn-rate.js               # local turn-rate presentation
-  airspeed.js                # IAS tape, rolling digits, and ground-speed presentation
-  status.js                  # accessible status, and unavailability
-  svg.js                     # shared SVG helpers
-  layout.js                  # responsive instrument regions in CSS pixels
+  slip-skid.js              # local slip/skid presentation
+  turn-rate.js              # local turn-rate presentation
+  airspeed.js               # airspeed factory and private SVG operations
+  airspeed/
+    calculations.js         # pure speed readings, scale, references, and geometry
+  status.js                 # accessible status and unavailability
+  svg.js                    # shared SVG helpers
+  math.js                   # shared clamp for implemented presentation callers
+  layout.js                 # responsive instrument regions in CSS pixels
 tests/
   http_sse.rs
   fixtures/                 # known attitudes and lifecycle states
@@ -191,8 +197,9 @@ The server owns validated samples and deterministic demo scenarios:
 
 The browser validates those samples and presents them within the available panel area:
 
-* `createTelemetryClient` validates optional values independently and calls `onSample` with normalized values or `null` and one expiry deadline.
-* `airspeed.js` renders IAS, GS, configured speed ranges, references, and six-second trend from that same frame, with independent availability.
+* `telemetry/validation.js` validates the snapshot and normalizes optional values independently, including copied profile references.
+* `createTelemetryClient` owns the connection and publishes normalized samples with one expiry deadline.
+* `airspeed.js` owns private SVG operations. `airspeed/calculations.js` derives IAS/GS states, ranges, references, trend, rolling digits, and local geometry.
 * The existing `onAttitude` callback retains its attitude-only shape.
 * `pfdLayout` allocates instrument regions from available CSS width/height.
 * `frame-scheduler.js` schedules fresh frames; `panel.js` composes instrument modules.
@@ -204,17 +211,23 @@ The browser validates those samples and presents them within the available panel
 ### Panel boundary
 
 [Panel presentation](pfd-presentation.md) defines the module tree, frame lifecycle, and layer composition.
-[ADR 0004](adr/0004-modular-pfd-presentation.md) records the decision; #36 and #37 own implementation.
+[ADR 0004](adr/0004-modular-pfd-presentation.md) records the accepted design. #36 and #37 implement composition and layers.
+Maintenance [#54](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/54) organizes instrument internals within that design.
 
 | Module | Responsibility |
 | --- | --- |
 | Application assembly | Connect telemetry, layout, lifecycle, and presentation |
+| Telemetry client | Own EventSource, sequence, retries, expiry, status, and lifecycle |
+| Telemetry validation | Pure envelope validation and independent optional-value normalization |
 | Frame scheduler | Coalesce latest samples, retain deadlines, cancel invalid work |
 | Panel | Compose instruments through resize, render, and invalidate operations |
 | Instruments | Own local geometry, SVG updates, and indication availability |
+| Airspeed calculations | Derive pure speed readings and instrument geometry behind the airspeed factory |
+| Shared math | Clamp layout, turn-rate, IAS range, and trend coordinates |
 | Status presentation | Show source/transport status and obscure invalid data |
 
 * [Panel presentation](pfd-presentation.md#panel-interface-and-frame-lifecycle) owns implemented interfaces and frame rules.
+* [Internal seams](pfd-presentation.md#internal-module-seams) define calculation and validation responsibilities.
 * The internal frame is not a new wire format.
 * Future instrument modules arrive with their feature slices.
 

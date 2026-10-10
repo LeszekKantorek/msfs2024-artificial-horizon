@@ -110,6 +110,8 @@ These checks run in Windows CI.
 | Socket unit tests | Subscriber release and write/shutdown deadlines with bounded duplex transport |
 | Local TCP | Two active SSE connections and port reuse after shutdown |
 | Browser controller | Independent fixtures, one EventSource/retry timer, two-second retry, sequence reset, freshness, malformed messages, suspend/resume |
+| Telemetry validation | Direct internal-module tests, independent optional fields, old snapshots, copied profile/reference values, and unbounded finite speed input |
+| Sample callbacks | Current status before attitude before full sample; separate attitude copies, original attitude-only shape, and matching deadlines |
 | Horizon | Pose signs, nested transforms, angle bounds, local-to-panel geometry |
 | Frame scheduler | Latest-frame/layout coalescing, coherent resize and render, expiry before draw, cancellation on data loss, resize without renewing age, fresh identical values |
 | Panel/status | Complete read-only frame delegation, status without a sample, immediate stale obscuring, independent source/transport state and accessible announcements |
@@ -255,13 +257,14 @@ node tests/pfd-runtime-browser.mjs
 | Script | Input | Checks | Output |
 | --- | --- | --- | --- |
 | `pfd-browser.mjs` | Real web assets and isolated loopback fixture on an OS-assigned port | Viewports, poses, partial/old snapshots, stale states, resize, lifecycle, node identity, read-only frames, and clipping-aware background coverage | Screenshots under `.local/pfd-browser/`, including opacity candidates in both orientations against sky and ground |
-| `pfd-runtime-browser.mjs` | Compiled Windows binary from the required build | Embedded assets, Rust demo SSE, coherent bank/turn state within 25 seconds, and restart recovery without page reload | `.local/pfd-runtime-landscape.png` |
+| `pfd-runtime-browser.mjs` | Compiled Windows binary from the required build | All 15 imported modules with response status/MIME, Rust demo SSE, coherent bank/turn state within 25 seconds, and restart recovery without reload | `.local/pfd-runtime-landscape.png` |
 
 The scripted geometry checks include these regression cases:
 
 * The coverage check must reject a deliberately narrowed background clip and pass after restoration.
 * Check pitch geometry immediately after `ResizeObserver`, before the next animation callback.
 * The 326x246 viewport provides a 320x240 usable panel with the normal 3-pixel margins.
+* Import changes require matching Rust embedded routes, fixture allowlist/MIME, HTTP asset tests, and the runtime expected-module set.
 
 > Review the screenshots: geometry checks alone do not establish readability.
 > Synthetic padding and page events do not establish actual cutout, browser-bar, or background behavior on phones.
@@ -393,6 +396,7 @@ The [contract](telemetry-contract.md#optional-airspeed-ranges-and-trend) defines
 | --- | --- |
 | Profile | Five positive, strictly increasing thresholds and four named positive references at or below VNE. Invalid configuration affects only its indications |
 | Ranges | Red below 40, white 40-85, green 50-110, yellow 110-140, red/white from 140 kt. White and green appear in parallel |
+| Range clipping | Unbounded overspeed ranges clip to the tape. Literal expectations cover infinite bounds and preserve `NaN` coordinates without zero substitution |
 | Boundaries | Values below, at, and above every threshold retain coherent geometry. Marker positions match configured speeds |
 | Trend | Six-second prediction comes from source acceleration. Positive, negative, zero, missing, malformed, and overflowing calculations have independent expectations |
 | VNE | IAS 140 kt makes the pointer red. IAS 110 with +5 kt/s predicts exactly 140 and makes digits yellow. Current readings never become predictions |
@@ -405,6 +409,15 @@ The [contract](telemetry-contract.md#optional-airspeed-ranges-and-trend) defines
 
 The browser checks use independent expected positions and inspect computed colors, SVG bounds, clipping edges, and node identity.
 Screenshots include `speed-approaching-vne.png`, `speed-at-vne.png`, and fallback views under `.local/pfd-browser/`.
+
+`checkAirspeedAvailabilityTransitions` in `tests/airspeed-browser-checks.mjs` checks 40 loss/resize/recovery transitions through `pfd-browser.mjs`.
+Ten steps cover IAS loss, profile loss, combined loss with IAS recovering first, and combined loss with profile recovering first.
+The steps repeat from both actual-overspeed and predictive-warning states on `/` and `/layout.html`.
+They resize from 844x320 to 326x246 and alternate with 320x480 during recovery.
+
+Transition assertions check computed colors/visibility, state resets, exact replacement-profile ARIA, fresh fractional digits/tape offsets, and fallback/unit/badge behavior.
+GS remains independently available with nonzero painted bounds inside the panel and viewport.
+Production SVG node identity remains stable. The development fixture's recreated future illustrations are excluded from that identity check.
 
 ### Real-phone checks for #22
 

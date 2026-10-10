@@ -6,20 +6,24 @@ Delivery order: [roadmap](roadmap.md). Validation: [testing](testing.md#modular-
 
 ## Current implementation and planned changes
 
-The panel implements attitude, slip/skid, and turn rate from #20, plus IAS and GS from #21.
-#36 separates their rendering from frame scheduling:
+The panel implements attitude, slip/skid, and turn rate from #20, plus IAS and GS from #21 and ranges/trend from #22.
+#36 separates rendering from scheduling. Maintenance [#54](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/54) organizes internals within the accepted design:
 
 | Module | Implemented responsibility |
 | --- | --- |
 | `app.js` | Assemble telemetry, status, panel, resize observation, and page lifecycle |
+| `telemetry-client.js` | Own EventSource, sequence handling, retries, expiry, status, and start/stop lifecycle |
+| `telemetry/validation.js` | Pure snapshot validation and independent optional-value normalization |
 | `frame-scheduler.js` | Retain the latest frame, coalesce draws, check expiry, and cancel invalid work |
 | `panel.js` | Compose instruments and delegate resize, render, and invalidation |
-| `horizon.js` | Sky/ground, pitch scale, chevrons, and moving bank pointer |
+| `horizon.js` | Sky/ground, pitch scale, chevrons, and bank pointer, with private world/pitch/bank resize operations |
 | `fixed-symbols.js` | Fixed bank scale and aircraft references |
 | `slip-skid.js`, `turn-rate.js` | Local geometry, readings, and indication availability |
-| `airspeed.js` | IAS tape, rolling digits, GS, and independent speed availability |
+| `airspeed.js` | Airspeed factory, private SVG creation/resize, state resets, and indication updates |
+| `airspeed/calculations.js` | Pure speed states, ranges, trend, digits, reference formatting/placement, and local geometry |
 | `status.js` | Accessible status, and global unavailability |
 | `svg.js` | Shared SVG creation and attribute helpers |
+| `math.js` | Shared mathematical clamp for layout, turn rate, IAS range bounds, and trend clipping |
 
 * #37 adds full-panel background coverage, explicit layers, and translucent instrument backgrounds. Final opacity acceptance requires real-phone evidence.
 * Later feature issues add their instrument modules with real demo data.
@@ -33,9 +37,10 @@ Panel
 |   |-- Sky and ground
 |   `-- Pitch scale
 |-- Airspeed tape                         (#21, extended by #22)
-|-- Altitude tape and selected-altitude alerts (#23, extended by #24)
-|-- Vertical speed                       (#25)
-|-- Heading and track                    (#26)
+|   `-- Pure airspeed calculations        (internal)
+|-- Altitude tape and selected-altitude alerts (planned #23/#24)
+|-- Vertical speed                       (planned #25)
+|-- Heading and track                    (planned #26)
 |-- Slip/skid
 |-- Turn rate
 |-- Fixed symbols
@@ -61,12 +66,52 @@ Keep data conversion and rendering responsibilities within these boundaries:
 
 * Use local instrument coordinates and named dimensions.
 * Keep telemetry units at the input and conversion to display coordinates inside the instrument.
-* Preserve envelope validation and sample-age rules in the telemetry client.
+* Keep pure envelope validation in `telemetry/validation.js` and sample-age enforcement in the telemetry client.
 * Use source-supplied trend data based on source time, not differences between browser arrival times.
 * Layout calculations do not mutate telemetry or impose a fixed aspect ratio.
 * CSS owns page composition and instrument background opacity.
-* Share helpers only when an implemented instrument and the next agreed feature need them.
+* Share helpers for matching rules with actual callers, such as mathematical `clamp` and SVG attribute updates.
 * Do not introduce a general rendering framework or a second renderer.
+
+## Internal module seams
+
+The public airspeed module exports only `createAirspeed` and returns `resize(layout)` and `render(frame)`.
+Its closure retains the created SVG nodes and latest geometry. It retains no second telemetry frame or timer.
+
+| Internal implementation | Responsibility |
+| --- | --- |
+| Private SVG operations in `airspeed.js` | Create nodes once, apply resize geometry, reset states, and update tape, ranges, trend, references, digits, and GS |
+| `airspeed/calculations.js` | Pure speed classification, readings, ranges, six-second prediction, rolling digits, reference text/placement, tape conversion, and geometry |
+| Reference records | Associate each key, symbol, accessible name, leader, marker, and fallback label without parallel node arrays |
+| Named range rectangles | Associate each SVG rectangle with its range name |
+| Geometry groups | Separate `tape`, `readout`, and `groundSpeed`, with explicit panel coordinates for warnings |
+
+Scale counts and positions derive from one 4 px/kt conversion, 2/10 kt steps, and the 999 kt maximum.
+The digit clip uses `DIGIT_HEIGHT`. Other dimensions retain their distinct meanings.
+Calculation tests import the internal module directly. The factory adds no calculation re-exports.
+The calculation module has no DOM, transport, or timer dependencies. It imports only mathematical `clamp`.
+
+The telemetry client exports only `createTelemetryClient`. Its internal validation module exposes these pure functions:
+
+| Function | Result |
+| --- | --- |
+| `isValidSnapshot(value)` | Boolean envelope and attitude validity |
+| `normalizeAirspeedProfile(value)` | Copied valid profile with separate reference values, or `null` |
+| `normalizeOptionalIndications(value)` | Independently normalized optional values, including profile and acceleration |
+
+Validation accepts finite nonnegative speeds above the display limit. The 999 kt limit, `OVR`, and six-second prediction belong to airspeed calculations.
+EventSource ownership, sequence handling, retry/age timers, expiry deadlines, and start/stop remain in the client.
+For an accepted live sample, `onStatus` precedes `onAttitude`, which precedes `onSample`.
+Both sample callbacks receive separate attitude copies and the same deadline. `onAttitude` retains its attitude-only shape.
+The application attaches the current copied status when accepting the complete sample into the scheduler.
+
+`math.js` supplies only `clamp(value, min, max)`. It clips infinities and preserves `NaN` propagation without normalizing invalid telemetry.
+Slip/skid and turn rate retain separate availability and limit rules. Existing SVG helpers cover their related attribute writes.
+Fixed symbols, panel delegation, frame scheduling, application assembly, status, and SVG helpers retain their responsibilities.
+
+A general IAS/altitude tape remains deferred until actual altitude implementation.
+Compare concrete scale, sign, digit, selection, and alert rules before sharing an operation.
+The current implementation adds no instrument base class, general tape renderer, or shared lower-indication controller.
 
 ## Panel interface and frame lifecycle
 
@@ -86,6 +131,7 @@ panel.invalidate(reason);
 | --- | --- |
 | `attitude`, `slip_skid`, `turn_rate_dps` | Values from one accepted sample |
 | `ias_kt`, `gs_kt` | Independently normalized speeds from the same accepted sample, or `null` |
+| `airspeed_profile`, `ias_acceleration_ktps` | Independently normalized configuration and source acceleration, or `null` |
 | `expiresAt` | Original monotonic expiry deadline |
 | `status` | Copied `source`, `transport`, and `state` values |
 
@@ -93,6 +139,8 @@ Instruments share the frame under these rules:
 
 * Every instrument receives the same complete frame and selects its own fields without mutating the frame or another instrument.
 * Nested frame values are also read-only.
+* Instruments consume normalized frames. Missing or invalid optional readings arrive as `null`, without invented zero values.
+* `resize(layout)` must run before the first `render(frame)`. Initialization supplies real geometry without substitute defaults.
 * Future feature issues define additions to the frame and wire contract separately.
 
 > The frame is an internal presentation value, not a new SSE schema.
@@ -201,6 +249,28 @@ Keep indications readable across the full panel:
 * Source and transport states remain separate internally; a polite live region announces only changed text.
 * Waiting, reconnecting, stale, suspended, paused, disconnected, and invalid states show an opaque full-panel cover with the applicable reason.
 * Only rendering a fresh frame removes the cover; a `live` status alone does not.
+
+## SVG and CSS interface
+
+IDs, classes, node order, layer placement, clipping, and accessible meanings form the presentation interface.
+[Layer rules](#layers-and-clipping) define clip coordinates and transform order.
+SVG nodes retain their identity through samples, loss, recovery, and resize.
+Within the IAS tape, scale, ranges, trend, and references retain their paint order.
+Reference leaders precede markers so labels remain above their leaders.
+
+| State written by JavaScript | CSS or presentation effect |
+| --- | --- |
+| Instrument `data-available` | Global SVG visibility and opaque unavailable cover |
+| Slip/skid and turn-rate `data-available` | Local unavailable marks and hiding of the affected indication |
+| IAS `data-state` | Hide tape and digits unless the value is available |
+| IAS `data-overspeed`, `data-approaching` | Red pointer window and yellow predictive-warning digits |
+| Bottom references `data-visible` | Hide the development badge while fallback references occupy its area |
+
+Speed state updates run before conditional indication updates on every frame.
+They reset warning colors, availability, local X/OVR marks, profile visibility, fallback flags, and unit visibility.
+Trend updates clear the path and prediction attribute when no prediction exists.
+Accessible speed labels retain current values or unavailable/overflow states. Reference labels retain exact configured values despite compact visible text.
+Status announcements change only when their text changes, as defined in [unavailable status](#unavailable-status).
 
 ## Airspeed and ground speed
 
