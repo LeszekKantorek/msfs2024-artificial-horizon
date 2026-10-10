@@ -22,6 +22,11 @@ async fn embedded_page_assets_and_liveness_match_the_contract() {
             "text/javascript; charset=utf-8",
             "createHorizon",
         ),
+        (
+            "/airspeed.js",
+            "text/javascript; charset=utf-8",
+            "createAirspeed",
+        ),
         ("/layout.js", "text/javascript; charset=utf-8", "pfdLayout"),
         ("/panel.js", "text/javascript; charset=utf-8", "createPanel"),
         (

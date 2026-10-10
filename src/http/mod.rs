@@ -102,6 +102,15 @@ impl Server {
 pub fn router() -> Router {
     Router::new()
         .route(
+            "/airspeed.js",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
+                    include_str!("../../web/airspeed.js"),
+                )
+            }),
+        )
+        .route(
             "/layout.js",
             get(|| async {
                 (
