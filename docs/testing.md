@@ -7,7 +7,7 @@
 Prerequisites: Rust stable, rustfmt, and Clippy on Windows x64 MSVC.
 Use committed `Cargo.lock`. These checks require no simulator or SDK.
 
-1. Run the [automated checks](#automated-checks), including default and `simconnect` feature tests.
+1. Run the [automated checks](#automated-checks), including the build and tests.
 2. Record the compiler version with results. CI records it in its logs.
 
    ```powershell
@@ -17,7 +17,7 @@ Use committed `Cargo.lock`. These checks require no simulator or SDK.
 3. Start the server.
 
    ```powershell
-   cargo run --locked --bin main
+   cargo run --locked --bin msfs2024-artificial-horizon
    ```
 
 4. Check the endpoints and CLI behavior below.
@@ -52,26 +52,26 @@ They match the checks in [CI](../.github/workflows/ci.yml).
 
 Complete the [environment setup](../CONTRIBUTING.md#environment-setup) first.
 Use committed `Cargo.lock` with `--locked`.
-Default checks and the current SDK-free `simconnect` feature require no simulator or SDK.
+The checks require no simulator or SDK.
 
-Run the default checks and build:
+Use one target for Clippy, the build, and tests:
 
 ```powershell
+$env:RUSTUP_TOOLCHAIN = 'stable'
+$env:CARGO_BUILD_TARGET = 'x86_64-pc-windows-msvc'
 cargo fmt --all -- --check
 cargo clippy --locked --all-targets -- -D warnings
 cargo test --locked --all-targets
 node --test tests/*.test.mjs
-cargo build --locked --target x86_64-pc-windows-msvc
+cargo build --locked --release
 ```
 
-Check the current SimConnect module boundary:
+CI runs these checks in the `Build & Test` job without restoring artifacts from previous workflow runs.
+Cargo commands reuse artifacts in `target` within the job and during local development.
+The final step builds the release executable at `target/x86_64-pc-windows-msvc/release/msfs2024-artificial-horizon.exe`.
+Tests use the debug profile; the release build compiles optimized artifacts separately.
 
-```powershell
-cargo clippy --locked --all-targets --features simconnect -- -D warnings
-cargo test --locked --all-targets --features simconnect
-```
-
-> The current `simconnect` feature contains no SDK integration. Passing these checks does not establish simulator compatibility.
+> The Windows SimConnect module contains no SDK integration. Passing these checks does not establish simulator compatibility.
 > Future SDK-dependent checks require documented prerequisites and distribution constraints.
 
 The [PR acceptance control](pr-acceptance.md#validate-changes-to-the-control) has a separate Node suite and runs on Linux.

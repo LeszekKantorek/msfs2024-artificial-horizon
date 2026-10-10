@@ -18,7 +18,6 @@ pub enum SourceError {
     SimConnectUnavailable,
 }
 
-#[cfg(all(target_os = "windows", feature = "simconnect"))]
 mod simconnect;
 
 pub(crate) fn validate_source(source: Source) -> Result<(), SourceError> {

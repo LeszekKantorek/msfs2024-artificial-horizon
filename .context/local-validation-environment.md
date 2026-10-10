@@ -27,7 +27,7 @@ status: active
 
 ## Evidence
 
-* During #20 validation, error 5 prevented removal of the running `target/debug/main.exe`. Checks passed with separate target output.
+* During #20 validation, error 5 prevented removal of the running debug executable. Checks passed with separate target output.
 * Browser launch and fixture reachability failures occurred across sandbox boundaries. Running the fixture and browser together enabled the checks.
 * These observations establish conditional recovery paths, not a universal cause for either symptom.
 

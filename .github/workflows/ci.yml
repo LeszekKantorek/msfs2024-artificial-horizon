@@ -8,9 +8,11 @@ permissions:
   contents: read
 jobs:
   check:
+    name: Build & Test
     runs-on: windows-latest
     env:
       RUSTUP_TOOLCHAIN: stable
+      CARGO_BUILD_TARGET: x86_64-pc-windows-msvc
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust stable
@@ -29,9 +31,5 @@ jobs:
           node-version: '24'
       - name: Browser controller checks
         run: node --test tests/*.test.mjs
-      - name: Build
-        run: cargo build --locked --target x86_64-pc-windows-msvc
-      - name: SDK-free SimConnect boundary
-        run: cargo clippy --locked --all-targets --features simconnect -- -D warnings
-      - name: Tests with SimConnect feature
-        run: cargo test --locked --all-targets --features simconnect
+      - name: Build release
+        run: cargo build --locked --release

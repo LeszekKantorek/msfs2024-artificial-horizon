@@ -15,7 +15,7 @@ await once(reservation, 'listening');
 const port = reservation.address().port;
 await new Promise(resolve => reservation.close(resolve));
 const address = `http://127.0.0.1:${port}`;
-const executable = resolve(process.argv[2] ?? 'target/x86_64-pc-windows-msvc/debug/main.exe');
+const executable = resolve(process.argv[2] ?? 'target/x86_64-pc-windows-msvc/debug/msfs2024-artificial-horizon.exe');
 let server;
 let browser;
 async function start() {

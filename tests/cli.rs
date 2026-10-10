@@ -6,7 +6,7 @@ use std::{
 };
 
 fn cli(args: &[&str]) -> std::process::Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_main"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_msfs2024-artificial-horizon"))
         .args(args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
