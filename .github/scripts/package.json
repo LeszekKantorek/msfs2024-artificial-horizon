@@ -1,0 +1,8 @@
+{
+  "name": "pr-acceptance-control",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "marked": "18.1.0"
+  }
+}

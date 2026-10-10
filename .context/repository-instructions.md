@@ -24,6 +24,8 @@ status: active
 * Test behavior, not assertions that repeat implementation details.
 * Preserve cancellation cleanup for `Server::run`; verify producer, subscription, and connection closure as defined in [testing](../docs/testing.md#http-startup-checks).
 * Follow [PR preparation](../CONTRIBUTING.md#workflow), including the manual checklist requirement for new features.
+* Include `Closes #N` in implementation PRs, including drafts, and apply [acceptance tracking](../CONTRIBUTING.md#acceptance-criteria-and-additional-verification).
+* Read [PR acceptance](pr-acceptance.md) when changing or activating the checklist control.
 
 ## Definition of done
 

@@ -112,8 +112,20 @@ See [agent maintenance](.context/agent-maintenance.md) for reinstalls and integr
 
 > Keep the checklist specific to the implemented feature. List only the main checks, without generic placeholders or detailed steps.
 
-> Use `Closes #N` only when evidence satisfies all acceptance criteria.
-> Keep unverified hardware acceptance open or create an explicit linked follow-up.
+> Include `Closes #N` in a PR that implements the issue, including a draft PR.
+> Record pending acceptance checks explicitly in the PR checklist; the closing keyword does not claim that those checks have passed.
+
+### Acceptance criteria and additional verification
+
+1. Mark an issue acceptance criterion as checked when passing unit tests or automated validation confirm it.
+2. Record the confirming tests or validation results in the issue or linked PR, including the tested commit and relevant environment.
+3. Leave unconfirmed criteria unchecked and include their verification in the PR as unchecked items under `Additional verification`. Adapt the wording to the PR context when needed.
+4. Describe how to verify the remaining items and what result confirms each one; update the issue and PR checkboxes after verification.
+
+The [PR acceptance control](docs/pr-acceptance.md) checks linked issue criteria and the PR checklist.
+Missing criteria, unchecked issue Acceptance criteria, unchecked PR tasks, or unavailable issue data produce a blocking status when the main ruleset requires `Acceptance criteria`.
+The control checks checkbox states independently; it does not compare issue and PR wording or require copied text.
+Draft PRs can retain unchecked verification; complete it before merge.
 
 ### Promote agreed findings
 
