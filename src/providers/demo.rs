@@ -1,6 +1,7 @@
 //! Repeatable degree fixtures; no simulator SDK conventions are assumed.
 use crate::telemetry::{
-    Attitude, FlightSample, Publisher, SAMPLE_PERIOD, SlipSkid, TelemetryError, TurnRate,
+    Attitude, FlightSample, GroundSpeed, IndicatedAirspeed, Publisher, SAMPLE_PERIOD, SlipSkid,
+    TelemetryError, TurnRate,
 };
 use std::future::Future;
 use tokio::time::{MissedTickBehavior, interval};
@@ -33,10 +34,21 @@ pub fn sample(index: u64) -> FlightSample {
         6 => (-1.0, -3.0),
         _ => (0.0, 0.0),
     };
+    let step = index % 360;
+    let fraction = match step {
+        0..40 | 320..360 => 0.0,
+        40..160 => (step - 40) as f64 / 120.0,
+        160..200 => 1.0,
+        _ => (320 - step) as f64 / 120.0,
+    };
     FlightSample::new(
         attitude,
         Some(SlipSkid::new(slip).expect("built-in ball positions are valid")),
         Some(TurnRate::new(turn).expect("built-in turn rates are valid")),
+    )
+    .with_speeds(
+        Some(IndicatedAirspeed::new(150.0 * fraction).expect("built-in IAS is valid")),
+        Some(GroundSpeed::new(170.0 * fraction).expect("built-in GS is valid")),
     )
 }
 /// Provider boundary for verified degree/sign conventions.

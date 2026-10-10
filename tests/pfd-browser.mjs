@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
 const server = spawn(process.execPath, ['tests/browser-fixture-server.mjs'], {
-  env: { ...process.env, PFD_FIXTURE_PORT: '0' }, stdio: ['pipe', 'pipe', 'inherit'],
+  env: { ...process.env, PFD_FIXTURE_HOST: '127.0.0.1', PFD_FIXTURE_PORT: '0' }, stdio: ['pipe', 'pipe', 'inherit'],
 });
 let activeClients = 0;
 const url = await new Promise((resolve, reject) => {
@@ -77,10 +77,14 @@ try {
         const [,, w, h] = svg.getAttribute('viewBox').split(' ').map(Number);
         const ball = document.querySelector('.slip-ball').getBoundingClientRect();
         const triangle = document.querySelector('.bank-zero').getBBox();
+        const ias = document.querySelector('#airspeed .instrument-background').getBoundingClientRect();
+        const gs = document.querySelector('#ground-speed .instrument-background').getBoundingClientRect();
         const clipTop = Number(document.querySelector('#attitude-clip rect').getAttribute('y'));
         return { scrollWidth: root.scrollWidth, scrollHeight: root.scrollHeight,
           w, h, width: rect.width, height: rect.height, ballWidth: ball.width, ballHeight: ball.height,
-          bankZeroPaintedTop: triangle.y + document.querySelector('#fixed-symbols').transform.baseVal.consolidate().matrix.f - 1, clipTop };
+          bankZeroPaintedTop: triangle.y + document.querySelector('#fixed-symbols').transform.baseVal.consolidate().matrix.f - 1, clipTop,
+          speedGap: gs.top - ias.bottom, speedLeftDifference: gs.left - ias.left,
+          speedWidthDifference: gs.width - ias.width };
       });
       assert.equal(dimensions.scrollWidth, width);
       assert.equal(dimensions.scrollHeight, height);
@@ -88,10 +92,13 @@ try {
       assert.ok(Math.abs(dimensions.h - dimensions.height) < 0.01);
       assert.ok(Math.abs(dimensions.ballWidth - dimensions.ballHeight) < 0.01);
       assert.ok(dimensions.bankZeroPaintedTop >= dimensions.clipTop);
+      assert.ok(Math.abs(dimensions.speedGap) < 0.01, 'GS must touch the IAS tape in production and the fixture');
+      assert.ok(Math.abs(dimensions.speedLeftDifference) < 0.01);
+      assert.ok(Math.abs(dimensions.speedWidthDifference) < 0.01);
       if (path === '/layout.html') {
         const collisions = await page.evaluate(() => {
           const failures = [];
-          for (const name of ['airspeed', 'altitude']) {
+          for (const name of ['altitude']) {
             const group = document.querySelector(`#fixture-${name}`);
             const window = group.querySelector('rect[stroke]');
             const text = window.nextElementSibling.getBBox();
@@ -102,8 +109,8 @@ try {
           }
           // Background overlap is intentional; compare painted label content.
           const badge = document.querySelector('#layout-badge .fixture-label').getBoundingClientRect();
-          const gs = [...document.querySelectorAll('#fixture-supplemental text')].find(n => n.textContent.startsWith('GS')).getBoundingClientRect();
-          if (badge.bottom >= gs.top) failures.push('Fixture badge collides with ground speed');
+          const gs = document.querySelector('#ground-speed').getBoundingClientRect();
+          if (badge.top <= gs.bottom) failures.push('Fixture badge must stay below ground speed');
           return failures;
         });
         assert.deepEqual(collisions, [], `${width}x${height} painted content`);
@@ -120,9 +127,9 @@ try {
         await page.goto(`${url}/layout.html?opacity=${opacity}`);
         await page.locator('.instrument[data-available="true"]').waitFor();
         await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-        assert.equal(await page.locator('#fixture-airspeed .instrument-background').evaluate(n => Number(getComputedStyle(n).fillOpacity)), opacity);
-        assert.equal(await page.locator('#fixture-airspeed').evaluate(n => getComputedStyle(n).opacity), '1');
-        assert.equal(await page.locator('#fixture-airspeed text').first().evaluate(n => getComputedStyle(n).fillOpacity), '1');
+        assert.equal(await page.locator('#airspeed .instrument-background').evaluate(n => Number(getComputedStyle(n).fillOpacity)), opacity);
+        assert.equal(await page.locator('#airspeed').evaluate(n => getComputedStyle(n).opacity), '1');
+        assert.equal(await page.locator('#airspeed text').first().evaluate(n => getComputedStyle(n).fillOpacity), '1');
         await page.screenshot({ path: `.local/pfd-browser/opacity-${opacity}-${width}x${height}-${pitch}.png` });
       }
     }
@@ -147,7 +154,7 @@ try {
     const doc = new DOMParser().parseFromString(await (await fetch('/')).text(), 'text/html');
     const panel = createPanel(doc.querySelector('.instrument'), createStatusView(doc));
     const frame = Object.freeze({ attitude: Object.freeze({ pitch_deg: 10, roll_deg: 25 }),
-      slip_skid: 0.5, turn_rate_dps: 3, expiresAt: 1000,
+      slip_skid: 0.5, turn_rate_dps: 3, ias_kt: 99.5, gs_kt: 137.6, expiresAt: 1000,
       status: Object.freeze({ source: 'demo', state: 'live', transport: 'connected' }) });
     const original = JSON.stringify(frame);
     for (const layout of [pfdLayout(314, 474), pfdLayout(562, 234)]) {
@@ -155,6 +162,81 @@ try {
     }
     return JSON.stringify(frame) === original;
   }), true);
+  const scaleGeometry = await page.evaluate(() => {
+    const path = document.querySelector('.airspeed-ticks');
+    const ticks = [...path.getAttribute('d').matchAll(/M ([\d.]+) (-?[\d.]+) H ([\d.]+)/g)]
+      .slice(0, 6).map(match => ({ y: Number(match[2]), length: Number(match[3]) - Number(match[1]) }));
+    const labels = [...document.querySelectorAll('.airspeed-label')].slice(0, 3)
+      .map(n => ({ text: n.textContent, y: Number(n.getAttribute('y')) }));
+    return { ticks, labels };
+  });
+  assert.deepEqual(scaleGeometry.ticks, [
+    { y: 0, length: 8 }, { y: -8, length: 4 }, { y: -16, length: 4 },
+    { y: -24, length: 4 }, { y: -32, length: 4 }, { y: -40, length: 8 },
+  ]);
+  assert.deepEqual(scaleGeometry.labels, [{ text: '0', y: 0 }, { text: '10', y: -40 }, { text: '20', y: -80 }]);
+  // Verify actual SVG columns and tape positions against independent expected values.
+  for (const [width, height] of [[326, 246], [320, 480], [568, 240]]) {
+    await page.setViewportSize({ width, height });
+    for (const [speed, text, offsets] of [
+      [0, ['', '', '0'], [0, 0, 0]], [9.5, ['', '', '9'], [0, 11, 11]],
+      [10, ['', '1', '0'], [0, 0, 0]], [99.5, ['', '9', '9'], [11, 11, 11]],
+      [100, ['1', '0', '0'], [0, 0, 0]], [999, ['9', '9', '9'], [0, 0, 0]],
+      [100, ['1', '0', '0'], [0, 0, 0]], [99.5, ['', '9', '9'], [11, 11, 11]],
+      [9.5, ['', '', '9'], [0, 11, 11]], [0, ['', '', '0'], [0, 0, 0]],
+    ]) {
+      setFixture({ ias_kt: speed, gs_kt: 137.6 });
+      await page.waitForFunction(speed => document.querySelector('#airspeed').getAttribute('aria-label') ===
+        `Indicated airspeed ${speed} knots`, speed);
+      const actual = await page.evaluate(() => {
+        const ias = document.querySelector('#airspeed');
+        const center = document.querySelector('#fixed-symbols').getCTM().f - ias.getCTM().f;
+        const columns = [...document.querySelectorAll('#airspeed-digits > g')];
+        const window = document.querySelector('.airspeed-window').getBBox();
+        const gs = document.querySelector('#ground-speed').getBoundingClientRect();
+        const gsTexts = [...document.querySelectorAll('#ground-speed text')].map(n => {
+          const b = n.getBoundingClientRect(); return { left: b.left, right: b.right, top: b.top, bottom: b.bottom };
+        }).sort((a, b) => a.left - b.left);
+        const digitClip = document.querySelector('#airspeed-digits-clip rect').getBBox();
+        return { current: columns.map(n => n.firstElementChild.textContent),
+          offsets: columns.map(n => n.transform.baseVal.consolidate().matrix.f - center),
+          scaleOffset: document.querySelector('#airspeed-scale').transform.baseVal.consolidate().matrix.f - center,
+          gsText: document.querySelector('#ground-speed-value').textContent,
+          contentInsideWindow: digitClip.x > window.x && digitClip.x + digitClip.width < window.x + window.width &&
+            digitClip.y > window.y && digitClip.y + digitClip.height < window.y + window.height,
+          gsContained: gsTexts.every(b => b.top >= gs.top && b.bottom <= gs.bottom) &&
+            gsTexts.slice(1).every((b, i) => b.left >= gsTexts[i].right) };
+      });
+      assert.deepEqual(actual.current, text);
+      actual.offsets.forEach((offset, i) => assert.ok(Math.abs(offset - offsets[i]) < 1e-4));
+      assert.ok(Math.abs(actual.scaleOffset - speed * 4) < 1e-4);
+      assert.equal(actual.gsText, '138');
+      assert.equal(actual.contentInsideWindow, true);
+      assert.equal(actual.gsContained, true, 'GS digits, label and unit must not collide');
+      assert.equal(await page.evaluate(instrumentNodesUnchanged), true);
+    }
+    for (const [ias, gs, iasState, gsState] of [
+      [null, 137, 'unavailable', 'available'], [123, 'bad', 'available', 'unavailable'],
+      [999.01, 999, 'overflow', 'available'], [999, 1000, 'available', 'overflow'],
+      [null, null, 'unavailable', 'unavailable'], [123, 137, 'available', 'available'],
+    ]) {
+      setFixture({ ias_kt: ias, gs_kt: gs });
+      await page.waitForFunction(({ iasState, gsState }) =>
+        document.querySelector('#airspeed').dataset.state === iasState &&
+        document.querySelector('#ground-speed').dataset.state === gsState, { iasState, gsState });
+      assert.equal(await page.locator('.instrument').getAttribute('data-available'), 'true');
+      assert.equal(await page.locator('#airspeed-digits').evaluate(n => getComputedStyle(n).visibility),
+        iasState === 'available' ? 'visible' : 'hidden');
+      for (const [selector, state] of [['#airspeed-warning', iasState], ['#ground-speed-warning', gsState]]) {
+        assert.equal(await page.locator(selector).evaluate(n => getComputedStyle(n).display === 'none'), state === 'available');
+        if (state !== 'available') assert.equal(await page.locator(selector).textContent(), state === 'overflow' ? 'OVR' : 'X');
+      }
+    }
+  }
+  setFixture({ ias_kt: 99.5, gs_kt: 137.6 });
+  await page.waitForFunction(() => document.querySelector('#airspeed').getAttribute('aria-label') === 'Indicated airspeed 99.5 knots');
+  await page.screenshot({ path: '.local/pfd-browser/airspeed-rollover.png' });
+  setFixture({ ias_kt: 123, gs_kt: 137 });
   // Independent pitch offsets for two actual usable panel sizes; no layout formula copy.
   setFixture({ pitch_deg: 10, roll_deg: 0 });
   await page.waitForFunction(() => {
@@ -239,6 +321,8 @@ try {
   setFixture({ attitude_only: true });
   await page.locator('#slip-skid[data-available="false"]').waitFor();
   assert.equal(await page.locator('.instrument').getAttribute('data-available'), 'true');
+  assert.equal(await page.locator('#airspeed').getAttribute('data-state'), 'unavailable');
+  assert.equal(await page.locator('#ground-speed').getAttribute('data-state'), 'unavailable');
   setFixture({ attitude_only: false, slip_skid: 0, turn_rate_dps: 9 });
   await page.waitForFunction(() => document.querySelector('.turn-overflow').getAttribute('d') !== '');
   for (const value of [90, -90]) {

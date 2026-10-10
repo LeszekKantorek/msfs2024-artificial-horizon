@@ -1,4 +1,4 @@
-// Development only: the complete intended arrangement, without new telemetry fields.
+// Development only: implemented instruments plus illustrations of future features.
 import { pfdLayout } from '/layout.js';
 import { svgElement } from '/svg.js';
 
@@ -16,9 +16,9 @@ const layers = {
   symbols: document.querySelector('#layer-symbols'),
 };
 const badge = svgElement('g', { id: 'layout-badge' });
-badge.append(svgElement('rect', { x: 0, y: -16, width: 46, height: 30, class: 'instrument-background' }));
+badge.append(svgElement('rect', { x: 0, y: -12, width: 37, height: 22, class: 'instrument-background' }));
 const label = svgElement('text', { class: 'fixture-label' });
-label.append(svgElement('tspan', { x: 3, y: -7 }, 'LAYOUT'), svgElement('tspan', { x: 3, y: 5 }, 'FIXTURE'));
+label.append(svgElement('tspan', { x: 3, y: -5 }, 'LAYOUT'), svgElement('tspan', { x: 3, y: 4 }, 'FIXTURE'));
 badge.append(label);
 layers.symbols.append(badge);
 const marker = svgElement('g', { id: 'layout-fixtures' });
@@ -38,32 +38,29 @@ function render() {
   const { width, height } = svg.getBoundingClientRect();
   if (width <= 0 || height <= 0) return;
   const layout = pfdLayout(width, height);
-  badge.setAttribute('transform', `translate(6 ${height - 36})`);
+  badge.setAttribute('transform', `translate(6 ${height - 12})`);
   for (const group of Object.values(groups)) group.replaceChildren();
   const layer = groups.supplemental;
-  for (const name of ['airspeed', 'altitude', 'vsi', 'heading']) {
+  for (const name of ['altitude', 'vsi', 'heading']) {
     groups[name].append(svgElement('rect', { ...layout[name], class: 'instrument-background' }));
   }
   const { airspeed: a, altitude: b, vsi: v, heading: h } = layout;
-  for (const [r, labels] of [[a, ['160', '140', '120', '100', '80']],
-    [b, ['10200', '10100', '10000', '9900', '9800']]]) {
+  for (const [r, labels] of [[b, ['10200', '10100', '10000', '9900', '9800']]]) {
     const parent = r === a ? groups.airspeed : groups.altitude;
     labels.forEach((value, i) => text(parent, r.x + r.width / 2,
       r.y + r.height * (i + 0.5) / 5, value, 12));
   }
-  for (const [r, value] of [[a, '123'], [b, '10000']]) {
+  for (const [r, value] of [[b, '10000']]) {
     const parent = r === a ? groups.airspeed : groups.altitude;
     parent.append(svgElement('rect', { x: r.x + 1, y: layout.cy - 14,
       width: r.width - 2, height: 28, fill: '#080d12', stroke: '#fff' }));
     text(parent, r.x + r.width / 2, layout.cy, value, 19);
   }
   groups.airspeed.append(svgElement('rect', { x: a.x + a.width - 6, y: a.y + 12,
-    width: 4, height: a.height - 24, fill: '#73d39e' }));
-  groups.airspeed.append(svgElement('path', { d: `M ${a.x + a.width - 2} ${layout.cy} v ${-a.height / 4}`,
+    width: 2, height: a.height - 24, fill: '#73d39e' }));
+  groups.airspeed.append(svgElement('path', { d: `M ${a.x + a.width - 1} ${layout.cy - 18} v ${-a.height / 4}`,
     stroke: '#ed83e7', 'stroke-width': 2 }));
-  text(groups.airspeed, a.x + a.width - 9, a.y + 24, 'V', 12, '#86def5');
-  layer.append(svgElement('rect', { x: a.x, y: height - 24, width: a.width, height: 22, class: 'instrument-background' }));
-  text(layer, a.x + a.width / 2, height - 15, 'GS 123', 12);
+  text(groups.airspeed, a.x + a.width - 4, a.y + 22, 'V', 8, '#86def5');
   layer.append(svgElement('rect', { x: b.x, y: 0, width: b.width, height: 32, class: 'instrument-background' }));
   layer.append(svgElement('rect', { x: b.x, y: height - 24, width: b.width, height: 22, class: 'instrument-background' }));
   layer.append(svgElement('rect', { x: a.x, y: 0, width: a.width, height: 32, class: 'instrument-background' }));

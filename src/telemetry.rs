@@ -66,6 +66,36 @@ impl TurnRate {
         self.0
     }
 }
+/// Validated indicated airspeed in knots. Display limits do not restrict telemetry.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[serde(transparent)]
+pub struct IndicatedAirspeed(f64);
+impl IndicatedAirspeed {
+    pub fn new(knots: f64) -> Result<Self, TelemetryError> {
+        if !knots.is_finite() || knots < 0.0 {
+            return Err(TelemetryError::InvalidIndicatedAirspeed);
+        }
+        Ok(Self(knots))
+    }
+    pub fn knots(self) -> f64 {
+        self.0
+    }
+}
+/// Validated ground speed in knots, independently available from indicated airspeed.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[serde(transparent)]
+pub struct GroundSpeed(f64);
+impl GroundSpeed {
+    pub fn new(knots: f64) -> Result<Self, TelemetryError> {
+        if !knots.is_finite() || knots < 0.0 {
+            return Err(TelemetryError::InvalidGroundSpeed);
+        }
+        Ok(Self(knots))
+    }
+    pub fn knots(self) -> f64 {
+        self.0
+    }
+}
 /// One fresh acquisition with independently available optional indications.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 pub struct FlightSample {
@@ -74,6 +104,10 @@ pub struct FlightSample {
     slip_skid: Option<SlipSkid>,
     #[serde(skip_serializing_if = "Option::is_none")]
     turn_rate_dps: Option<TurnRate>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    ias_kt: Option<IndicatedAirspeed>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    gs_kt: Option<GroundSpeed>,
 }
 impl FlightSample {
     pub fn new(
@@ -85,10 +119,17 @@ impl FlightSample {
             attitude,
             slip_skid,
             turn_rate_dps: turn_rate,
+            ias_kt: None,
+            gs_kt: None,
         }
     }
     pub fn attitude(self) -> Attitude {
         self.attitude
+    }
+    pub fn with_speeds(mut self, ias: Option<IndicatedAirspeed>, gs: Option<GroundSpeed>) -> Self {
+        self.ias_kt = ias;
+        self.gs_kt = gs;
+        self
     }
 }
 /// Unavailable states cannot carry attitude.
@@ -114,6 +155,10 @@ pub struct Snapshot {
     slip_skid: Option<SlipSkid>,
     #[serde(skip_serializing_if = "Option::is_none")]
     turn_rate_dps: Option<TurnRate>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    ias_kt: Option<IndicatedAirspeed>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    gs_kt: Option<GroundSpeed>,
 }
 #[derive(Clone, Debug)]
 struct Current {
@@ -123,6 +168,8 @@ struct Current {
     accepted_at: Option<Instant>,
     slip_skid: Option<SlipSkid>,
     turn_rate: Option<TurnRate>,
+    ias: Option<IndicatedAirspeed>,
+    gs: Option<GroundSpeed>,
 }
 impl Current {
     fn snapshot(&self) -> Snapshot {
@@ -152,6 +199,8 @@ impl Current {
             attitude,
             slip_skid: attitude.and(self.slip_skid),
             turn_rate_dps: attitude.and(self.turn_rate),
+            ias_kt: attitude.and(self.ias),
+            gs_kt: attitude.and(self.gs),
         }
     }
 }
@@ -172,6 +221,8 @@ pub fn channel(source: Source) -> (Publisher, Subscription) {
         accepted_at: None,
         slip_skid: None,
         turn_rate: None,
+        ias: None,
+        gs: None,
     };
     let (sender, receiver) = watch::channel(current.clone());
     (Publisher { sender, current }, Subscription { receiver })
@@ -179,7 +230,7 @@ pub fn channel(source: Source) -> (Publisher, Subscription) {
 impl Publisher {
     /// Live means a fresh callback from an active, unpaused source, not cached data.
     pub fn publish(&mut self, state: State) -> Result<(), TelemetryError> {
-        self.publish_values(state, None, None)
+        self.publish_values(state, None, None, None, None)
     }
     /// Publish one fresh acquisition atomically, sharing sequence and age with attitude.
     pub fn publish_sample(&mut self, sample: FlightSample) -> Result<(), TelemetryError> {
@@ -187,6 +238,8 @@ impl Publisher {
             State::Live(sample.attitude),
             sample.slip_skid,
             sample.turn_rate_dps,
+            sample.ias_kt,
+            sample.gs_kt,
         )
     }
     fn publish_values(
@@ -194,6 +247,8 @@ impl Publisher {
         state: State,
         slip_skid: Option<SlipSkid>,
         turn_rate: Option<TurnRate>,
+        ias: Option<IndicatedAirspeed>,
+        gs: Option<GroundSpeed>,
     ) -> Result<(), TelemetryError> {
         if self.current.sequence == MAX_SEQUENCE {
             return Err(TelemetryError::SequenceExhausted);
@@ -205,6 +260,8 @@ impl Publisher {
         self.current.state = state;
         self.current.slip_skid = slip_skid;
         self.current.turn_rate = turn_rate;
+        self.current.ias = ias;
+        self.current.gs = gs;
         self.sender.send_replace(self.current.clone());
         Ok(())
     }
@@ -239,6 +296,10 @@ impl Subscription {
 }
 #[derive(Debug, thiserror::Error)]
 pub enum TelemetryError {
+    #[error("indicated airspeed must be finite nonnegative knots")]
+    InvalidIndicatedAirspeed,
+    #[error("ground speed must be finite nonnegative knots")]
+    InvalidGroundSpeed,
     #[error(
         "attitude must contain finite normalized degrees within pitch [-90, 90] and roll [-180, 180)"
     )]

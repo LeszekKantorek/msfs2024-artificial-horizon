@@ -6,7 +6,7 @@ Delivery order: [roadmap](roadmap.md). Validation: [testing](testing.md#modular-
 
 ## Current implementation and planned changes
 
-The panel implements attitude, slip/skid, and turn rate from #20.
+The panel implements attitude, slip/skid, and turn rate from #20, plus IAS and GS from #21.
 #36 separates their rendering from frame scheduling:
 
 | Module | Implemented responsibility |
@@ -17,6 +17,7 @@ The panel implements attitude, slip/skid, and turn rate from #20.
 | `horizon.js` | Sky/ground, pitch scale, chevrons, and moving bank pointer |
 | `fixed-symbols.js` | Fixed bank scale and aircraft references |
 | `slip-skid.js`, `turn-rate.js` | Local geometry, readings, and indication availability |
+| `airspeed.js` | IAS tape, rolling digits, GS, and independent speed availability |
 | `status.js` | Accessible status, and global unavailability |
 | `svg.js` | Shared SVG creation and attribute helpers |
 
@@ -84,6 +85,7 @@ panel.invalidate(reason);
 | Frame field | Meaning |
 | --- | --- |
 | `attitude`, `slip_skid`, `turn_rate_dps` | Values from one accepted sample |
+| `ias_kt`, `gs_kt` | Independently normalized speeds from the same accepted sample, or `null` |
 | `expiresAt` | Original monotonic expiry deadline |
 | `status` | Copied `source`, `transport`, and `state` values |
 
@@ -194,15 +196,30 @@ Keep indications readable across the full panel:
 
 * The panel has no top status bar or reserved header space.
 * The production panel has no source badge or DEMO announcement.
-* Only the development fixture uses a two-line `LAYOUT FIXTURE` badge, in the lower left above future ground speed.
+* Only the development fixture uses a two-line `LAYOUT FIXTURE` badge, in the lower left below ground speed; it does not reserve production layout space.
 * Successful source and transport messages have no visible labels.
 * Source and transport states remain separate internally; a polite live region announces only changed text.
 * Waiting, reconnecting, stale, suspended, paused, disconnected, and invalid states show an opaque full-panel cover with the applicable reason.
 * Only rendering a fresh frame removes the cover; a `live` status alone does not.
 
+## Airspeed and ground speed
+
+* `airspeed.js` creates SVG once and exposes `resize(layout)` and `render(frame)`.
+* IAS and GS use layer 1. Their local failure and overflow marks use layer 4.
+* The existing airspeed rectangle defines tape geometry. The central attitude allocation remains unchanged.
+* Tape spacing is 4 CSS px/kt, with major labels every 10 kt and minor ticks every 2 kt.
+* The scale translates from received IAS. Screen-space clipping hides readings outside the tape rectangle and its unit label.
+* The fixed opaque window clips three rolling digit columns. Leading zeros are blank.
+* Units roll from fractional IAS. Higher columns roll during the final knot before a decimal carry.
+* GS uses a separate labelled readout in kt, rounded to the nearest integer.
+* GS starts at the bottom edge of the IAS tape, with the same left edge and width and no gap.
+* Display values span 0–999 kt. Above 999 kt, show `OVR`. Unavailable values show `X`.
+* Neither missing nor overflowing IAS leaves a visible numeric tape. GS availability remains independent.
+* No independent animation, timer, interpolation, or client-generated flight values are used.
+
 ## Delivery boundaries
 
 * Each implementation issue updates its tests, documentation, and mobile evidence.
 * Update embedded Rust asset routes and the fixture server when imports change.
-* Tape fixtures remain development-only until #21 and #23 deliver their instruments.
+* The full development fixture uses the implemented IAS/GS module. Remaining instrument illustrations stay development-only until their feature slices arrive.
 * No new telemetry fields, framework, build pipeline, Solid.js, three.js, or custom signals are required for #36 or #37.

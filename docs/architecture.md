@@ -83,6 +83,7 @@ web/
   fixed-symbols.js          # fixed bank scale and aircraft references
   slip-skid.js               # local slip/skid presentation
   turn-rate.js               # local turn-rate presentation
+  airspeed.js                # IAS tape, rolling digits, and ground-speed presentation
   status.js                  # accessible status, and unavailability
   svg.js                     # shared SVG helpers
   layout.js                  # responsive instrument regions in CSS pixels
@@ -177,13 +178,16 @@ See [ADR 0001](adr/0001-rust-http-sse.md) and the [wire contract](telemetry-cont
 The server owns validated samples and deterministic demo scenarios:
 
 * `FlightSample` combines validated attitude with optional `SlipSkid` and `TurnRate` values.
+* `IndicatedAirspeed` and `GroundSpeed` validate optional nonnegative knots. `FlightSample::with_speeds` adds them without changing its existing constructor.
 * `Publisher::publish_sample` uses the existing latest-value channel, sequence, and monotonic age.
 * `Publisher::publish(State)` keeps the attitude-only path and clears all optional indications.
 * `demo::sample` defines nine deterministic two-second segments; `demo::attitude` retains its original seven-pose helper contract.
+* The same 18-second sample cycle supplies acceleration, a constant-speed segment, and deceleration for independently valued IAS and GS.
 
 The browser validates those samples and presents them within the available panel area:
 
 * `createTelemetryClient` validates optional values independently and calls `onSample` with normalized values or `null` and one expiry deadline.
+* `airspeed.js` renders IAS and GS from that same frame, with independent unavailable and overflow states.
 * The existing `onAttitude` callback retains its attitude-only shape.
 * `pfdLayout` allocates instrument regions from available CSS width/height.
 * `frame-scheduler.js` schedules fresh frames; `panel.js` composes instrument modules.

@@ -57,16 +57,16 @@ test('validator accepts independent fixtures and rejects malformed/unsupported t
 });
 
 test('optional values fail independently and never coerce missing values to zero', () => {
-  assert.deepEqual(optionalIndications(live()), { slip_skid: null, turn_rate_dps: null });
+  assert.deepEqual(optionalIndications(live()), { slip_skid: null, turn_rate_dps: null, ias_kt: null, gs_kt: null });
   for (const invalid of [undefined, null, false, '0', {}, [], NaN, Infinity, -Infinity]) {
     assert.deepEqual(optionalIndications({ slip_skid: invalid, turn_rate_dps: 3 }),
-      { slip_skid: null, turn_rate_dps: 3 });
+      { slip_skid: null, turn_rate_dps: 3, ias_kt: null, gs_kt: null });
     assert.deepEqual(optionalIndications({ slip_skid: -1, turn_rate_dps: invalid }),
-      { slip_skid: -1, turn_rate_dps: null });
+      { slip_skid: -1, turn_rate_dps: null, ias_kt: null, gs_kt: null });
   }
   for (const invalid of [-1.001, 1.001]) assert.equal(optionalIndications({ slip_skid: invalid }).slip_skid, null);
   for (const row of JSON.parse(readFileSync(new URL('./fixtures/pfd-samples.json', import.meta.url)))) {
-    assert.deepEqual(optionalIndications(row), { slip_skid: row.slip_skid, turn_rate_dps: row.turn_rate_dps });
+    assert.deepEqual(optionalIndications(row), { slip_skid: row.slip_skid, turn_rate_dps: row.turn_rate_dps, ias_kt: null, gs_kt: null });
   }
   assert.equal(optionalIndications({ turn_rate_dps: 12 }).turn_rate_dps, 12);
 });
@@ -75,13 +75,13 @@ test('new sample callback supports old snapshots and clears previously valid opt
   const h = harness(); h.client.start();
   const connection = h.connections[0]; connection.onopen();
   connection.send({ ...live(1, 400), slip_skid: 1, turn_rate_dps: 3 });
-  assert.deepEqual(h.samples.at(-1), { attitude: live().attitude, slip_skid: 1, turn_rate_dps: 3, expiresAt: 600 });
+  assert.deepEqual(h.samples.at(-1), { attitude: live().attitude, slip_skid: 1, turn_rate_dps: 3, ias_kt: null, gs_kt: null, expiresAt: 600 });
   connection.send({ ...live(2), slip_skid: 'bad', turn_rate_dps: -3 });
   assert.equal(h.status.state, 'live');
   assert.equal(h.samples.at(-1).slip_skid, null);
   assert.equal(h.samples.at(-1).turn_rate_dps, -3);
   connection.send(live(3));
-  assert.deepEqual(h.samples.at(-1), { attitude: live().attitude, slip_skid: null, turn_rate_dps: null, expiresAt: 1000 });
+  assert.deepEqual(h.samples.at(-1), { attitude: live().attitude, slip_skid: null, turn_rate_dps: null, ias_kt: null, gs_kt: null, expiresAt: 1000 });
   connection.send({ ...live(4), schema_version: 2, turn_rate_dps: 3 });
   assert.equal(h.status.state, 'invalid');
   assert.equal(h.samples.length, 3);
@@ -106,6 +106,34 @@ test('one subscription retries after two seconds and accepts sequence restart', 
   second.onerror(); h.client.stop(); h.advance(2000);
   assert.equal(h.connections.length, 2);
   assert.equal(h.timers.size, 0);
+});
+
+test('IAS and GS validate independently, preserve overflow values and clear omitted readings', () => {
+  for (const invalid of [undefined, null, false, '0', {}, [], NaN, Infinity, -Infinity, -1]) {
+    assert.equal(optionalIndications({ ias_kt: invalid, gs_kt: 137 }).ias_kt, null);
+    assert.equal(optionalIndications({ ias_kt: invalid, gs_kt: 137 }).gs_kt, 137);
+    assert.equal(optionalIndications({ ias_kt: 123, gs_kt: invalid }).ias_kt, 123);
+    assert.equal(optionalIndications({ ias_kt: 123, gs_kt: invalid }).gs_kt, null);
+  }
+  for (const speed of [0, 99.5, 999, 1000]) {
+    assert.equal(optionalIndications({ ias_kt: speed, gs_kt: speed }).ias_kt, speed);
+    assert.equal(optionalIndications({ ias_kt: speed, gs_kt: speed }).gs_kt, speed);
+  }
+  const h = harness(); h.client.start();
+  const connection = h.connections[0]; connection.onopen();
+  connection.send({ ...live(1), ias_kt: 123, gs_kt: 137 });
+  assert.equal(h.samples.at(-1).ias_kt, 123);
+  h.advance(500);
+  connection.send({ ...live(2), ias_kt: 123, gs_kt: 'bad' });
+  assert.equal(h.samples.at(-1).expiresAt, 1500);
+  assert.equal(h.samples.at(-1).ias_kt, 123);
+  assert.equal(h.samples.at(-1).gs_kt, null);
+  assert.equal(h.status.state, 'live');
+  connection.send(live(3));
+  assert.equal(h.samples.at(-1).ias_kt, null);
+  assert.equal(h.samples.at(-1).gs_kt, null);
+  h.advance(1000);
+  assert.equal(h.status.state, 'stale');
 });
 
 test('freshness accounts for server age; duplicates and open events cannot refresh it', () => {

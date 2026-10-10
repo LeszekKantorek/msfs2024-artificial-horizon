@@ -8,7 +8,9 @@
 | --- | --- |
 | `telemetry::Attitude` | Validated attitude |
 | `SlipSkid`, `TurnRate` | Independently validated optional indications |
+| `IndicatedAirspeed`, `GroundSpeed` | Independently validated finite nonnegative knots, with `new` and `knots` methods |
 | `FlightSample` | One acquisition with attitude and independently optional indications |
+| `FlightSample::with_speeds(ias, gs)` | Add independently optional speeds. The existing `new` constructor remains attitude/turn-only |
 | `Publisher::publish_sample` | Atomically publish a fresh extended sample with shared sequence and age |
 | `Publisher::publish(State)` | Preserve attitude-only and lifecycle publication; clear prior optional values |
 | `State` | Typed lifecycle state. Only `State::Live` carries attitude |
@@ -80,6 +82,8 @@ These durations are initial tuning values.
 | `attitude.roll_deg` | Finite degrees, positive right wing down, normalized to [-180, 180) |
 | `slip_skid` | Optional finite normalized ball displacement in [-1, 1]. Negative left, positive right, zero centered |
 | `turn_rate_dps` | Optional finite degrees/second. Negative left, positive right. Standard rate is +/-3 deg/s |
+| `ias_kt` | Optional finite nonnegative indicated airspeed in knots |
+| `gs_kt` | Optional finite nonnegative ground speed in knots |
 
 * Providers convert SDK values to these conventions.
 * Check conversion in the SimConnect spike. Do not infer SimVar units from names alone.
@@ -116,6 +120,25 @@ Extended live example:
 
 `tests/fixtures/pfd-samples.json` defines independent extended demo values.
 `tests/fixtures/snapshots.json` retains unchanged attitude-only v1 examples.
+
+### Optional speed indications
+
+* Rust omits absent speeds and both speed fields in non-live snapshots.
+* Each speed is independently optional. Missing, `null`, malformed, negative, or non-finite browser values become unavailable.
+* Speeds share the accepted sample's sequence, age, and expiry deadline with attitude.
+* A new snapshot replaces both previous speeds. Missing values never become zero or retain the previous reading.
+* `Publisher::publish(State)` clears speed fields, including in attitude-only live publications.
+* Finite values above 999 kt remain valid telemetry. Their presentation shows `OVR`, without a clamped number.
+* The IAS tape and rolling digits use the fractional received value. GS rounds to the nearest whole knot, with halves rounded up.
+* The display shows `X` for an unavailable speed. IAS loss hides its tape and digits, independently of GS and attitude.
+
+Speed fields extend the live example above:
+
+```json
+{"ias_kt": 99.5, "gs_kt": 137.6}
+```
+
+`tests/fixtures/speed-samples.json` defines independent speed-profile checkpoints. Speed ranges and trend fields belong to #22.
 
 Unavailable state example:
 
