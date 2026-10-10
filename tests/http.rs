@@ -24,14 +24,36 @@ async fn embedded_page_assets_and_liveness_match_the_contract() {
         (
             "/horizon.js",
             "text/javascript; charset=utf-8",
-            "createHorizonRenderer",
+            "createHorizon",
         ),
         ("/layout.js", "text/javascript; charset=utf-8", "pfdLayout"),
+        ("/panel.js", "text/javascript; charset=utf-8", "createPanel"),
         (
-            "/pfd-view.js",
+            "/frame-scheduler.js",
             "text/javascript; charset=utf-8",
-            "createPfdView",
+            "createFrameScheduler",
         ),
+        (
+            "/fixed-symbols.js",
+            "text/javascript; charset=utf-8",
+            "createFixedSymbols",
+        ),
+        (
+            "/slip-skid.js",
+            "text/javascript; charset=utf-8",
+            "createSlipSkid",
+        ),
+        (
+            "/turn-rate.js",
+            "text/javascript; charset=utf-8",
+            "createTurnRate",
+        ),
+        (
+            "/status.js",
+            "text/javascript; charset=utf-8",
+            "createStatusView",
+        ),
+        ("/svg.js", "text/javascript; charset=utf-8", "svgElement"),
         (
             "/telemetry-client.js",
             "text/javascript; charset=utf-8",

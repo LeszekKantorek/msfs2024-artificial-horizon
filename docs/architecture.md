@@ -81,9 +81,15 @@ web/
   index.html
   styles.css
   app.js                    # EventSource, DOM, page lifecycle
-  horizon.js                # attitude transforms and latest-sample frame scheduling
-  layout.js                 # responsive instrument regions in CSS pixels
-  pfd-view.js               # SVG geometry and DOM updates
+  frame-scheduler.js        # latest-frame scheduling and expiry checks
+  panel.js                  # instrument composition and delegation
+  horizon.js                # local attitude geometry and transforms
+  fixed-symbols.js          # fixed bank scale and aircraft references
+  slip-skid.js               # local slip/skid presentation
+  turn-rate.js               # local turn-rate presentation
+  status.js                  # source/transport labels and unavailability
+  svg.js                     # shared SVG helpers
+  layout.js                  # responsive instrument regions in CSS pixels
 tests/
   http_sse.rs
   fixtures/                 # known attitudes and lifecycle states
@@ -243,7 +249,9 @@ Browser: SSE -> validate -> latest sample -> animation frame -> SVG/DOM
 * `onAttitude` optionally delivers fresh attitude with a local monotonic expiry deadline.
 * The renderer retains one latest sample and one pending animation frame.
 * It checks expiry before drawing and cancels pending work when data becomes unavailable.
-* Currently, `horizon.js` owns attitude transforms and frame scheduling; `pfd-view.js` owns instrument SVG updates.
-* `app.js` connects these modules and presents status; #36 separates these responsibilities as described in [panel presentation](pfd-presentation.md).
+* `frame-scheduler.js` owns latest-frame scheduling independently of instrument geometry.
+* `panel.js` delegates resize, coherent frames, and invalidation to the implemented presentation modules.
+* `app.js` assembles telemetry, status, panel, resize observation, and page lifecycle.
+* [Panel presentation](pfd-presentation.md) defines the implemented module interfaces and planned #37 layers.
 * Nest pitch translation inside bank rotation so combined attitudes move in world-local coordinates.
 * Apply no interpolation or extrapolation.

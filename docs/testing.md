@@ -102,7 +102,9 @@ These checks run in Windows CI.
 | Socket unit tests | Subscriber release and write/shutdown deadlines with bounded duplex transport |
 | Local TCP | Two active SSE connections and port reuse after shutdown |
 | Browser controller | Independent fixtures, one EventSource/retry timer, two-second retry, sequence reset, freshness, malformed messages, suspend/resume |
-| Instrument | Pose signs, nested transforms, angle bounds, latest-sample frame coalescing, expiry before draw, cancellation on data loss |
+| Horizon | Pose signs, nested transforms, angle bounds, local-to-panel geometry |
+| Frame scheduler | Latest-frame coalescing, expiry before draw, cancellation on data loss, resize without renewing age, fresh identical values |
+| Panel/status | Complete read-only frame delegation, status without a sample, immediate stale obscuring, independent source/transport labels |
 | Coordinated turn | Typed bounds, independent optional failures, old snapshots, shared sample age, +/-3 deg/s, resize without refreshing age |
 
 ### Desktop exploration
@@ -345,7 +347,7 @@ These tests require no simulator or SDK.
 
 ## Modular and layered PFD acceptance
 
-These checks are planned for #36 and #37; this document does not record passing results.
+#36 implements modular rendering. #37 layers remain planned. This document defines procedures, not passing results.
 Run the required automated checks above for each implementation PR.
 Record real iOS Safari and Android Chrome results separately from desktop evidence.
 
@@ -355,6 +357,7 @@ Record real iOS Safari and Android Chrome results separately from desktop eviden
 | #36: lifecycle | Coalesce latest samples; preserve deadlines through resize; cancel invalid work; renew freshness for unchanged fresh values |
 | #36: recovery | Expire without new samples; reject an expired sample before paint; recover after reconnect and resume only with fresh data |
 | #36: assets | Serve every imported module through the compiled Rust server and the development fixture server |
+| #36: DOM ownership | Preserve SVG node identity across samples and resize. Check actual transformed geometry, not only transform strings |
 | #37: layers | Extend sky/ground behind tapes; clip pitch markings centrally; preserve fixed references and layer order |
 | #37: readability | Check digits, ticks, and value windows against sky and ground; record the selected background opacity |
 | #37: bounds | Permit intentional background overlap; reject content collisions; include painted strokes in bounds checks |

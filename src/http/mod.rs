@@ -84,11 +84,65 @@ pub fn router() -> Router {
             }),
         )
         .route(
-            "/pfd-view.js",
+            "/panel.js",
             get(|| async {
                 (
                     [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
-                    include_str!("../../web/pfd-view.js"),
+                    include_str!("../../web/panel.js"),
+                )
+            }),
+        )
+        .route(
+            "/frame-scheduler.js",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
+                    include_str!("../../web/frame-scheduler.js"),
+                )
+            }),
+        )
+        .route(
+            "/fixed-symbols.js",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
+                    include_str!("../../web/fixed-symbols.js"),
+                )
+            }),
+        )
+        .route(
+            "/slip-skid.js",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
+                    include_str!("../../web/slip-skid.js"),
+                )
+            }),
+        )
+        .route(
+            "/turn-rate.js",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
+                    include_str!("../../web/turn-rate.js"),
+                )
+            }),
+        )
+        .route(
+            "/status.js",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
+                    include_str!("../../web/status.js"),
+                )
+            }),
+        )
+        .route(
+            "/svg.js",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
+                    include_str!("../../web/svg.js"),
                 )
             }),
         )
