@@ -1,0 +1,35 @@
+name: PR acceptance
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened, closed, ready_for_review]
+  issues:
+    types: [edited, reopened, closed]
+  workflow_dispatch:
+  schedule:
+    - cron: '17,47 * * * *'
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+  statuses: write
+concurrency:
+  group: acceptance-criteria
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Never check out the PR head in this privileged workflow.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --prefix .github/scripts --ignore-scripts
+      - name: Validate issue criteria and PR checklists
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node .github/scripts/acceptance-check.mjs

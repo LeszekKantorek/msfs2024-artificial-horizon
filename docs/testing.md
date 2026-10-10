@@ -74,6 +74,9 @@ cargo test --locked --all-targets --features simconnect
 > The current `simconnect` feature contains no SDK integration. Passing these checks does not establish simulator compatibility.
 > Future SDK-dependent checks require documented prerequisites and distribution constraints.
 
+The [PR acceptance control](pr-acceptance.md#validate-changes-to-the-control) has a separate Node suite and runs on Linux.
+Its tooling dependencies do not affect browser controller checks or the application build.
+
 ### Coverage boundaries
 
 | Boundary | Required coverage |

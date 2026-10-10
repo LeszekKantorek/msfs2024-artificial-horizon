@@ -4,12 +4,14 @@ Describe the problem and resulting behavior.
 
 ## Related issue
 
-Refs #...
+Closes #...
 
 ## Validation
 
 Record checks performed and results. Include hardware/browser versions for manual checks.
 
-## Remaining limitations
+## Additional verification
 
-List unverified acceptance criteria or linked follow-up issues; write None if complete.
+List pending verification as Markdown checkboxes. Adapt wording to this PR's context.
+Describe how to verify each item and the expected result. Check it after verification.
+Write None if no verification remains. All issue Acceptance criteria and PR tasks must be checked before merge.

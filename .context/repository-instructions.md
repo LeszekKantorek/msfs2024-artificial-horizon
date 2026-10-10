@@ -24,8 +24,8 @@ status: active
 * Test behavior, not assertions that repeat implementation details.
 * Preserve cancellation cleanup for `Server::run`; verify producer, subscription, and connection closure as defined in [testing](../docs/testing.md#http-startup-checks).
 * Follow [PR preparation](../CONTRIBUTING.md#workflow), including the manual checklist requirement for new features.
-* Include `Closes #N` when preparing a PR that implements issue N, including drafts with pending acceptance checks.
-* Apply [acceptance criteria tracking](../CONTRIBUTING.md#acceptance-criteria-and-additional-verification): check criteria confirmed by tests or automated validation and copy unchecked criteria into the PR for additional verification.
+* Include `Closes #N` in implementation PRs, including drafts, and apply [acceptance tracking](../CONTRIBUTING.md#acceptance-criteria-and-additional-verification).
+* Read [PR acceptance](pr-acceptance.md) when changing or activating the checklist control.
 
 ## Definition of done
 
@@ -44,4 +44,4 @@ Source: cancellation cleanup verified in maintenance [#45](https://github.com/Le
 
 Source: user correction, 2026-10-10, to include automatic issue closure in implementation PRs and record pending verification separately.
 
-Source: accepted acceptance-tracking rule, 2026-10-10, to mark verified issue criteria and copy remaining unchecked criteria into the PR.
+Source: accepted acceptance-tracking rule and simplified control, 2026-10-10: mark verified issue criteria, record remaining verification in the PR, and check both lists without comparing wording.
