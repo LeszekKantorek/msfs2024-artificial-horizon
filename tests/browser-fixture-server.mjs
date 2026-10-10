@@ -16,11 +16,17 @@ input.on('line', line => {
   catch { console.error('Expected a JSON object'); }
 });
 const types = { '/': 'text/html', '/styles.css': 'text/css', '/app.js': 'text/javascript',
-  '/telemetry/client.js': 'text/javascript', '/horizon.js': 'text/javascript',
+  '/telemetry/client.js': 'text/javascript', '/horizon/index.js': 'text/javascript',
+  '/horizon/world.js': 'text/javascript',
+  '/horizon/pitch-scale.js': 'text/javascript',
+  '/horizon/bank-pointer.js': 'text/javascript',
+  '/horizon/calculations.js': 'text/javascript',
   '/telemetry/validation.js': 'text/javascript',
   '/airspeed/index.js': 'text/javascript', '/airspeed/ias.js': 'text/javascript', '/airspeed/ground-speed.js': 'text/javascript', '/airspeed/tape.js': 'text/javascript', '/airspeed/readout.js': 'text/javascript', '/airspeed/references.js': 'text/javascript', '/airspeed/calculations.js': 'text/javascript',
   '/helpers.js': 'text/javascript',
-  '/layout.js': 'text/javascript', '/panel.js': 'text/javascript', '/frame-scheduler.js': 'text/javascript', '/fixed-symbols.js': 'text/javascript', '/slip-skid.js': 'text/javascript', '/turn-rate.js': 'text/javascript', '/status.js': 'text/javascript',
+  '/layout.js': 'text/javascript', '/panel.js': 'text/javascript', '/frame-scheduler.js': 'text/javascript', '/fixed-symbols/index.js': 'text/javascript',
+  '/fixed-symbols/bank-scale.js': 'text/javascript',
+  '/fixed-symbols/aircraft.js': 'text/javascript', '/slip-skid.js': 'text/javascript', '/turn-rate.js': 'text/javascript', '/status.js': 'text/javascript',
   '/layout.html': 'text/html', '/layout-fixture.js': 'text/javascript' };
 const server = createServer((request, response) => {
   const path = new URL(request.url, 'http://127.0.0.1').pathname;

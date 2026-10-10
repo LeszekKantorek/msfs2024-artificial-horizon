@@ -18,9 +18,29 @@ async fn embedded_page_assets_and_liveness_match_the_contract() {
             "createTelemetryClient",
         ),
         (
-            "/horizon.js",
+            "/horizon/index.js",
             "text/javascript; charset=utf-8",
             "createHorizon",
+        ),
+        (
+            "/horizon/world.js",
+            "text/javascript; charset=utf-8",
+            "createWorld",
+        ),
+        (
+            "/horizon/pitch-scale.js",
+            "text/javascript; charset=utf-8",
+            "createPitchScale",
+        ),
+        (
+            "/horizon/bank-pointer.js",
+            "text/javascript; charset=utf-8",
+            "createBankPointer",
+        ),
+        (
+            "/horizon/calculations.js",
+            "text/javascript; charset=utf-8",
+            "attitudeTransforms",
         ),
         (
             "/airspeed/index.js",
@@ -66,9 +86,19 @@ async fn embedded_page_assets_and_liveness_match_the_contract() {
             "createFrameScheduler",
         ),
         (
-            "/fixed-symbols.js",
+            "/fixed-symbols/index.js",
             "text/javascript; charset=utf-8",
             "createFixedSymbols",
+        ),
+        (
+            "/fixed-symbols/bank-scale.js",
+            "text/javascript; charset=utf-8",
+            "createBankScale",
+        ),
+        (
+            "/fixed-symbols/aircraft.js",
+            "text/javascript; charset=utf-8",
+            "createAircraft",
         ),
         (
             "/slip-skid.js",
@@ -136,6 +166,8 @@ async fn static_router_does_not_create_a_telemetry_source() {
         "/svg.js",
         "/telemetry-client.js",
         "/airspeed.js",
+        "/horizon.js",
+        "/fixed-symbols.js",
     ] {
         let response = router()
             .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())

@@ -201,11 +201,29 @@ pub fn router() -> Router {
             }),
         )
         .route(
-            "/fixed-symbols.js",
+            "/fixed-symbols/index.js",
             get(|| async {
                 (
                     [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
-                    include_str!("../../web/fixed-symbols.js"),
+                    include_str!("../../web/fixed-symbols/index.js"),
+                )
+            }),
+        )
+        .route(
+            "/fixed-symbols/bank-scale.js",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
+                    include_str!("../../web/fixed-symbols/bank-scale.js"),
+                )
+            }),
+        )
+        .route(
+            "/fixed-symbols/aircraft.js",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
+                    include_str!("../../web/fixed-symbols/aircraft.js"),
                 )
             }),
         )
@@ -237,11 +255,47 @@ pub fn router() -> Router {
             }),
         )
         .route(
-            "/horizon.js",
+            "/horizon/index.js",
             get(|| async {
                 (
                     [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
-                    include_str!("../../web/horizon.js"),
+                    include_str!("../../web/horizon/index.js"),
+                )
+            }),
+        )
+        .route(
+            "/horizon/world.js",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
+                    include_str!("../../web/horizon/world.js"),
+                )
+            }),
+        )
+        .route(
+            "/horizon/pitch-scale.js",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
+                    include_str!("../../web/horizon/pitch-scale.js"),
+                )
+            }),
+        )
+        .route(
+            "/horizon/bank-pointer.js",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
+                    include_str!("../../web/horizon/bank-pointer.js"),
+                )
+            }),
+        )
+        .route(
+            "/horizon/calculations.js",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
+                    include_str!("../../web/horizon/calculations.js"),
                 )
             }),
         )
