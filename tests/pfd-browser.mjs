@@ -79,12 +79,16 @@ try {
         const triangle = document.querySelector('.bank-zero').getBBox();
         const ias = document.querySelector('#airspeed .instrument-background').getBoundingClientRect();
         const gs = document.querySelector('#ground-speed .instrument-background').getBoundingClientRect();
+        const unit = document.querySelector('#airspeed .speed-unit').getBoundingClientRect();
+        const tapeClip = document.querySelector('#airspeed-tape-clip rect').getBBox();
         const clipTop = Number(document.querySelector('#attitude-clip rect').getAttribute('y'));
         return { scrollWidth: root.scrollWidth, scrollHeight: root.scrollHeight,
           w, h, width: rect.width, height: rect.height, ballWidth: ball.width, ballHeight: ball.height,
           bankZeroPaintedTop: triangle.y + document.querySelector('#fixed-symbols').transform.baseVal.consolidate().matrix.f - 1, clipTop,
           speedGap: gs.top - ias.bottom, speedLeftDifference: gs.left - ias.left,
-          speedWidthDifference: gs.width - ias.width };
+          speedWidthDifference: gs.width - ias.width, gsBottomInset: rect.bottom - gs.bottom,
+          blankSpeedArea: gs.top - unit.bottom,
+          tapeEndsAboveUnit: tapeClip.y + tapeClip.height < Number(document.querySelector('#airspeed .speed-unit').getAttribute('y')) };
       });
       assert.equal(dimensions.scrollWidth, width);
       assert.equal(dimensions.scrollHeight, height);
@@ -95,6 +99,9 @@ try {
       assert.ok(Math.abs(dimensions.speedGap) < 0.01, 'GS must touch the IAS tape in production and the fixture');
       assert.ok(Math.abs(dimensions.speedLeftDifference) < 0.01);
       assert.ok(Math.abs(dimensions.speedWidthDifference) < 0.01);
+      assert.ok(Math.abs(dimensions.gsBottomInset - 2) < 0.01, 'GS must stay at the bottom of the panel');
+      assert.ok(dimensions.blankSpeedArea > 20, 'The extended tape background below KT must stay empty');
+      assert.equal(dimensions.tapeEndsAboveUnit, true, 'Ticks and labels must stop above KT');
       if (path === '/layout.html') {
         const collisions = await page.evaluate(() => {
           const failures = [];
@@ -110,7 +117,7 @@ try {
           // Background overlap is intentional; compare painted label content.
           const badge = document.querySelector('#layout-badge .fixture-label').getBoundingClientRect();
           const gs = document.querySelector('#ground-speed').getBoundingClientRect();
-          if (badge.top <= gs.bottom) failures.push('Fixture badge must stay below ground speed');
+          if (badge.bottom >= gs.top) failures.push('Fixture badge must stay above ground speed');
           return failures;
         });
         assert.deepEqual(collisions, [], `${width}x${height} painted content`);
@@ -208,7 +215,8 @@ try {
             gsTexts.slice(1).every((b, i) => b.left >= gsTexts[i].right) };
       });
       assert.deepEqual(actual.current, text);
-      actual.offsets.forEach((offset, i) => assert.ok(Math.abs(offset - offsets[i]) < 1e-4));
+      actual.offsets.forEach((offset, i) => assert.ok(Math.abs(offset - offsets[i]) < 1e-4,
+        JSON.stringify({ width, height, speed, column: i, actual: offset, expected: offsets[i] })));
       assert.ok(Math.abs(actual.scaleOffset - speed * 4) < 1e-4);
       assert.equal(actual.gsText, '138');
       assert.equal(actual.contentInsideWindow, true);

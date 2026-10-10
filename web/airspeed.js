@@ -70,8 +70,9 @@ export function createAirspeed(instrument, layers) {
       const { x, y, width, height } = layout.airspeed;
       center = height / 2;
       digitX = (width - 6) / 2;
+      const gsY = layout.height - 24;
       ias.setAttribute('transform', `translate(${x} ${y})`);
-      setAttributes(background, { width, height });
+      setAttributes(background, { width, height: gsY - y });
       setAttributes(tapeRect, { x: 0, y: 1, width, height: height - 18 });
       ticks.setAttribute('d', Array.from({ length: 500 }, (_, index) => {
         const major = index % 5 === 0;
@@ -82,7 +83,6 @@ export function createAirspeed(instrument, layers) {
       setAttributes(digitRect, { x: 2, y: center - 11, width: width - 10, height: 22 });
       setAttributes(unit, { x: width / 2, y: height - 6 });
       setAttributes(iasWarning, { x: x + digitX, y: y + center });
-      const gsY = y + height;
       gs.setAttribute('transform', `translate(${x} ${gsY})`);
       setAttributes(gsBackground, { width, height: 22 });
       setAttributes(gsLabel, { x: 2 });
