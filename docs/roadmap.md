@@ -37,7 +37,7 @@ flowchart LR
 | 3 | [#3 SSE sessions](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/3) | #1, #2 | Current snapshots, reconnect, bounded consumers |
 | 4 | [#4 Mobile instrument](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/4) | #2, #3 | Responsive attitude and honest status |
 
-> **Exit:** A phone displays marked demo attitude and recovers after connection loss without reload. The full path requires no simulator SDK.
+> **Exit:** A phone displays synthetic demo attitude and recovers after connection loss without reload. The full path requires no simulator SDK.
 
 ## Stage 2: G5 PFD demo vertical slice
 

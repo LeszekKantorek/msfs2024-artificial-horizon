@@ -169,7 +169,7 @@ The panel has no top status bar or reserved header space.
 The production panel has no source badge or DEMO announcement.
 The development fixture alone uses a two-line `LAYOUT FIXTURE` badge in the lower left above future ground speed.
 Successful source and transport messages have no visible labels.
-Source and transport remain separate internal states and are announced through a polite live region only when their text changes.
+Source state and transport state remain separate internally and are announced through a polite live region only when their text changes.
 Waiting, reconnecting, stale, suspended, paused, disconnected, and invalid states obscure the entire panel with the applicable reason.
 A `live` status alone does not remove this cover; only rendering a fresh frame does so.
 

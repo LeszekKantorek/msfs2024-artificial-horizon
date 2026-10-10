@@ -30,7 +30,7 @@ flowchart LR
 | CLI | clap parsing, help/version, conversion to typed configuration, process signals |
 | Configuration | Source selection, listen address/port validation, sampling settings |
 | Telemetry | Normalized attitude, validity, sequence, freshness |
-| Demo provider | Repeatable scenarios and explicitly marked synthetic data |
+| Demo provider | Repeatable synthetic scenarios with explicit telemetry source identity |
 | SimConnect provider | SDK types, callbacks, units/signs, simulator lifecycle |
 | State distribution | One latest snapshot, bounded memory, shared clients |
 | HTTP | Static assets, health, SSE framing, subscriptions, graceful shutdown |

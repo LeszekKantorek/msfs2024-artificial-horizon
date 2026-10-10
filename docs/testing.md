@@ -104,7 +104,7 @@ These checks run in Windows CI.
 | Browser controller | Independent fixtures, one EventSource/retry timer, two-second retry, sequence reset, freshness, malformed messages, suspend/resume |
 | Horizon | Pose signs, nested transforms, angle bounds, local-to-panel geometry |
 | Frame scheduler | Latest-frame coalescing, expiry before draw, cancellation on data loss, resize without renewing age, fresh identical values |
-| Panel/status | Complete read-only frame delegation, status without a sample, immediate stale obscuring, independent source/transport labels |
+| Panel/status | Complete read-only frame delegation, status without a sample, immediate stale obscuring, independent source/transport state and accessible announcements |
 | Coordinated turn | Typed bounds, independent optional failures, old snapshots, shared sample age, +/-3 deg/s, resize without refreshing age |
 
 ### Desktop exploration
