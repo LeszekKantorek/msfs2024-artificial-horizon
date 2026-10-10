@@ -10,6 +10,7 @@ status: active
 * Format identifiers as inline code and commands as fenced code blocks.
 * Use `[ ]` checklists for procedures or criteria, not duplicate task status.
 * Preserve requirements, units, limits, uncertainty, and planned/implemented distinctions.
+* Before removing moved or shortened text, verify where each requirement, constraint, and caveat remains in the canonical documentation.
 * Apply `asd-ste100` when available without claiming certified dictionary compliance.
 * Link to the canonical source instead of repeating commands or rules.
 

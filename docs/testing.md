@@ -146,7 +146,7 @@ Label desktop findings and automated tests separately.
 * [ ] Start demo on the PC's private LAN address with the [README command](../README.md#use-your-phone).
 * [ ] Open the printed URL on each phone.
 * [ ] Check that DEMO and live status remain visible.
-* [ ] Observe the full 14-second cycle: level, nose up/down, left/right bank, both combined poses.
+* [ ] Observe the full current cycle and indications listed in [Demo behavior](#demo-behavior).
 * [ ] Check that nose up lowers the horizon and right bank rotates it counterclockwise.
 * [ ] Rotate between portrait and landscape.
 * [ ] Check readable scales/status, no horizontal scrolling, and no overlap with browser bars or safe areas.

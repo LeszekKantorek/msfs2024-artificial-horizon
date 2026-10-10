@@ -10,6 +10,7 @@ status: active
 3. Distinguish target design and SDK assumptions from verified behavior.
 4. Collect implementation findings in [#9](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9), referencing the originating task.
 5. Review those findings after that task closes before defining follow-up scope.
+6. Follow [finding promotion](../CONTRIBUTING.md#promote-agreed-findings) when creating an agreed follow-up issue.
 
 ## Repository rules
 
