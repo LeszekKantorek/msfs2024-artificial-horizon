@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { speedRanges, speedIndications, referenceReadout, placeReferenceLabels } from '../web/airspeed/calculations.js';
+import { speedRanges, speedIndications, referenceReadout, placeReferenceLabels, rangeBounds } from '../web/airspeed/calculations.js';
 import { validateAirspeedProfile, optionalIndications } from '../web/telemetry-client.js';
 
 const profile = JSON.parse(readFileSync(new URL('./fixtures/airspeed-profile.json', import.meta.url)));
@@ -50,6 +50,22 @@ test('five configured ranges include parallel flap and normal ranges at independ
     [109.99, ['normal']], [110, ['caution']], [110.01, ['caution']],
     [139.99, ['caution']], [140, ['overspeed']], [140.01, ['overspeed']],
   ]) assert.deepEqual(ranges.filter(r => r.min <= speed && speed < r.max).map(r => r.name), expected);
+});
+
+test('unbounded overspeed ranges clip to the tape while invalid coordinates remain invalid', () => {
+  const tape = { centerY: 77, clipTopY: 1, clipBottomY: 137 };
+  const overspeed = speedRanges(profile).find(range => range.name === 'overspeed');
+  for (const [ias, expected] of [[110, { y: 1, height: 0 }],
+    [140, { y: 1, height: 76 }], [150, { y: 1, height: 116 }], [999, { y: 1, height: 136 }]]) {
+    assert.deepEqual(rangeBounds(ias, overspeed, tape), expected);
+  }
+  assert.deepEqual(rangeBounds(75, { min: 0, max: Infinity }, tape), { y: 1, height: 136 });
+  assert.deepEqual(rangeBounds(75, { min: -Infinity, max: Infinity }, tape), { y: 1, height: 136 });
+  for (const bounds of [rangeBounds(NaN, overspeed, tape),
+    rangeBounds(140, overspeed, { ...tape, centerY: NaN })]) {
+    assert.ok(Number.isNaN(bounds.y));
+    assert.ok(Number.isNaN(bounds.height));
+  }
 });
 
 test('source acceleration predicts six seconds and separates actual overspeed from approaching VNE', () => {

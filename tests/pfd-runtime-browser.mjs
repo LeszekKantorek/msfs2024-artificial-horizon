@@ -66,7 +66,7 @@ try {
   assert.equal(await page.locator('#turn-rate').getAttribute('data-available'), 'true');
   assert.deepEqual([...loadedModules].sort(), [
     '/airspeed.js', '/airspeed/calculations.js', '/app.js', '/fixed-symbols.js', '/frame-scheduler.js', '/horizon.js', '/layout.js',
-    '/panel.js', '/slip-skid.js', '/status.js', '/svg.js', '/telemetry-client.js', '/turn-rate.js',
+    '/math.js', '/panel.js', '/slip-skid.js', '/status.js', '/svg.js', '/telemetry-client.js', '/turn-rate.js',
   ]);
   const response = await fetch(`${address}/api/v1/events`, { signal: AbortSignal.timeout(2000) });
   const reader = response.body.getReader();

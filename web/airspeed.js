@@ -1,4 +1,5 @@
 import { svgElement, setAttributes } from './svg.js';
+import { clamp } from './math.js';
 import { MINOR_TICK_STEP_KT, MAJOR_TICK_STEP_KT, DIGIT_HEIGHT, MAX_SPEED,
   tapeOffset, referenceReadout, placeReferenceLabels, speedRanges, rollingDigits,
   calculateAirspeedGeometry, deriveSpeedReadings, rangeBounds } from './airspeed/calculations.js';
@@ -141,7 +142,7 @@ function renderRanges(rects, tape, ias, profile) {
 
 function renderTrend(trend, tape, ias, prediction) {
   trend.style.display = prediction === null ? 'none' : '';
-  trend.setAttribute('d', prediction === null ? '' : `M ${tape.width - 10} ${tape.centerY} V ${Math.max(tape.clipTopY + 1, Math.min(tape.clipBottomY - 1, tape.centerY + tapeOffset(ias.value, prediction)))}`);
+  trend.setAttribute('d', prediction === null ? '' : `M ${tape.width - 10} ${tape.centerY} V ${clamp(tape.centerY + tapeOffset(ias.value, prediction), tape.clipTopY + 1, tape.clipBottomY - 1)}`);
   if (prediction === null) trend.removeAttribute('data-prediction-kt');
   else trend.setAttribute('data-prediction-kt', prediction);
 }

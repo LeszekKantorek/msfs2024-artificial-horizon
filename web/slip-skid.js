@@ -1,3 +1,5 @@
+import { setAttributes } from './svg.js';
+
 // Geometry stays in the indication's local coordinates.
 export function slipPosition(value, travel) { return value * travel; }
 
@@ -15,10 +17,7 @@ export function createSlipSkid(instrument, layers) {
       travel = layout.slipTravel;
       group.setAttribute('transform', `translate(${layout.cx} ${layout.slipY})`);
       warning.setAttribute('transform', group.getAttribute('transform'));
-      background.setAttribute('x', -travel - 12);
-      background.setAttribute('y', -10);
-      background.setAttribute('width', 2 * travel + 24);
-      background.setAttribute('height', 20);
+      setAttributes(background, { x: -travel - 12, y: -10, width: 2 * travel + 24, height: 20 });
       reference.setAttribute('d', `M -9 -7 V 7 M 9 -7 V 7 M ${-travel - 7} 0 h 4 M ${travel + 3} 0 h 4`);
     },
     render(frame) {

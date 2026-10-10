@@ -33,6 +33,7 @@ async fn embedded_page_assets_and_liveness_match_the_contract() {
             "deriveSpeedReadings",
         ),
         ("/layout.js", "text/javascript; charset=utf-8", "pfdLayout"),
+        ("/math.js", "text/javascript; charset=utf-8", "clamp"),
         ("/panel.js", "text/javascript; charset=utf-8", "createPanel"),
         (
             "/frame-scheduler.js",

@@ -1,3 +1,5 @@
+import { clamp } from '../math.js';
+
 const PIXELS_PER_KNOT = 4;
 export const MINOR_TICK_STEP_KT = 2;
 export const MAJOR_TICK_STEP_KT = 10;
@@ -100,7 +102,7 @@ export function deriveSpeedReadings(frame) {
 }
 
 export function rangeBounds(iasKt, range, tape) {
-  const top = Math.max(tape.clipTopY, Math.min(tape.clipBottomY, tape.centerY + tapeOffset(iasKt, range.max)));
-  const bottom = Math.max(tape.clipTopY, Math.min(tape.clipBottomY, tape.centerY + tapeOffset(iasKt, range.min)));
+  const top = clamp(tape.centerY + tapeOffset(iasKt, range.max), tape.clipTopY, tape.clipBottomY);
+  const bottom = clamp(tape.centerY + tapeOffset(iasKt, range.min), tape.clipTopY, tape.clipBottomY);
   return { y: top, height: Math.max(0, bottom - top) };
 }

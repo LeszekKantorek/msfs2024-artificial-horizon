@@ -1,4 +1,4 @@
-import { svgElement, setAttributes as attributes } from './svg.js';
+import { svgElement, setAttributes } from './svg.js';
 
 const PITCH_MAJOR_HALF = 30;
 const PITCH_MEDIUM_HALF = 16;
@@ -17,6 +17,46 @@ export function attitudeTransforms({ pitch_deg, roll_deg }, layout = { cx: 0, cy
   };
 }
 
+function resizeWorldGeometry(world, backgroundClip, attitudeClip, layout) {
+  const { width, height, attitude: attitudeRegion, pitchScale: pitchPixelsPerDegree } = layout;
+  const cx = 0, cy = 0;
+  world.setAttribute('transform', `translate(${layout.cx} ${layout.cy})`);
+  setAttributes(backgroundClip, layout.background);
+  setAttributes(attitudeClip, attitudeRegion);
+  // World extent covers every rotation and pitch displacement in the contract.
+  const extent = Math.hypot(width, height) + 90 * pitchPixelsPerDegree;
+  world.querySelector('.sky').setAttribute('d', `M ${cx - extent} ${cy - extent} H ${cx + extent} V ${cy} H ${cx - extent} Z`);
+  world.querySelector('.ground').setAttribute('d', `M ${cx - extent} ${cy} H ${cx + extent} V ${cy + extent} H ${cx - extent} Z`);
+  world.querySelector('.horizon-line').setAttribute('d', `M ${cx - extent} ${cy} H ${cx + extent}`);
+}
+
+function resizePitchScale(pitchClip, warningOrigin, pitchTicks, pitchWarnings, layout) {
+  const { attitude: attitudeRegion, pitchScale: pitchPixelsPerDegree, bankRadius: radius, labelSize } = layout;
+  warningOrigin.setAttribute('transform', `translate(${layout.cx} ${layout.cy})`);
+  setAttributes(pitchClip, { x: attitudeRegion.x - layout.cx, y: -radius + PITCH_CLIP_CLEARANCE,
+    width: attitudeRegion.width, height: attitudeRegion.y + attitudeRegion.height - (layout.cy - radius + PITCH_CLIP_CLEARANCE) });
+  for (const { degrees, line, labels } of pitchTicks) {
+    const major = degrees % 10 === 0;
+    const half = major ? PITCH_MAJOR_HALF : degrees % 5 === 0 ? PITCH_MEDIUM_HALF : PITCH_MINOR_HALF;
+    const y = -degrees * pitchPixelsPerDegree;
+    line.setAttribute('d', `M ${-half} ${y} H ${half}`);
+    for (const [label, x, anchor] of labels) {
+      setAttributes(label, { x, y, 'text-anchor': anchor,
+        'dominant-baseline': 'middle', 'font-size': labelSize });
+    }
+  }
+  for (const { degrees, path } of pitchWarnings) {
+    const y = -degrees * pitchPixelsPerDegree;
+    const tip = y + (degrees > 0 ? CHEVRON_HEIGHT : -CHEVRON_HEIGHT);
+    path.setAttribute('d', `M ${-CHEVRON_HALF_WIDTH} ${y} L 0 ${tip} L ${CHEVRON_HALF_WIDTH} ${y}`);
+  }
+}
+
+function resizeBankIndicator(pointerOrigin, pointer, layout) {
+  pointerOrigin.setAttribute('transform', `translate(${layout.cx} ${layout.cy})`);
+  pointer.setAttribute('d', `M 0 ${-layout.bankRadius + 2} l -5 9 h 10 Z`);
+}
+
 export function createHorizon(instrument, layers) {
   const get = selector => instrument.querySelector(selector);
   const world = get('.moving-world');
@@ -29,6 +69,9 @@ export function createHorizon(instrument, layers) {
   const scaleRotation = get('#scale-rotation');
   const scalePitch = get('#scale-pitch');
   const pointer = get('#bank-pointer');
+  const backgroundClip = get('#background-clip rect');
+  const attitudeClip = get('#attitude-clip rect');
+  const pitchClip = get('#pitch-clip rect');
   layers.background.append(world);
   layers.symbols.append(get('#bank-pointer-clip'));
   layers.warnings.append(warningOrigin);
@@ -55,37 +98,10 @@ export function createHorizon(instrument, layers) {
   }
   let localLayout;
   function resize(layout) {
-    const { width, height, attitude: a, pitchScale: p, bankRadius: radius, labelSize } = layout;
-    const cx = 0, cy = 0;
-    localLayout = { cx, cy, pitchScale: p };
-    world.setAttribute('transform', `translate(${layout.cx} ${layout.cy})`);
-    attributes(get('#background-clip rect'), layout.background);
-    attributes(get('#attitude-clip rect'), a);
-    warningOrigin.setAttribute('transform', `translate(${layout.cx} ${layout.cy})`);
-    pointerOrigin.setAttribute('transform', `translate(${layout.cx} ${layout.cy})`);
-    attributes(get('#pitch-clip rect'), { x: a.x - layout.cx, y: -radius + PITCH_CLIP_CLEARANCE,
-      width: a.width, height: a.y + a.height - (layout.cy - radius + PITCH_CLIP_CLEARANCE) });
-    // World extent covers every rotation and pitch displacement in the contract.
-    const extent = Math.hypot(width, height) + 90 * p;
-    get('.sky').setAttribute('d', `M ${cx - extent} ${cy - extent} H ${cx + extent} V ${cy} H ${cx - extent} Z`);
-    get('.ground').setAttribute('d', `M ${cx - extent} ${cy} H ${cx + extent} V ${cy + extent} H ${cx - extent} Z`);
-    get('.horizon-line').setAttribute('d', `M ${cx - extent} ${cy} H ${cx + extent}`);
-    for (const { degrees, line, labels } of pitchTicks) {
-      const major = degrees % 10 === 0;
-      const half = major ? PITCH_MAJOR_HALF : degrees % 5 === 0 ? PITCH_MEDIUM_HALF : PITCH_MINOR_HALF;
-      const y = -degrees * p;
-      line.setAttribute('d', `M ${-half} ${y} H ${half}`);
-      for (const [label, x, anchor] of labels) {
-        attributes(label, { x, y, 'text-anchor': anchor,
-          'dominant-baseline': 'middle', 'font-size': labelSize });
-      }
-    }
-    for (const { degrees, path } of pitchWarnings) {
-      const y = -degrees * p;
-      const tip = y + (degrees > 0 ? CHEVRON_HEIGHT : -CHEVRON_HEIGHT);
-      path.setAttribute('d', `M ${-CHEVRON_HALF_WIDTH} ${y} L 0 ${tip} L ${CHEVRON_HALF_WIDTH} ${y}`);
-    }
-    pointer.setAttribute('d', `M 0 ${-radius + 2} l -5 9 h 10 Z`);
+    localLayout = { cx: 0, cy: 0, pitchScale: layout.pitchScale };
+    resizeWorldGeometry(world, backgroundClip, attitudeClip, layout);
+    resizePitchScale(pitchClip, warningOrigin, pitchTicks, pitchWarnings, layout);
+    resizeBankIndicator(pointerOrigin, pointer, layout);
   }
   function render(frame) {
     const transforms = attitudeTransforms(frame.attitude, localLayout);
