@@ -81,15 +81,11 @@ Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
 | Connection loss | Opaque full-panel cover with the reason and automatic retry after two seconds |
 | Stale or unavailable data | Explicit status, no fabricated level-flight reading |
 | Background/resume | A fresh snapshot is required before live attitude returns |
+| Sizing | No fixed aspect ratio; minimum 320 CSS px width and 240 CSS px usable height after browser bars and safe areas |
+| Old snapshots | Attitude-only snapshots show attitude with unavailable slip/skid and turn rate |
 
-> Real iOS Safari and Android Chrome acceptance requires [device evidence](docs/testing.md#attitude-display-real-device-phone-acceptance) in issue #4.
-
-The panel adapts to available width and height without a fixed aspect ratio.
-The supported minimum is 320 CSS px wide and 240 CSS px of usable height after browser bars and safe areas.
-Old attitude-only snapshots display attitude with unavailable slip/skid and turn rate.
-Real-phone acceptance for the attitude/turn extension remains in [issue #20](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/20).
-
-Layer and background-opacity acceptance remains in [issue #37](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/37).
+> Real iOS Safari and Android Chrome acceptance requires [device evidence](docs/testing.md#attitude-display-real-device-phone-acceptance).
+> Issue #4 owns the original attitude acceptance, [#20](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/20) owns the attitude/turn extension, and [#37](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/37) owns layers and background opacity.
 
 The planned G5-inspired PFD adds airspeed, altitude, vertical speed, and heading/track indications.
 See the [project brief](docs/project-brief.md) for coverage and exclusions, and the [roadmap](docs/roadmap.md) for delivery order.

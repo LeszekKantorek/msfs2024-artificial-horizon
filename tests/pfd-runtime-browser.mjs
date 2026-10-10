@@ -81,8 +81,9 @@ try {
   assert.ok(Number.isFinite(snapshot.turn_rate_dps));
   // Wait for the Rust-owned right-bank/standard-rate segment, not a browser fixture.
   await page.waitForFunction(() => document.querySelector('#turn-rate').getAttribute('aria-label') ===
-    'Turn rate 3 degrees per second', null, { timeout: 12000 });
-  assert.match(await page.locator('#world-rotation').getAttribute('transform'), /^rotate\(-30 /);
+    'Turn rate 3 degrees per second' &&
+    document.querySelector('#world-rotation').getAttribute('transform').startsWith('rotate(-30 '),
+    null, { timeout: 25000 });
   await page.screenshot({ path: '.local/pfd-runtime-landscape.png' });
   await stop();
   await page.locator('.instrument[data-available="false"]').waitFor();

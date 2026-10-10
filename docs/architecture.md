@@ -55,11 +55,7 @@ flowchart LR
 
 ## Intended source layout
 
-Initialize the library package with:
-
-```powershell
-cargo init --lib
-```
+Environment setup: [CONTRIBUTING](../CONTRIBUTING.md#environment-setup).
 
 ```text
 Cargo.toml                  # library and binary targets, edition 2024
@@ -115,12 +111,7 @@ The `msfs2024_artificial_horizon` library exposes `Config`, `Source`, and `Serve
 
 Providers must not depend on application configuration.
 
-Start the first executable with:
-
-```powershell
-cargo run --bin main
-```
-
+Run the application with the [README procedure](../README.md#start-the-demo).
 Future executables use their own binary names.
 
 * Embed web assets in the release binary.
@@ -183,20 +174,25 @@ See [ADR 0001](adr/0001-rust-http-sse.md) and the [wire contract](telemetry-cont
 
 ### Attitude and coordinated-turn boundary
 
+The server owns validated samples and deterministic demo scenarios:
+
 * `FlightSample` combines validated attitude with optional `SlipSkid` and `TurnRate` values.
 * `Publisher::publish_sample` uses the existing latest-value channel, sequence, and monotonic age.
 * `Publisher::publish(State)` keeps the attitude-only path and clears all optional indications.
 * `demo::sample` defines nine deterministic two-second segments; `demo::attitude` retains its original seven-pose helper contract.
+
+The browser validates those samples and presents them within the available panel area:
+
 * `createTelemetryClient` validates optional values independently and calls `onSample` with normalized values or `null` and one expiry deadline.
 * The existing `onAttitude` callback retains its attitude-only shape.
 * `pfdLayout` allocates instrument regions from available CSS width/height.
-* `createPfdView` owns SVG construction; `createHorizonRenderer` owns coalescing, resize redraws, cancellation, and expiry before paint.
+* `frame-scheduler.js` schedules fresh frames; `panel.js` composes instrument modules.
 * Resize preserves the latest accepted sample and its original deadline.
 * Sky/ground and pitch markings use separate transformed groups with separate screen-space clipping.
 * Future instrument regions contain no readings or scales in the production page.
 * `tests/layout-fixture.js` adds the complete intended arrangement only through the development fixture server.
 
-### Planned panel boundary
+### Panel boundary
 
 [Panel presentation](pfd-presentation.md) defines the module tree, frame lifecycle, and layer composition.
 [ADR 0004](adr/0004-modular-pfd-presentation.md) records the decision; #36 and #37 own implementation.
@@ -209,11 +205,9 @@ See [ADR 0001](adr/0001-rust-http-sse.md) and the [wire contract](telemetry-cont
 | Instruments | Own local geometry, SVG updates, and indication availability |
 | Status presentation | Show source/transport status and obscure invalid data |
 
-The target interface is `panel.resize(layout)`, `panel.render(frame)`, and `panel.invalidate(reason)`.
-Each instrument receives the same complete frame as read-only input and selects its own fields.
-The internal frame is not a new wire format.
-The current implementation described above remains in place until #36.
-Future instrument modules arrive with their feature slices.
+* [Panel presentation](pfd-presentation.md#panel-interface-and-frame-lifecycle) owns implemented interfaces and frame rules.
+* The internal frame is not a new wire format.
+* Future instrument modules arrive with their feature slices.
 
 ## Library telemetry interface
 
@@ -237,14 +231,24 @@ Browser: SSE -> validate -> latest sample -> animation frame -> SVG/DOM
 
 ### Server and browser ownership
 
+The server owns acquisition and its shutdown lifecycle:
+
 * `Server::telemetry()` exposes the subscription before `run` starts acquisition.
 * `Server::run` owns one demo task and joins it after shutdown or HTTP failure.
+* Cancelling a polled `Server::run` future signals producer shutdown and starts connection closure without blocking the cancellation.
+* Repeated shutdown signals preserve the first connection deadline.
 * Server shutdown closes subscriptions after pending data.
 * Producer failure shuts HTTP down and returns an error to the caller.
+
+HTTP exposes telemetry through a bounded connection layer:
+
 * The telemetry model exposes no SSE route.
 * `http::router_with_telemetry(subscription)` adds SSE without starting a provider.
 * Server uses its single acquisition channel.
 * The connection adapter enforces the [socket deadlines](adr/0002-sse-connection-lifecycle.md).
+
+The browser owns connection recovery and presentation scheduling:
+
 * The browser owns one subscription and retry timer, with separate source/transport status.
 * `onAttitude` optionally delivers fresh attitude with a local monotonic expiry deadline.
 * The renderer retains one latest sample and one pending animation frame.
