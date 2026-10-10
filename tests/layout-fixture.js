@@ -1,6 +1,6 @@
 // Development only: the complete intended arrangement, without new telemetry fields.
 import { pfdLayout } from '/layout.js';
-import { svgElement } from '/pfd-view.js';
+import { svgElement } from '/svg.js';
 
 const svg = document.querySelector('svg');
 const layer = document.querySelector('#layout-fixtures');

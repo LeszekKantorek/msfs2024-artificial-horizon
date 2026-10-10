@@ -1,21 +1,28 @@
 # PFD presentation
 
-Target module boundaries, panel composition, and rendering lifecycle.
+Instrument modules, panel composition, rendering lifecycle, and planned layers.
 System context: [architecture](architecture.md). Decision: [ADR 0004](adr/0004-modular-pfd-presentation.md).
 Delivery order: [roadmap](roadmap.md). Validation: [testing](testing.md#modular-and-layered-pfd-acceptance).
 
 ## Current implementation and planned changes
 
-The current panel implements attitude, slip/skid, and turn rate from #20.
-`pfd-view.js` builds their SVG geometry and updates their elements.
-`horizon.js` combines attitude transforms with frame scheduling.
-`app.js` connects telemetry, layout, status presentation, and page lifecycle.
+The panel implements attitude, slip/skid, and turn rate from #20.
+#36 separates their rendering from frame scheduling:
 
-* [#36](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/36) introduces the modules and panel interface below without changing the image.
-* [#37](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/37) introduces the layered composition after that refactor.
+| Module | Implemented responsibility |
+| --- | --- |
+| `app.js` | Assemble telemetry, status, panel, resize observation, and page lifecycle |
+| `frame-scheduler.js` | Retain the latest frame, coalesce draws, check expiry, and cancel invalid work |
+| `panel.js` | Compose instruments and delegate resize, render, and invalidation |
+| `horizon.js` | Sky/ground, pitch scale, chevrons, and moving bank pointer |
+| `fixed-symbols.js` | Fixed bank scale and aircraft references |
+| `slip-skid.js`, `turn-rate.js` | Local geometry, readings, and indication availability |
+| `status.js` | Source/transport labels and global unavailability |
+| `svg.js` | Shared SVG creation and attribute helpers |
+
+* #37 still owns expanded background coverage and translucent instrument overlays.
 * Later feature issues add their instrument modules with real demo data.
-
-> The interfaces and layers below are planned, not implemented by this documentation change.
+* Implementation does not establish real-device acceptance. GitHub issues own that evidence.
 
 ## Module composition
 
@@ -74,9 +81,12 @@ panel.invalidate(reason);
 
 `frame` is an internal presentation value, not a new SSE schema.
 It combines one accepted sample, its original monotonic expiry deadline, and the applicable status/availability information.
-Future feature issues define their own additions to this value and the wire contract separately.
+The implemented frame contains `attitude`, `slip_skid`, `turn_rate_dps`, `expiresAt`, and a copied `status` value.
+The status value contains `source`, `transport`, and `state`.
+Every instrument receives the same frame object and treats it, including nested values, as read-only.
+Future feature issues define additions to this value and the wire contract separately.
 
-The final composition has this shape; only implemented instruments participate at each delivery step:
+The planned full composition has this shape; only implemented instruments participate at each delivery step:
 
 ```js
 function renderPanel(frame) {
@@ -97,7 +107,13 @@ Each module selects its required fields without mutating the frame or another mo
 Adding a data dependency inside an instrument does not change its call in the panel coordinator.
 Adding a new instrument still requires explicit composition in the panel.
 The panel coordinator contains no scale formulas or SVG path construction.
+Fixed symbols have no per-frame render method. Their geometry updates during resize.
 Instrument calculations are pure; applying their results to SVG changes DOM state.
+
+Horizon and fixed-symbol groups use local origins at the attitude center.
+Slip/skid and turn rate use their own translated origins.
+The attitude clip stays in panel coordinates. The pitch clip stays fixed relative to the horizon origin.
+SVG nodes are created once. Resize updates attributes without replacing nodes.
 
 1. Create instrument elements once during initialization.
 2. On an accepted sample, retain that sample and request at most one animation frame.
@@ -109,6 +125,10 @@ Instrument calculations are pure; applying their results to SVG changes DOM stat
 Transport expiry detection continues even when no new samples arrive.
 Fresh samples with unchanged numeric values still renew freshness.
 Status changes remain visible when no valid instrument frame exists.
+`status.update(status)` updates labels directly from the telemetry callback without exposing old readings.
+The application passes the same status module instance to the panel.
+Only a fresh scheduled render makes the panel available.
+Scheduler expiry also updates the visible stale label when the transport timer has not yet executed.
 Optional failures affect only their indications; source/transport loss invalidates the panel.
 Use no interpolation or extrapolation.
 
@@ -116,7 +136,7 @@ Selected-altitude alert timing belongs to #24.
 Timed visual changes use the same panel scheduling path and an injectable monotonic clock.
 Invalidation cancels their pending work and prevents an apparently valid alert from remaining active.
 
-## Layers and clipping
+## Planned layers and clipping
 
 | Layer | Content | Opacity and clipping |
 | --- | --- | --- |

@@ -48,7 +48,7 @@ try {
         const clipTop = Number(document.querySelector('#attitude-clip rect').getAttribute('y'));
         return { scrollWidth: root.scrollWidth, scrollHeight: root.scrollHeight,
           w, h, width: rect.width, height: rect.height, ballWidth: ball.width, ballHeight: ball.height,
-          bankZeroPaintedTop: triangle.y - 1, clipTop };
+          bankZeroPaintedTop: triangle.y + document.querySelector('#fixed-symbols').transform.baseVal.consolidate().matrix.f - 1, clipTop };
       });
       assert.equal(dimensions.scrollWidth, width);
       assert.equal(dimensions.scrollHeight, height);
@@ -61,6 +61,17 @@ try {
   }
   await page.goto(url);
   await page.locator('.instrument[data-available="true"]').waitFor();
+  // Instrument nodes survive samples and orientation changes.
+  await page.evaluate(() => { window.initialInstrumentNodes = [...document.querySelectorAll('svg *')]; });
+  for (const viewport of [{ width: 320, height: 480 }, { width: 844, height: 320 }]) {
+    await page.setViewportSize(viewport);
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    assert.equal(await page.evaluate(() => {
+      const nodes = [...document.querySelectorAll('svg *')];
+      return nodes.length === window.initialInstrumentNodes.length &&
+        nodes.every((node, index) => node === window.initialInstrumentNodes[index]);
+    }), true);
+  }
   const poses = JSON.parse(readFileSync(new URL('./fixtures/pfd-samples.json', import.meta.url)));
   for (const [index, pose] of poses.entries()) {
     setFixture({ ...pose.attitude, slip_skid: pose.slip_skid, turn_rate_dps: pose.turn_rate_dps });
@@ -83,6 +94,20 @@ try {
     assert.equal(Math.sign(directions.ball), Math.sign(pose.slip_skid));
     assert.equal(Math.sign(directions.vector), Math.sign(pose.turn_rate_dps));
     if (Math.abs(pose.turn_rate_dps) === 3) assert.equal(Math.abs(directions.vector), 40);
+    const geometry = await page.evaluate(() => {
+      const fixed = document.querySelector('#fixed-symbols').getCTM();
+      const world = document.querySelector('#world-pitch').getCTM();
+      const svg = document.querySelector('svg');
+      const height = Number(svg.getAttribute('viewBox').split(' ')[3]);
+      return { cx: fixed.e, cy: fixed.f, x: world.e, y: world.f,
+        scale: Math.max(3.2, (height - 80) / 55) };
+    });
+    const bank = pose.attitude.roll_deg * Math.PI / 180;
+    const displacement = pose.attitude.pitch_deg * geometry.scale;
+    // SVG matrices round to float precision. Allow 0.0001 CSS px, far below painted geometry.
+    assert.ok(Math.abs(geometry.x - (geometry.cx + Math.sin(bank) * displacement)) < 1e-4);
+    assert.ok(Math.abs(geometry.y - (geometry.cy + Math.cos(bank) * displacement)) < 1e-4,
+      JSON.stringify({ index, geometry, expectedY: geometry.cy + Math.cos(bank) * displacement }));
     await page.screenshot({ path: `.local/pfd-browser/pose-${index}.png` });
   }
   const ticks = await page.locator('#pitch-ladder path').evaluateAll(nodes => nodes.map(n => Number(n.dataset.pitch)));

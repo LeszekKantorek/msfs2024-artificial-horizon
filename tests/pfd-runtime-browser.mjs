@@ -47,12 +47,26 @@ try {
   browser = await chromium.launch({ headless: true, channel: process.env.BROWSER_CHANNEL || undefined });
   const page = await browser.newPage({ viewport: { width: 568, height: 240 } });
   const errors = [];
+  const loadedModules = new Set();
   page.on('pageerror', error => errors.push(String(error)));
+  page.on('response', response => {
+    const path = new URL(response.url()).pathname;
+    if (path.endsWith('.js')) {
+      if (response.status() !== 200 || !response.headers()['content-type']?.startsWith('text/javascript')) {
+        errors.push(`Module response: ${path} (${response.status()})`);
+      }
+      loadedModules.add(path);
+    }
+  });
   await page.goto(address);
   await page.locator('.instrument[data-available="true"]').waitFor();
   assert.equal(await page.locator('.source').textContent(), 'DEMO');
   assert.equal(await page.locator('#slip-skid').getAttribute('data-available'), 'true');
   assert.equal(await page.locator('#turn-rate').getAttribute('data-available'), 'true');
+  assert.deepEqual([...loadedModules].sort(), [
+    '/app.js', '/fixed-symbols.js', '/frame-scheduler.js', '/horizon.js', '/layout.js',
+    '/panel.js', '/slip-skid.js', '/status.js', '/svg.js', '/telemetry-client.js', '/turn-rate.js',
+  ]);
   const response = await fetch(`${address}/api/v1/events`, { signal: AbortSignal.timeout(2000) });
   const reader = response.body.getReader();
   let wire = '';

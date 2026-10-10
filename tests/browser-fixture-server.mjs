@@ -14,7 +14,7 @@ input.on('line', line => {
 });
 const types = { '/': 'text/html', '/styles.css': 'text/css', '/app.js': 'text/javascript',
   '/telemetry-client.js': 'text/javascript', '/horizon.js': 'text/javascript',
-  '/layout.js': 'text/javascript', '/pfd-view.js': 'text/javascript',
+  '/layout.js': 'text/javascript', '/panel.js': 'text/javascript', '/frame-scheduler.js': 'text/javascript', '/fixed-symbols.js': 'text/javascript', '/slip-skid.js': 'text/javascript', '/turn-rate.js': 'text/javascript', '/status.js': 'text/javascript', '/svg.js': 'text/javascript',
   '/layout.html': 'text/html', '/layout-fixture.js': 'text/javascript' };
 const server = createServer((request, response) => {
   if (request.url === '/api/v1/events') {
