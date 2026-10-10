@@ -217,7 +217,7 @@ Evidence template for the issue or PR:
 | Pitch +/-90 degrees, roll -180 / 179.999 degrees | No uncovered background |
 | Reconnect or background/resume | Check the logged active SSE count for parallel subscriptions from one page |
 
-> The fixture server serves real web assets with synthetic SSE on loopback only. It is separate from the release binary.
+> The fixture server serves real web assets with synthetic SSE on loopback by default. Explicit LAN binding supports phone checks. It is separate from the release binary.
 > These checks establish UI behavior, not simulator compatibility.
 
 ### Responsive PFD layout and desktop checks
@@ -310,6 +310,7 @@ These tests require no simulator or SDK.
 | Cycle | Nine poses over 18 seconds, each held for two seconds |
 | Poses | Level, nose up/down, left/right bank, two combined attitudes, then +70/-50 pitch |
 | Coordinated turn | Centered and both-direction slip/skid; coordinated and uncoordinated +/-3 deg/s turns |
+| IAS/GS | 0–2 s: zero. 2–8 s: acceleration to IAS 150 / GS 170 kt. 8–10 s: hold. 10–16 s: deceleration to zero. 16–18 s: zero |
 | Sampling | One fresh sample every 50 ms, including unchanged poses. Skip missed ticks |
 | Initial state | `waiting`, then `live` on fresh data |
 | Expiry | No accepted sample for 1,000 ms makes attitude stale |
@@ -321,6 +322,7 @@ These tests require no simulator or SDK.
 | --- | --- |
 | `tests/fixtures/attitudes.json` | Independent degree/sign expectations for all seven demo poses |
 | `tests/fixtures/pfd-samples.json` | Nine independent extended samples, repeated every 360 publications |
+| `tests/fixtures/speed-samples.json` | Independent IAS/GS checkpoints during acceleration, hold, deceleration, and repeat |
 | `tests/fixtures/snapshots.json` | v1 wire shape, including null attitude in unavailable states |
 | Telemetry tests | Age, stale threshold, fresh identical samples, cadence, skipped ticks, normalized bounds, roll wrap, non-finite rejection, source identity, slow independent consumers |
 | Library tests | Sequence exhaustion, shutdown ownership, subscription closure, listener reuse |
@@ -330,6 +332,52 @@ Maintain fixtures and timing checks as follows:
 * Keep fixtures synchronized with contract changes.
 * Reuse fixtures for future browser tests.
 * Use a paused monotonic Tokio clock instead of wall-clock sleeps for timing checks.
+
+## Airspeed and ground-speed acceptance
+
+Run the automated checks above, including both browser scripts. Check these speed-specific behaviors:
+
+| Area | Expected behavior |
+| --- | --- |
+| Compatibility | Old snapshots show attitude with unavailable IAS/GS. Unsupported envelopes remain globally invalid |
+| Input | Zero and fractional speeds are valid. Negative/non-finite/malformed/missing speeds affect only their own indication |
+| Presentation | IAS major labels every 10 kt, minor ticks every 2 kt, fixed pointer, rolling digits, no negative scale labels |
+| Rollover | Check 9.5 → 10, 99.5 → 100, and reverse transitions. Leading zeros stay blank |
+| Display limits | 999 kt is readable. 999.01 and 1000 kt show `OVR`. Missing or invalid values show `X`, never zero |
+| GS | 137.6 kt shows 138. Digits, the GS label, and the kt unit remain separate within the readout |
+| Lifecycle | Equal fresh speeds renew validity. Resize preserves the accepted deadline. Reconnect/resume require a new fresh sample without duplicate subscriptions |
+| Integration | Two SSE clients receive matching IAS/GS. The compiled Rust demo supplies 150/170 kt during its hold segment |
+| Fixture | Items 1/4/8 use the real module. Future illustrations remain development-only without duplicate speed readouts |
+
+### Real-phone checks
+
+1. Run the compiled demo on the private LAN with the [phone procedure](../README.md#use-your-phone).
+2. Check IAS acceleration, hold, deceleration, distinct GS, and recovery after Wi-Fi loss, server restart, and lock/resume.
+3. Check portrait, short landscape, orientation changes, safe areas, and browser bars on iOS Safari and Android Chrome.
+4. Inspect digits, ticks, and local failure marks against sky and ground. Use the existing viewport and painted-bounds criteria.
+5. Record build commit, device, OS/browser versions, network, observations, and screenshots in #21.
+
+For controlled rollover, limits, and failure checks on phones, start the development fixture on the PC's specific LAN IP:
+
+```powershell
+$env:PFD_FIXTURE_HOST = '<PC LAN IP>'
+node tests/browser-fixture-server.mjs
+```
+
+Open the printed address on the phone. Use `/layout.html` for all 18 elements. Enter JSON lines in the server terminal:
+
+```json
+{"ias_kt":99.5,"gs_kt":137.6}
+{"ias_kt":100,"gs_kt":999}
+{"ias_kt":999.01,"gs_kt":1000}
+{"ias_kt":null,"gs_kt":137}
+{"ias_kt":123,"gs_kt":null}
+{"ias_kt":123,"gs_kt":137,"hold":true}
+{"hold":false}
+```
+
+The host defaults to loopback and accepts IP addresses only. HTTP has no fixture-control route, and fixture assets are absent from the Rust binary.
+Restrict firewall access to the trusted private subnet. Remove `PFD_FIXTURE_HOST` from the environment after the phone run.
 
 ## Planned PFD demo acceptance
 

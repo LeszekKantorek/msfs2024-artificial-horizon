@@ -12,6 +12,7 @@
   --chevron: #ff4343;
   --turn: #ed83e7;
   --instrument-background-opacity: 0.65;
+  --value-window: #080d12;
   background: var(--surface);
   color: var(--text);
 }
@@ -25,7 +26,7 @@ main {
   display: grid;
   grid-template-rows: minmax(0, 1fr);
 }
-.fixture-label { fill: var(--warning); font-size: 11px; font-weight: 700; dominant-baseline: middle; }
+.fixture-label { fill: var(--warning); font-size: 8px; font-weight: 700; dominant-baseline: middle; }
 .instrument-background { fill: var(--surface); fill-opacity: var(--instrument-background-opacity); }
 .sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
@@ -61,3 +62,14 @@ svg { display: block; width: 100%; height: 100%; }
 .instrument[data-available="false"] svg > g { visibility: hidden; }
 .instrument[data-available="true"] .unavailable-panel { display: none; }
 noscript { position: absolute; inset: 12px 12px auto; color: var(--warning); text-align: center; }
+.airspeed-ticks { fill: none; stroke: var(--text); stroke-width: 1; }
+.airspeed-label { fill: var(--text); font-size: 12px; text-anchor: end; dominant-baseline: middle; }
+.airspeed-window { fill: var(--value-window); stroke: var(--text); stroke-width: 1; }
+.airspeed-digit { fill: var(--text); font-size: 19px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+.speed-unit, .ground-speed-label { fill: var(--text); font-size: 10px; text-anchor: middle; dominant-baseline: middle; }
+.ground-speed-label { font-size: 8px; text-anchor: start; dominant-baseline: central; }
+.ground-speed-unit { fill: var(--text); font-size: 8px; text-anchor: end; dominant-baseline: central; }
+.ground-speed-value { fill: var(--text); font-size: 13px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+.speed-warning { fill: var(--danger); font-size: 15px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+#ground-speed-warning { font-size: 12px; }
+#airspeed:not([data-state="available"]) :is(.airspeed-tape, #airspeed-digits) { visibility: hidden; }

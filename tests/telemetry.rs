@@ -1,12 +1,90 @@
 use msfs2024_artificial_horizon::{
     Source,
     providers::demo,
-    telemetry::{self, Attitude, FlightSample, STALE_AFTER, SlipSkid, State, TurnRate},
+    telemetry::{
+        self, Attitude, FlightSample, GroundSpeed, IndicatedAirspeed, STALE_AFTER, SlipSkid, State,
+        TurnRate,
+    },
 };
 use serde_json::{Value, json};
 use tokio::time::{Duration, advance};
 fn value(snapshot: telemetry::Snapshot) -> Value {
     serde_json::to_value(snapshot).unwrap()
+}
+
+#[test]
+fn speed_types_reject_invalid_data_and_preserve_display_overflow() {
+    for speed in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, -0.01] {
+        assert!(IndicatedAirspeed::new(speed).is_err());
+        assert!(GroundSpeed::new(speed).is_err());
+    }
+    for speed in [0.0, 99.5, 999.0, 1000.0, f64::MAX] {
+        assert_eq!(IndicatedAirspeed::new(speed).unwrap().knots(), speed);
+        assert_eq!(GroundSpeed::new(speed).unwrap().knots(), speed);
+    }
+}
+
+#[test]
+fn speed_demo_matches_independent_acceleration_hold_deceleration_and_repeat_fixtures() {
+    let fixtures: Vec<Value> =
+        serde_json::from_str(include_str!("fixtures/speed-samples.json")).unwrap();
+    for row in fixtures {
+        for repeat in [0, 360, 720] {
+            let sample =
+                serde_json::to_value(demo::sample(row["sample"].as_u64().unwrap() + repeat))
+                    .unwrap();
+            for key in ["ias_kt", "gs_kt"] {
+                assert!((sample[key].as_f64().unwrap() - row[key].as_f64().unwrap()).abs() < 1e-10);
+            }
+        }
+    }
+}
+
+#[tokio::test(start_paused = true)]
+async fn speeds_share_freshness_and_clear_independently_on_partial_attitude_only_and_global_loss() {
+    let (mut publisher, subscription) = telemetry::channel(Source::Demo);
+    let attitude = Attitude::new(0.0, 0.0).unwrap();
+    let full = FlightSample::new(attitude, None, None).with_speeds(
+        Some(IndicatedAirspeed::new(99.5).unwrap()),
+        Some(GroundSpeed::new(120.0).unwrap()),
+    );
+    publisher.publish_sample(full).unwrap();
+    advance(Duration::from_millis(999)).await;
+    assert_eq!(value(subscription.snapshot())["ias_kt"], 99.5);
+    publisher.publish_sample(full).unwrap();
+    assert_eq!(value(subscription.snapshot())["sample_age_ms"], 0);
+    for (ias, gs) in [
+        (Some(IndicatedAirspeed::new(0.0).unwrap()), None),
+        (None, Some(GroundSpeed::new(1000.0).unwrap())),
+        (None, None),
+    ] {
+        publisher
+            .publish_sample(FlightSample::new(attitude, None, None).with_speeds(ias, gs))
+            .unwrap();
+        let snapshot = value(subscription.snapshot());
+        assert_eq!(snapshot.get("ias_kt").is_some(), ias.is_some());
+        assert_eq!(snapshot.get("gs_kt").is_some(), gs.is_some());
+    }
+    for state in [
+        State::Live(attitude),
+        State::Waiting,
+        State::Paused,
+        State::Stale,
+        State::Disconnected,
+        State::Invalid,
+    ] {
+        publisher.publish_sample(full).unwrap();
+        publisher.publish(state).unwrap();
+        let snapshot = value(subscription.snapshot());
+        assert!(snapshot.get("ias_kt").is_none());
+        assert!(snapshot.get("gs_kt").is_none());
+    }
+    publisher.publish_sample(full).unwrap();
+    advance(STALE_AFTER).await;
+    let stale = value(subscription.snapshot());
+    assert_eq!(stale["state"], "stale");
+    assert!(stale.get("ias_kt").is_none());
+    assert!(stale.get("gs_kt").is_none());
 }
 
 #[test]
@@ -23,10 +101,10 @@ fn pfd_demo_matches_independent_fixtures_through_every_segment_and_repeat() {
             .unwrap();
         for index in start..start + 40 {
             for repeat in [0, 360, 720] {
-                assert_eq!(
-                    serde_json::to_value(demo::sample(index + repeat)).unwrap(),
-                    fixture
-                );
+                let mut actual = serde_json::to_value(demo::sample(index + repeat)).unwrap();
+                actual.as_object_mut().unwrap().remove("ias_kt");
+                actual.as_object_mut().unwrap().remove("gs_kt");
+                assert_eq!(actual, fixture);
             }
         }
     }
@@ -59,7 +137,7 @@ async fn extended_publication_shares_age_and_clears_absent_or_unavailable_indica
     assert_eq!(
         full,
         json!({"schema_version":1,"sequence":1,"source":"demo","state":"live",
-        "sample_age_ms":0,"attitude":{"pitch_deg":10.0,"roll_deg":25.0},"slip_skid":1.0,"turn_rate_dps":3.0})
+        "sample_age_ms":0,"attitude":{"pitch_deg":10.0,"roll_deg":25.0},"slip_skid":1.0,"turn_rate_dps":3.0,"ias_kt":150.0,"gs_kt":170.0})
     );
     advance(Duration::from_millis(999)).await;
     assert_eq!(value(subscription.snapshot())["slip_skid"], 1.0);
