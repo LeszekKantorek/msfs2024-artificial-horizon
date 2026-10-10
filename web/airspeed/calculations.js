@@ -104,4 +104,3 @@ export function rangeBounds(iasKt, range, tape) {
   const bottom = Math.max(tape.clipTopY, Math.min(tape.clipBottomY, tape.centerY + tapeOffset(iasKt, range.min)));
   return { y: top, height: Math.max(0, bottom - top) };
 }
-
