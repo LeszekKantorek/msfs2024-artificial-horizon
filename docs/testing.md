@@ -104,13 +104,13 @@ These checks run in Windows CI.
 | Browser controller | Independent fixtures, one EventSource/retry timer, two-second retry, sequence reset, freshness, malformed messages, suspend/resume |
 | Horizon | Pose signs, nested transforms, angle bounds, local-to-panel geometry |
 | Frame scheduler | Latest-frame coalescing, expiry before draw, cancellation on data loss, resize without renewing age, fresh identical values |
-| Panel/status | Complete read-only frame delegation, status without a sample, immediate stale obscuring, independent source/transport labels |
+| Panel/status | Complete read-only frame delegation, status without a sample, immediate stale obscuring, independent source/transport state and accessible announcements |
 | Coordinated turn | Typed bounds, independent optional failures, old snapshots, shared sample age, +/-3 deg/s, resize without refreshing age |
 
 ### Desktop exploration
 
 1. Start demo and open the page.
-2. Check `DEMO`, `Connected`, and `Live telemetry`.
+2. Check full-panel sky/ground, no source badge, and no top status bar.
 3. Stop the server.
 4. Check connection loss and retry indication.
 5. Restart on the same port without reloading the page.
@@ -147,7 +147,7 @@ Label desktop findings and automated tests separately.
 
 * [ ] Start demo on the PC's private LAN address with the [README command](../README.md#use-your-phone).
 * [ ] Open the printed URL on each phone.
-* [ ] Check that DEMO and live status remain visible.
+* [ ] Check that no DEMO label or top status bar appears.
 * [ ] Observe the full current cycle and indications listed in [Demo behavior](#demo-behavior).
 * [ ] Check that nose up lowers the horizon and right bank rotates it counterclockwise.
 * [ ] Rotate between portrait and landscape.
@@ -224,7 +224,7 @@ No fixture page, script, or future instrument values enter the Rust binary.
 
 | Check | Expected result |
 | --- | --- |
-| 320x480, 390x664, 568x240, 667x280, 844x320 CSS px | No scrolling or overlap; readable central attitude and supplemental values |
+| 320x240, 326x246, 320x480, 390x664, 568x240, 667x280, 844x320 CSS px | No scrolling or overlap; readable central attitude and supplemental values |
 | Minimum usable area | 320 CSS px wide and 240 CSS px high after browser bars/safe areas |
 | Rotation / viewport changes during streaming | Preserve values and sample deadline; round ball and undistorted symbols |
 | Pitch scale / warnings | 2.5-degree intervals; red chevrons start at +60/-40 scale positions and point toward the horizon |
@@ -246,7 +246,7 @@ node tests/pfd-runtime-browser.mjs
 
 The script starts an isolated loopback fixture server on an OS-assigned port.
 It checks real assets, viewports, known poses, old/partial snapshots, stale states, resize, and page lifecycle handlers.
-Screenshots are saved under `.local/pfd-browser/` for visual inspection.
+Screenshots, including opacity candidates in both orientations against sky and ground, are saved under `.local/pfd-browser/` for visual inspection. The 326x246 viewport provides a 320x240 usable panel with the normal 3-pixel margins.
 Review the screenshots; passing geometry checks alone do not establish readability.
 Synthetic padding and page events do not establish actual cutout, browser-bar, or background behavior on phones.
 The runtime script uses the compiled Windows binary from the required build.
@@ -347,7 +347,7 @@ These tests require no simulator or SDK.
 
 ## Modular and layered PFD acceptance
 
-#36 implements modular rendering. #37 layers remain planned. This document defines procedures, not passing results.
+#36 implements modular rendering. #37 implements layer containers and full-panel background coverage; opacity acceptance requires real-phone results. This document defines procedures, not passing results.
 Run the required automated checks above for each implementation PR.
 Record real iOS Safari and Android Chrome results separately from desktop evidence.
 
@@ -358,12 +358,13 @@ Record real iOS Safari and Android Chrome results separately from desktop eviden
 | #36: recovery | Expire without new samples; reject an expired sample before paint; recover after reconnect and resume only with fresh data |
 | #36: assets | Serve every imported module through the compiled Rust server and the development fixture server |
 | #36: DOM ownership | Preserve SVG node identity across samples and resize. Check actual transformed geometry, not only transform strings |
-| #37: layers | Extend sky/ground behind tapes; clip pitch markings centrally; preserve fixed references and layer order |
+| #37: layers | Fill the entire panel with sky/ground; clip pitch markings centrally; preserve fixed references and layer order |
 | #37: readability | Check digits, ticks, and value windows against sky and ground; record the selected background opacity |
 | #37: bounds | Permit intentional background overlap; reject content collisions; include painted strokes in bounds checks |
+| #37: status | No top bar or success labels; no DEMO label; unavailable reasons on an opaque full-panel cover; accessible state changes |
 | #37: invalidation | Obscure the expanded background on global loss; keep optional failures local |
 
-1. Use the full 18-element development fixture without shipping unfinished readings.
+1. Use the full 18-element development fixture without shipping unfinished readings. Compare `/layout.html?opacity=0.50`, `0.65`, and `0.80` on both sky and ground; record the chosen value and device evidence in #37.
 2. Check 320 CSS px page width and 240 CSS px usable height after browser bars and safe areas, as defined in the brief.
 3. Check portrait, short landscape, orientation changes, extreme poses, and no scrolling.
 4. Repeat lifecycle checks after geometry changes without renewing the sample deadline.

@@ -31,13 +31,16 @@ try {
   page.on('pageerror', error => errors.push(String(error)));
   await mkdir('.local/pfd-browser', { recursive: true });
   for (const path of ['/', '/layout.html']) {
-    for (const [width, height] of [[320, 480], [390, 664], [568, 240], [667, 280], [844, 320]]) {
+    for (const [width, height] of [[320, 240], [326, 246], [320, 480], [390, 664], [568, 240], [667, 280], [844, 320]]) {
       await page.setViewportSize({ width, height });
       await page.goto(url + path);
       await page.locator('.instrument[data-available="true"]').waitFor();
-      if (path === '/layout.html') await page.locator('#layout-fixtures[data-items]').waitFor();
+      if (path === '/layout.html') await page.locator('#layout-fixtures[data-items]').waitFor({ state: 'attached' });
       // Flush ResizeObserver geometry and the scheduled sample before capturing paint.
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      assert.equal(await page.locator('header, #data-status, #transport, #source-badge').count(), 0);
+      assert.equal(await page.locator('#telemetry-status').textContent().then(text => text.includes('DEMO')), false);
+      assert.deepEqual(await page.locator('svg > g').evaluateAll(nodes => nodes.map(n => Number(n.dataset.layer))), [0, 1, 2, 3, 4]);
       const dimensions = await page.evaluate(() => {
         const root = document.documentElement;
         const svg = document.querySelector('svg');
@@ -56,9 +59,46 @@ try {
       assert.ok(Math.abs(dimensions.h - dimensions.height) < 0.01);
       assert.ok(Math.abs(dimensions.ballWidth - dimensions.ballHeight) < 0.01);
       assert.ok(dimensions.bankZeroPaintedTop >= dimensions.clipTop);
+      if (path === '/layout.html') {
+        const collisions = await page.evaluate(() => {
+          const failures = [];
+          for (const name of ['airspeed', 'altitude']) {
+            const group = document.querySelector(`#fixture-${name}`);
+            const window = group.querySelector('rect[stroke]');
+            const text = window.nextElementSibling.getBBox();
+            const rect = window.getBBox();
+            // Text stays within the opaque value window, clear of its 1px stroke.
+            if (text.x < rect.x + 0.5 || text.x + text.width > rect.x + rect.width - 0.5)
+              failures.push(`${name} readout crosses its painted window`);
+          }
+          // Background overlap is intentional; compare painted label content.
+          const badge = document.querySelector('#layout-badge .fixture-label').getBoundingClientRect();
+          const gs = [...document.querySelectorAll('#fixture-supplemental text')].find(n => n.textContent.startsWith('GS')).getBoundingClientRect();
+          if (badge.bottom >= gs.top) failures.push('Fixture badge collides with ground speed');
+          return failures;
+        });
+        assert.deepEqual(collisions, [], `${width}x${height} painted content`);
+      }
       await page.screenshot({ path: `.local/pfd-browser/${path === '/' ? 'g1' : 'layout'}-${width}x${height}.png` });
     }
   }
+  // Candidate opacity is a development experiment; mobile evidence selects the final value.
+  for (const opacity of [0.50, 0.65, 0.80]) {
+    for (const [width, height] of [[320, 480], [568, 240]]) {
+      for (const pitch of [-90, 90]) {
+        setFixture({ pitch_deg: pitch, roll_deg: 0 });
+        await page.setViewportSize({ width, height });
+        await page.goto(`${url}/layout.html?opacity=${opacity}`);
+        await page.locator('.instrument[data-available="true"]').waitFor();
+        await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+        assert.equal(await page.locator('#fixture-airspeed .instrument-background').evaluate(n => Number(getComputedStyle(n).fillOpacity)), opacity);
+        assert.equal(await page.locator('#fixture-airspeed').evaluate(n => getComputedStyle(n).opacity), '1');
+        assert.equal(await page.locator('#fixture-airspeed text').first().evaluate(n => getComputedStyle(n).fillOpacity), '1');
+        await page.screenshot({ path: `.local/pfd-browser/opacity-${opacity}-${width}x${height}-${pitch}.png` });
+      }
+    }
+  }
+  setFixture({ pitch_deg: 0, roll_deg: 0 });
   await page.goto(url);
   await page.locator('.instrument[data-available="true"]').waitFor();
   // Instrument nodes survive samples and orientation changes.
@@ -108,6 +148,15 @@ try {
     assert.ok(Math.abs(geometry.x - (geometry.cx + Math.sin(bank) * displacement)) < 1e-4);
     assert.ok(Math.abs(geometry.y - (geometry.cy + Math.cos(bank) * displacement)) < 1e-4,
       JSON.stringify({ index, geometry, expectedY: geometry.cy + Math.cos(bank) * displacement }));
+    // Test painted background coverage with independent points in panel coordinates.
+    assert.equal(await page.evaluate(() => {
+      const svg = document.querySelector('svg');
+      const [,, width, height] = svg.getAttribute('viewBox').split(' ').map(Number);
+      const paths = [...document.querySelectorAll('.sky, .ground')];
+      return [0.01, 0.25, 0.5, 0.75, 0.99].every(x =>
+        [0.01, 0.25, 0.5, 0.75, 0.99].every(y => paths.some(path =>
+          path.isPointInFill(new DOMPoint(x * width, y * height).matrixTransform(path.getCTM().inverse())))));
+    }), true, `Full background coverage for pose ${index}`);
     await page.screenshot({ path: `.local/pfd-browser/pose-${index}.png` });
   }
   const ticks = await page.locator('#pitch-ladder path').evaluateAll(nodes => nodes.map(n => Number(n.dataset.pitch)));
@@ -137,7 +186,12 @@ try {
   }
   setFixture({ hold: true });
   await page.locator('.instrument[data-available="false"]').waitFor();
-  assert.equal(await page.locator('#data-status').getAttribute('data-state'), 'stale');
+  assert.equal(await page.locator('.instrument').getAttribute('data-state'), 'stale');
+  assert.equal(await page.locator('.unavailable-panel').evaluate(n => {
+    const cover = n.getBoundingClientRect(), panel = n.parentElement.getBoundingClientRect();
+    return cover.x === panel.x && cover.y === panel.y && cover.width === panel.width &&
+      cover.height === panel.height && getComputedStyle(n).backgroundColor === 'rgb(16, 21, 27)';
+  }), true);
   // Simulate space consumed by cutouts/browser bars; actual phones remain separate evidence.
   await page.evaluate(() => { document.querySelector('main').style.padding = '15px 24px 12px 12px'; });
   await page.setViewportSize({ width: 320, height: 480 });
@@ -146,11 +200,11 @@ try {
   await page.locator('.instrument[data-available="true"]').waitFor();
   for (const state of ['paused', 'disconnected', 'invalid', 'waiting', 'stale']) {
     setFixture({ state });
-    await page.waitForFunction(state => document.querySelector('#data-status').dataset.state === state, state);
+    await page.waitForFunction(state => document.querySelector('.instrument').dataset.state === state, state);
     assert.equal(await page.locator('.instrument').getAttribute('data-available'), 'false');
   }
   setFixture({ state: 'live', malformed: true });
-  await page.waitForFunction(() => document.querySelector('#data-status').dataset.state === 'invalid');
+  await page.waitForFunction(() => document.querySelector('.instrument').dataset.state === 'invalid');
   setFixture({ malformed: false });
   await page.locator('.instrument[data-available="true"]').waitFor();
   // Exercise the actual page lifecycle handlers and their subscription ownership.

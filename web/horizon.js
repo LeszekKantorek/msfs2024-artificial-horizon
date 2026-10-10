@@ -17,14 +17,21 @@ export function attitudeTransforms({ pitch_deg, roll_deg }, layout = { cx: 0, cy
   };
 }
 
-export function createHorizon(instrument) {
+export function createHorizon(instrument, layers) {
   const get = selector => instrument.querySelector(selector);
   const world = get('.moving-world');
   const rotation = get('#world-rotation');
   const pitch = get('#world-pitch');
+  const warningOrigin = get('#warning-origin');
+  const warningRotation = get('#warning-rotation');
+  const warningPitch = get('#warning-pitch');
+  const pointerOrigin = get('#bank-pointer-origin');
   const scaleRotation = get('#scale-rotation');
   const scalePitch = get('#scale-pitch');
   const pointer = get('#bank-pointer');
+  layers.background.append(world);
+  layers.symbols.append(get('#bank-pointer-clip'));
+  layers.warnings.append(warningOrigin);
   const pitchTicks = [];
   const pitchWarnings = [];
   for (let degrees = -90; degrees <= 90; degrees += 2.5) {
@@ -52,7 +59,10 @@ export function createHorizon(instrument) {
     const cx = 0, cy = 0;
     localLayout = { cx, cy, pitchScale: p };
     world.setAttribute('transform', `translate(${layout.cx} ${layout.cy})`);
+    attributes(get('#background-clip rect'), layout.background);
     attributes(get('#attitude-clip rect'), a);
+    warningOrigin.setAttribute('transform', `translate(${layout.cx} ${layout.cy})`);
+    pointerOrigin.setAttribute('transform', `translate(${layout.cx} ${layout.cy})`);
     attributes(get('#pitch-clip rect'), { x: a.x - layout.cx, y: -radius + PITCH_CLIP_CLEARANCE,
       width: a.width, height: a.y + a.height - (layout.cy - radius + PITCH_CLIP_CLEARANCE) });
     // World extent covers every rotation and pitch displacement in the contract.
@@ -84,6 +94,8 @@ export function createHorizon(instrument) {
     scaleRotation.setAttribute('transform', transforms.rotation);
     scalePitch.setAttribute('transform', transforms.translation);
     pointer.setAttribute('transform', transforms.rotation);
+    warningRotation.setAttribute('transform', transforms.rotation);
+    warningPitch.setAttribute('transform', transforms.translation);
   }
   return { resize, render };
 }

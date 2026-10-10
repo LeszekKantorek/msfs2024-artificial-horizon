@@ -12,25 +12,36 @@ function setText(element, text) {
 }
 
 export function createStatusView(document) {
-  const source = document.querySelector('.source');
-  const transport = document.querySelector('#transport');
-  const data = document.querySelector('#data-status');
+  const announcement = document.querySelector('#telemetry-status');
   const instrument = document.querySelector('.instrument');
   const overlay = document.querySelector('#unavailable');
+  let currentStatus;
+  function announce() {
+    setText(announcement, `${sourceLabels[currentStatus.state]}. ${transportLabels[currentStatus.transport]}`);
+  }
   function update(status) {
-    setText(source, status.source === 'demo' ? 'DEMO' :
-      status.source === 'simconnect' ? 'SIMCONNECT' : 'Source unavailable');
-    setText(transport, transportLabels[status.transport]);
-    setText(data, sourceLabels[status.state]);
-    data.dataset.state = status.state;
+    currentStatus = { ...status };
+    instrument.dataset.source = status.source ?? 'unavailable';
+    instrument.dataset.transport = status.transport;
+    instrument.dataset.state = status.state;
+    // No visible success labels. Preserve separate source/transport state for accessibility.
+    announce();
   }
   return {
     update,
     render(frame) { update(frame.status); instrument.dataset.available = 'true'; },
     invalidate(reason) {
       instrument.dataset.available = 'false';
-      setText(overlay, sourceLabels[reason] ?? transportLabels[reason]);
-      if (reason === 'stale') { setText(data, sourceLabels.stale); data.dataset.state = 'stale'; }
+      const message = sourceLabels[reason] ?? transportLabels[reason];
+      setText(overlay, message);
+      // Scheduler expiry can precede the telemetry timer. Keep one consistent announcement.
+      if (currentStatus) {
+        if (sourceLabels[reason]) {
+          currentStatus.state = reason;
+          instrument.dataset.state = reason;
+        }
+        announce();
+      } else setText(announcement, message);
     },
   };
 }

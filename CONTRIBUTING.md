@@ -97,7 +97,7 @@ See [agent maintenance](.context/agent-maintenance.md) for reinstalls and integr
    ```
 
 3. Open [http://127.0.0.1:8080](http://127.0.0.1:8080).
-4. Check that DEMO and the attitude display appear.
+4. Check that the attitude display appears.
 5. Stop the server with `Ctrl+C`.
 
 ## Workflow

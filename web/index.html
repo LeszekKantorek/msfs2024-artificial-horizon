@@ -10,41 +10,50 @@
   </head>
   <body>
     <main>
-      <header aria-label="Telemetry status">
-        <span class="source">Source unavailable</span>
-        <span id="data-status" data-state="waiting" role="status" aria-live="polite">Waiting for fresh telemetry</span>
-        <span id="transport" role="status" aria-live="polite">Connecting…</span>
-      </header>
       <section class="instrument" data-available="false" aria-label="Primary flight display">
         <svg role="img" aria-labelledby="instrument-title instrument-description">
           <title id="instrument-title">Aircraft attitude and coordinated turn</title>
-          <desc id="instrument-description">Moving sky, ground and pitch ladder around a fixed aircraft reference. Bank scale, slip/skid ball and turn rate vector. Read the telemetry status before using the indications.</desc>
-          <defs><clipPath id="attitude-clip"><rect/></clipPath><clipPath id="pitch-clip"><rect/></clipPath></defs>
-          <g clip-path="url(#attitude-clip)">
+          <desc id="instrument-description">Moving sky, ground and pitch ladder around a fixed aircraft reference. Bank scale, slip/skid ball and turn rate vector. Unavailable data obscures the entire panel.</desc>
+          <defs>
+            <clipPath id="background-clip"><rect/></clipPath>
+            <clipPath id="attitude-clip"><rect/></clipPath>
+            <clipPath id="pitch-clip"><rect/></clipPath>
+          </defs>
+          <g id="layer-background" data-layer="0" clip-path="url(#background-clip)">
             <g class="moving-world">
               <g id="world-rotation"><g id="world-pitch">
-                <path class="sky"/><path class="ground"/>
-                <path class="horizon-line"/>
+                <path class="sky"/><path class="ground"/><path class="horizon-line"/>
               </g></g>
               <g clip-path="url(#pitch-clip)"><g id="scale-rotation"><g id="scale-pitch">
-                <g id="pitch-ladder"/><g id="pitch-warnings"/>
+                <g id="pitch-ladder"/>
               </g></g></g>
-              <path id="bank-pointer"/>
             </g>
-            <g id="fixed-symbols"><g id="bank-scale"/>
-              <path class="aircraft-outline"/><path class="aircraft"/></g>
           </g>
-          <g id="slip-skid" class="indication" data-available="false" aria-label="Slip/skid unavailable">
-            <path class="slip-reference"/><circle class="slip-ball" r="5"/>
-            <text class="local-unavailable">×</text>
+          <g id="layer-airspeed" data-layer="1"/>
+          <g id="layer-altitude" data-layer="2"/>
+          <g id="layer-symbols" data-layer="3">
+            <g id="fixed-symbols-clip" clip-path="url(#attitude-clip)">
+              <g id="fixed-symbols"><g id="bank-scale"/>
+                <path class="aircraft-outline"/><path class="aircraft"/></g>
+            </g>
+            <g id="bank-pointer-clip" clip-path="url(#attitude-clip)"><g id="bank-pointer-origin"><path id="bank-pointer"/></g></g>
+            <g id="slip-skid" class="indication" data-available="false" aria-label="Slip/skid unavailable">
+              <rect class="instrument-background"/><path class="slip-reference"/><circle class="slip-ball" r="5"/>
+            </g>
+            <g id="turn-rate" class="indication" data-available="false" aria-label="Turn rate unavailable">
+              <rect class="instrument-background"/><path class="turn-scale"/><path class="turn-vector"/><path class="turn-overflow"/>
+            </g>
           </g>
-          <g id="turn-rate" class="indication" data-available="false" aria-label="Turn rate unavailable">
-            <path class="turn-scale"/><path class="turn-vector"/><path class="turn-overflow"/>
-            <text class="local-unavailable">×</text>
+          <g id="layer-warnings" data-layer="4">
+            <g id="warning-origin"><g clip-path="url(#pitch-clip)">
+              <g id="warning-rotation"><g id="warning-pitch"><g id="pitch-warnings"/></g></g>
+            </g></g>
+            <g id="slip-warning" class="indication" data-available="false"><text class="local-unavailable">&#215;</text></g>
+            <g id="turn-warning" class="indication" data-available="false"><text class="local-unavailable">&#215;</text></g>
           </g>
-          <g id="layout-fixtures"/>
         </svg>
         <div class="unavailable-panel"><span class="unavailable-mark" aria-hidden="true">×</span><p id="unavailable">Connecting…</p></div>
+        <p id="telemetry-status" class="sr-only" role="status" aria-live="polite">Connecting&#8230;</p>
       </section>
       <noscript>Enable JavaScript to display telemetry.</noscript>
     </main>

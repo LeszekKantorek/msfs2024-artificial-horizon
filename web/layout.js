@@ -12,7 +12,7 @@ export function pfdLayout(width, height) {
   const cx = attitude.x + attitude.width / 2;
   const cy = attitude.y + attitude.height / 2;
   return {
-    width, height, attitude, cx, cy,
+    width, height, background: { x: 0, y: 0, width, height }, attitude, cx, cy,
     heading: { x: left, y: 0, width: attitude.width, height: top },
     airspeed: { x: 0, y: top, width: left, height: attitude.height },
     altitude: { x: width - altitude - vsi, y: top, width: altitude, height: attitude.height },

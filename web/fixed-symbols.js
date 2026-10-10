@@ -6,8 +6,9 @@ const BANK_MINOR_TICK = 7;
 const AIRCRAFT_INNER_OFFSET = 25;
 const AIRCRAFT_CHEVRON = 12;
 
-export function createFixedSymbols(instrument) {
+export function createFixedSymbols(instrument, symbols) {
   const group = instrument.querySelector('#fixed-symbols');
+  symbols.append(instrument.querySelector('#fixed-symbols-clip'));
   const bank = group.querySelector('#bank-scale');
   const zero = svgElement('path', { class: 'bank-zero' });
   bank.append(zero);

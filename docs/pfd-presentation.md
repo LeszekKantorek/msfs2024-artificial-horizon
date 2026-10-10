@@ -1,6 +1,6 @@
 # PFD presentation
 
-Instrument modules, panel composition, rendering lifecycle, and planned layers.
+Instrument modules, panel composition, rendering lifecycle, and SVG layers.
 System context: [architecture](architecture.md). Decision: [ADR 0004](adr/0004-modular-pfd-presentation.md).
 Delivery order: [roadmap](roadmap.md). Validation: [testing](testing.md#modular-and-layered-pfd-acceptance).
 
@@ -17,10 +17,10 @@ The panel implements attitude, slip/skid, and turn rate from #20.
 | `horizon.js` | Sky/ground, pitch scale, chevrons, and moving bank pointer |
 | `fixed-symbols.js` | Fixed bank scale and aircraft references |
 | `slip-skid.js`, `turn-rate.js` | Local geometry, readings, and indication availability |
-| `status.js` | Source/transport labels and global unavailability |
+| `status.js` | Accessible status, and global unavailability |
 | `svg.js` | Shared SVG creation and attribute helpers |
 
-* #37 still owns expanded background coverage and translucent instrument overlays.
+* #37 adds full-panel background coverage, explicit layers, and translucent instrument backgrounds. Final opacity acceptance requires real-phone evidence.
 * Later feature issues add their instrument modules with real demo data.
 * Implementation does not establish real-device acceptance. GitHub issues own that evidence.
 
@@ -61,7 +61,7 @@ Keep telemetry units at the input and conversion to display coordinates inside t
 Preserve envelope validation and sample-age rules in the telemetry client.
 Use source-supplied trend data based on source time, not differences between browser arrival times.
 Layout calculations do not mutate telemetry or impose a fixed aspect ratio.
-CSS owns page composition and compact source/transport status.
+CSS owns page composition and instrument background opacity.
 Share helpers only when an implemented instrument and the next agreed feature need them.
 Do not introduce a general rendering framework or a second renderer.
 
@@ -124,11 +124,11 @@ SVG nodes are created once. Resize updates attributes without replacing nodes.
 
 Transport expiry detection continues even when no new samples arrive.
 Fresh samples with unchanged numeric values still renew freshness.
-Status changes remain visible when no valid instrument frame exists.
+Unavailable reasons remain visible on the opaque full-panel overlay when no valid instrument frame exists.
 `status.update(status)` updates labels directly from the telemetry callback without exposing old readings.
 The application passes the same status module instance to the panel.
 Only a fresh scheduled render makes the panel available.
-Scheduler expiry also updates the visible stale label when the transport timer has not yet executed.
+Scheduler expiry also updates the visible stale reason when the transport timer has not yet executed.
 Optional failures affect only their indications; source/transport loss invalidates the panel.
 Use no interpolation or extrapolation.
 
@@ -136,18 +136,18 @@ Selected-altitude alert timing belongs to #24.
 Timed visual changes use the same panel scheduling path and an injectable monotonic clock.
 Invalidation cancels their pending work and prevents an apparently valid alert from remaining active.
 
-## Planned layers and clipping
+## Layers and clipping
 
 | Layer | Content | Opacity and clipping |
 | --- | --- | --- |
-| 0 | Sky, ground, horizon line, pitch scale | Opaque background behind side tapes; pitch markings have a separate central clip |
+| 0 | Sky, ground, horizon line, pitch scale | Opaque background covering the entire SVG; pitch markings have a separate central clip |
 | 1 | Airspeed tape, ticks, ranges, readout | Translucent background; readable digits, ticks, and value window |
 | 2 | Altitude tape and VSI | Translucent background; readable indications and value windows |
 | 3 | Fixed aircraft reference, other scales and indications | Transparent space around symbols |
 | 4 | Warnings and unavailability | Cover the affected invalid indications, including the expanded horizon on global loss |
 
 Apply opacity to background shapes, not whole instrument groups.
-Select and record the background opacity in #37 through mobile visual acceptance.
+The named `--instrument-background-opacity` token starts at `0.65`. Compare `0.50`, `0.65`, and `0.80` on the development fixture. Select and record the final value in #37 through real iOS Safari and Android Chrome visual acceptance.
 No numeric opacity value is prescribed by this architecture.
 
 A module can own elements in several layers.
@@ -162,6 +162,21 @@ Intentional background overlap is allowed; collisions between digits, ticks, and
 Check painted extents, including stroke clearance, rather than only allocated rectangles.
 Use the full 18-element development fixture before later instruments reduce usable space.
 Preserve responsive sizing, safe areas, and the minima in the [brief](project-brief.md#mobile-presentation).
+
+## Unavailable status
+
+The panel has no top status bar or reserved header space.
+The production panel has no source badge or DEMO announcement.
+The development fixture alone uses a two-line `LAYOUT FIXTURE` badge in the lower left above future ground speed.
+Successful source and transport messages have no visible labels.
+Source state and transport state remain separate internally and are announced through a polite live region only when their text changes.
+Waiting, reconnecting, stale, suspended, paused, disconnected, and invalid states obscure the entire panel with the applicable reason.
+A `live` status alone does not remove this cover; only rendering a fresh frame does so.
+
+`layout.background` covers the full SVG; `layout.attitude` defines the central reference area.
+The horizon owns sky/ground in layer 0, the bank pointer in layer 3, and chevrons in layer 4.
+Background, attitude, and pitch clips remain fixed while the world rotates and translates.
+The development fixture puts future tape and heading elements in the same layer containers that their later modules will receive.
 
 ## Delivery boundaries
 
