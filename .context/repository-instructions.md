@@ -24,6 +24,7 @@ status: active
 * Test behavior, not assertions that repeat implementation details.
 * Preserve cancellation cleanup for `Server::run`; verify producer, subscription, and connection closure as defined in [testing](../docs/testing.md#http-startup-checks).
 * Follow [PR preparation](../CONTRIBUTING.md#workflow), including the manual checklist requirement for new features.
+* Include `Closes #N` when preparing a PR that implements issue N, including drafts with pending acceptance checks.
 
 ## Definition of done
 
@@ -39,3 +40,5 @@ Sources: repository CONTRIBUTING rules, moved here by an accepted documentation 
 Source: accepted PR checklist requirement and corrections, 2026-10-09. CONTRIBUTING owns this workflow rule.
 
 Source: cancellation cleanup verified in maintenance [#45](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/45), 2026-10-10.
+
+Source: user correction, 2026-10-10, to include automatic issue closure in implementation PRs and record pending verification separately.
