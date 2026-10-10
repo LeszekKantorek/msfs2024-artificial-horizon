@@ -86,20 +86,20 @@ Use original graphics. Do not embed PDF screenshots or copy the bezel.
 | Landscape | Use extra width and reduced height. Retain familiar instrument positions |
 | Instrument sizing | Size digits, symbols, tapes, and horizon independently. Preserve undistorted symbols and readable central attitude |
 | Page chrome | Minimize bezel, headings, and margins |
-| Status | Keep DEMO and separate source/transport status compact, visible, and unambiguous |
+| Status | Show a small DEMO badge in the lower left for demo data. Show unavailable reasons on the full-panel cover; retain accessible source/transport state |
 | Viewport | Account for safe areas, cutouts, and browser bars. Fit without scrolling from 320 CSS px in both orientations |
 | Minimum usable height | 240 CSS px after browser bars and safe areas, including short landscape |
 | First slice (#20) | Assess all intended elements with development-only layout fixtures before later additions reduce horizon space |
 
-### Planned layered composition
+### Layered composition
 
-The opaque sky/ground background extends behind the side instruments.
+The opaque sky/ground background fills the entire panel, including side, heading, and supplemental regions.
 Tape backgrounds are translucent; digits, ticks, and value windows remain readable.
 Central pitch markings have separate clipping, and invalid data remains obscured.
 The [panel presentation](pfd-presentation.md#layers-and-clipping) defines layer ownership and clipping.
 
 [#36](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/36) first separates existing modules without changing the image.
-[#37](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/37) then implements the composition and selects opacity through mobile acceptance.
+[#37](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/37) implements this composition without a top status bar. Background opacity remains subject to mobile acceptance.
 These steps add no telemetry fields or functional tape readings.
 
 ### Acceptance ownership

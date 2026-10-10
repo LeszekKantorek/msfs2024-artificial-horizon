@@ -87,7 +87,7 @@ web/
   fixed-symbols.js          # fixed bank scale and aircraft references
   slip-skid.js               # local slip/skid presentation
   turn-rate.js               # local turn-rate presentation
-  status.js                  # source/transport labels and unavailability
+  status.js                  # source badge, accessible status, and unavailability
   svg.js                     # shared SVG helpers
   layout.js                  # responsive instrument regions in CSS pixels
 tests/
@@ -252,6 +252,6 @@ Browser: SSE -> validate -> latest sample -> animation frame -> SVG/DOM
 * `frame-scheduler.js` owns latest-frame scheduling independently of instrument geometry.
 * `panel.js` delegates resize, coherent frames, and invalidation to the implemented presentation modules.
 * `app.js` assembles telemetry, status, panel, resize observation, and page lifecycle.
-* [Panel presentation](pfd-presentation.md) defines the implemented module interfaces and planned #37 layers.
+* [Panel presentation](pfd-presentation.md) defines the implemented module interfaces and #37 layer containers.
 * Nest pitch translation inside bank rotation so combined attitudes move in world-local coordinates.
 * Apply no interpolation or extrapolation.

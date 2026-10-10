@@ -17,7 +17,8 @@ const types = { '/': 'text/html', '/styles.css': 'text/css', '/app.js': 'text/ja
   '/layout.js': 'text/javascript', '/panel.js': 'text/javascript', '/frame-scheduler.js': 'text/javascript', '/fixed-symbols.js': 'text/javascript', '/slip-skid.js': 'text/javascript', '/turn-rate.js': 'text/javascript', '/status.js': 'text/javascript', '/svg.js': 'text/javascript',
   '/layout.html': 'text/html', '/layout-fixture.js': 'text/javascript' };
 const server = createServer((request, response) => {
-  if (request.url === '/api/v1/events') {
+  const path = new URL(request.url, 'http://127.0.0.1').pathname;
+  if (path === '/api/v1/events') {
     response.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' });
     response.write('retry: 2000\n\n');
     clients++; console.log('SSE clients:', clients);
@@ -36,14 +37,14 @@ const server = createServer((request, response) => {
     response.on('close', () => { clearInterval(timer); clients--; console.log('SSE clients:', clients); });
     return;
   }
-  if (!Object.hasOwn(types, request.url)) { response.writeHead(404).end(); return; }
-  const file = request.url === '/' || request.url === '/layout.html' ? 'index.html' : request.url.slice(1);
-  response.writeHead(200, { 'Content-Type': `${types[request.url]}; charset=utf-8` });
-  if (request.url === '/layout-fixture.js') {
+  if (!Object.hasOwn(types, path)) { response.writeHead(404).end(); return; }
+  const file = path === '/' || path === '/layout.html' ? 'index.html' : path.slice(1);
+  response.writeHead(200, { 'Content-Type': `${types[path]}; charset=utf-8` });
+  if (path === '/layout-fixture.js') {
     response.end(readFileSync(new URL('./layout-fixture.js', import.meta.url))); return;
   }
   let body = readFileSync(new URL(`../web/${file}`, import.meta.url), 'utf8');
-  if (request.url === '/layout.html') body = body.replace('</head>', '<script type="module" src="/layout-fixture.js"></script></head>');
+  if (path === '/layout.html') body = body.replace('</head>', '<script type="module" src="/layout-fixture.js"></script></head>');
   response.end(body);
 });
 server.listen(Number(process.env.PFD_FIXTURE_PORT ?? 8082), '127.0.0.1', () =>

@@ -18,3 +18,9 @@ status: active
 
 Sources: accepted decisions for [#4](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/4) and [#19](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/19), 2026-10-08.
 Procedures: [testing](../docs/testing.md). Freshness/status: [contract](../docs/telemetry-contract.md).
+
+* For #37 and later, fill the entire panel with sky/ground and retain a separate central pitch clip.
+* Keep the top status bar removed; show small DEMO in the lower left only for demo data and unavailable reasons on the full-panel cover.
+* Use the development fixture to compare background opacity candidates; `0.65` is provisional until real-phone acceptance selects a value.
+
+Source: approved #37 implementation plan and explicit full-panel/background and source-badge choices, 2026-10-10; implementation details belong in [panel presentation](../docs/pfd-presentation.md).

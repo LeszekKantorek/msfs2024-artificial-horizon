@@ -34,9 +34,10 @@ test('all render methods receive the same complete read-only frame', () => {
 
 function statusHarness() {
   const elements = new Map();
-  for (const selector of ['.source', '#transport', '#data-status', '.instrument', '#unavailable']) {
+  for (const selector of ['.source', '#source-badge', '#telemetry-status', '.instrument', '#unavailable']) {
     let text = '', writes = 0;
-    elements.set(selector, { dataset: { available: 'false' },
+    elements.set(selector, { dataset: { available: 'false' }, style: {},
+      querySelector() { return { setAttribute() {} }; }, setAttribute() {},
       get textContent() { return text; },
       set textContent(value) { text = value; writes++; },
       get writes() { return writes; },
@@ -51,16 +52,16 @@ test('status without a sample stays obscured and unchanged labels are not announ
   const h = statusHarness();
   h.view.update(liveStatus);
   assert.equal(h.get('.instrument').dataset.available, 'false');
-  const writes = h.get('#data-status').writes;
+  const writes = h.get('#telemetry-status').writes;
   const frame = { status: liveStatus };
   h.view.render(frame); h.view.render(frame);
   assert.equal(h.get('.instrument').dataset.available, 'true');
-  assert.equal(h.get('#data-status').writes, writes);
+  assert.equal(h.get('#telemetry-status').writes, writes);
   h.view.update({ ...liveStatus, transport: 'reconnecting', state: 'waiting' });
   h.view.invalidate('reconnecting');
   assert.equal(h.get('.source').textContent, 'DEMO');
-  assert.equal(h.get('#data-status').textContent, 'Waiting for fresh telemetry');
-  assert.equal(h.get('#transport').textContent, 'Connection lost. Retrying…');
+  assert.equal(h.get('.instrument').dataset.state, 'waiting');
+  assert.equal(h.get('#unavailable').textContent, 'Connection lost. Retrying…');
   assert.equal(h.get('.instrument').dataset.available, 'false');
 });
 
@@ -82,7 +83,7 @@ test('expiry during resize obscures the panel without painting or restoring an o
   scheduler.resize(pfdLayout(568, 204)); callback();
   assert.equal(drawn.length, 1);
   assert.equal(h.get('.instrument').dataset.available, 'false');
-  assert.equal(h.get('#data-status').dataset.state, 'stale');
+  assert.equal(h.get('.instrument').dataset.state, 'stale');
   assert.equal(h.get('#unavailable').textContent, 'Telemetry stale');
   scheduler.resize(pfdLayout(320, 440));
   assert.equal(drawn.length, 1);
@@ -98,5 +99,32 @@ test('local slip and turn geometry matches independent direction and range expec
     assert.equal(geometry.vector, `M 0 0 H ${end}`);
     assert.equal(geometry.overflow !== '', overflow);
     if (overflow) assert.equal(geometry.overflow, `M ${end} 0 l ${value < 0 ? 6 : -6} -5 v 10 Z`);
+  }
+});
+
+test('DEMO is shown only for demo data and fixture labels are preserved', () => {
+  const h = statusHarness();
+  h.view.update(liveStatus);
+  assert.equal(h.get('.source').textContent, 'DEMO');
+  assert.equal(h.get('#source-badge').style.display, '');
+  h.view.update({ ...liveStatus, source: 'simconnect' });
+  assert.equal(h.get('.source').textContent, '');
+  assert.equal(h.get('#source-badge').style.display, 'none');
+  h.get('.instrument').dataset.fixture = 'true';
+  h.get('.source').textContent = 'LAYOUT FIXTURE';
+  h.view.render({ status: liveStatus });
+  assert.equal(h.get('.source').textContent, 'LAYOUT FIXTURE');
+});
+
+test('repeated unavailable snapshots announce the same status only once', () => {
+  const h = statusHarness();
+  for (const [state, transport, reason] of [['paused', 'connected', 'paused'],
+    ['stale', 'connected', 'stale'], ['waiting', 'reconnecting', 'reconnecting']]) {
+    const status = { source: 'demo', state, transport };
+    h.view.update(status); h.view.invalidate(reason);
+    const writes = h.get('#telemetry-status').writes;
+    for (let i = 0; i < 5; i++) { h.view.update(status); h.view.invalidate(reason); }
+    assert.equal(h.get('#telemetry-status').writes, writes);
+    assert.equal(h.get('.instrument').dataset.available, 'false');
   }
 });

@@ -11,7 +11,7 @@
   --danger: #ff9690;
   --chevron: #ff4343;
   --turn: #ed83e7;
-  --live: #83e6ae;
+  --instrument-background-opacity: 0.65;
   background: var(--surface);
   color: var(--text);
 }
@@ -23,23 +23,14 @@ main {
   padding: max(3px, env(safe-area-inset-top)) max(3px, env(safe-area-inset-right))
     max(3px, env(safe-area-inset-bottom)) max(3px, env(safe-area-inset-left));
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: 3px;
+  grid-template-rows: minmax(0, 1fr);
 }
-header {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  line-height: 1.15;
-  min-height: 27px;
+.source { fill: var(--warning); font-size: 11px; font-weight: 700; dominant-baseline: middle; }
+.instrument-background { fill: var(--surface); fill-opacity: var(--instrument-background-opacity); }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
 }
-.source { color: var(--warning); font-weight: 700; }
-#data-status { text-align: center; color: var(--warning); }
-#data-status[data-state="live"] { color: var(--live); }
-#data-status[data-state="invalid"], #data-status[data-state="disconnected"] { color: var(--danger); }
-#transport { color: var(--muted); text-align: right; max-width: 94px; }
 .instrument { position: relative; min-width: 0; min-height: 0; background: var(--surface); }
 svg { display: block; width: 100%; height: 100%; }
 .sky { fill: var(--sky); }
@@ -67,6 +58,6 @@ svg { display: block; width: 100%; height: 100%; }
 }
 .unavailable-mark { font-size: 3rem; line-height: 1; }
 .unavailable-panel p { font-size: 1rem; font-weight: 600; margin: 8px 0 0; }
-.instrument[data-available="false"] :is(.moving-world, .indication) { visibility: hidden; }
+.instrument[data-available="false"] svg > g { visibility: hidden; }
 .instrument[data-available="true"] .unavailable-panel { display: none; }
-noscript { position: absolute; inset: 35px 12px auto; color: var(--warning); text-align: center; }
+noscript { position: absolute; inset: 12px 12px auto; color: var(--warning); text-align: center; }
