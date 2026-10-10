@@ -115,6 +115,13 @@ See [agent maintenance](.context/agent-maintenance.md) for reinstalls and integr
 > Include `Closes #N` in a PR that implements the issue, including a draft PR.
 > Record pending acceptance checks explicitly in the PR checklist; the closing keyword does not claim that those checks have passed.
 
+### Acceptance criteria and additional verification
+
+1. Mark an issue acceptance criterion as checked when passing unit tests or automated validation confirm it.
+2. Record the confirming tests or validation results in the issue or linked PR, including the tested commit and relevant environment.
+3. Leave unconfirmed criteria unchecked and copy each one, with its original wording, into the PR as an unchecked item under `Additional verification`.
+4. Describe how to verify the remaining items and what result confirms each one; update the issue and PR checkboxes after verification.
+
 ### Promote agreed findings
 
 1. Review a finding after its originating task closes and agree on the follow-up scope.

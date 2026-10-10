@@ -25,6 +25,7 @@ status: active
 * Preserve cancellation cleanup for `Server::run`; verify producer, subscription, and connection closure as defined in [testing](../docs/testing.md#http-startup-checks).
 * Follow [PR preparation](../CONTRIBUTING.md#workflow), including the manual checklist requirement for new features.
 * Include `Closes #N` when preparing a PR that implements issue N, including drafts with pending acceptance checks.
+* Apply [acceptance criteria tracking](../CONTRIBUTING.md#acceptance-criteria-and-additional-verification): check criteria confirmed by tests or automated validation and copy unchecked criteria into the PR for additional verification.
 
 ## Definition of done
 
@@ -42,3 +43,5 @@ Source: accepted PR checklist requirement and corrections, 2026-10-09. CONTRIBUT
 Source: cancellation cleanup verified in maintenance [#45](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/45), 2026-10-10.
 
 Source: user correction, 2026-10-10, to include automatic issue closure in implementation PRs and record pending verification separately.
+
+Source: accepted acceptance-tracking rule, 2026-10-10, to mark verified issue criteria and copy remaining unchecked criteria into the PR.
