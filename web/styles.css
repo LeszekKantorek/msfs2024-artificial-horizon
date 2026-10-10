@@ -13,6 +13,10 @@
   --turn: #ed83e7;
   --instrument-background-opacity: 0.65;
   --value-window: #080d12;
+  --speed-red: #ff4343;
+  --speed-green: #37df64;
+  --speed-yellow: #ffdd43;
+  --speed-reference: #86def5;
   background: var(--surface);
   color: var(--text);
 }
@@ -65,7 +69,7 @@ noscript { position: absolute; inset: 12px 12px auto; color: var(--warning); tex
 .airspeed-ticks { fill: none; stroke: var(--text); stroke-width: 1; }
 .airspeed-label { fill: var(--text); font-size: 12px; text-anchor: end; dominant-baseline: middle; }
 .airspeed-window { fill: var(--value-window); stroke: var(--text); stroke-width: 1; }
-.airspeed-digit { fill: var(--text); font-size: 19px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+.airspeed-digit { fill: var(--text); font-size: 17px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
 .speed-unit, .ground-speed-label { fill: var(--text); font-size: 10px; text-anchor: middle; dominant-baseline: middle; }
 .ground-speed-label { font-size: 8px; text-anchor: start; dominant-baseline: central; }
 .ground-speed-unit { fill: var(--text); font-size: 8px; text-anchor: end; dominant-baseline: central; }
@@ -73,3 +77,15 @@ noscript { position: absolute; inset: 12px 12px auto; color: var(--warning); tex
 .speed-warning { fill: var(--danger); font-size: 15px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
 #ground-speed-warning { font-size: 12px; }
 #airspeed:not([data-state="available"]) :is(.airspeed-tape, #airspeed-digits) { visibility: hidden; }
+.airspeed-range-low, .airspeed-range-red { fill: var(--speed-red); }
+.airspeed-range-flaps, .airspeed-range-white { fill: var(--text); }
+.airspeed-range-normal { fill: var(--speed-green); }
+.airspeed-range-caution { fill: var(--speed-yellow); }
+.airspeed-range-overspeed { fill: url(#airspeed-barber-pole); }
+.airspeed-trend { fill: none; stroke: var(--turn); stroke-width: 2; }
+.airspeed-reference, .airspeed-reference-value { fill: var(--speed-reference); font-size: 10px; font-weight: 700; text-anchor: middle; dominant-baseline: central; paint-order: stroke; stroke: var(--value-window); stroke-width: 1px; }
+.airspeed-reference-value { font-weight: 600; stroke-width: 0.5px; }
+.airspeed-reference-leader { fill: none; stroke: var(--speed-reference); stroke-width: 1; }
+#airspeed[data-overspeed="true"] .airspeed-window { fill: var(--speed-red); }
+#airspeed[data-approaching="true"] .airspeed-digit { fill: var(--speed-yellow); }
+.instrument[data-fixture="true"]:has(#airspeed-references-bottom[data-visible="true"]) #layout-badge { display: none; }

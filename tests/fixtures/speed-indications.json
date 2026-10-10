@@ -1,0 +1,18 @@
+[
+  {"sample":0,"ias_acceleration_ktps":0,"prediction_kt":null},
+  {"sample":39,"ias_acceleration_ktps":0,"prediction_kt":null},
+  {"sample":40,"ias_acceleration_ktps":25,"prediction_kt":150},
+  {"sample":41,"ias_acceleration_ktps":25,"prediction_kt":151.25},
+  {"sample":80,"ias_acceleration_ktps":25,"prediction_kt":200},
+  {"sample":120,"ias_acceleration_ktps":25,"prediction_kt":250},
+  {"sample":159,"ias_acceleration_ktps":25,"prediction_kt":298.75},
+  {"sample":160,"ias_acceleration_ktps":0,"prediction_kt":null},
+  {"sample":199,"ias_acceleration_ktps":0,"prediction_kt":null},
+  {"sample":200,"ias_acceleration_ktps":-25,"prediction_kt":0},
+  {"sample":201,"ias_acceleration_ktps":-25,"prediction_kt":-1.25},
+  {"sample":240,"ias_acceleration_ktps":-25,"prediction_kt":-50},
+  {"sample":280,"ias_acceleration_ktps":-25,"prediction_kt":-100},
+  {"sample":319,"ias_acceleration_ktps":-25,"prediction_kt":-148.75},
+  {"sample":320,"ias_acceleration_ktps":0,"prediction_kt":null},
+  {"sample":359,"ias_acceleration_ktps":0,"prediction_kt":null}
+]

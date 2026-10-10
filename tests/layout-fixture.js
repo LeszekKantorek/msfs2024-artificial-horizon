@@ -56,11 +56,6 @@ function render() {
       width: r.width - 2, height: 28, fill: '#080d12', stroke: '#fff' }));
     text(parent, r.x + r.width / 2, layout.cy, value, 19);
   }
-  groups.airspeed.append(svgElement('rect', { x: a.x + a.width - 6, y: a.y + 12,
-    width: 2, height: a.height - 24, fill: '#73d39e' }));
-  groups.airspeed.append(svgElement('path', { d: `M ${a.x + a.width - 1} ${layout.cy - 18} v ${-a.height / 4}`,
-    stroke: '#ed83e7', 'stroke-width': 2 }));
-  text(groups.airspeed, a.x + a.width - 4, a.y + 22, 'V', 8, '#86def5');
   layer.append(svgElement('rect', { x: b.x, y: 0, width: b.width, height: 32, class: 'instrument-background' }));
   layer.append(svgElement('rect', { x: b.x, y: height - 24, width: b.width, height: 22, class: 'instrument-background' }));
   layer.append(svgElement('rect', { x: a.x, y: 0, width: a.width, height: 32, class: 'instrument-background' }));

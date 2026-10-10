@@ -17,12 +17,27 @@ export function validateSnapshot(value) {
 }
 
 // Optional instruments fail independently of the envelope and attitude.
+export function validateAirspeedProfile(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const keys = ['vs0_kt', 'vs1_kt', 'vfe_kt', 'vno_kt', 'vne_kt'];
+  const thresholds = keys.map(key => value[key]);
+  if (thresholds.some((v, i) => !Number.isFinite(v) || v <= 0 || (i > 0 && v <= thresholds[i - 1]))) return null;
+  const references = value.references;
+  if (!references || typeof references !== 'object' || Array.isArray(references)) return null;
+  const refKeys = ['vr_kt', 'vx_kt', 'vy_kt', 'vg_kt'];
+  if (refKeys.some(key => !Number.isFinite(references[key]) || references[key] <= 0 || references[key] > value.vne_kt)) return null;
+  return { ...Object.fromEntries(keys.map(key => [key, value[key]])),
+    references: Object.fromEntries(refKeys.map(key => [key, references[key]])) };
+}
+
 export function optionalIndications(value) {
   return {
     slip_skid: Number.isFinite(value.slip_skid) && Math.abs(value.slip_skid) <= 1 ? value.slip_skid : null,
     turn_rate_dps: Number.isFinite(value.turn_rate_dps) ? value.turn_rate_dps : null,
     ias_kt: Number.isFinite(value.ias_kt) && value.ias_kt >= 0 ? value.ias_kt : null,
     gs_kt: Number.isFinite(value.gs_kt) && value.gs_kt >= 0 ? value.gs_kt : null,
+    airspeed_profile: validateAirspeedProfile(value.airspeed_profile),
+    ias_acceleration_ktps: Number.isFinite(value.ias_acceleration_ktps) ? value.ias_acceleration_ktps : null,
   };
 }
 

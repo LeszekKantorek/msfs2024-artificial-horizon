@@ -96,6 +96,88 @@ impl GroundSpeed {
         self.0
     }
 }
+/// Source-supplied IAS acceleration in knots per second, including deceleration.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[serde(transparent)]
+pub struct IasAcceleration(f64);
+impl IasAcceleration {
+    pub fn new(knots_per_second: f64) -> Result<Self, TelemetryError> {
+        if !knots_per_second.is_finite() {
+            return Err(TelemetryError::InvalidIasAcceleration);
+        }
+        Ok(Self(knots_per_second))
+    }
+    pub fn knots_per_second(self) -> f64 {
+        self.0
+    }
+}
+
+/// Four configured references in knots. Names remain explicit on the wire.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+pub struct VSpeedReferences {
+    vr_kt: f64,
+    vx_kt: f64,
+    vy_kt: f64,
+    vg_kt: f64,
+}
+impl VSpeedReferences {
+    pub fn new(vr: f64, vx: f64, vy: f64, vg: f64) -> Result<Self, TelemetryError> {
+        if [vr, vx, vy, vg].iter().any(|v| !v.is_finite() || *v <= 0.0) {
+            return Err(TelemetryError::InvalidAirspeedProfile);
+        }
+        Ok(Self {
+            vr_kt: vr,
+            vx_kt: vx,
+            vy_kt: vy,
+            vg_kt: vg,
+        })
+    }
+}
+
+/// Validated speed configuration. This type does not establish aircraft performance.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+pub struct AirspeedProfile {
+    vs0_kt: f64,
+    vs1_kt: f64,
+    vfe_kt: f64,
+    vno_kt: f64,
+    vne_kt: f64,
+    references: VSpeedReferences,
+}
+impl AirspeedProfile {
+    pub fn new(
+        vs0: f64,
+        vs1: f64,
+        vfe: f64,
+        vno: f64,
+        vne: f64,
+        references: VSpeedReferences,
+    ) -> Result<Self, TelemetryError> {
+        let thresholds = [vs0, vs1, vfe, vno, vne];
+        if thresholds.iter().any(|v| !v.is_finite() || *v <= 0.0)
+            || thresholds.windows(2).any(|pair| pair[0] >= pair[1])
+            || [
+                references.vr_kt,
+                references.vx_kt,
+                references.vy_kt,
+                references.vg_kt,
+            ]
+            .iter()
+            .any(|v| *v > vne)
+        {
+            return Err(TelemetryError::InvalidAirspeedProfile);
+        }
+        Ok(Self {
+            vs0_kt: vs0,
+            vs1_kt: vs1,
+            vfe_kt: vfe,
+            vno_kt: vno,
+            vne_kt: vne,
+            references,
+        })
+    }
+}
+
 /// One fresh acquisition with independently available optional indications.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 pub struct FlightSample {
@@ -108,6 +190,10 @@ pub struct FlightSample {
     ias_kt: Option<IndicatedAirspeed>,
     #[serde(skip_serializing_if = "Option::is_none")]
     gs_kt: Option<GroundSpeed>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    airspeed_profile: Option<AirspeedProfile>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    ias_acceleration_ktps: Option<IasAcceleration>,
 }
 impl FlightSample {
     pub fn new(
@@ -121,6 +207,8 @@ impl FlightSample {
             turn_rate_dps: turn_rate,
             ias_kt: None,
             gs_kt: None,
+            airspeed_profile: None,
+            ias_acceleration_ktps: None,
         }
     }
     pub fn attitude(self) -> Attitude {
@@ -129,6 +217,15 @@ impl FlightSample {
     pub fn with_speeds(mut self, ias: Option<IndicatedAirspeed>, gs: Option<GroundSpeed>) -> Self {
         self.ias_kt = ias;
         self.gs_kt = gs;
+        self
+    }
+    pub fn with_airspeed_indications(
+        mut self,
+        profile: Option<AirspeedProfile>,
+        acceleration: Option<IasAcceleration>,
+    ) -> Self {
+        self.airspeed_profile = profile;
+        self.ias_acceleration_ktps = acceleration;
         self
     }
 }
@@ -159,6 +256,10 @@ pub struct Snapshot {
     ias_kt: Option<IndicatedAirspeed>,
     #[serde(skip_serializing_if = "Option::is_none")]
     gs_kt: Option<GroundSpeed>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    airspeed_profile: Option<AirspeedProfile>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    ias_acceleration_ktps: Option<IasAcceleration>,
 }
 #[derive(Clone, Debug)]
 struct Current {
@@ -170,6 +271,8 @@ struct Current {
     turn_rate: Option<TurnRate>,
     ias: Option<IndicatedAirspeed>,
     gs: Option<GroundSpeed>,
+    airspeed_profile: Option<AirspeedProfile>,
+    ias_acceleration: Option<IasAcceleration>,
 }
 impl Current {
     fn snapshot(&self) -> Snapshot {
@@ -201,6 +304,8 @@ impl Current {
             turn_rate_dps: attitude.and(self.turn_rate),
             ias_kt: attitude.and(self.ias),
             gs_kt: attitude.and(self.gs),
+            airspeed_profile: attitude.and(self.airspeed_profile),
+            ias_acceleration_ktps: attitude.and(self.ias_acceleration),
         }
     }
 }
@@ -223,6 +328,8 @@ pub fn channel(source: Source) -> (Publisher, Subscription) {
         turn_rate: None,
         ias: None,
         gs: None,
+        airspeed_profile: None,
+        ias_acceleration: None,
     };
     let (sender, receiver) = watch::channel(current.clone());
     (Publisher { sender, current }, Subscription { receiver })
@@ -230,25 +337,16 @@ pub fn channel(source: Source) -> (Publisher, Subscription) {
 impl Publisher {
     /// Live means a fresh callback from an active, unpaused source, not cached data.
     pub fn publish(&mut self, state: State) -> Result<(), TelemetryError> {
-        self.publish_values(state, None, None, None, None)
+        self.publish_values(state, None)
     }
     /// Publish one fresh acquisition atomically, sharing sequence and age with attitude.
     pub fn publish_sample(&mut self, sample: FlightSample) -> Result<(), TelemetryError> {
-        self.publish_values(
-            State::Live(sample.attitude),
-            sample.slip_skid,
-            sample.turn_rate_dps,
-            sample.ias_kt,
-            sample.gs_kt,
-        )
+        self.publish_values(State::Live(sample.attitude), Some(sample))
     }
     fn publish_values(
         &mut self,
         state: State,
-        slip_skid: Option<SlipSkid>,
-        turn_rate: Option<TurnRate>,
-        ias: Option<IndicatedAirspeed>,
-        gs: Option<GroundSpeed>,
+        sample: Option<FlightSample>,
     ) -> Result<(), TelemetryError> {
         if self.current.sequence == MAX_SEQUENCE {
             return Err(TelemetryError::SequenceExhausted);
@@ -258,10 +356,12 @@ impl Publisher {
             self.current.accepted_at = Some(Instant::now());
         }
         self.current.state = state;
-        self.current.slip_skid = slip_skid;
-        self.current.turn_rate = turn_rate;
-        self.current.ias = ias;
-        self.current.gs = gs;
+        self.current.slip_skid = sample.and_then(|s| s.slip_skid);
+        self.current.turn_rate = sample.and_then(|s| s.turn_rate_dps);
+        self.current.ias = sample.and_then(|s| s.ias_kt);
+        self.current.gs = sample.and_then(|s| s.gs_kt);
+        self.current.airspeed_profile = sample.and_then(|s| s.airspeed_profile);
+        self.current.ias_acceleration = sample.and_then(|s| s.ias_acceleration_ktps);
         self.sender.send_replace(self.current.clone());
         Ok(())
     }
@@ -296,6 +396,12 @@ impl Subscription {
 }
 #[derive(Debug, thiserror::Error)]
 pub enum TelemetryError {
+    #[error("IAS acceleration must be finite knots per second")]
+    InvalidIasAcceleration,
+    #[error(
+        "airspeed profile requires increasing positive finite thresholds and positive references at or below VNE, in knots"
+    )]
+    InvalidAirspeedProfile,
     #[error("indicated airspeed must be finite nonnegative knots")]
     InvalidIndicatedAirspeed,
     #[error("ground speed must be finite nonnegative knots")]

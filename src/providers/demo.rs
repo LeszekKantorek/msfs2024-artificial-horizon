@@ -1,7 +1,7 @@
 //! Repeatable degree fixtures; no simulator SDK conventions are assumed.
 use crate::telemetry::{
-    Attitude, FlightSample, GroundSpeed, IndicatedAirspeed, Publisher, SAMPLE_PERIOD, SlipSkid,
-    TelemetryError, TurnRate,
+    AirspeedProfile, Attitude, FlightSample, GroundSpeed, IasAcceleration, IndicatedAirspeed,
+    Publisher, SAMPLE_PERIOD, SlipSkid, TelemetryError, TurnRate, VSpeedReferences,
 };
 use std::future::Future;
 use tokio::time::{MissedTickBehavior, interval};
@@ -50,6 +50,29 @@ pub fn sample(index: u64) -> FlightSample {
         Some(IndicatedAirspeed::new(150.0 * fraction).expect("built-in IAS is valid")),
         Some(GroundSpeed::new(170.0 * fraction).expect("built-in GS is valid")),
     )
+    .with_airspeed_indications(
+        Some(speed_profile()),
+        Some(
+            IasAcceleration::new(match step {
+                40..160 => 25.0,
+                200..320 => -25.0,
+                _ => 0.0,
+            })
+            .expect("built-in IAS acceleration is valid"),
+        ),
+    )
+}
+/// Fictional demo configuration, not verified performance of any real aircraft.
+pub fn speed_profile() -> AirspeedProfile {
+    AirspeedProfile::new(
+        40.0,
+        50.0,
+        85.0,
+        110.0,
+        140.0,
+        VSpeedReferences::new(55.0, 65.0, 75.0, 90.0).expect("built-in references are valid"),
+    )
+    .expect("built-in speed thresholds are coherent")
 }
 /// Provider boundary for verified degree/sign conventions.
 pub fn normalize_degrees(pitch: f64, roll: f64) -> Result<Attitude, TelemetryError> {

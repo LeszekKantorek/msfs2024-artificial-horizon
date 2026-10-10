@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 const live = (sequence = 1, age = 0) => ({ schema_version: 1, sequence,
   source: 'demo', state: 'live', sample_age_ms: age,
   attitude: { pitch_deg: 5, roll_deg: 15 } });
+const profile = JSON.parse(readFileSync(new URL('./fixtures/airspeed-profile.json', import.meta.url)));
 
 function harness() {
   let time = 0;
@@ -57,16 +58,16 @@ test('validator accepts independent fixtures and rejects malformed/unsupported t
 });
 
 test('optional values fail independently and never coerce missing values to zero', () => {
-  assert.deepEqual(optionalIndications(live()), { slip_skid: null, turn_rate_dps: null, ias_kt: null, gs_kt: null });
+  assert.deepEqual(optionalIndications(live()), { slip_skid: null, turn_rate_dps: null, ias_kt: null, gs_kt: null, airspeed_profile: null, ias_acceleration_ktps: null, airspeed_profile: null, ias_acceleration_ktps: null });
   for (const invalid of [undefined, null, false, '0', {}, [], NaN, Infinity, -Infinity]) {
     assert.deepEqual(optionalIndications({ slip_skid: invalid, turn_rate_dps: 3 }),
-      { slip_skid: null, turn_rate_dps: 3, ias_kt: null, gs_kt: null });
+      { slip_skid: null, turn_rate_dps: 3, ias_kt: null, gs_kt: null, airspeed_profile: null, ias_acceleration_ktps: null, airspeed_profile: null, ias_acceleration_ktps: null });
     assert.deepEqual(optionalIndications({ slip_skid: -1, turn_rate_dps: invalid }),
-      { slip_skid: -1, turn_rate_dps: null, ias_kt: null, gs_kt: null });
+      { slip_skid: -1, turn_rate_dps: null, ias_kt: null, gs_kt: null, airspeed_profile: null, ias_acceleration_ktps: null, airspeed_profile: null, ias_acceleration_ktps: null });
   }
   for (const invalid of [-1.001, 1.001]) assert.equal(optionalIndications({ slip_skid: invalid }).slip_skid, null);
   for (const row of JSON.parse(readFileSync(new URL('./fixtures/pfd-samples.json', import.meta.url)))) {
-    assert.deepEqual(optionalIndications(row), { slip_skid: row.slip_skid, turn_rate_dps: row.turn_rate_dps, ias_kt: null, gs_kt: null });
+    assert.deepEqual(optionalIndications(row), { slip_skid: row.slip_skid, turn_rate_dps: row.turn_rate_dps, ias_kt: null, gs_kt: null, airspeed_profile: null, ias_acceleration_ktps: null, airspeed_profile: null, ias_acceleration_ktps: null });
   }
   assert.equal(optionalIndications({ turn_rate_dps: 12 }).turn_rate_dps, 12);
 });
@@ -75,13 +76,13 @@ test('new sample callback supports old snapshots and clears previously valid opt
   const h = harness(); h.client.start();
   const connection = h.connections[0]; connection.onopen();
   connection.send({ ...live(1, 400), slip_skid: 1, turn_rate_dps: 3 });
-  assert.deepEqual(h.samples.at(-1), { attitude: live().attitude, slip_skid: 1, turn_rate_dps: 3, ias_kt: null, gs_kt: null, expiresAt: 600 });
+  assert.deepEqual(h.samples.at(-1), { attitude: live().attitude, slip_skid: 1, turn_rate_dps: 3, ias_kt: null, gs_kt: null, airspeed_profile: null, ias_acceleration_ktps: null, airspeed_profile: null, ias_acceleration_ktps: null, expiresAt: 600 });
   connection.send({ ...live(2), slip_skid: 'bad', turn_rate_dps: -3 });
   assert.equal(h.status.state, 'live');
   assert.equal(h.samples.at(-1).slip_skid, null);
   assert.equal(h.samples.at(-1).turn_rate_dps, -3);
   connection.send(live(3));
-  assert.deepEqual(h.samples.at(-1), { attitude: live().attitude, slip_skid: null, turn_rate_dps: null, ias_kt: null, gs_kt: null, expiresAt: 1000 });
+  assert.deepEqual(h.samples.at(-1), { attitude: live().attitude, slip_skid: null, turn_rate_dps: null, ias_kt: null, gs_kt: null, airspeed_profile: null, ias_acceleration_ktps: null, airspeed_profile: null, ias_acceleration_ktps: null, expiresAt: 1000 });
   connection.send({ ...live(4), schema_version: 2, turn_rate_dps: 3 });
   assert.equal(h.status.state, 'invalid');
   assert.equal(h.samples.length, 3);
@@ -134,6 +135,47 @@ test('IAS and GS validate independently, preserve overflow values and clear omit
   assert.equal(h.samples.at(-1).gs_kt, null);
   h.advance(1000);
   assert.equal(h.status.state, 'stale');
+});
+
+test('profile and source acceleration retain their own availability through irregular receipt, expiry and recovery', () => {
+  const h = harness(); h.client.start();
+  let connection = h.connections[0]; connection.onopen();
+  const extended = (sequence, age = 0) => ({ ...live(sequence, age), ias_kt: 110,
+    gs_kt: 130, airspeed_profile: profile, ias_acceleration_ktps: 5 });
+  for (const [sequence, delay] of [[1, 0], [2, 137], [3, 613]]) {
+    h.advance(delay); connection.send(extended(sequence, 100));
+    assert.equal(h.samples.at(-1).ias_acceleration_ktps, 5);
+    assert.deepEqual(h.samples.at(-1).airspeed_profile, profile);
+  }
+  assert.equal(h.samples.at(-1).expiresAt, 1650);
+  connection.send({ ...extended(4), ias_acceleration_ktps: '5' });
+  assert.equal(h.samples.at(-1).ias_acceleration_ktps, null);
+  assert.deepEqual(h.samples.at(-1).airspeed_profile, profile);
+  connection.send({ ...extended(5), airspeed_profile: { ...profile, vne_kt: 0 } });
+  assert.equal(h.samples.at(-1).airspeed_profile, null);
+  assert.equal(h.samples.at(-1).ias_kt, 110);
+  assert.equal(h.samples.at(-1).ias_acceleration_ktps, 5);
+  connection.send({ ...extended(6), ias_kt: null, ias_acceleration_ktps: -5 });
+  assert.equal(h.samples.at(-1).ias_kt, null);
+  assert.deepEqual(h.samples.at(-1).airspeed_profile, profile);
+  connection.send(live(7));
+  assert.equal(h.samples.at(-1).airspeed_profile, null);
+  assert.equal(h.samples.at(-1).ias_acceleration_ktps, null);
+  connection.send(extended(8)); h.advance(1000);
+  assert.equal(h.status.state, 'stale');
+  const accepted = h.samples.length;
+  connection.send(extended(9, 1000)); assert.equal(h.samples.length, accepted);
+  connection.onerror(); h.advance(2000);
+  assert.equal(h.connections.length, 2);
+  connection = h.connections[1]; connection.onopen();
+  assert.equal(h.status.state, 'waiting');
+  connection.send(extended(1)); assert.equal(h.status.state, 'live');
+  h.client.stop(); h.client.start(); h.client.start();
+  assert.equal(h.connections.length, 3);
+  assert.equal(h.status.state, 'waiting');
+  h.connections[2].onopen(); h.connections[2].send(live(1));
+  assert.equal(h.samples.at(-1).airspeed_profile, null);
+  assert.equal(h.samples.at(-1).ias_acceleration_ktps, null);
 });
 
 test('freshness accounts for server age; duplicates and open events cannot refresh it', () => {

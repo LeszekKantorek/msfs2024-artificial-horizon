@@ -182,6 +182,8 @@ The server owns validated samples and deterministic demo scenarios:
 
 * `FlightSample` combines validated attitude with optional `SlipSkid` and `TurnRate` values.
 * `IndicatedAirspeed` and `GroundSpeed` validate optional nonnegative knots. `FlightSample::with_speeds` adds them without changing its existing constructor.
+* `AirspeedProfile` validates speed thresholds and named `VSpeedReferences`. `IasAcceleration` validates source-supplied kt/s independently.
+* `FlightSample::with_airspeed_indications` adds optional configuration and acceleration. Demo configuration is fictional and shared by all clients.
 * `Publisher::publish_sample` uses the existing latest-value channel, sequence, and monotonic age.
 * `Publisher::publish(State)` keeps the attitude-only path and clears all optional indications.
 * `demo::sample` defines nine deterministic two-second segments; `demo::attitude` retains its original seven-pose helper contract.
@@ -190,7 +192,7 @@ The server owns validated samples and deterministic demo scenarios:
 The browser validates those samples and presents them within the available panel area:
 
 * `createTelemetryClient` validates optional values independently and calls `onSample` with normalized values or `null` and one expiry deadline.
-* `airspeed.js` renders IAS and GS from that same frame, with independent unavailable and overflow states.
+* `airspeed.js` renders IAS, GS, configured speed ranges, references, and six-second trend from that same frame, with independent availability.
 * The existing `onAttitude` callback retains its attitude-only shape.
 * `pfdLayout` allocates instrument regions from available CSS width/height.
 * `frame-scheduler.js` schedules fresh frames; `panel.js` composes instrument modules.
