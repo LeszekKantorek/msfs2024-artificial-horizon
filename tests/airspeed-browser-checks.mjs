@@ -76,7 +76,26 @@ export async function checkAirspeedAvailabilityTransitions(page, setFixture, pro
           const visible = node => getComputedStyle(node).display !== 'none' && getComputedStyle(node).visibility === 'visible';
           const badge = document.querySelector('#layout-badge');
           const rows = [...fallback.querySelectorAll('.airspeed-reference-value')];
-          const gsBox = document.querySelector('#ground-speed').getBoundingClientRect();
+          const gs = document.querySelector('#ground-speed');
+          const gsValue = document.querySelector('#ground-speed-value');
+          const readoutBox = ias.querySelector('.airspeed-window').getBBox();
+          const readoutCenter = readoutBox.y + readoutBox.height / 2;
+          const columns = [...document.querySelectorAll('#airspeed-digits > g')];
+          const gsBox = gs.getBoundingClientRect();
+          const panelBox = document.querySelector('.instrument').getBoundingClientRect();
+          const paintedVisible = node => {
+            for (let ancestor = node; ancestor; ancestor = ancestor.parentElement) {
+              if (!visible(ancestor) || Number(getComputedStyle(ancestor).opacity) === 0) return false;
+            }
+            return true;
+          };
+          const paintedInsidePanel = node => {
+            const box = node.getBoundingClientRect();
+            return box.width > 0 && box.height > 0 &&
+              box.left >= panelBox.left && box.right <= panelBox.right &&
+              box.top >= panelBox.top && box.bottom <= panelBox.bottom &&
+              box.left >= 0 && box.right <= innerWidth && box.top >= 0 && box.bottom <= innerHeight;
+          };
           const warningBox = document.querySelector('#airspeed-warning').getBoundingClientRect();
           const allocation = ias.querySelector('.instrument-background').getBoundingClientRect();
           const rowBoxes = rows.map(node => node.getBoundingClientRect());
@@ -84,6 +103,9 @@ export async function checkAirspeedAvailabilityTransitions(page, setFixture, pro
           return { state: ias.dataset.state, overspeed: ias.dataset.overspeed, approaching: ias.dataset.approaching,
             iasLabel: ias.getAttribute('aria-label'), windowFill: getComputedStyle(ias.querySelector('.airspeed-window')).fill,
             digitFills: [...ias.querySelectorAll('.airspeed-digit')].map(node => getComputedStyle(node).fill),
+            digitContents: columns.map(node => node.firstElementChild.textContent),
+            digitOffsets: columns.map(node => node.transform.baseVal.consolidate().matrix.f - readoutCenter),
+            tapeOffset: document.querySelector('#airspeed-scale').transform.baseVal.consolidate().matrix.f - readoutCenter,
             tapeVisible: visible(ias.querySelector('.airspeed-tape')), digitsVisible: visible(document.querySelector('#airspeed-digits')),
             rangesVisible: visible(document.querySelector('#airspeed-ranges')), trendVisible: visible(document.querySelector('#airspeed-trend')),
             fallbackFlag: fallback.dataset.visible, fallbackVisible: visible(fallback), fallbackText: rows.map(node => node.textContent),
@@ -92,6 +114,9 @@ export async function checkAirspeedAvailabilityTransitions(page, setFixture, pro
             warningVisible: visible(document.querySelector('#airspeed-warning')), warningText: document.querySelector('#airspeed-warning').textContent,
             gsState: document.querySelector('#ground-speed').dataset.state, gsLabel: document.querySelector('#ground-speed').getAttribute('aria-label'),
             gsText: document.querySelector('#ground-speed-value').textContent, gsWarningVisible: visible(document.querySelector('#ground-speed-warning')),
+            gsVisible: paintedVisible(gs), gsValueVisible: paintedVisible(gsValue),
+            gsInsidePanel: paintedInsidePanel(gs), gsValueInsidePanel: paintedInsidePanel(gsValue),
+            gsValueFill: getComputedStyle(gsValue).fill, gsValueFillOpacity: Number(getComputedStyle(gsValue).fillOpacity),
             panelAvailable: document.querySelector('.instrument').dataset.available,
             fallbackFits: rowBoxes.every(box => box.left - 0.25 >= allocation.left && box.right + 0.25 <= allocation.right &&
               box.top > warningBox.bottom && box.bottom < gsBox.top) && rowBoxes.slice(1).every((box, i) => box.top > rowBoxes[i].bottom),
@@ -107,6 +132,12 @@ export async function checkAirspeedAvailabilityTransitions(page, setFixture, pro
           (expectedWarnings.approaching ? 'rgb(255, 221, 67)' : 'rgb(245, 247, 250)')), label);
         assert.equal(actual.tapeVisible, state === 'available', label);
         assert.equal(actual.digitsVisible, state === 'available', label);
+        if (expectedIas === 'Indicated airspeed 65.123456789 knots') {
+          assert.deepEqual(actual.digitContents, ['', '6', '5'], label);
+          assert.ok(Math.abs(actual.tapeOffset - 260.493827156) < 1e-4, label);
+          for (const [column, expected] of [0, 0, 2.716049358].entries())
+            assert.ok(Math.abs(actual.digitOffsets[column] - expected) < 1e-4, `${label}, column ${column}`);
+        }
         assert.equal(actual.rangesVisible, state === 'available' && hasProfile, label);
         assert.equal(actual.trendVisible, expectedPrediction !== null, label);
         const fallbackVisible = state === 'unavailable' && hasProfile;
@@ -126,6 +157,12 @@ export async function checkAirspeedAvailabilityTransitions(page, setFixture, pro
         assert.equal(actual.gsLabel, 'Ground speed 138 knots', label);
         assert.equal(actual.gsText, '138', label);
         assert.equal(actual.gsWarningVisible, false, label);
+        assert.equal(actual.gsVisible, true, label);
+        assert.equal(actual.gsValueVisible, true, label);
+        assert.equal(actual.gsInsidePanel, true, label);
+        assert.equal(actual.gsValueInsidePanel, true, label);
+        assert.equal(actual.gsValueFill, 'rgb(245, 247, 250)', label);
+        assert.ok(actual.gsValueFillOpacity > 0, label);
         assert.equal(actual.panelAvailable, 'true', label);
         assert.equal(actual.nodesUnchanged, true, label);
       }
