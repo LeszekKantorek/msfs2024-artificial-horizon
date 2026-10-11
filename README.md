@@ -5,7 +5,7 @@ then open its address in a browser on the same network.
 
 **Windows x64** · **Read-only browser display** · **No phone app or account**
 
-> **Try the demo today.** The executable displays synthetic attitude, IAS, GS, altitude, selected-altitude alerts, vertical speed, pressure, magnetic heading, slip/skid, and turn rate.
+> **Try the demo today.** The executable displays synthetic attitude, IAS, TAS, GS, altitude, selected-altitude alerts, vertical speed, pressure, magnetic heading, slip/skid, and turn rate.
 > MSFS2024 integration remains planned. This is not a real-flight instrument.
 
 [Start the demo](#start-the-demo) · [Use your phone](#use-your-phone) · [Development](CONTRIBUTING.md)
@@ -40,7 +40,7 @@ Cargo builds the application before starting it.
 ### 3. Open the display
 
 Open [http://127.0.0.1:8080](http://127.0.0.1:8080) on the PC.
-Expect a moving attitude display, a left-side airspeed tape, ground speed, and a right-side altitude tape with pressure setting.
+Expect a moving attitude display, a left-side airspeed tape with TAS above it, ground speed, and a right-side altitude tape with pressure setting.
 Press `Ctrl+C` in PowerShell to stop the server gracefully.
 
 ## Use your phone
@@ -76,8 +76,9 @@ Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
 | --- | --- |
 | Instrument | Responsive attitude, 2.5-degree pitch ladder, extreme-pitch chevrons, bank scale, fixed aircraft reference, slip/skid and turn rate |
 | Motion | Repeating 18-second cycle: seven original attitudes, then +70/-50-degree pitch. Centered and both-direction slip/skid; +/-3 deg/s turns |
-| Speed | IAS accelerates from 0 to 150 kt, holds, then decelerates. GS follows a different profile up to 170 kt |
+| Speed | IAS accelerates from 0 to 150 kt, holds, then decelerates. TAS reaches 160 kt and GS reaches 170 kt in the same cycle |
 | Speed display | Rolling IAS digits, tape labels every 10 kt, colored speed ranges, R/X/Y/G references, and a magenta six-second trend. Separate rounded GS without a visible unit suffix, in a matching magenta frame over opaque dark background |
+| True airspeed | TAS above the left tape, rounded to whole knots without leading zeros or a unit suffix. White text and frame over the opaque GS/BARO background |
 | Speed warnings | Red current-speed pointer at or above 140 kt. Yellow IAS digits when the rising trend predicts reaching 140 kt |
 | Speed unavailable | `X` means unavailable, `OVR` means above 999 kt. Configured references appear above GS when IAS is unavailable |
 | Altitude | Aligned `[KT]`/`[FT]` labels and equal-height side scales. Fixed 8 CSS px spacing per 20 ft. Labels every 100 ft. Taller panels show more altitude. Signed readout: -9999 to 99999 ft. |
@@ -97,12 +98,12 @@ Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
 | Stale or unavailable data | Explicit status, no fabricated level-flight reading |
 | Background/resume | A fresh snapshot is required before live attitude returns |
 | Sizing | No fixed aspect ratio; minimum 320 CSS px width and 240 CSS px usable height after browser bars and safe areas |
-| Old snapshots | Attitude-only snapshots display attitude with unavailable IAS, GS, altitude, selected altitude, VSI, pressure, heading, slip/skid and turn rate |
+| Old snapshots | Attitude-only snapshots display attitude with unavailable IAS, TAS, GS, altitude, selected altitude, VSI, pressure, heading, slip/skid and turn rate |
 
 > Real iOS Safari and Android Chrome acceptance requires [device evidence](docs/testing.md#attitude-display-real-device-phone-acceptance).
 > Issue #4 owns the original attitude acceptance, [#20](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/20) owns the attitude/turn extension, and [#37](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/37) owns layers and background opacity.
 
-[#21](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/21) owns IAS/GS acceptance.
+[#21](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/21) owns IAS/GS acceptance. [#66](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/66) owns TAS acceptance.
 [#22](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/22) owns range, reference, and trend acceptance.
 The speed profile is fictional: VS0/VS1 40/50, VFE/VNO/VNE 85/110/140, and VR/VX/VY/VG 55/65/75/90 kt.
 These values are not verified performance of a real aircraft. See the [speed contract](docs/telemetry-contract.md#optional-airspeed-ranges-and-trend).

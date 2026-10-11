@@ -92,11 +92,11 @@ try {
   }
   verifyAltitude(await altitudeReading());
   assert.deepEqual([...loadedModules].sort(), [
-    '/airspeed/ground-speed.js', '/airspeed/helpers.js', '/airspeed/ias.js', '/airspeed/index.js',
+    '/airspeed/ground-speed.js', '/airspeed/true-airspeed.js', '/airspeed/helpers.js', '/airspeed/ias.js', '/airspeed/index.js',
     '/airspeed/readout.js', '/airspeed/references.js', '/airspeed/tape.js', '/altitude/baro.js', '/altitude/index.js', '/altitude/readout.js', '/altitude/selected.js', '/altitude/tape.js', '/altitude/trend.js', '/altitude/vsi.js', '/app.js', '/fixed-symbols/aircraft.js', '/fixed-symbols/bank-scale.js', '/fixed-symbols/index.js', '/frame-scheduler.js', '/heading.js', '/helpers.js', '/horizon/bank-pointer.js', '/horizon/index.js', '/horizon/pitch-scale.js', '/horizon/world.js', '/layout.js',
     '/panel.js', '/slip-skid.js', '/status.js', '/telemetry/client.js', '/telemetry/validation.js', '/turn-rate.js',
-  ]);
-  for (const path of ['/altitude/vsi.js', '/altitude/trend.js', '/heading.js']) {
+  ].sort());
+  for (const path of ['/altitude/vsi.js', '/altitude/trend.js', '/heading.js', '/airspeed/true-airspeed.js']) {
     const response = await fetch(address + path, { method: 'HEAD' });
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('content-type'), 'text/javascript; charset=utf-8');
@@ -115,6 +115,7 @@ try {
   assert.ok(Number.isFinite(snapshot.turn_rate_dps));
   assert.ok(Number.isFinite(snapshot.ias_kt));
   assert.ok(Number.isFinite(snapshot.gs_kt));
+  assert.ok(Number.isFinite(snapshot.tas_kt));
   assert.ok(Number.isFinite(snapshot.altitude_ft));
   assert.match(snapshot.baro_text, /^\d+\.\d{2} inHg$/);
   assert.ok(Number.isFinite(snapshot.vertical_speed_fpm));
@@ -140,8 +141,10 @@ try {
     ias: document.querySelector('#airspeed').getAttribute('aria-label'),
     digits: [...document.querySelectorAll('#airspeed-digits > g')].map(n => n.firstElementChild.textContent).join(''),
     gs: document.querySelector('#ground-speed-value').textContent,
+    tas: document.querySelector('#true-airspeed-value').textContent,
+    tasLabel: document.querySelector('#true-airspeed').getAttribute('aria-label'),
   }));
-  assert.deepEqual(speeds, { ias: 'Indicated airspeed 150 knots', digits: '150', gs: '170' });
+  assert.deepEqual(speeds, { ias: 'Indicated airspeed 150 knots', digits: '150', gs: '170', tas: '160', tasLabel: 'True airspeed 160 knots' });
   assert.equal(await page.locator('#airspeed').getAttribute('data-overspeed'), 'true');
   assert.equal(await page.locator('#airspeed-trend').evaluate(n => getComputedStyle(n).display), 'none');
   await page.screenshot({ path: '.local/pfd-runtime-landscape.png' });
@@ -194,9 +197,15 @@ try {
     ias: Number(document.querySelector('#airspeed').getAttribute('aria-label').split(' ')[2]),
     digits: [...document.querySelectorAll('#airspeed-digits > g')].map(n => n.firstElementChild.textContent).join(''),
     gsState: document.querySelector('#ground-speed').dataset.state,
+    tas: Number(document.querySelector('#true-airspeed').getAttribute('aria-label').split(' ')[2]),
+    tasText: document.querySelector('#true-airspeed-value').textContent,
   }));
   assert.equal(recovered.state, 'available');
   assert.equal(recovered.gsState, 'available');
+  assert.equal(await page.locator('#true-airspeed').getAttribute('data-state'), 'available');
+  // Reconnect can happen after the initial zero-speed segment.
+  assert.equal(recovered.tas, Math.round(recovered.ias * 160 / 150));
+  assert.equal(recovered.tasText, String(recovered.tas));
   assert.equal(recovered.digits, String(Math.floor(recovered.ias)));
   verifyAltitude(await altitudeReading());
   assert.equal(await page.locator('#heading-value').textContent(), '354');

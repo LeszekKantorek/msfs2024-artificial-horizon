@@ -45,6 +45,45 @@ fn snapshot(frame: &str) -> Value {
 }
 
 #[tokio::test(start_paused = true)]
+async fn tas_reaches_two_clients_and_clears_independently() {
+    use msfs2024_artificial_horizon::telemetry::{
+        FlightSample, GroundSpeed, IndicatedAirspeed, TrueAirspeed,
+    };
+    let (mut publisher, subscription) = telemetry::channel(Source::Demo);
+    let mut first = subscribe(subscription.clone(), None).await.into_body();
+    let mut second = subscribe(subscription.clone(), None).await.into_body();
+    for body in [&mut first, &mut second] {
+        assert_eq!(snapshot(&frame(body).await)["state"], "waiting");
+    }
+    let attitude = Attitude::new(5.0, 15.0).unwrap();
+    for tas in [Some(0.0), Some(85.5), Some(160.0), Some(999.01), None] {
+        publisher
+            .publish_sample(
+                FlightSample::new(attitude, None, None)
+                    .with_speeds(
+                        Some(IndicatedAirspeed::new(150.0).unwrap()),
+                        Some(GroundSpeed::new(170.0).unwrap()),
+                    )
+                    .with_true_airspeed(tas.map(|v| TrueAirspeed::new(v).unwrap())),
+            )
+            .unwrap();
+        advance(Duration::from_millis(50)).await;
+        let a = snapshot(&frame(&mut first).await);
+        let b = snapshot(&frame(&mut second).await);
+        assert_eq!(a, b);
+        assert_eq!(a.get("tas_kt").and_then(Value::as_f64), tas);
+        assert_eq!(a["ias_kt"], 150.0);
+        assert_eq!(a["gs_kt"], 170.0);
+        assert_eq!(a["sample_age_ms"], 50);
+        assert_eq!(a["schema_version"], 1);
+    }
+    publisher.publish(State::Live(attitude)).unwrap();
+    for body in [&mut first, &mut second] {
+        assert!(snapshot(&frame(body).await).get("tas_kt").is_none());
+    }
+}
+
+#[tokio::test(start_paused = true)]
 async fn baro_display_text_reaches_two_clients_unchanged_and_clears_with_the_source() {
     use msfs2024_artificial_horizon::telemetry::FlightSample;
     let (mut publisher, subscription) = telemetry::channel(Source::Demo);

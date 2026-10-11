@@ -688,6 +688,47 @@ Open the printed address on the phone. Use `/layout.html` for all 17 elements. E
 The host defaults to loopback and accepts IP addresses only. HTTP has no fixture-control route, and fixture assets are absent from the Rust binary.
 Restrict firewall access to the trusted private subnet. Remove `PFD_FIXTURE_HOST` from the environment after the phone run.
 
+## True airspeed acceptance
+
+Issue [#66](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/66) owns TAS acceptance.
+Use the [speed contract](telemetry-contract.md#optional-speed-indications) and [TAS presentation](pfd-presentation.md#true-airspeed).
+
+| Check | Expected behavior |
+| --- | --- |
+| Rust and SSE | Independently optional finite nonnegative TAS, unchanged v1 envelope, atomic publication, shared age, two matching clients, and clearing on omission or source loss |
+| Demo | Independent speed checkpoints repeat, including simultaneous IAS 150, TAS 160, and GS 170 |
+| Browser | Source-supplied TAS reaches SVG and ARIA; zero, fractions, rounding, 999, overflow, missing/null/malformed input, old snapshots, expiry and recovery have explicit expectations |
+| Partial loss | Missing TAS preserves valid IAS/GS. Missing IAS or GS preserves TAS |
+| Geometry | Stable production nodes in both compositions; glyph containment for one-, two-, three-digit values, X and OVR; inset frame, opaque background, and clearance from heading and tape |
+| Runtime | Embedded TAS module supports HTTP/MIME and HEAD checks; real demo readouts recover after server restart without reload |
+
+Run the [automated checks](#automated-checks) and both [desktop scripts](#responsive-pfd-layout-and-desktop-checks).
+`true-airspeed-browser-checks.mjs` covers 320×480, 326×246, and 568×240 at whole/fractional bounds and simulated safe-area padding.
+Inspect `.local/pfd-browser/tas-*` screenshots over sky and ground.
+
+For actual iOS Safari and Android Chrome, use the [phone fixture procedure](#real-phone-checks) and both compositions.
+Enter these controlled samples:
+
+```json
+{"ias_kt":150,"tas_kt":160,"gs_kt":170}
+{"tas_kt":0}
+{"tas_kt":85.5}
+{"tas_kt":999}
+{"tas_kt":999.01}
+{"tas_kt":null}
+{"tas_kt":"85"}
+{"tas_kt":160,"omit_tas":true}
+{"omit_tas":false,"tas_kt":160,"ias_kt":null}
+{"ias_kt":150,"gs_kt":null}
+{"gs_kt":170,"hold":true}
+{"hold":false}
+```
+
+Rotate each device and expand/collapse browser bars. Check safe areas, readable labels, continuous backgrounds, and no content collisions.
+Check Wi-Fi loss, restart, and lock/background/resume with fresh-data recovery.
+Record the commit, device, OS/browser versions, viewport, date, and observations in #66 or its PR.
+Leave missing phone results unchecked; desktop tests do not establish device acceptance.
+
 ## Airspeed ranges, references, and trend acceptance
 
 Run the automated checks and both browser scripts for range, reference, or trend implementation changes.

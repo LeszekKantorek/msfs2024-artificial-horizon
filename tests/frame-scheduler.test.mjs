@@ -37,9 +37,9 @@ test('headings draw with the newest attitude and expire before resize can renew 
 
 test('speed indications stay in the same latest frame and retain their deadline through resize and expiry', () => {
   const h = harness();
-  const first = { ...sample(0, 0, 500), ias_kt: 110, ias_acceleration_ktps: 5,
+  const first = { ...sample(0, 0, 500), ias_kt: 110, tas_kt: 120, gs_kt: 130, ias_acceleration_ktps: 5,
     airspeed_profile: { vne_kt: 140 } };
-  const latest = { ...first, ias_kt: 150, ias_acceleration_ktps: 0 };
+  const latest = { ...first, ias_kt: 150, tas_kt: 160, gs_kt: 170, ias_acceleration_ktps: 0 };
   h.renderer.accept(first); h.renderer.accept(latest); h.flush();
   assert.equal(h.drawn.length, 1);
   assert.deepEqual(h.drawn[0], latest);

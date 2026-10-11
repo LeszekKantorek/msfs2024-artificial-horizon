@@ -12,6 +12,7 @@
 | [PFD demo scope](pfd-demo-scope.md) | Planning or implementing PFD demo features. |
 | [PFD composition](pfd-module-plan.md) | Finding implemented object, frame, layer, and calculation contracts before extending the PFD. |
 | [Airspeed and ground speed](airspeed-ground-speed.md) | Extending or validating speed telemetry, tape-unit margins, GS frame, ranges, references, trend, rolling digits, or the demo profile. |
+| [True airspeed](true-airspeed.md) | Extending or validating TAS telemetry, its top-left white frame, or TAS acceptance. |
 | [Altitude and pressure](altitude-baro.md) | Extending or validating altitude, source-formatted BARO text, signed drums, or the right-side PFD layout. |
 | [Altitude trend](altitude-trend.md) | Extending or validating six-second altitude prediction, its separate lane, or notched-bug geometry. |
 | [Selected altitude](selected-altitude.md) | Extending or validating targets, alert history, timed panel updates, or the longer altitude demo. |

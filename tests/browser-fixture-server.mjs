@@ -8,7 +8,7 @@ import { createInterface } from 'node:readline';
 const profile = JSON.parse(readFileSync(new URL('./fixtures/airspeed-profile.json', import.meta.url)));
 let fixture = { state: 'live', pitch_deg: 0, roll_deg: 0, slip_skid: 0, turn_rate_dps: 0,
   heading_deg: 359, selected_heading_deg: 1,
-  altitude_ft: 10000, selected_altitude_ft: 12000, vertical_speed_fpm: 0, baro_text: '29.92 inHg', ias_kt: 123, gs_kt: 137, airspeed_profile: profile, ias_acceleration_ktps: 5, hold: false };
+  altitude_ft: 10000, selected_altitude_ft: 12000, vertical_speed_fpm: 0, baro_text: '29.92 inHg', ias_kt: 123, gs_kt: 137, tas_kt: 131, airspeed_profile: profile, ias_acceleration_ktps: 5, hold: false };
 let sequence = 0;
 let clients = 0;
 const input = createInterface({ input: process.stdin });
@@ -28,6 +28,7 @@ const types = {
   '/horizon/pitch-scale.js': 'text/javascript',
   '/horizon/bank-pointer.js': 'text/javascript',
   '/telemetry/validation.js': 'text/javascript',
+  '/airspeed/true-airspeed.js': 'text/javascript',
   '/airspeed/index.js': 'text/javascript', '/airspeed/ias.js': 'text/javascript', '/airspeed/ground-speed.js': 'text/javascript', '/airspeed/tape.js': 'text/javascript', '/airspeed/readout.js': 'text/javascript', '/airspeed/references.js': 'text/javascript', '/airspeed/helpers.js': 'text/javascript',
   '/helpers.js': 'text/javascript',
   '/layout.js': 'text/javascript', '/panel.js': 'text/javascript', '/frame-scheduler.js': 'text/javascript', '/fixed-symbols/index.js': 'text/javascript',
@@ -57,6 +58,7 @@ const server = createServer((request, response) => {
         if (!fixture.omit_baro) snapshot.baro_text = fixture.baro_text;
         snapshot.ias_kt = fixture.ias_kt;
         snapshot.gs_kt = fixture.gs_kt;
+        if (!fixture.omit_tas) snapshot.tas_kt = fixture.tas_kt;
         snapshot.airspeed_profile = fixture.airspeed_profile;
         snapshot.ias_acceleration_ktps = fixture.ias_acceleration_ktps;
       }

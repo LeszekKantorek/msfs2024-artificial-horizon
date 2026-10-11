@@ -39,6 +39,7 @@ export function normalizeOptionalIndications(value) {
     turn_rate_dps: Number.isFinite(value.turn_rate_dps) ? value.turn_rate_dps : null,
     ias_kt: Number.isFinite(value.ias_kt) && value.ias_kt >= 0 ? value.ias_kt : null,
     gs_kt: Number.isFinite(value.gs_kt) && value.gs_kt >= 0 ? value.gs_kt : null,
+    tas_kt: Number.isFinite(value.tas_kt) && value.tas_kt >= 0 ? value.tas_kt : null,
     airspeed_profile: normalizeAirspeedProfile(value.airspeed_profile),
     ias_acceleration_ktps: Number.isFinite(value.ias_acceleration_ktps) ? value.ias_acceleration_ktps : null,
   };
