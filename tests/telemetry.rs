@@ -105,6 +105,10 @@ fn pfd_demo_matches_independent_fixtures_through_every_segment_and_repeat() {
                 actual.as_object_mut().unwrap().remove("ias_kt");
                 actual.as_object_mut().unwrap().remove("gs_kt");
                 actual.as_object_mut().unwrap().remove("altitude_ft");
+                actual
+                    .as_object_mut()
+                    .unwrap()
+                    .remove("selected_altitude_ft");
                 actual.as_object_mut().unwrap().remove("baro_inhg");
                 actual.as_object_mut().unwrap().remove("airspeed_profile");
                 actual

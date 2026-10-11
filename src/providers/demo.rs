@@ -1,11 +1,12 @@
 //! Repeatable degree fixtures; no simulator SDK conventions are assumed.
 use crate::telemetry::{
     AirspeedProfile, Attitude, BarometricAltitude, BarometricSetting, FlightSample, GroundSpeed,
-    IasAcceleration, IndicatedAirspeed, Publisher, SAMPLE_PERIOD, SlipSkid, TelemetryError,
-    TurnRate, VSpeedReferences,
+    IasAcceleration, IndicatedAirspeed, Publisher, SAMPLE_PERIOD, SelectedAltitude, SlipSkid,
+    TelemetryError, TurnRate, VSpeedReferences,
 };
 use std::future::Future;
 use tokio::time::{MissedTickBehavior, interval};
+const CYCLE_SAMPLES: u64 = 1800;
 pub fn attitude(sample: u64) -> Attitude {
     let (pitch, roll) = match (sample / 40) % 7 {
         0 => (0.0, 0.0),
@@ -42,16 +43,7 @@ pub fn sample(index: u64) -> FlightSample {
         160..200 => 1.0,
         _ => (320 - step) as f64 / 120.0,
     };
-    // Separate synthetic sweeps exercise signs and carries; jumps are not a flight model.
-    let (start, end) = [
-        (-120.0, 120.0),
-        (980.0, 1020.0),
-        (9980.0, 10020.0),
-        (10020.0, 9980.0),
-        (1020.0, 980.0),
-        (120.0, -120.0),
-    ][(step / 60) as usize];
-    let altitude = start + (end - start) * (step % 60) as f64 / 59.0;
+    let (altitude, selected) = altitude_scenario(index);
     let baro = [29.92, 30.12, 29.72][(step / 120) as usize];
     FlightSample::new(
         attitude,
@@ -61,6 +53,9 @@ pub fn sample(index: u64) -> FlightSample {
     .with_altitude(
         Some(BarometricAltitude::new(altitude).expect("built-in altitude is valid")),
         Some(BarometricSetting::new(baro).expect("built-in pressure setting is valid")),
+    )
+    .with_selected_altitude(
+        selected.map(|feet| SelectedAltitude::new(feet).expect("built-in target is valid")),
     )
     .with_speeds(
         Some(IndicatedAirspeed::new(150.0 * fraction).expect("built-in IAS is valid")),
@@ -77,6 +72,36 @@ pub fn sample(index: u64) -> FlightSample {
             .expect("built-in IAS acceleration is valid"),
         ),
     )
+}
+// Original sweeps, then two 36-second approaches. No browser owns a demo trajectory.
+fn altitude_scenario(index: u64) -> (f64, Option<f64>) {
+    let step = index % CYCLE_SAMPLES;
+    if step < 360 {
+        let (start, end) = [
+            (-120.0, 120.0),
+            (980.0, 1020.0),
+            (9980.0, 10020.0),
+            (10020.0, 9980.0),
+            (1020.0, 980.0),
+            (120.0, -120.0),
+        ][(step / 60) as usize];
+        return (start + (end - start) * (step % 60) as f64 / 59.0, None);
+    }
+    let (target, direction) = if step < 1080 {
+        (10000.0, -1.0)
+    } else {
+        (1000.0, 1.0)
+    };
+    let local = (step - 360) % 720;
+    let distance = match local {
+        0..120 => 1500.0,
+        120..280 => 1500.0 - (local - 120) as f64 * 1000.0 / 160.0,
+        280..440 => 500.0 - (local - 280) as f64 * 500.0 / 160.0,
+        440..560 => 0.0,
+        560..600 => -((local - 560) as f64) * 300.0 / 40.0,
+        _ => -300.0,
+    };
+    (target + direction * distance, Some(target))
 }
 /// Fictional demo configuration, not verified performance of any real aircraft.
 pub fn speed_profile() -> AirspeedProfile {
@@ -122,7 +147,7 @@ pub async fn run(
             _ = freshness.tick() => publisher.expire()?,
             _ = samples.tick() => {
                 publisher.publish_sample(sample(index))?;
-                index = (index + 1) % 360;
+                index = (index + 1) % CYCLE_SAMPLES;
             }
         }
     }

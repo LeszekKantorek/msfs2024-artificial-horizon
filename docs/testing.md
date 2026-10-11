@@ -120,6 +120,40 @@ Automated lifecycle tests cover normal shutdown and cancellation:
 
 > Desktop checks do not establish real-phone or simulator compatibility.
 
+## Selected altitude and alert acceptance
+
+Issue [#24](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/24) owns selected-altitude and alert evidence.
+Use the [telemetry contract](telemetry-contract.md#optional-selected-altitude) and [presentation rules](pfd-presentation.md#selected-altitude-and-alerts).
+
+Automated coverage exercises these boundaries:
+
+| Boundary | Checks |
+| --- | --- |
+| Rust model and demo | Finite signed targets, independent omission, shared freshness, old publications, two SSE clients, 90-second checkpoints and unchanged 18-second cycles |
+| Alert transitions | Both approach directions, exact thresholds, unrounded values, skipped bands, sustained values, target changes, capture, departure, return and repeat departure |
+| Controlled time | 250-ms flash phases, completion at 5000 ms, delayed/early callbacks, identical fresh samples, resize, coalesced samples and expiry before draw |
+| Invalidation | Local missing/overflow values, paused/stale/disconnected/waiting/invalid states, suspension, stale callbacks and silent recovery |
+| SVG | Readout and bug bounds, stroke clearance at tape edges, colors, availability, stable nodes and the full layout fixture |
+| Release runtime | Embedded selected module, actual Rust target in SSE/SVG, pinned bug and recovery after restart |
+
+Use these checks and artifacts for automated acceptance:
+
+* The [automated Rust and Node commands](#automated-checks) include these tests.
+* Both [desktop browser scripts](#responsive-pfd-layout-and-desktop-checks) are required for this feature.
+* The selected SVG checks use real panel modules with injected monotonic time.
+* They check bug paint visibility and minus-sign clearance at positive and negative capture without five-second wall-clock waits.
+* Inspect screenshots at `.local/pfd-browser/selected-altitude-*` and `.local/pfd-runtime-selected-altitude.png`.
+
+Real-device acceptance uses this procedure on iOS Safari and Android Chrome separately:
+
+1. Record device, OS, browser/version, tested commit, date, viewport, and observations in #24 or its PR.
+2. Watch the 90-second demo for both approach directions, full flash intervals, target changes, and yellow deviation.
+3. Check the pinned bug and selected value against sky and ground in portrait and short landscape, including 320 CSS px width.
+4. Rotate and change browser-bar visibility. Check safe areas, readable text, undistorted symbols, and no scrolling or collisions.
+5. Use the development fixture to check target loss, malformed target, both overflow boundaries, current-altitude loss, pressure-only loss, and return into the captured band.
+6. Check Wi-Fi/server loss, lock/unlock, and background/resume during an alert. Recovery requires fresh data and silent initialization.
+7. Leave device acceptance unchecked until both device results identify the tested build and satisfy these checks.
+
 ## Automated checks
 
 Run these commands from the repository root on Windows x64 MSVC.

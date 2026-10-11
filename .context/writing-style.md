@@ -17,6 +17,7 @@ status: active
 * Before removing moved or shortened text, verify where each requirement, constraint, and caveat remains in the canonical documentation.
 * Apply `asd-ste100` when available without claiming certified dictionary compliance.
 * Review Markdown structure separately from STE lint results because sentence checks do not enforce grouped rules, procedures, or tables.
+* Check rendered paragraph boundaries because single newlines do not separate Markdown paragraphs.
 * Link to the canonical source instead of repeating commands or rules.
 
 ## Impersonal project records
@@ -51,3 +52,5 @@ Source: accepted writing style, document responsibilities, and setup decisions, 
 Source: accepted documentation correction, 2026-10-10, to introduce long bullet groups with short sentences that explain their scope.
 
 Source: documentation structure correction for #56 and PR #55, 2026-10-11, to check Markdown conventions independently of STE lint.
+
+Source: formatting correction for `docs/testing.md` in PR #60, 2026-10-11, to group independent checks instead of stacking prose lines.

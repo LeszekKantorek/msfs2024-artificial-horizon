@@ -10,7 +10,7 @@ import { pfdLayout } from '../web/layout.js';
 test('all render methods receive the same complete read-only frame', () => {
   const received = [], resized = [], invalidated = [];
   const instruments = Array.from({ length: 3 }, () => ({
-    resize: layout => resized.push(layout), render: frame => received.push(frame),
+    resize: layout => resized.push(layout), render: frame => { received.push(frame); },
   }));
   const frame = Object.freeze({
     attitude: Object.freeze({ pitch_deg: 10, roll_deg: 25 }), slip_skid: -1,
@@ -23,7 +23,7 @@ test('all render methods receive the same complete read-only frame', () => {
   const panel = composePanel({ setAttribute: (name, value) => { attributes[name] = value; },
     querySelector: () => ({ setAttribute: (name, value) => { clipAttributes[name] = value; } }),
   }, instruments, {
-    render: frame => received.push(frame), invalidate: reason => invalidated.push(reason),
+    render: frame => { received.push(frame); }, invalidate: reason => invalidated.push(reason),
   });
   const layout = pfdLayout(320, 440);
   panel.resize(layout); panel.render(frame); panel.invalidate('stale');
@@ -34,6 +34,18 @@ test('all render methods receive the same complete read-only frame', () => {
   assert.ok(resized.every(value => value === layout));
   assert.deepEqual(invalidated, ['stale']);
   assert.equal(frame.futureField, 123);
+});
+
+test('panel delegates each acceptance and invalidation and aggregates timed render deadlines', () => {
+  const accepted = [], reset = [];
+  const frame = Object.freeze({ selected_altitude_ft: 10000, expiresAt: 1000 });
+  const panel = composePanel({ querySelector() {} }, [400, null, 250].map(deadline => ({
+    accept: (value, now) => accepted.push([value, now]),
+    render: () => deadline, invalidate: reason => reset.push(reason),
+  })), { render() {}, invalidate() {} });
+  panel.accept(frame, 100); assert.equal(panel.render(frame, 100), 250);
+  assert.deepEqual(accepted, [[frame, 100], [frame, 100], [frame, 100]]);
+  panel.invalidate('paused'); assert.deepEqual(reset, ['paused', 'paused', 'paused']);
 });
 
 function statusHarness() {
@@ -76,7 +88,7 @@ test('expiry during resize obscures the panel without painting or restoring an o
   const panel = composePanel({ setAttribute() {},
     querySelector: () => ({ setAttribute: (name, value) => { clipAttributes[name] = value; } }),
   }, [{
-    resize: layout => resized.push(layout), render: frame => drawn.push(frame),
+    resize: layout => resized.push(layout), render: frame => { drawn.push(frame); },
   }], h.view);
   const scheduler = createFrameScheduler({ panel, now: () => now,
     requestFrame: fn => { callback = fn; return 1; }, cancelFrame() {},

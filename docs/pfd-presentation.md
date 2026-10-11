@@ -6,7 +6,8 @@ Delivery order: [roadmap](roadmap.md). Validation: [testing](testing.md#modular-
 
 ## Current implementation and planned changes
 
-The panel implements attitude, slip/skid, and turn rate from #20, IAS and GS from #21, ranges/trend from #22, and altitude/pressure from #23.
+The panel implements attitude, slip/skid, and turn rate from #20, IAS and GS from #21, and ranges/trend from #22.
+It also implements altitude/pressure from #23 and selected-altitude alerts from #24.
 #36 separates rendering from scheduling. #37 implements layers and full-panel background coverage.
 Maintenance [#54](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/54) introduced internal calculation and validation seams.
 [#56](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/56) composes visual objects and places object-specific calculations with their implementing modules:
@@ -54,7 +55,7 @@ Panel
 
 * A module does not require one file per graphic element.
 * Add future instruments in their feature issues, without empty implementations or production placeholder readings.
-* Selected-altitude alerts, vertical speed, and heading/track remain planned in #24–#26.
+* Vertical speed and heading/track remain planned in #25-#26.
 
 | Owner | Responsibility |
 | --- | --- |
@@ -97,6 +98,8 @@ Internal objects use these ownership rules:
 * Returned objects expose operations without public node bags.
 * Parents update their own shared hosts and clips before invoking child operations.
 * Visual closures retain nodes and initialized geometry without a latest-frame cache or timer.
+* Selected altitude also retains alert history.
+* The frame scheduler owns its timing work.
 
 ### Airspeed objects
 
@@ -234,7 +237,7 @@ Lifecycle state stays with the client and scheduler:
 Further generalization remains deferred:
 
 * Altitude uses its own tape and drums because its scale, signed values, and 20-ft digit steps differ from IAS.
-* No general tape abstraction is introduced; selected-altitude and alert rules remain in #24.
+* Selected-altitude and alert rules extend the altitude instrument in #24 without introducing a general tape abstraction.
 * The current implementation adds no instrument base class, general tape renderer, or shared lower-indication controller.
 
 ### Callback reentrancy limit
@@ -258,14 +261,16 @@ These limits remain outside the cancellation guarantee:
 
 ```js
 panel.resize(layout);
-panel.render(frame);
+panel.accept(frame, now);
+panel.render(frame, now);
 panel.invalidate(reason);
 ```
 
 | Operation | Contract |
 | --- | --- |
 | `resize(layout)` | Update instrument geometry, including while unavailable. Do not renew data validity |
-| `render(frame)` | Apply one fresh, coherent presentation frame to existing instrument elements |
+| `accept(frame, now)` | Advance optional instrument history for each accepted fresh sample, without DOM writes |
+| `render(frame, now)` | Apply one fresh, coherent presentation frame. Return the earliest next monotonic visual deadline, or `null` |
 | `invalidate(reason)` | Obscure invalid indications immediately. Do not substitute level flight or zero values |
 
 | Frame field | Meaning |
@@ -274,6 +279,7 @@ panel.invalidate(reason);
 | `ias_kt`, `gs_kt` | Independently normalized speeds from the same accepted sample, or `null` |
 | `airspeed_profile`, `ias_acceleration_ktps` | Independently normalized configuration and source acceleration, or `null` |
 | `altitude_ft`, `baro_inhg` | Independently normalized signed altitude and positive pressure setting, or `null` |
+| `selected_altitude_ft` | Independently normalized signed selected altitude, or `null` |
 | `expiresAt` | Original monotonic expiry deadline |
 | `status` | Copied `source`, `transport`, and `state` values |
 
@@ -317,7 +323,7 @@ function renderPanel(frame) {
 The scheduler coordinates samples, layout, and invalidation in this sequence:
 
 1. Create instrument elements once during initialization.
-2. On an accepted sample, retain that sample and request at most one animation frame.
+2. On each fresh accepted sample, delegate `accept(frame, now)` before retaining the newest sample and requesting at most one animation frame.
 3. On resize with a retained sample, keep the newest layout and request at most one animation frame.
 4. Before drawing, check the original deadline, then apply the pending layout and render the fresh frame in the same callback.
 5. On invalidation, cancel pending drawing, discard the sample, and invoke `panel.invalidate(reason)` immediately.
@@ -337,9 +343,17 @@ Freshness and status handling follow these rules:
 * Do not interpolate or extrapolate current readings between accepted samples.
 * The source-based [airspeed trend](#ranges-references-and-trend) remains a separate prediction indication.
 
-Future timed alerts use the existing scheduling and cancellation path:
+Selected-altitude alerts use the existing scheduling and cancellation path:
 
-* Selected-altitude alert timing belongs to #24.
+* Altitude owns alert history and pure phase calculations.
+* Rendering and resize never advance sample history.
+* Instrument render operations can return a monotonic next-update deadline.
+* Panel composition selects the earliest.
+* The scheduler accepts injectable `now`, `setTimer`, and `clearTimer` dependencies.
+* One timer requests the common animation frame at the earlier of the visual deadline and sample expiry.
+* New samples cancel obsolete timing work.
+* Rendering checks the retained sample's original deadline.
+* Acceptance resets expired retained history before processing fresh recovery data, including when expiry callbacks were delayed.
 * Timed visual changes use the same panel scheduling path and an injectable monotonic clock.
 * Invalidation cancels their pending work and prevents an apparently valid alert from remaining active.
 
@@ -390,6 +404,52 @@ Keep indications readable across the full panel:
 * Check painted extents, including stroke clearance, rather than only allocated rectangles.
 * Use the full 18-element development fixture before later instruments reduce usable space.
 * Preserve responsive sizing, safe areas, and the minima in the [brief](project-brief.md#mobile-presentation).
+
+## Selected altitude and alerts
+
+The altitude composition adds `selected.js` in layer 2:
+
+* The selected object owns its black value window, symbol, tape bug, and alert history.
+* The readout occupies the existing 32 CSS px strip above the altitude allocation.
+* The bug shares altitude's tape host and clip, using the existing 0.4 CSS px/ft scale.
+* The bug stays fully inside either tape edge, including its stroke.
+* Ordinary selected values use turquoise text.
+* Deviation uses yellow text on black.
+* The bug paints after the current-altitude window and remains clear of the minus sign at capture.
+* The readout rounds finite targets to whole feet without rounding the alert inputs.
+* Available selected values span -9999 through 99999 ft, with `X` for unavailable and `OVR` beyond these limits.
+* Missing or overflowing targets hide the bug and reset alert history.
+* Missing or overflowing current altitude retains a valid selected readout, hides the bug, and resets alerts.
+* Pressure availability does not affect the selected target or alerts.
+
+Alert behavior follows these project rules:
+
+| Transition | Result |
+| --- | --- |
+| First valid pair after reset | Establish the current band without flashing. Arm deviation at error <=200 ft |
+| First entry from >1000 to <=1000 ft | Flash the selected readout for five seconds |
+| First entry from >200 to <=200 ft | Flash for five seconds and arm deviation |
+| Departure from the armed +/-200 ft band | Flash yellow for five seconds, then retain steady yellow |
+| Return to <=200 ft | Clear deviation and allow another departure alert |
+| Target change or required input loss | Clear threshold history, deviation, and flash timing |
+
+Timing and precedence remain deterministic:
+
+* Approach alerts occur once between resets.
+* Holding or oscillating around a threshold does not repeat them.
+* A sample entering <=200 ft directly consumes both approach thresholds and starts only the 200-ft alert.
+* A new alert replaces the previous flash interval with its own five seconds.
+* Flash phases alternate 250 ms visible and 250 ms hidden, starting visible and ending visible at 5000 ms.
+* Only the selected value flashes.
+* The bug, current-altitude digits, and accessible description remain stable.
+* Delayed renders calculate the current phase from monotonic time without replaying missed phases.
+* Every fresh accepted sample advances history before drawing is coalesced.
+* Resize and timed redraws preserve history and the original sample deadline.
+* Invalidation clears history and cancels pending timer and frame work.
+
+The reference is Garmin G5 Guide 190-01112-12 Rev. 2, sections 3.3.4 and 3.3.6.
+Entry into +/-200 ft as capture, silent initialization, 2 Hz flashing, and persistent yellow are explicit project choices for #24.
+The graphics remain original application assets.
 
 ## Unavailable status
 

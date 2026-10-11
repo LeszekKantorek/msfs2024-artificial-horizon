@@ -13,5 +13,5 @@
   {"sample": 299, "altitude_ft": 980, "baro_inhg": 29.72},
   {"sample": 300, "altitude_ft": 120, "baro_inhg": 29.72},
   {"sample": 359, "altitude_ft": -120, "baro_inhg": 29.72},
-  {"sample": 360, "altitude_ft": -120, "baro_inhg": 29.92}
+  {"sample": 1800, "altitude_ft": -120, "baro_inhg": 29.92}
 ]

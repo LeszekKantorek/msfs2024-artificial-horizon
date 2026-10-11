@@ -10,6 +10,11 @@ use tower::ServiceExt;
 async fn embedded_page_assets_and_liveness_match_the_contract() {
     for (path, content_type, expected) in [
         (
+            "/altitude/selected.js",
+            "text/javascript; charset=utf-8",
+            "createSelectedAltitude",
+        ),
+        (
             "/altitude/index.js",
             "text/javascript; charset=utf-8",
             "createAltitude",

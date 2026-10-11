@@ -5,7 +5,7 @@ then open its address in a browser on the same network.
 
 **Windows x64** · **Read-only browser display** · **No phone app or account**
 
-> **Try the demo today.** The current executable displays synthetic attitude, IAS, GS, altitude, pressure setting, slip/skid, and turn rate.
+> **Try the demo today.** The current executable displays synthetic attitude, IAS, GS, altitude, selected altitude with alerts, pressure setting, slip/skid, and turn rate.
 > Vertical speed, heading/track, and MSFS2024 integration remain planned. This is not a real-flight instrument.
 
 [Start the demo](#start-the-demo) · [Use your phone](#use-your-phone) · [Development](CONTRIBUTING.md)
@@ -82,6 +82,8 @@ Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
 | Speed unavailable | `X` means unavailable, `OVR` means above 999 kt. Configured references appear above GS when IAS is unavailable |
 | Altitude | Fixed 8 CSS px spacing per 20 ft. Labels every 100 ft. Taller panels show more altitude. Signed readout: -9999 to 99999 ft. |
 | Pressure | Read-only scenario setting below altitude, with two decimal places in inHg |
+| Selected altitude | Read-only scenario target above altitude, with a tape bug pinned at either edge. `X` means unavailable. `OVR` means outside -9999 to 99999 ft |
+| Altitude alerts | Five-second flashing on entry within 1000 and 200 ft. Entry within +/-200 ft arms deviation. Leaving it flashes yellow for five seconds, then stays yellow until return or reset |
 | Altitude/pressure unavailable | Independent `X` marks; `OVR` beyond each display limit |
 | Data | Synthetic samples at 20 Hz, without a source badge |
 | Presentation | Sky/ground across the full panel, centrally clipped pitch scale, no top status bar |
@@ -89,7 +91,7 @@ Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
 | Stale or unavailable data | Explicit status, no fabricated level-flight reading |
 | Background/resume | A fresh snapshot is required before live attitude returns |
 | Sizing | No fixed aspect ratio; minimum 320 CSS px width and 240 CSS px usable height after browser bars and safe areas |
-| Old snapshots | Attitude-only snapshots show attitude with unavailable IAS, GS, altitude, pressure, slip/skid and turn rate |
+| Old snapshots | Attitude-only snapshots display attitude with unavailable IAS, GS, altitude, selected altitude, pressure, slip/skid and turn rate |
 
 > Real iOS Safari and Android Chrome acceptance requires [device evidence](docs/testing.md#attitude-display-real-device-phone-acceptance).
 > Issue #4 owns the original attitude acceptance, [#20](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/20) owns the attitude/turn extension, and [#37](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/37) owns layers and background opacity.
@@ -99,8 +101,12 @@ Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
 The speed profile is fictional: VS0/VS1 40/50, VFE/VNO/VNE 85/110/140, and VR/VX/VY/VG 55/65/75/90 kt.
 These values are not verified performance of a real aircraft. See the [speed contract](docs/telemetry-contract.md#optional-airspeed-ranges-and-trend).
 [#23](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/23) owns altitude and pressure acceptance.
-Its synthetic sweeps exercise negative values, climbing, descending, and digit carries; transitions are not a physical flight model.
-The planned G5-inspired PFD adds selected-altitude alerts, vertical speed, and heading/track indications.
+The altitude demo repeats every 90 seconds. It starts with 18 seconds of signed digit sweeps.
+Two 36-second approaches and departures follow, at selected targets of 10000 and 1000 ft.
+The other indications keep their existing 18-second cycles. Transitions are not a physical flight model.
+[#24](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/24) owns selected-altitude and alert acceptance on real phones.
+First samples after target changes or recovery establish the alert state without flashing.
+The planned G5-inspired PFD adds vertical speed and heading/track indications.
 See the [project brief](docs/project-brief.md) for coverage and exclusions, and the [roadmap](docs/roadmap.md) for delivery order.
 
 ## Options and troubleshooting
