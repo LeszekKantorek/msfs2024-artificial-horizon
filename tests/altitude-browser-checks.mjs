@@ -27,6 +27,13 @@ export async function checkAltitude(page, setFixture, url) {
     });
     for (const [width, height] of [[326, 246], [320, 480], [568, 240], [844, 320]]) {
       await page.setViewportSize({ width, height });
+      // Wait for ResizeObserver and the shared frame to adopt the new SVG viewport.
+      await page.waitForFunction(() => {
+        const svg = document.querySelector('svg'), bounds = svg.getBoundingClientRect();
+        const [, , width, height] = svg.getAttribute('viewBox').split(' ').map(Number);
+        return Math.abs(width - bounds.width) < 0.01 && Math.abs(height - bounds.height) < 0.01;
+      });
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       for (const value of [-9999, -1000, -90, -20, -0.1, 0, 0.1, 20, 90, 100, 990, 1000, 9990, 10000, 99999]) {
         setFixture({ altitude_ft: value });
         await page.waitForFunction(value => document.querySelector('#altitude').getAttribute('aria-label') === `Barometric altitude ${value} feet`, value);

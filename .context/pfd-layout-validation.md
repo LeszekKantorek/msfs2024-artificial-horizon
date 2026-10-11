@@ -8,6 +8,7 @@ status: active
 * The accepted minimum is 320 CSS px wide and 240 CSS px of usable height after browser bars and safe areas.
 * Preserve the sample deadline during resize and redraw through the latest-sample frame scheduler.
 * Test painted symbol extents, including stroke clearance, rather than only instrument-region bounds.
+* After changing a browser viewport, wait for SVG `viewBox` dimensions to match its CSS bounds before measuring glyphs. A fresh sample alone does not confirm completed resize geometry.
 * For #37 and later, distinguish overlapping background coverage from non-overlapping indication content using the [module plan](pfd-module-plan.md).
 * Keep desktop Edge evidence separate from required real iOS Safari and Android Chrome acceptance.
 
