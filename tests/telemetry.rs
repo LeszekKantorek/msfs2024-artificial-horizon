@@ -48,10 +48,10 @@ async fn speeds_share_freshness_and_clear_independently_on_partial_attitude_only
         Some(IndicatedAirspeed::new(99.5).unwrap()),
         Some(GroundSpeed::new(120.0).unwrap()),
     );
-    publisher.publish_sample(full).unwrap();
+    publisher.publish_sample(full.clone()).unwrap();
     advance(Duration::from_millis(999)).await;
     assert_eq!(value(subscription.snapshot())["ias_kt"], 99.5);
-    publisher.publish_sample(full).unwrap();
+    publisher.publish_sample(full.clone()).unwrap();
     assert_eq!(value(subscription.snapshot())["sample_age_ms"], 0);
     for (ias, gs) in [
         (Some(IndicatedAirspeed::new(0.0).unwrap()), None),
@@ -73,13 +73,13 @@ async fn speeds_share_freshness_and_clear_independently_on_partial_attitude_only
         State::Disconnected,
         State::Invalid,
     ] {
-        publisher.publish_sample(full).unwrap();
+        publisher.publish_sample(full.clone()).unwrap();
         publisher.publish(state).unwrap();
         let snapshot = value(subscription.snapshot());
         assert!(snapshot.get("ias_kt").is_none());
         assert!(snapshot.get("gs_kt").is_none());
     }
-    publisher.publish_sample(full).unwrap();
+    publisher.publish_sample(full.clone()).unwrap();
     advance(STALE_AFTER).await;
     let stale = value(subscription.snapshot());
     assert_eq!(stale["state"], "stale");
@@ -115,7 +115,7 @@ fn pfd_demo_matches_independent_fixtures_through_every_segment_and_repeat() {
                     .as_object_mut()
                     .unwrap()
                     .remove("selected_altitude_ft");
-                actual.as_object_mut().unwrap().remove("baro_inhg");
+                actual.as_object_mut().unwrap().remove("baro_text");
                 actual.as_object_mut().unwrap().remove("airspeed_profile");
                 actual
                     .as_object_mut()
@@ -161,7 +161,7 @@ async fn extended_publication_shares_age_and_clears_absent_or_unavailable_indica
         full,
         json!({"schema_version":1,"sequence":1,"source":"demo","state":"live",
         "sample_age_ms":0,"attitude":{"pitch_deg":10.0,"roll_deg":25.0},"slip_skid":1.0,"turn_rate_dps":3.0,"ias_kt":150.0,"gs_kt":170.0,
-        "airspeed_profile": serde_json::from_str::<Value>(include_str!("fixtures/airspeed-profile.json")).unwrap(), "ias_acceleration_ktps":-25.0, "altitude_ft":10006.440677966102, "baro_inhg":30.12})
+        "airspeed_profile": serde_json::from_str::<Value>(include_str!("fixtures/airspeed-profile.json")).unwrap(), "ias_acceleration_ktps":-25.0, "altitude_ft":10006.440677966102, "baro_text":"30.12 inHg"})
     );
     advance(Duration::from_millis(999)).await;
     assert_eq!(value(subscription.snapshot())["slip_skid"], 1.0);

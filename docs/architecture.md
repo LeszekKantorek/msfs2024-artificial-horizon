@@ -112,7 +112,7 @@ web/
     index.js                # composition, shared tape clip, state and geometry
     tape.js                 # fixed pixel spacing and a retained tick pool that grows on resize
     readout.js              # pointer window, sign, 20-ft drums and display limits
-    baro.js                 # independent pressure setting and inHg formatting
+    baro.js                 # independent source-formatted BARO text and availability
     selected.js             # source target, tape bug, and alert history
     vsi.js                  # compact ft/min window, formatting, geometry and independent availability
     trend.js                # six-second altitude prediction and clipped magenta line
@@ -214,8 +214,10 @@ The server owns validated samples and deterministic demo scenarios:
 * `IndicatedAirspeed` and `GroundSpeed` validate optional nonnegative knots. `FlightSample::with_speeds` adds them without changing its existing constructor.
 * `AirspeedProfile` validates speed thresholds and named `VSpeedReferences`. `IasAcceleration` validates source-supplied kt/s independently.
 * `FlightSample::with_airspeed_indications` adds optional configuration and acceleration. Demo configuration is fictional and shared by all clients.
-* `BarometricAltitude` validates finite signed feet. `BarometricSetting` validates positive finite inHg.
-* `FlightSample::with_altitude` adds the independently optional values without changing the constructor or attitude-only path.
+* `BarometricAltitude` validates finite signed feet. BARO is producer-formatted display text stored as an optional owned string.
+* `FlightSample::with_altitude` adds independently optional altitude and BARO text without changing the constructor or attitude-only path.
+* `FlightSample` is cloneable rather than copyable; publishing owns its text and snapshots clone it.
+* Server and browser ship together without a legacy BARO contract adapter.
 * `SelectedAltitude` validates finite signed feet.
 * `FlightSample::with_selected_altitude` adds the independently optional source target.
 * `VerticalSpeed` validates finite signed ft/min. `FlightSample::with_vertical_speed` adds the independently optional source rate.

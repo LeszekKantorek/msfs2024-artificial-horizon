@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 // Exercise the actual instrument, transport and painted bounds in both page compositions.
 export async function checkAltitude(page, setFixture, url) {
   for (const path of ['/', '/layout.html']) {
-    setFixture({ altitude_ft: 1000, baro_inhg: 29.92, hold: false, attitude_only: false, state: 'live', pitch_deg: 0, roll_deg: 0 });
+    setFixture({ altitude_ft: 1000, baro_text: '29.92 inHg', hold: false, attitude_only: false, state: 'live', pitch_deg: 0, roll_deg: 0 });
     await page.setViewportSize({ width: 568, height: 240 });
     await page.goto(url + path);
     await page.locator('#altitude[data-state="available"]').waitFor();
@@ -50,7 +50,7 @@ export async function checkAltitude(page, setFixture, url) {
               const matrix = n.parentElement === sign.parentElement ? new DOMMatrix() : n.parentElement.transform.baseVal.consolidate().matrix;
               return { left: box.x + matrix.e, right: box.x + box.width + matrix.e };
             }).sort((a, b) => a.left - b.left);
-          const baro = document.querySelector('#barometric-setting .instrument-background').getBoundingClientRect();
+          const baro = document.querySelector('#barometric-setting .barometric-background').getBoundingClientRect();
           const baroTexts = [...document.querySelectorAll('#barometric-setting text')].map(n => n.getBoundingClientRect());
           const panel = document.querySelector('svg').getBoundingClientRect();
           const background = group.querySelector('.instrument-background').getBoundingClientRect();
@@ -67,7 +67,6 @@ export async function checkAltitude(page, setFixture, url) {
             digitsInside: digitBoxes.every(b => b.left >= digitsClip.x && b.right <= digitsClip.x + digitsClip.width),
             digitOverlap: digitBoxes.slice(1).some((b, i) => b.left < digitBoxes[i].right),
             baroContained: baroTexts.every(b => b.left >= baro.left && b.right <= baro.right && b.top >= baro.top && b.bottom <= baro.bottom),
-            baroGap: baroTexts[1].top - baroTexts[0].bottom,
             baroTouchesBackground: Math.abs(baro.top - background.bottom) < 0.01,
             panelContained: baro.right <= panel.right && baro.bottom <= panel.bottom && background.left >= panel.left,
             labelsClearOfTicks, unchanged: nodes.length === initial.length && nodes.every((n, i) => n === initial[i]),
@@ -77,8 +76,8 @@ export async function checkAltitude(page, setFixture, url) {
         assert.equal(actual.sign, value < 0 ? '−' : '');
         assert.ok(actual.digitsInside, `Digits clipped at ${value}, ${width}x${height}: ${JSON.stringify({ boxes: actual.digitBoxes, clip: actual.digitsClip })}`);
         assert.equal(actual.digitOverlap, false, `Digits overlap at ${value}, ${width}x${height}`);
-        assert.ok(actual.baroContained && actual.panelContained && actual.baroGap >= 0,
-          JSON.stringify({ value, width, height, baroContained: actual.baroContained, panelContained: actual.panelContained, baroGap: actual.baroGap }));
+        assert.ok(actual.baroContained && actual.panelContained,
+          JSON.stringify({ value, width, height, baroContained: actual.baroContained, panelContained: actual.panelContained }));
         assert.ok(actual.baroTouchesBackground && actual.labelsClearOfTicks && actual.unchanged);
         assert.equal(actual.opacity, '0.65'); assert.equal(actual.digitsOpacity, '1');
         for (const tick of actual.ticks) {
@@ -101,15 +100,15 @@ export async function checkAltitude(page, setFixture, url) {
     }
     // Local loss and overflow preserve the other indication and the live panel.
     for (const [altitude, baro, altitudeState, baroState, text] of [
-      [null, 29.92, 'unavailable', 'available', '29.92'],
+      [null, '29.92 inHg', 'unavailable', 'available', '29.92 inHg'],
       [-120, null, 'available', 'unavailable', 'X'],
-      ['bad', 30.12, 'unavailable', 'available', '30.12'],
+      ['bad', '30.12 inHg', 'unavailable', 'available', '30.12 inHg'],
       [20, 0, 'available', 'unavailable', 'X'],
-      [-10000, 29.92, 'overflow', 'available', '29.92'],
-      [100000, 100, 'overflow', 'overflow', 'OVR'],
-      [0, 29.72, 'available', 'available', '29.72'],
+      [-10000, '29.92 inHg', 'overflow', 'available', '29.92 inHg'],
+      [100000, '1026 hPa', 'overflow', 'available', '1026 hPa'],
+      [0, 'BARO', 'available', 'available', 'BARO'],
     ]) {
-      setFixture({ altitude_ft: altitude, baro_inhg: baro });
+      setFixture({ altitude_ft: altitude, baro_text: baro });
       await page.waitForFunction(({ altitudeState, baroState, text }) =>
         document.querySelector('#altitude').dataset.state === altitudeState &&
         document.querySelector('#barometric-setting').dataset.state === baroState &&
@@ -123,7 +122,7 @@ export async function checkAltitude(page, setFixture, url) {
       await page.setViewportSize({ width, height });
       for (const altitude of [-9980, 99980]) {
         for (const pitch of [40, -40]) {
-          setFixture({ pitch_deg: pitch, altitude_ft: altitude, baro_inhg: 29.92 });
+          setFixture({ pitch_deg: pitch, altitude_ft: altitude, baro_text: '29.92 inHg' });
           await page.waitForFunction(({ altitude, pitch }) => {
             const world = document.querySelector('#world-pitch').transform.baseVal.consolidate().matrix.f;
             return document.querySelector('#altitude').getAttribute('aria-label') === `Barometric altitude ${altitude} feet` &&
@@ -136,19 +135,19 @@ export async function checkAltitude(page, setFixture, url) {
     setFixture({ attitude_only: true });
     await page.locator('#altitude[data-state="unavailable"]').waitFor();
     assert.equal(await page.locator('#barometric-setting').getAttribute('data-state'), 'unavailable');
-    setFixture({ attitude_only: false, altitude_ft: 1000, baro_inhg: 29.92, pitch_deg: 0 });
+    setFixture({ attitude_only: false, altitude_ft: 1000, baro_text: '29.92 inHg', pitch_deg: 0 });
     await page.locator('#altitude[data-state="available"]').waitFor();
     setFixture({ hold: true });
     await page.locator('.instrument[data-available="false"]').waitFor();
     assert.equal(await page.locator('#altitude').evaluate(n => getComputedStyle(n).visibility), 'hidden');
     await page.setViewportSize({ width: 320, height: 480 });
     assert.equal(await page.locator('.instrument').getAttribute('data-available'), 'false');
-    setFixture({ hold: false, altitude_ft: -20, baro_inhg: 30.12 });
+    setFixture({ hold: false, altitude_ft: -20, baro_text: '30.12 inHg' });
     await page.waitForFunction(() => document.querySelector('.instrument').dataset.available === 'true' &&
       document.querySelector('#altitude').getAttribute('aria-label') === 'Barometric altitude -20 feet');
   }
   // Return to the production page for the existing whole-panel checks.
-  setFixture({ altitude_ft: 10000, baro_inhg: 29.92, pitch_deg: 0, roll_deg: 0 });
+  setFixture({ altitude_ft: 10000, baro_text: '29.92 inHg', pitch_deg: 0, roll_deg: 0 });
   await page.goto(url);
   await page.locator('.instrument[data-available="true"]').waitFor();
   await page.evaluate(() => { window.initialInstrumentNodes = [...document.querySelectorAll('svg *')]; });

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 export async function checkAltitudeTrend(page, setFixture, url) {
   for (const path of ['/', '/layout.html']) {
     setFixture({ state: 'live', attitude_only: false, altitude_ft: 10060, selected_altitude_ft: 10000,
-      vertical_speed_fpm: 1500, baro_inhg: 29.92, hold: false });
+      vertical_speed_fpm: 1500, baro_text: '29.92 inHg', hold: false });
     await page.goto(url + path);
     await page.locator('#vertical-speed[data-state="available"]').waitFor();
     await page.evaluate(() => { window.trendNode = document.querySelector('#altitude-trend'); });
@@ -63,7 +63,7 @@ export async function checkAltitudeTrend(page, setFixture, url) {
         }, { altitude, fpm });
         assert.equal(await page.locator('#altitude-trend').evaluate(n => getComputedStyle(n).display), 'none');
       }
-      setFixture({ altitude_ft: 10060, vertical_speed_fpm: 1500, baro_inhg: null, selected_altitude_ft: 10000 });
+      setFixture({ altitude_ft: 10060, vertical_speed_fpm: 1500, baro_text: null, selected_altitude_ft: 10000 });
       await page.locator('#barometric-setting[data-state="unavailable"]').waitFor();
       await page.waitForFunction(() => document.querySelector('#altitude-trend').dataset.predictionFt === '10210');
       assert.equal(await page.locator('#altitude-trend').evaluate(n => getComputedStyle(n).display), 'inline');
@@ -75,7 +75,7 @@ export async function checkAltitudeTrend(page, setFixture, url) {
     setFixture({ hold: false, state: 'paused' });
     await page.waitForFunction(() => document.querySelector('#telemetry-status').textContent.includes('paused'));
     assert.equal(await page.locator('#altitude-trend').getAttribute('d'), null);
-    setFixture({ state: 'live', baro_inhg: 29.92 });
+    setFixture({ state: 'live', baro_text: '29.92 inHg' });
     await page.locator('.instrument[data-available="true"]').waitFor();
     await page.waitForFunction(() => document.querySelector('#altitude-trend').dataset.predictionFt === '10210');
     assert.equal(await page.locator('#altitude-trend').evaluate(n => n === window.trendNode), true);

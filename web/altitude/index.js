@@ -21,7 +21,7 @@ export function createAltitude(instrument, layers) {
   const readout = createReadout(defs, group, layers.warnings);
   const vsi = createVsi(group);
   const trend = createAltitudeTrend(defs, group);
-  const unit = svgElement('text', { class: 'altitude-unit' }, 'FT');
+  const unit = svgElement('text', { class: 'altitude-unit' }, '[FT]');
   group.append(unit);
   const baro = createBaro(layers.altitude);
   const selected = createSelectedAltitude(layers.altitude, bugHost);
@@ -30,15 +30,15 @@ export function createAltitude(instrument, layers) {
       const allocation = layout.altitude;
       const width = allocation.width + layout.altitudeTrend.width;
       group.setAttribute('transform', `translate(${allocation.x} ${allocation.y})`);
-      setAttributes(background, { width, height: layout.height - 34 - allocation.y });
+      setAttributes(background, { width, height: layout.height - 32 - allocation.y });
       setAttributes(rect, { x: 0, y: 0, width: allocation.width, height: allocation.height });
-      setAttributes(unit, { x: allocation.width / 2, y: allocation.height + 9 });
+      setAttributes(unit, { x: allocation.width / 2, y: allocation.height + 8 });
       tape.resize(allocation, vsiWindow(allocation));
       const textRight = readout.resize(allocation);
       vsi.resize(allocation, textRight);
       trend.resize({ ...layout.altitudeTrend, x: layout.altitudeTrend.x - allocation.x });
       selected.resize({ ...allocation, width });
-      baro.resize({ x: allocation.x, y: layout.height - 34, width });
+      baro.resize({ x: allocation.x, y: layout.height - 32, width });
     },
     accept(frame, now) { selected.accept(frame.altitude_ft, frame.selected_altitude_ft, now); },
     invalidate() { selected.invalidate(); vsi.invalidate(); trend.invalidate(); },
@@ -48,7 +48,7 @@ export function createAltitude(instrument, layers) {
       group.setAttribute('aria-label', `Barometric altitude ${state === 'available' ? `${frame.altitude_ft} feet` : state}`);
       tape.render(state === 'available' ? frame.altitude_ft : null);
       readout.render(frame.altitude_ft, state);
-      baro.render(frame.baro_inhg);
+      baro.render(frame.baro_text);
       vsi.render(frame.vertical_speed_fpm);
       trend.render(frame.altitude_ft, frame.vertical_speed_fpm);
       return selected.render(frame.altitude_ft, frame.selected_altitude_ft, now);

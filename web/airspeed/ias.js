@@ -40,9 +40,9 @@ export function createIas(defs, parent, warnings) {
     resize({ x, y, width, height }, groundSpeedPanelY) {
       const centerY = height / 2;
       const digitCenterX = (width - 14) / 2;
-      const tapeGeometry = { originX: x, originY: y, width, centerY, clipTopY: 1, clipBottomY: height - 17,
-        backgroundHeight: groundSpeedPanelY - y, unitY: height - 6,
-        fallbackUnitY: groundSpeedPanelY - y - 80, fallbackFirstLabelY: groundSpeedPanelY - y - 64 };
+      const tapeGeometry = { originX: x, originY: y, width, centerY, clipTopY: 0, clipBottomY: height,
+        backgroundHeight: groundSpeedPanelY - y, unitY: height + 8,
+        fallbackFirstLabelY: groundSpeedPanelY - y - 72 };
       const readoutGeometry = { width, centerY, digitCenterX,
         warningPanelX: x + digitCenterX, warningPanelY: y + centerY };
       group.setAttribute('transform', `translate(${tapeGeometry.originX} ${tapeGeometry.originY})`);
@@ -60,7 +60,7 @@ export function createIas(defs, parent, warnings) {
       group.dataset.state = ias.state;
       group.setAttribute('aria-label', `Indicated airspeed ${ias.state === 'available' ? `${ias.value} knots` : ias.state}`);
       tape.render(ias, profile, prediction);
-      readout.render(ias, showBottomReferences);
+      readout.render(ias);
       references.render(ias, profile, showBottomReferences);
     },
   };

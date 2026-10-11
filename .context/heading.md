@@ -14,7 +14,8 @@ Use the canonical heading documents:
 Preserve these decision checks:
 
 * Keep SVG and pure calculations together in `heading.js`, with no timer or history.
-* Use raw canonical `[0, 360)` magnetic degrees. Format north as `360°` without accepting raw 360.
+* Use raw canonical `[0, 360)` magnetic degrees and format north as `360` without accepting raw 360.
+* Show only the three-digit number in the current heading window, retaining degree units in accessibility descriptions.
 * At current 359 and selected 1 degrees, expect the bug 8 CSS px right of center.
 * Use the shortest angular difference. Exactly 180 degrees goes left.
 * Keep the notch and pointer dimensions shared and check actual cyan paint at capture.
@@ -25,3 +26,5 @@ Preserve these decision checks:
 
 Source: accepted #26 plan and Garmin section 3.3.8, 2026-10-11.
 The original plan remains local under `.local/plans/26-heading/`.
+
+Source: accepted #65 correction, 2026-10-11, removing the degree symbol from the current heading window.

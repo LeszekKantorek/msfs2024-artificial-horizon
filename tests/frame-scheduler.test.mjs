@@ -54,8 +54,8 @@ test('speed indications stay in the same latest frame and retain their deadline 
 
 test('altitude and pressure coalesce together and expire before a resize draw', () => {
   const h = harness();
-  h.renderer.accept({ ...sample(0, 0, 500), altitude_ft: -20, baro_inhg: 29.92 });
-  const latest = { ...sample(0, 0, 500), altitude_ft: 20, baro_inhg: 30.12 };
+  h.renderer.accept({ ...sample(0, 0, 500), altitude_ft: -20, baro_text: '29.92 inHg' });
+  const latest = { ...sample(0, 0, 500), altitude_ft: 20, baro_text: '30.12 inHg' };
   h.renderer.accept(latest); h.flush();
   assert.deepEqual(h.drawn, [latest]);
   h.advance(499); h.renderer.resize(pfdLayout(568, 240)); h.flush();

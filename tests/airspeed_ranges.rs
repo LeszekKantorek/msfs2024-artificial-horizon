@@ -85,13 +85,13 @@ async fn new_fields_share_age_clear_independently_and_never_survive_attitude_onl
     let (mut publisher, subscription) = telemetry::channel(Source::Demo);
     let attitude = Attitude::new(0.0, 0.0).unwrap();
     let full = demo::sample(120);
-    publisher.publish_sample(full).unwrap();
+    publisher.publish_sample(full.clone()).unwrap();
     advance(Duration::from_millis(999)).await;
     assert_eq!(
         serde_json::to_value(subscription.snapshot()).unwrap()["airspeed_profile"],
         profile_fixture()
     );
-    publisher.publish_sample(full).unwrap();
+    publisher.publish_sample(full.clone()).unwrap();
     assert_eq!(
         serde_json::to_value(subscription.snapshot()).unwrap()["sample_age_ms"],
         0
@@ -122,13 +122,13 @@ async fn new_fields_share_age_clear_independently_and_never_survive_attitude_onl
         State::Disconnected,
         State::Invalid,
     ] {
-        publisher.publish_sample(full).unwrap();
+        publisher.publish_sample(full.clone()).unwrap();
         publisher.publish(state).unwrap();
         let value = serde_json::to_value(subscription.snapshot()).unwrap();
         assert!(value.get("airspeed_profile").is_none());
         assert!(value.get("ias_acceleration_ktps").is_none());
     }
-    publisher.publish_sample(full).unwrap();
+    publisher.publish_sample(full.clone()).unwrap();
     advance(STALE_AFTER).await;
     let stale = serde_json::to_value(subscription.snapshot()).unwrap();
     assert_eq!(stale["state"], "stale");

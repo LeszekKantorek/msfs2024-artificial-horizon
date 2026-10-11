@@ -78,16 +78,17 @@ try {
     sign: document.querySelector('#altitude-sign').textContent,
     drums: Number([...document.querySelectorAll('#altitude-digits > g')].map(n => n.firstElementChild.textContent).join('')),
     baroState: document.querySelector('#barometric-setting').dataset.state,
-    pressure: Number(document.querySelector('#barometric-setting').getAttribute('aria-label').split(' ')[2]),
+    pressureLabel: document.querySelector('#barometric-setting').getAttribute('aria-label'),
     pressureText: document.querySelector('#barometric-value').textContent,
   }));
   function verifyAltitude(reading) {
     assert.equal(reading.state, 'available');
     assert.equal(reading.baroState, 'available');
-    assert.ok(Number.isFinite(reading.feet) && reading.pressure > 0);
+    assert.ok(Number.isFinite(reading.feet));
     assert.equal(reading.drums, Math.floor(Math.abs(reading.feet) / 20) * 20);
     assert.equal(reading.sign, reading.feet < 0 ? '−' : '');
-    assert.equal(reading.pressureText, reading.pressure.toFixed(2));
+    assert.match(reading.pressureText, /^\d+\.\d{2} inHg$/);
+    assert.equal(reading.pressureLabel, `Barometric setting ${reading.pressureText}`);
   }
   verifyAltitude(await altitudeReading());
   assert.deepEqual([...loadedModules].sort(), [
@@ -115,11 +116,11 @@ try {
   assert.ok(Number.isFinite(snapshot.ias_kt));
   assert.ok(Number.isFinite(snapshot.gs_kt));
   assert.ok(Number.isFinite(snapshot.altitude_ft));
-  assert.ok(snapshot.baro_inhg > 0);
+  assert.match(snapshot.baro_text, /^\d+\.\d{2} inHg$/);
   assert.ok(Number.isFinite(snapshot.vertical_speed_fpm));
   assert.equal(snapshot.heading_deg, 354);
   assert.ok(Number.isFinite(snapshot.selected_heading_deg));
-  assert.equal(await page.locator('#heading-value').textContent(), '354°');
+  assert.equal(await page.locator('#heading-value').textContent(), '354');
   await page.waitForFunction(() => document.querySelector('#vertical-speed-value').textContent === '+4881');
   assert.equal(await page.locator('#vertical-speed-value').textContent(), '+4881');
   assert.ok(Number.isFinite(snapshot.ias_acceleration_ktps));
@@ -152,7 +153,7 @@ try {
     center: document.querySelector('#heading-tape-clip rect').getBBox().width / 2,
     bug: document.querySelector('#selected-heading-bug').transform.baseVal.consolidate().matrix.e,
   }));
-  assert.equal(north.value, '360°'); assert.ok(Math.abs(north.center - north.bug) < 1e-4);
+  assert.equal(north.value, '360'); assert.ok(Math.abs(north.center - north.bug) < 1e-4);
   await page.screenshot({ path: '.local/pfd-runtime-heading-north.png' });
   await page.locator('#selected-altitude[data-state="available"]').waitFor({ timeout: 20000 });
   const target = await currentSnapshot();
@@ -198,7 +199,7 @@ try {
   assert.equal(recovered.gsState, 'available');
   assert.equal(recovered.digits, String(Math.floor(recovered.ias)));
   verifyAltitude(await altitudeReading());
-  assert.equal(await page.locator('#heading-value').textContent(), '354°');
+  assert.equal(await page.locator('#heading-value').textContent(), '354');
   assert.equal(await page.locator('#selected-altitude').getAttribute('data-state'), 'unavailable');
   await page.locator('#vertical-speed[data-state="available"]').waitFor();
   assert.equal(await page.locator('#vertical-speed-value').textContent(), '+4881');

@@ -9,8 +9,8 @@ export async function checkHeading(page, setFixture, url) {
     for (const [width, height] of [[320, 240], [326, 246], [320, 480], [568, 240], [844, 320]]) {
       await page.setViewportSize({ width, height });
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-      for (const [heading, selected, text] of [[359, 1, '359°'], [0, 0, '360°'], [1, 359, '001°'],
-        [354, 354, '354°'], [5, 5, '005°'], [359.5, 0, '360°'], [354, 90, '354°'], [354, 180, '354°']]) {
+      for (const [heading, selected, text] of [[359, 1, '359'], [0, 0, '360'], [1, 359, '001'],
+        [354, 354, '354'], [5, 5, '005'], [359.5, 0, '360'], [354, 90, '354'], [354, 180, '354']]) {
         setFixture({ heading_deg: heading, selected_heading_deg: selected });
         await page.waitForFunction(({ heading, selected }) => document.querySelector('#heading').getAttribute('aria-label') ===
           `Magnetic heading ${heading} degrees, selected heading ${selected} degrees`, { heading, selected });
@@ -71,7 +71,7 @@ export async function checkHeading(page, setFixture, url) {
     assert.equal(await page.locator('#heading-value').textContent(), 'X');
     setFixture({ state: 'live', heading_deg: 354, selected_heading_deg: 354 });
     await page.locator('#heading[data-state="available"]').waitFor();
-    assert.equal(await page.locator('#heading-value').textContent(), '354°');
+    assert.equal(await page.locator('#heading-value').textContent(), '354');
     assert.equal(await page.evaluate(() => globalThis.headingNodes.every(n => n.isConnected)), true);
   }
   await page.goto(url);

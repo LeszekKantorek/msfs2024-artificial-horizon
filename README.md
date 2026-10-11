@@ -77,18 +77,18 @@ Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
 | Instrument | Responsive attitude, 2.5-degree pitch ladder, extreme-pitch chevrons, bank scale, fixed aircraft reference, slip/skid and turn rate |
 | Motion | Repeating 18-second cycle: seven original attitudes, then +70/-50-degree pitch. Centered and both-direction slip/skid; +/-3 deg/s turns |
 | Speed | IAS accelerates from 0 to 150 kt, holds, then decelerates. GS follows a different profile up to 170 kt |
-| Speed display | Rolling IAS digits, tape labels every 10 kt, colored speed ranges, R/X/Y/G references, and a magenta six-second trend. Separate rounded GS in kt |
+| Speed display | Rolling IAS digits, tape labels every 10 kt, colored speed ranges, R/X/Y/G references, and a magenta six-second trend. Separate rounded GS without a visible unit suffix, in a matching magenta frame over opaque dark background |
 | Speed warnings | Red current-speed pointer at or above 140 kt. Yellow IAS digits when the rising trend predicts reaching 140 kt |
 | Speed unavailable | `X` means unavailable, `OVR` means above 999 kt. Configured references appear above GS when IAS is unavailable |
-| Altitude | Fixed 8 CSS px spacing per 20 ft. Labels every 100 ft. Taller panels show more altitude. Signed readout: -9999 to 99999 ft. |
+| Altitude | Aligned `[KT]`/`[FT]` labels and equal-height side scales. Fixed 8 CSS px spacing per 20 ft. Labels every 100 ft. Taller panels show more altitude. Signed readout: -9999 to 99999 ft. |
 | Altitude trend | Magenta line beside the right tape edge predicts altitude in six seconds from VSI. Climb extends up, descent down. Zero or missing required data hides it |
-| Pressure | Read-only scenario setting below altitude, with two decimal places in inHg |
+| Pressure | Centered source-formatted BARO text in a cyan frame. Demo supplies text such as `29.92 inHg`; text may also contain hPa or `BARO` |
 | Selected altitude | Read-only target above altitude, with a notched turquoise tape block pinned at either edge. The black pointer fits its notch at capture. `X` means unavailable. `OVR` means outside -9999 to 99999 ft |
 | Altitude alerts | Five-second flashing on entry within 1000 and 200 ft. Entry within +/-200 ft arms deviation. Leaving it flashes yellow for five seconds, then stays yellow until return or reset |
-| Altitude/pressure unavailable | Independent `X` marks; `OVR` beyond each display limit |
+| Altitude/pressure unavailable | Independent `X` marks. Altitude beyond its display limit shows `OVR`; BARO text is displayed verbatim |
 | Vertical speed | Compact rectangular readout below current altitude, with the same font family, background and border. Signed whole ft/min: `+` for climb, `-` for descent and `0` for level flight |
 | VSI limits | Red `X` means unavailable. `+OVR` or `-OVR` means beyond +/-9999 ft/min. Valid VSI remains available without altitude or pressure |
-| Heading | Magnetic heading above the horizon. Three digits and a degree symbol. North is `360°`. Fixed 4 CSS px/degree scale with labels every 10 degrees |
+| Heading | Magnetic heading above the horizon. Three digits without a unit suffix. North is `360`. Fixed 4 CSS px/degree scale with labels every 10 degrees |
 | Selected heading | Read-only cyan bug, with a notch matching the current-heading pointer. Pins at either edge and wraps across north |
 | Heading unavailable | Missing current heading shows red `X` and hides the scale and bug. Missing selected heading hides only the bug |
 | Data | Synthetic samples at 20 Hz, without a source badge |

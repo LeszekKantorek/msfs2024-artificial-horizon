@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 export async function checkVerticalSpeed(page, setFixture, url) {
   for (const path of ['/', '/layout.html']) {
     setFixture({ state: 'live', attitude_only: false, altitude_ft: 10060, selected_altitude_ft: 10000,
-      baro_inhg: 29.92, vertical_speed_fpm: 0, hold: false, pitch_deg: 0 });
+      baro_text: '29.92 inHg', vertical_speed_fpm: 0, hold: false, pitch_deg: 0 });
     await page.goto(url + path);
     await page.locator('#vertical-speed[data-state="available"]').waitFor();
     await page.evaluate(() => { window.vsiNodes = [...document.querySelectorAll('#vertical-speed, #vertical-speed *')]; });
@@ -71,15 +71,15 @@ export async function checkVerticalSpeed(page, setFixture, url) {
       });
       assert.equal(bugVisible, true);
       await page.screenshot({ path: `.local/pfd-browser/vsi-${path === '/' ? 'production' : 'layout'}-${width}x${height}-negative-capture.png` });
-      setFixture({ vertical_speed_fpm: 1500, altitude_ft: null, baro_inhg: null });
+      setFixture({ vertical_speed_fpm: 1500, altitude_ft: null, baro_text: null });
       await page.locator('#altitude[data-state="unavailable"]').waitFor();
       await page.waitForFunction(() => document.querySelector('#vertical-speed-value').textContent === '+1500');
       assert.equal(await page.locator('#vertical-speed-value').evaluate(node => getComputedStyle(node).visibility), 'visible');
-      setFixture({ altitude_ft: 100000, baro_inhg: 100 });
+      setFixture({ altitude_ft: 100000, baro_text: 100 });
       await page.locator('#altitude[data-state="overflow"]').waitFor();
       assert.equal(await page.locator('#vertical-speed').getAttribute('data-state'), 'available');
       for (const invalid of [null, 'bad', false]) {
-        setFixture({ vertical_speed_fpm: invalid, altitude_ft: 10060, selected_altitude_ft: 10000, baro_inhg: 29.92 });
+        setFixture({ vertical_speed_fpm: invalid, altitude_ft: 10060, selected_altitude_ft: 10000, baro_text: '29.92 inHg' });
         await page.locator('#vertical-speed[data-state="unavailable"]').waitFor();
         assert.equal(await page.locator('#vertical-speed-value').textContent(), 'X');
         assert.equal(await page.locator('#vertical-speed-value').evaluate(node => getComputedStyle(node).fill), 'rgb(255, 150, 144)');

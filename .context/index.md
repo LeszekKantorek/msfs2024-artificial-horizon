@@ -11,12 +11,12 @@
 | [PFD layout validation](pfd-layout-validation.md) | Changing PFD geometry or adding the next instrument. |
 | [PFD demo scope](pfd-demo-scope.md) | Planning or implementing PFD demo features. |
 | [PFD composition](pfd-module-plan.md) | Finding implemented object, frame, layer, and calculation contracts before extending the PFD. |
-| [Airspeed and ground speed](airspeed-ground-speed.md) | Extending or validating speed telemetry, ranges, references, trend, rolling digits, or the demo profile. |
-| [Altitude and pressure](altitude-baro.md) | Extending or validating altitude, pressure settings, signed drums, or the right-side PFD layout. |
+| [Airspeed and ground speed](airspeed-ground-speed.md) | Extending or validating speed telemetry, tape-unit margins, GS frame, ranges, references, trend, rolling digits, or the demo profile. |
+| [Altitude and pressure](altitude-baro.md) | Extending or validating altitude, source-formatted BARO text, signed drums, or the right-side PFD layout. |
 | [Altitude trend](altitude-trend.md) | Extending or validating six-second altitude prediction, its separate lane, or notched-bug geometry. |
 | [Selected altitude](selected-altitude.md) | Extending or validating targets, alert history, timed panel updates, or the longer altitude demo. |
 | [Vertical speed](vertical-speed.md) | Extending or validating source-supplied VSI, the compact altitude/VSI composition, or the shared altitude scenario. |
-| [Heading](heading.md) | Extending or validating magnetic headings, north wrapping, selected-bug capture, or top-strip geometry. |
+| [Heading](heading.md) | Extending or validating magnetic headings, numeric readout formatting, north wrapping, selected-bug capture, or top-strip geometry. |
 | [Writing style](writing-style.md) | Writing documentation, knowledge entries, code comments, commit messages, or GitHub issues, comments, and PRs; choosing document responsibilities. |
 | [Agent maintenance](agent-maintenance.md) | Adding or reinstalling skills, changing local skill exclusions, or changing session hooks. |
 | [Context authoring](context-authoring.md) | Editing knowledge entries or their index. |

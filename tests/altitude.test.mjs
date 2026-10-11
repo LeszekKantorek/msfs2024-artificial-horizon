@@ -6,27 +6,35 @@ import { altitudeTicks, tickPosition } from '../web/altitude/tape.js';
 import { baroReading } from '../web/altitude/baro.js';
 import { normalizeOptionalIndications } from '../web/telemetry/validation.js';
 
-test('signed altitude and positive pressure remain independently valid beyond display limits', () => {
+test('signed altitude remains independently valid beyond display limits', () => {
   for (const bad of [undefined, null, false, '0', {}, [], NaN, Infinity, -Infinity]) {
     assert.equal(altitudeState(bad), 'unavailable');
-    assert.equal(baroReading(bad).state, 'unavailable');
-    assert.equal(normalizeOptionalIndications({ altitude_ft: bad, baro_inhg: 29.92 }).altitude_ft, null);
-    assert.equal(normalizeOptionalIndications({ altitude_ft: -120, baro_inhg: bad }).baro_inhg, null);
+    assert.equal(normalizeOptionalIndications({ altitude_ft: bad, baro_text: '29.92 inHg' }).altitude_ft, null);
   }
   for (const value of [-9999, -0.1, -0, 0, 99999]) assert.equal(altitudeState(value), 'available');
   for (const value of [-10000, 99999.01, Number.MAX_VALUE]) {
     assert.equal(altitudeState(value), 'overflow');
     assert.equal(normalizeOptionalIndications({ altitude_ft: value }).altitude_ft, value);
   }
-  for (const value of [-1, -0, 0]) assert.deepEqual(baroReading(value), { state: 'unavailable', text: 'X' });
-  for (const [value, text] of [[29.92, '29.92'], [30.1, '30.10'], [29.926, '29.93'], [99.99, '99.99']])
-    assert.deepEqual(baroReading(value), { state: 'available', text });
-  assert.deepEqual(baroReading(100), { state: 'overflow', text: 'OVR' });
-  assert.equal(normalizeOptionalIndications({ baro_inhg: 100 }).baro_inhg, 100);
   for (const row of JSON.parse(readFileSync(new URL('./fixtures/altitude-samples.json', import.meta.url)))) {
     const sample = normalizeOptionalIndications(row);
     assert.equal(sample.altitude_ft, row.altitude_ft);
-    assert.equal(sample.baro_inhg, row.baro_inhg);
+    assert.equal(sample.baro_text, row.baro_text);
+  }
+});
+
+test('BARO forwards every string unchanged and rejects only non-string data', () => {
+  for (const text of ['23.83 inHg', '1026 hPa', 'BARO', '', '  BARO  ', '<b>BARO</b>', 'OVR', 'X']) {
+    const sample = normalizeOptionalIndications({ altitude_ft: -120, baro_text: text });
+    assert.equal(sample.altitude_ft, -120);
+    assert.equal(sample.baro_text, text);
+    assert.deepEqual(baroReading(sample.baro_text), { state: 'available', text });
+  }
+  for (const value of [undefined, null, false, {}, [], 0, 29.92, NaN, Infinity]) {
+    const sample = normalizeOptionalIndications({ altitude_ft: -120, baro_text: value });
+    assert.equal(sample.altitude_ft, -120);
+    assert.equal(sample.baro_text, null);
+    assert.deepEqual(baroReading(sample.baro_text), { state: 'unavailable', text: 'X' });
   }
 });
 

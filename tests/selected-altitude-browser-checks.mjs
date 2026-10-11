@@ -22,10 +22,10 @@ function flush() { const pending = [...frames.values()]; frames.clear(); for (co
 function resize() { const { width, height } = instrument.querySelector('svg').getBoundingClientRect(); scheduler.resize(pfdLayout(width, height)); flush(); }
 new ResizeObserver(resize).observe(instrument); resize();
 window.alertHarness = {
-  accept(altitude, target, pressure = 29.92) {
+  accept(altitude, target, pressure = '29.92 inHg') {
     const sourceStatus = { source: 'demo', transport: 'connected', state: 'live' };
     status.update(sourceStatus);
-    scheduler.accept({ ...normalizeOptionalIndications({ altitude_ft: altitude, selected_altitude_ft: target, baro_inhg: pressure, vertical_speed_fpm: 1500, heading_deg: 359, selected_heading_deg: 1 }),
+    scheduler.accept({ ...normalizeOptionalIndications({ altitude_ft: altitude, selected_altitude_ft: target, baro_text: pressure, vertical_speed_fpm: 1500, heading_deg: 359, selected_heading_deg: 1 }),
       attitude: { pitch_deg: 0, roll_deg: 0 }, expiresAt: time + 1000, status: sourceStatus }); flush();
   },
   tick(value) { time = value; for (const [key, timer] of [...timers]) if (timer.at <= time) { timers.delete(key); timer.fn(); } flush(); },
@@ -158,7 +158,7 @@ export async function checkSelectedAltitude(page, setFixture, url) {
         assert.deepEqual(await page.evaluate(() => window.alertHarness.pending()), { timers: 0, frames: 0 });
         await page.evaluate(() => window.alertHarness.accept(10201, 10000));
         assert.equal((await reading(page)).alert, 'none'); assert.equal((await reading(page)).available, 'true');
-        assert.equal(await page.locator('#heading-value').textContent(), '359°');
+        assert.equal(await page.locator('#heading-value').textContent(), '359');
         assert.equal(await page.locator('#altitude-trend').evaluate(n => getComputedStyle(n).display), 'inline');
       }
     }
