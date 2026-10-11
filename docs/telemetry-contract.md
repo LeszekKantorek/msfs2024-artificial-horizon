@@ -94,6 +94,7 @@ These durations are initial tuning values.
 | `ias_acceleration_ktps` | Optional finite source-supplied IAS acceleration in knots per second |
 | `altitude_ft` | Optional finite signed barometric altitude in feet for the source pressure setting |
 | `baro_inhg` | Optional finite positive pressure setting in inches of mercury |
+| `selected_altitude_ft` | Optional finite signed selected altitude in feet, supplied by the source and read-only |
 
 * Providers convert SDK values to these conventions.
 * Check conversion in the SimConnect spike. Do not infer SimVar units from names alone.
@@ -167,13 +168,57 @@ Example additions to a live v1 snapshot:
 {"altitude_ft": -120.0, "baro_inhg": 29.92}
 ```
 
-The shared 18-second Rust demo adds six three-second altitude sweeps: -120 to 120, 980 to 1020, 9980 to 10020, 10020 to 9980, 1020 to 980, and 120 to -120 ft.
+The first 18 seconds of the shared 90-second Rust altitude demo contain six three-second sweeps.
+Their endpoints are -120/120, 980/1020, 9980/10020, 10020/9980, 1020/980, and 120/-120 ft.
 Each sweep includes both endpoints over 60 samples.
 Pressure changes every six seconds through 29.92, 30.12, and 29.72 inHg.
 Transitions between sweeps are synthetic test cases, not a physical flight trajectory or a pressure-response model.
 
 `tests/fixtures/altitude-samples.json` contains independent checkpoints and cycle boundaries.
 [Altitude presentation](pfd-presentation.md#altitude-and-barometric-setting) defines the display limits and rolling drums.
+
+### Optional selected altitude
+
+* `selected_altitude_ft` is independently optional and shares the sample sequence, age, and expiry deadline.
+* Rust exposes `SelectedAltitude::new(feet)` and `FlightSample::with_selected_altitude` without changing existing constructors.
+* Rust omits absent targets and the field outside `live`.
+* Attitude-only publication clears the target.
+* Missing, null, nonnumeric, or non-finite targets normalize to `null` without invalidating other indications.
+* Every sample replaces the previous target.
+* Missing targets never retain a value or become zero.
+* Finite signed targets beyond display limits remain valid telemetry.
+* Targets use the same indicated-altitude reference as `altitude_ft`.
+* The browser applies no pressure correction.
+* Alert history, flash phases, and monotonic visual deadlines remain browser presentation state, outside the wire schema.
+
+Example addition to a live v1 snapshot:
+
+```json
+{"selected_altitude_ft": 10000.0}
+```
+
+The altitude demo repeats after 1800 samples at 20 Hz:
+
+| Time | Altitude / target |
+| --- | --- |
+| 0-18 seconds | Existing six signed sweeps, without selected altitude |
+| 18-54 seconds | Approach 10000 ft from 8500 ft, hold, then depart to 10300 ft |
+| 54-90 seconds | Approach 1000 ft from 2500 ft, hold, then depart to 700 ft |
+
+Each 36-second approach uses this schedule:
+
+| Duration | Altitude relative to target |
+| --- | --- |
+| 6 seconds | Hold 1500 ft away |
+| 8 seconds | Move to 500 ft away |
+| 8 seconds | Reach target |
+| 6 seconds | Hold target |
+| 2 seconds | Depart by 300 ft |
+| 6 seconds | Hold deviation |
+
+Attitude, speeds, coordinated-turn values, and pressure retain their existing 18-second cycles.
+`tests/fixtures/selected-altitude-samples.json` contains independent checkpoints.
+See [selected-altitude presentation](pfd-presentation.md#selected-altitude-and-alerts) for alert rules and display validity.
 
 ### Optional airspeed ranges and trend
 

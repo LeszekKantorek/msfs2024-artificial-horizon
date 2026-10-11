@@ -41,6 +41,14 @@ async function stop() {
     await exited;
   }
 }
+async function currentSnapshot() {
+  const response = await fetch(`${address}/api/v1/events`, { signal: AbortSignal.timeout(2000) });
+  const reader = response.body.getReader();
+  let wire = '';
+  while (!wire.includes('\n\n')) wire += new TextDecoder().decode((await reader.read()).value);
+  await reader.cancel();
+  return JSON.parse(wire.split('\n').find(line => line.startsWith('data: ')).slice(6));
+}
 try {
   await mkdir('.local', { recursive: true });
   await start();
@@ -84,18 +92,13 @@ try {
   verifyAltitude(await altitudeReading());
   assert.deepEqual([...loadedModules].sort(), [
     '/airspeed/ground-speed.js', '/airspeed/helpers.js', '/airspeed/ias.js', '/airspeed/index.js',
-    '/airspeed/readout.js', '/airspeed/references.js', '/airspeed/tape.js', '/altitude/baro.js', '/altitude/index.js', '/altitude/readout.js', '/altitude/tape.js', '/app.js', '/fixed-symbols/aircraft.js', '/fixed-symbols/bank-scale.js', '/fixed-symbols/index.js', '/frame-scheduler.js', '/helpers.js', '/horizon/bank-pointer.js', '/horizon/index.js', '/horizon/pitch-scale.js', '/horizon/world.js', '/layout.js',
+    '/airspeed/readout.js', '/airspeed/references.js', '/airspeed/tape.js', '/altitude/baro.js', '/altitude/index.js', '/altitude/readout.js', '/altitude/selected.js', '/altitude/tape.js', '/app.js', '/fixed-symbols/aircraft.js', '/fixed-symbols/bank-scale.js', '/fixed-symbols/index.js', '/frame-scheduler.js', '/helpers.js', '/horizon/bank-pointer.js', '/horizon/index.js', '/horizon/pitch-scale.js', '/horizon/world.js', '/layout.js',
     '/panel.js', '/slip-skid.js', '/status.js', '/telemetry/client.js', '/telemetry/validation.js', '/turn-rate.js',
   ]);
   for (const path of ['/math.js', '/svg.js', '/telemetry-client.js', '/airspeed.js', '/horizon.js', '/fixed-symbols.js', '/airspeed/calculations.js', '/horizon/calculations.js']) {
     assert.equal((await fetch(address + path)).status, 404);
   }
-  const response = await fetch(`${address}/api/v1/events`, { signal: AbortSignal.timeout(2000) });
-  const reader = response.body.getReader();
-  let wire = '';
-  while (!wire.includes('\n\n')) wire += new TextDecoder().decode((await reader.read()).value);
-  await reader.cancel();
-  const snapshot = JSON.parse(wire.split('\n').find(line => line.startsWith('data: ')).slice(6));
+  const snapshot = await currentSnapshot();
   assert.equal(snapshot.schema_version, 1);
   assert.equal(snapshot.source, 'demo');
   assert.equal(snapshot.state, 'live');
@@ -127,6 +130,15 @@ try {
   assert.equal(await page.locator('#airspeed').getAttribute('data-overspeed'), 'true');
   assert.equal(await page.locator('#airspeed-trend').evaluate(n => getComputedStyle(n).display), 'none');
   await page.screenshot({ path: '.local/pfd-runtime-landscape.png' });
+  await page.locator('#selected-altitude[data-state="available"]').waitFor({ timeout: 20000 });
+  const target = await currentSnapshot();
+  assert.equal(target.selected_altitude_ft, 10000);
+  assert.equal(target.altitude_ft, 8500);
+  assert.equal(await page.locator('#selected-altitude-value').textContent(), '10000');
+  assert.equal(await page.locator('#selected-altitude').getAttribute('aria-label'), 'Selected altitude 10000 feet');
+  assert.equal(await page.locator('#selected-altitude').getAttribute('data-alert'), 'none');
+  assert.equal(await page.locator('#selected-altitude-bug').evaluate(n => n.transform.baseVal.consolidate().matrix.f), 6.5);
+  await page.screenshot({ path: '.local/pfd-runtime-selected-altitude.png' });
   await stop();
   await page.locator('.instrument[data-available="false"]').waitFor();
   await start();
@@ -142,8 +154,9 @@ try {
   assert.equal(recovered.gsState, 'available');
   assert.equal(recovered.digits, String(Math.floor(recovered.ias)));
   verifyAltitude(await altitudeReading());
+  assert.equal(await page.locator('#selected-altitude').getAttribute('data-state'), 'unavailable');
   assert.deepEqual(errors, []);
-  console.log(`Rust-to-browser PFD checks passed on ${await browser.version()}: embedded assets, extended SSE, standard-rate turn, source loss and restart without page reload.`);
+  console.log(`Rust-to-browser PFD checks passed on ${await browser.version()}: embedded assets, selected-altitude SSE/SVG, standard-rate turn, source loss and restart without page reload.`);
 } finally {
   if (browser) await browser.close();
   await stop();

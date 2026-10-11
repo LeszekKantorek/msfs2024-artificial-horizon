@@ -68,6 +68,15 @@ async fn extended_samples_reach_two_clients_with_shared_values_and_delivery_time
     );
     assert!((a["gs_kt"].as_f64().unwrap() - 113.33333333333333).abs() < 1e-10);
     assert_eq!(a["sample_age_ms"], 50);
+    publisher
+        .publish_sample(msfs2024_artificial_horizon::providers::demo::sample(560))
+        .unwrap();
+    let selected_a = snapshot(&frame(&mut first).await);
+    let selected_b = snapshot(&frame(&mut second).await);
+    assert_eq!(selected_a, selected_b);
+    assert_eq!(selected_a["selected_altitude_ft"], 10000.0);
+    assert_eq!(selected_a["altitude_ft"], 9000.0);
+    assert_eq!(selected_a["sample_age_ms"], 0);
     publisher.publish(State::Paused).unwrap();
     for body in [&mut first, &mut second] {
         let unavailable = snapshot(&frame(body).await);
@@ -77,6 +86,7 @@ async fn extended_samples_reach_two_clients_with_shared_values_and_delivery_time
         assert!(unavailable.get("ias_kt").is_none());
         assert!(unavailable.get("gs_kt").is_none());
         assert!(unavailable.get("altitude_ft").is_none());
+        assert!(unavailable.get("selected_altitude_ft").is_none());
         assert!(unavailable.get("baro_inhg").is_none());
         assert!(unavailable.get("airspeed_profile").is_none());
         assert!(unavailable.get("ias_acceleration_ktps").is_none());

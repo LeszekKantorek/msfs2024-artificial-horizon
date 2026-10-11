@@ -99,3 +99,9 @@ noscript { position: absolute; inset: 12px 12px auto; color: var(--warning); tex
 .altitude-warning { fill: var(--danger); font-size: 15px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
 #altitude:not([data-state="available"]) :is(.altitude-tape, #altitude-digits) { visibility: hidden; }
 #barometric-setting:not([data-state="available"]) .barometric-value { fill: var(--danger); }
+.selected-altitude-window { fill: #000; stroke: var(--text); stroke-width: 1; }
+.selected-altitude-value { fill: var(--speed-reference); font-family: monospace; font-size: 14px; font-weight: 600; text-anchor: end; dominant-baseline: central; }
+.selected-altitude-symbol, .selected-altitude-bug { fill: var(--speed-reference); }
+.selected-altitude-bug { stroke: #000; stroke-width: 1; paint-order: stroke; }
+#selected-altitude[data-alert="deviation"] .selected-altitude-value { fill: var(--speed-yellow); }
+#selected-altitude:not([data-state="available"]) .selected-altitude-value { fill: var(--danger); }

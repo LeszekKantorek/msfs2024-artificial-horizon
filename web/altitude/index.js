@@ -2,6 +2,7 @@ import { svgElement, setAttributes } from '../helpers.js';
 import { createTape } from './tape.js';
 import { createReadout, altitudeState } from './readout.js';
 import { createBaro } from './baro.js';
+import { createSelectedAltitude } from './selected.js';
 
 export function createAltitude(instrument, layers) {
   const defs = instrument.querySelector('defs');
@@ -16,7 +17,10 @@ export function createAltitude(instrument, layers) {
   const readout = createReadout(defs, group, layers.warnings);
   const unit = svgElement('text', { class: 'altitude-unit' }, 'FT');
   group.append(unit);
+  const bugHost = svgElement('g', { class: 'selected-altitude-tape', 'clip-path': 'url(#altitude-tape-clip)' });
+  group.append(bugHost);
   const baro = createBaro(layers.altitude);
+  const selected = createSelectedAltitude(layers.altitude, bugHost);
   return {
     resize(layout) {
       const allocation = layout.altitude;
@@ -25,15 +29,19 @@ export function createAltitude(instrument, layers) {
       setAttributes(rect, { x: 0, y: 0, width: allocation.width, height: allocation.height });
       setAttributes(unit, { x: allocation.width / 2, y: allocation.height + 9 });
       tape.resize(allocation); readout.resize(allocation);
+      selected.resize(allocation);
       baro.resize({ x: allocation.x, y: layout.height - 34, width: allocation.width });
     },
-    render(frame) {
+    accept(frame, now) { selected.accept(frame.altitude_ft, frame.selected_altitude_ft, now); },
+    invalidate() { selected.invalidate(); },
+    render(frame, now) {
       const state = altitudeState(frame.altitude_ft);
       group.dataset.state = state;
       group.setAttribute('aria-label', `Barometric altitude ${state === 'available' ? `${frame.altitude_ft} feet` : state}`);
       tape.render(state === 'available' ? frame.altitude_ft : null);
       readout.render(frame.altitude_ft, state);
       baro.render(frame.baro_inhg);
+      return selected.render(frame.altitude_ft, frame.selected_altitude_ft, now);
     },
   };
 }

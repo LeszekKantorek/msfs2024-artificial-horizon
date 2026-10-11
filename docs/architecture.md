@@ -212,6 +212,9 @@ The server owns validated samples and deterministic demo scenarios:
 * `FlightSample::with_airspeed_indications` adds optional configuration and acceleration. Demo configuration is fictional and shared by all clients.
 * `BarometricAltitude` validates finite signed feet; `BarometricSetting` validates positive finite inHg.
 * `FlightSample::with_altitude` adds the independently optional values without changing the constructor or attitude-only path.
+* `SelectedAltitude` validates finite signed feet.
+* `FlightSample::with_selected_altitude` adds the independently optional source target.
+* The shared altitude/target demo repeats after 90 seconds while the other indications retain 18-second cycles.
 * `Publisher::publish_sample` uses the existing latest-value channel, sequence, and monotonic age.
 * `Publisher::publish(State)` keeps the attitude-only path and clears all optional indications.
 * `demo::sample` defines nine deterministic two-second segments.
@@ -223,7 +226,10 @@ The browser validates those samples and presents them within the available panel
 * `telemetry/validation.js` validates the snapshot and normalizes optional values independently, including copied profile references.
 * `createTelemetryClient` owns the connection and publishes normalized samples with one expiry deadline.
 * `airspeed/index.js` composes IAS and GS visual objects. Each object owns its readings, geometry, and pure calculations.
-* `altitude/index.js` composes its signed tape, rolling readout, and independent pressure setting in the existing right-side allocation.
+* `altitude/index.js` composes its signed tape, rolling readout, independent pressure setting, and selected-altitude object in the existing right-side allocation.
+* `altitude/selected.js` owns the selected readout, bug, and alert history, with DOM-free transition and phase calculations.
+* Panel acceptance processes every fresh sample before coalescing draws.
+* Timed alert updates use the same frame scheduler and its monotonic clock.
 * The existing `onAttitude` callback retains its attitude-only shape.
 * `pfdLayout` allocates instrument regions from available CSS width/height.
 * `frame-scheduler.js` schedules fresh frames.

@@ -45,10 +45,7 @@ function render() {
     groups[name].append(svgElement('rect', { ...layout[name], class: 'instrument-background' }));
   }
   const { airspeed: a, altitude: b, vsi: v, heading: h } = layout;
-  layer.append(svgElement('rect', { x: b.x, y: 0, width: b.width, height: 32, class: 'instrument-background' }));
   layer.append(svgElement('rect', { x: a.x, y: 0, width: a.width, height: 32, class: 'instrument-background' }));
-  text(layer, b.x + b.width / 2, 16, '12000', 15, '#86def5');
-  groups.altitude.append(svgElement('path', { d: `M ${b.x} ${layout.cy - 30} l 10 -5 v 10 Z`, fill: '#86def5' }));
   text(groups.vsi, v.x + v.width / 2, v.y + 16, '2', 12);
   text(groups.vsi, v.x + v.width / 2, layout.cy, '0', 12);
   text(groups.vsi, v.x + v.width / 2, v.y + v.height - 16, '2', 12);

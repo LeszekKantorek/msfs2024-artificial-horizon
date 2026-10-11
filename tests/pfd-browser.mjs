@@ -7,6 +7,7 @@ import { once } from 'node:events';
 import { readFileSync } from 'node:fs';
 import { checkAirspeedIndications, checkAirspeedAvailabilityTransitions } from './airspeed-browser-checks.mjs';
 import { checkAltitude } from './altitude-browser-checks.mjs';
+import { checkSelectedAltitude } from './selected-altitude-browser-checks.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
@@ -48,7 +49,7 @@ function instrumentNodesUnchanged() {
 try {
   for (const path of ['/helpers.js', '/telemetry/client.js', '/airspeed/index.js', '/airspeed/ias.js',
     '/airspeed/ground-speed.js', '/airspeed/tape.js', '/airspeed/readout.js', '/airspeed/references.js',
-    '/airspeed/helpers.js', '/altitude/index.js', '/altitude/tape.js', '/altitude/readout.js', '/altitude/baro.js',
+    '/airspeed/helpers.js', '/altitude/index.js', '/altitude/tape.js', '/altitude/readout.js', '/altitude/baro.js', '/altitude/selected.js',
     '/horizon/index.js', '/horizon/world.js', '/horizon/pitch-scale.js', '/horizon/bank-pointer.js', '/fixed-symbols/index.js', '/fixed-symbols/bank-scale.js', '/fixed-symbols/aircraft.js']) {
     const response = await fetch(url + path);
     assert.equal(response.status, 200);
@@ -247,6 +248,7 @@ try {
   await checkAirspeedIndications(page, setFixture,
     JSON.parse(readFileSync(new URL('./fixtures/airspeed-profile.json', import.meta.url))));
   await checkAltitude(page, setFixture, url);
+  await checkSelectedAltitude(page, setFixture, url);
   // Verify actual SVG columns and tape positions against independent expected values.
   for (const [width, height] of [[326, 246], [320, 480], [568, 240]]) {
     await page.setViewportSize({ width, height });

@@ -33,7 +33,7 @@ fn shared_demo_matches_independent_altitude_sweeps_pressure_changes_and_repeats(
     let fixtures: Vec<Value> =
         serde_json::from_str(include_str!("fixtures/altitude-samples.json")).unwrap();
     for row in fixtures {
-        for repeat in [0, 360, 720] {
+        for repeat in [0, 1800, 3600] {
             let sample =
                 serde_json::to_value(demo::sample(row["sample"].as_u64().unwrap() + repeat))
                     .unwrap();

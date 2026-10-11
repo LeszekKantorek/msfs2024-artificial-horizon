@@ -10,7 +10,7 @@ function harness() {
   const drawn = [];
   const obscured = [];
   const renderer = createFrameScheduler({
-    panel: { render: value => drawn.push(value), invalidate: reason => obscured.push(reason), resize() {} },
+    panel: { render: value => { drawn.push(value); }, invalidate: reason => obscured.push(reason), resize() {} },
     now: () => time,
     requestFrame: fn => { const id = ++nextId; frames.set(id, fn); return id; },
     cancelFrame: id => frames.delete(id),
@@ -126,7 +126,7 @@ test('fresh identical values replace the deadline even with an existing pending 
 test('resize updates geometry immediately while unavailable and never restores discarded data', () => {
   const resized = [], drawn = [], obscured = [];
   const renderer = createFrameScheduler({
-    panel: { resize: layout => resized.push(layout), render: frame => drawn.push(frame),
+    panel: { resize: layout => resized.push(layout), render: frame => { drawn.push(frame); },
       invalidate: reason => obscured.push(reason) },
     requestFrame() { assert.fail('Unavailable resize must not schedule a draw'); },
   });
@@ -140,7 +140,7 @@ test('resize and fresh values commit together using the newest layout and sample
   const events = [], frames = [];
   const scheduler = createFrameScheduler({
     panel: { resize: layout => events.push(['resize', layout]),
-      render: frame => events.push(['render', frame]), invalidate() {} },
+      render: frame => { events.push(['render', frame]); }, invalidate() {} },
     now: () => 0, requestFrame: fn => { frames.push(fn); return frames.length; },
   });
   scheduler.accept(sample(10)); frames.shift()(); events.length = 0;
@@ -158,7 +158,7 @@ test('invalidation applies pending geometry under the cover and discards pending
   let callback;
   const scheduler = createFrameScheduler({
     panel: { resize: layout => events.push(['resize', layout]),
-      render: () => events.push(['render']), invalidate: reason => events.push(['cover', reason]) },
+      render: () => { events.push(['render']); }, invalidate: reason => events.push(['cover', reason]) },
     requestFrame: fn => { callback = fn; return 1; }, cancelFrame() {}, now: () => 0,
   });
   scheduler.accept(sample()); callback(); events.length = 0;

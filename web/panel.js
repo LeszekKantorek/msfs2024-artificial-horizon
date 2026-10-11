@@ -16,11 +16,22 @@ export function composePanel(svg, instruments, status) {
       for (const instrument of instruments) instrument.resize(layout);
       status.resize?.(layout);
     },
-    render(frame) {
-      for (const instrument of instruments) instrument.render?.(frame);
-      status.render(frame);
+    accept(frame, now) {
+      for (const instrument of instruments) instrument.accept?.(frame, now);
     },
-    invalidate(reason) { status.invalidate(reason); },
+    render(frame, now) {
+      let nextUpdateAt = null;
+      for (const instrument of instruments) {
+        const next = instrument.render?.(frame, now);
+        if (Number.isFinite(next)) nextUpdateAt = nextUpdateAt === null ? next : Math.min(nextUpdateAt, next);
+      }
+      status.render(frame);
+      return nextUpdateAt;
+    },
+    invalidate(reason) {
+      status.invalidate(reason);
+      for (const instrument of instruments) instrument.invalidate?.(reason);
+    },
   };
 }
 
