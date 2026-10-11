@@ -20,7 +20,7 @@ Preserve these decision checks:
 * Use the shortest angular difference. Exactly 180 degrees goes left.
 * Keep the notch and pointer dimensions shared and check actual cyan paint at capture.
 * Hide whole labels near the current window and both clip edges.
-* Preserve the existing 32 px top strip and horizon geometry.
+* Preserve the 32 px top strip and derive horizontal geometry from the current panel allocation.
 * Exclude ground-track data, fallback, graphics, and a separate numeric selected heading.
 * Validate the full 17-element fixture, keeping real-phone evidence separate from desktop checks.
 
@@ -28,3 +28,5 @@ Source: accepted #26 plan and Garmin section 3.3.8, 2026-10-11.
 The original plan remains local under `.local/plans/26-heading/`.
 
 Source: accepted #65 correction, 2026-10-11, removing the degree symbol from the current heading window.
+
+Source: #63 reclaimed four pixels for the central allocation, as reflected in `web/layout.js`, reviewed 2026-10-11.

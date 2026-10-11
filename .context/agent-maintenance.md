@@ -1,9 +1,11 @@
 ---
-description: Maintain installed context skills, local skill exclusions, and session hooks.
+description: Maintain the three context skills, their installation records, and session hooks.
 status: active
 ---
 
-## Reinstall skills
+## Reinstall context skills
+
+Use this procedure when maintaining the context tools named in [AGENTS](../AGENTS.md).
 
 1. Read [setup and skill sources](../CONTRIBUTING.md#3-prepare-agent-skills-and-hooks).
 2. Inspect the repository diff and preserve intentional local adaptations before replacing installed files.
@@ -19,18 +21,13 @@ status: active
 * Update `skills-lock.json` and `.agents/skills/` together when changing their upstream installation.
 * Keep upstream `computedHash` values as source provenance without replacing them with undocumented local hash calculations.
 * Review intentional repository adaptations separately from the upstream lock record.
-* Remove retired skill copies during migrations.
 * Keep `.context/index.md` as the table-only index.
-* Follow the [skill exclusions](../.gitignore) when adding skills; only the three listed context skill directories are included by default.
+* Preserve the [exclusions](../.gitignore) that include only the three context skill directories by default.
 
 ## Project adaptations
 
-The [skill selection rules](skill-selection.md#planning-and-verification-scope) own the planning and verification adaptations.
+Use [task guidance](task-guidance.md#working-approach) for the project workflow and its policy on retired expert skills.
 
-* Local `brainstorming` respects accepted plans and permits direct planning when `writing-plans` is unavailable.
-* Local `verification-before-completion` checks whether evidence still applies before requiring another execution.
-* These two skill copies are Git-ignored and do not arrive with a fresh checkout.
-* Apply the versioned project rules if those local skills are unavailable or replaced during installation.
 * The versioned session importer lists the queue without writing and distinguishes missing paths from missing files.
 * Both queue writers retry transient Windows replacement failures for up to one second while preserving the queue lock.
 * Keep the five-second hook timeout sufficient for Git discovery, lock acquisition, replacement retries, and process startup.
@@ -42,9 +39,7 @@ The upstream lock records the installed source, not a claim that adapted copies 
 ## Hook maintenance
 
 * Read [hook setup](../CONTRIBUTING.md#session-hooks) for sources, files, events, dependencies, and trust steps.
-* Import selected checkpoints with `context-import-sessions`.
-* Mark checkpoints reviewed only after reading their contents and successful gathering.
-* Keep report-only, unavailable, and incomplete imports pending.
+* Follow `context-import-sessions` for checkpoint selection, reading, and completion bookkeeping.
 * Repeat the unlocked read-only queue snapshot if concurrent hook updates make the result incomplete.
 * An unavailable transcript prevents content review but does not prove that the session performed no work.
 * Preserve unrelated hooks.
@@ -55,3 +50,5 @@ The upstream lock records the installed source, not a claim that adapted copies 
 Sources: [AGENTS](../AGENTS.md) defines roles, each skill defines its procedure, and moving maintenance rules here was approved on 2026-10-09.
 
 Source: accepted project-maintenance review, 2026-10-11, covering local skill adaptations and read-only session inspection.
+
+Source: explicit migration to project context and existing Markdown guidance, 2026-10-11.

@@ -15,8 +15,8 @@ status: active
 * Use `[ ]` checklists for procedures or criteria, not duplicate task status.
 * Preserve requirements, units, limits, uncertainty, and the distinction between plans, implementation, and device acceptance.
 * Before removing moved or shortened text, verify where each requirement, constraint, and caveat remains in the canonical documentation.
-* Apply `asd-ste100` when available without claiming certified dictionary compliance.
-* Review Markdown structure separately from STE lint results because sentence checks do not enforce grouped rules, procedures, or tables.
+* Check sentence length, ambiguity, and consistent terminology directly using these project rules.
+* Check Markdown grouping, procedures, and tables separately from sentence clarity.
 * Check rendered paragraph boundaries because single newlines do not separate Markdown paragraphs.
 * Link to the canonical source instead of repeating commands or rules.
 
@@ -37,7 +37,7 @@ Source: writing requirement recorded in [issue #31](https://github.com/LeszekKan
 | Source | Owns |
 | --- | --- |
 | [README](../README.md) | First run, phone access, available behavior, limitations |
-| [CONTRIBUTING](../CONTRIBUTING.md) | Developer setup, tools, skill sources, workflow |
+| [CONTRIBUTING](../CONTRIBUTING.md) | Developer setup, context tooling, contribution workflow |
 | [Brief](../docs/project-brief.md) | Requirements, scope, assumptions, success criteria |
 | [Architecture](../docs/architecture.md) | Target design, boundaries, library API |
 | [Panel presentation](../docs/pfd-presentation.md) | Instrument interfaces, frame lifecycle, layer ownership, clipping |
@@ -51,6 +51,6 @@ Source: accepted writing style, document responsibilities, and setup decisions, 
 
 Source: accepted documentation correction, 2026-10-10, to introduce long bullet groups with short sentences that explain their scope.
 
-Source: documentation structure correction for #56 and PR #55, 2026-10-11, to check Markdown conventions independently of STE lint.
+Source: documentation structure correction for #56 and PR #55, 2026-10-11, separating Markdown checks from language checks.
 
 Source: formatting correction for `docs/testing.md` in PR #60, 2026-10-11, to group independent checks instead of stacking prose lines.

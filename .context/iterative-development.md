@@ -3,21 +3,18 @@ description: Choose module boundaries for agreed delivery and preserve accepted 
 status: active
 ---
 
-1. Identify the current outcome and its next agreed use in the [roadmap](../docs/roadmap.md).
-2. Assess boundaries against those uses and the [architecture](../docs/architecture.md).
-3. Choose small structural changes that simplify the next agreed step.
-4. Explain each choice's immediate cost and next use.
-5. Check that the current outcome still works.
+Use [architecture decisions](architecture-decisions.md) to assess material structural choices against the current outcome and next agreed use.
+Use [implementation planning](implementation-planning.md) to turn the accepted choice into executable steps.
 
 * Keep speculative frameworks and later issues outside current scope.
 * Do not postpone useful structural changes solely because the current skeleton works.
-* Reassess a general IAS/altitude tape during actual altitude implementation against its scale, sign, digit, selection, and alert rules.
+* Keep the [separate altitude tape](altitude-baro.md) unless actual shared requirements justify reconsidering its scale, sign, digit, selection, and alert boundaries.
 * Use the implemented [internal seams](../docs/pfd-presentation.md#internal-module-seams) first instead of inferring shared rules from a planned instrument.
-* Keep calculations with their visual objects unless actual independent consumers justify extraction, as recorded in [ADR 0005](../docs/adr/0005-visual-object-composition.md).
+* Apply the [PFD composition rules](pfd-module-plan.md) for calculation ownership and extraction to actual shared consumers.
 
 ## Accepted plans and handoffs
 
-* Use numbered implementation steps with substeps and completion conditions when preparing a detailed plan.
+* Use the [implementation planning procedure](implementation-planning.md) for detailed steps, substeps, completion conditions, and acceptance evidence.
 * Preserve the complete accepted plan verbatim, including supplied language, requirements, and invariants.
 * Store implementation plans, amendments, and handoff indexes under Git-ignored `.local/plans/<issue>-<topic>/`.
 * Do not commit implementation plans or publish them in GitHub issues or PRs unless explicitly requested.
