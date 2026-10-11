@@ -98,6 +98,8 @@ try {
   for (const path of ['/math.js', '/svg.js', '/telemetry-client.js', '/airspeed.js', '/horizon.js', '/fixed-symbols.js', '/airspeed/calculations.js', '/horizon/calculations.js']) {
     assert.equal((await fetch(address + path)).status, 404);
   }
+  // The first synthetic-jump sample intentionally omits VSI for one tick.
+  await page.locator('#vertical-speed[data-state="available"]').waitFor();
   const snapshot = await currentSnapshot();
   assert.equal(snapshot.schema_version, 1);
   assert.equal(snapshot.source, 'demo');
