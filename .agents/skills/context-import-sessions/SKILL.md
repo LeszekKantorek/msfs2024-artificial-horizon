@@ -17,7 +17,10 @@ description: Load selected saved sessions or .context/sessions checkpoints and p
 python <skill-directory>/scripts/context_read_sessions.py <project-root>
 ```
 
-* The helper lists records; it does not read or analyze transcripts.
+* Listing is read-only: the helper does not create directories, acquire a write lock, or change records.
+* The helper reports transcript availability; it does not read or analyze transcripts.
+* `missing-path` means no transcript path was recorded; `missing-file` means the recorded path is not an available file.
+* Listing can overlap hook updates; retain each selected checkpoint and leave changed records pending.
 * Identify records by `session_id`, never by filename.
 * Retain each selected record's `updated_at` value before reading its transcript.
 
@@ -53,6 +56,7 @@ python <skill-directory>/scripts/context_read_sessions.py <project-root> --mark-
 ```
 
 * If the checkpoint changed, leave it pending; read the new evidence before retrying.
+* Writers retry Windows access/sharing conflicts for up to one second; a persistent failure is reported without replacing the previous record.
 * Keep the existing record format: `session_id`, `updated_at`, `transcript_path`, and `reviewed_at`.
 * Report imported sessions, gather results, and checkpoints still pending.
 

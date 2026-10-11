@@ -5,6 +5,7 @@ status: active
 
 * Apply these writing rules to documentation, knowledge entries, code comments, commit messages, and GitHub issues, comments, and PRs.
 * Use short English sentences and consistent terms.
+* Keep supplied accepted plans verbatim in their original language under the [plan-preservation rule](iterative-development.md#accepted-plans-and-handoffs).
 * Use `*` bullets for parallel rules and numbered steps for sequences.
 * Introduce long lists or distinct groups of bullets with one short sentence that states their topic or purpose.
 * A heading can introduce a list when its scope is clear, but a short lead-in can add useful context.
@@ -12,7 +13,7 @@ status: active
 * Use tables for comparisons, `>` notes for constraints, and diagrams for flows.
 * Format identifiers as inline code and commands as fenced code blocks.
 * Use `[ ]` checklists for procedures or criteria, not duplicate task status.
-* Preserve requirements, units, limits, uncertainty, and planned/implemented distinctions.
+* Preserve requirements, units, limits, uncertainty, and the distinction between plans, implementation, and device acceptance.
 * Before removing moved or shortened text, verify where each requirement, constraint, and caveat remains in the canonical documentation.
 * Apply `asd-ste100` when available without claiming certified dictionary compliance.
 * Review Markdown structure separately from STE lint results because sentence checks do not enforce grouped rules, procedures, or tables.

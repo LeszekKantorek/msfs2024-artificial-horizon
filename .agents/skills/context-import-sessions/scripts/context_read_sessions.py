@@ -47,7 +47,8 @@ def queue_lock(directory):
 def read_sessions(directory):
     sessions = {}
     for path in sorted(directory.glob("*.json")):
-        row = json.loads(path.read_text(encoding="utf-8"))
+        with path.open(encoding="utf-8") as handle:
+            row = json.load(handle)
         if (not isinstance(row, dict) or set(row) != FIELDS
                 or not isinstance(row["session_id"], str) or not row["session_id"]
                 or not isinstance(row["updated_at"], str)
@@ -68,7 +69,17 @@ def write_record(path, row):
             temporary = Path(handle.name)
             json.dump(row, handle, ensure_ascii=False, indent=2)
             handle.write("\n")
-        os.replace(temporary, path)
+        # Unlocked readers can briefly prevent replacement on Windows.
+        deadline = time.monotonic() + 1
+        while True:
+            try:
+                os.replace(temporary, path)
+                break
+            except OSError as error:
+                if (os.name != "nt" or getattr(error, "winerror", None) not in (5, 32, 33)
+                        or time.monotonic() >= deadline):
+                    raise
+                time.sleep(0.02)
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
@@ -80,6 +91,9 @@ def inventory(directory, session_id=None, expected_update=None):
         if session_id:
             raise ValueError("session is not in the queue")
         return {}
+    if session_id is None:
+        # Hook writes replace each record atomically; listing needs no write lock.
+        return read_sessions(directory)
     with queue_lock(directory):
         sessions = read_sessions(directory)
         if session_id:
@@ -119,10 +133,14 @@ def main():
         len(sessions), len(sessions) - len(pending), len(pending)))
     for path, row in pending:
         transcript = row["transcript_path"]
-        available = bool(transcript) and Path(transcript).is_file()
+        if not transcript:
+            availability = "missing-path"
+        elif Path(transcript).is_file():
+            availability = "available"
+        else:
+            availability = "missing-file"
         print("%s  %s  transcript=%s  record=%s" % (
-            row["session_id"], row["updated_at"],
-            "available" if available else "missing", path,
+            row["session_id"], row["updated_at"], availability, path,
         ))
     return 0
 

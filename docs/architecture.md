@@ -237,43 +237,28 @@ The architecture records these distinct changes:
 | Maintenance [#54](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/54) | Historical separation of pure calculations and validation |
 | [#56](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/56) and [ADR 0005](adr/0005-visual-object-composition.md) | Visual-object composition with object-specific calculations in implementing modules |
 
-The implemented application imports 24 JavaScript modules.
-
 | Module | Responsibility |
 | --- | --- |
 | Application assembly | Connect telemetry, layout, lifecycle, and presentation |
 | Telemetry client | Own EventSource, sequence, retries, expiry, status, and lifecycle |
 | Telemetry validation | Pure envelope validation and independent optional-value normalization |
 | Frame scheduler | Coalesce latest samples, retain deadlines, cancel invalid work |
-| Panel | Compose instruments, own their shared attitude clip, and delegate resize/render/invalidate |
-| Instrument composition | Select required frame fields, own shared origins/hosts/clips, and invoke visual-object operations |
-| Visual objects | Own their nodes, local geometry, SVG updates, and indication availability |
-| Object-specific calculations | Remain in the implementing visual module, including geometry inside its resize operation |
-| Airspeed helpers | Share speed classification between IAS/GS and tape conversion between tape/references |
-| Horizon composition | Derive common attitude transforms once per horizon frame |
-| Helpers | Export clamp, SVG creation, and attribute updates without import-time DOM access |
+| Panel and instruments | Compose visual objects under the presentation contracts linked below |
 | Status presentation | Show source/transport status and obscure invalid data |
 
-Presentation boundaries follow these rules:
+The presentation reference owns these contracts:
 
-* [Panel presentation](pfd-presentation.md#panel-interface-and-frame-lifecycle) owns implemented interfaces and frame rules.
-* [Internal seams](pfd-presentation.md#internal-module-seams) define calculation and validation responsibilities.
-* The internal frame is not a new wire format.
-* Instrument entry points receive the same complete read-only frame.
-* Children receive concrete hosts, geometry, and required readings.
-* Shared hosts and clips belong to their immediate common parent.
-* Children hide their node updates behind operations.
-* Pure calculations and validation import in Node without DOM.
-* Visual objects retain no telemetry frame or timer.
-* Independent consumers justify shared calculation modules.
-* Pure tests alone do not require separate files.
-* Future instrument modules arrive with their feature slices.
+* [Panel interface and frame lifecycle](pfd-presentation.md#panel-interface-and-frame-lifecycle): normalized read-only frames, initialization, scheduling, and invalidation.
+* [Internal seams](pfd-presentation.md#internal-module-seams): visual ownership, private nodes, shared hosts/clips, and concrete child inputs.
+* [Pure calculations and helpers](pfd-presentation.md#pure-calculations-and-helpers): calculation ownership, actual shared consumers, and DOM-free imports.
+* [Telemetry operations](pfd-presentation.md#telemetry-operations): validation, callback publication, and connection lifecycle.
+* [Delivery boundaries](pfd-presentation.md#delivery-boundaries): future instruments and asset integration.
 
 Embedded assets have a separate registration boundary:
 
 | Module | Responsibility |
 | --- | --- |
-| `src/http/assets.rs` | Explicit table of 26 literal path/MIME/compile-time body mappings: 24 JavaScript files, HTML, and CSS |
+| `src/http/assets.rs` | Explicit literal path/MIME/compile-time body mappings for the current JavaScript modules, HTML, and CSS |
 | `assets::router()` | Register the table through one loop |
 | `src/http/mod.rs` | Compose the asset router and health route, with unchanged telemetry composition |
 

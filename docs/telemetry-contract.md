@@ -133,9 +133,9 @@ Extended live example:
 * Speeds share the accepted sample's sequence, age, and expiry deadline with attitude.
 * A new snapshot replaces both previous speeds. Missing values never become zero or retain the previous reading.
 * `Publisher::publish(State)` clears speed fields, including in attitude-only live publications.
-* Finite values above 999 kt remain valid telemetry. Their presentation shows `OVR`, without a clamped number.
-* The IAS tape and rolling digits use the fractional received value. GS rounds to the nearest whole knot, with halves rounded up.
-* The display shows `X` for an unavailable speed. IAS loss hides its tape and digits, independently of GS and attitude.
+* Finite values above the 999 kt display limit remain valid telemetry without clamping.
+
+[Speed presentation](pfd-presentation.md#airspeed-and-ground-speed) owns formatting, rounding, overflow, and unavailable marks.
 
 Speed fields extend the live example above:
 
@@ -175,14 +175,13 @@ These extensions follow the existing sample lifecycle:
 * Both fields share the sample sequence, monotonic age, and expiry deadline. Providers must supply acceleration from the same fresh acquisition as IAS.
 * Rust omits absent fields and all extensions outside `live`. Attitude-only publication clears both fields.
 * A new browser sample replaces the previous configuration and acceleration. Missing values never select a demo default.
-* Missing, null, or malformed profiles hide ranges, references, and VNE warnings while preserving valid IAS, GS, and attitude.
-* Missing, null, or malformed acceleration hides the trend and predictive warning. Valid profile ranges and actual overspeed remain available.
+* Missing, null, or malformed profiles become unavailable independently of valid IAS, GS, attitude, and acceleration.
+* Missing, null, or malformed acceleration becomes unavailable independently of the profile and current readings.
 * Unknown additive profile fields are ignored. All five known thresholds and four named references are required when a profile is supplied.
-* Source/transport loss invalidates the panel. Local IAS loss retains available configured references at the bottom of the instrument.
+* Source/transport loss invalidates the panel. Local IAS loss does not invalidate a valid profile.
 
-The browser predicts `IAS + 6 * ias_acceleration_ktps`. It never computes acceleration from browser receipt intervals.
-Zero acceleration or a non-finite prediction hides the vector. A negative prediction remains a calculation result and is clipped at the tape boundary.
-The prediction does not replace or extrapolate the current IAS reading.
+The browser never computes acceleration from browser receipt intervals.
+[Ranges, references, and trend](pfd-presentation.md#ranges-references-and-trend) defines the prediction, clipping, warnings, and fallback presentation.
 
 The demo acceleration is +25 kt/s during acceleration, zero during hold and rest, and -25 kt/s during deceleration.
 At each segment boundary, the new segment supplies the acceleration. Independent fixtures reside in `airspeed-profile.json` and `speed-indications.json`.
