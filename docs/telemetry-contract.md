@@ -9,6 +9,9 @@
 | `telemetry::Attitude` | Validated attitude |
 | `SlipSkid`, `TurnRate` | Independently validated optional indications |
 | `IndicatedAirspeed`, `GroundSpeed` | Independently validated finite nonnegative knots, with `new` and `knots` methods |
+| `BarometricAltitude` | Finite signed feet, with `new` and `feet` methods; no telemetry display limit |
+| `BarometricSetting` | Positive finite inHg, with `new` and `inches_of_mercury` methods |
+| `FlightSample::with_altitude(altitude, setting)` | Add independently optional altitude and pressure setting |
 | `FlightSample` | One acquisition with attitude and independently optional indications |
 | `FlightSample::with_speeds(ias, gs)` | Add independently optional speeds. The existing `new` constructor remains attitude/turn-only |
 | `AirspeedProfile`, `VSpeedReferences` | Validated positive speed thresholds and four named references in knots |
@@ -89,6 +92,8 @@ These durations are initial tuning values.
 | `gs_kt` | Optional finite nonnegative ground speed in knots |
 | `airspeed_profile` | Optional validated speed configuration, defined below |
 | `ias_acceleration_ktps` | Optional finite source-supplied IAS acceleration in knots per second |
+| `altitude_ft` | Optional finite signed barometric altitude in feet for the source pressure setting |
+| `baro_inhg` | Optional finite positive pressure setting in inches of mercury |
 
 * Providers convert SDK values to these conventions.
 * Check conversion in the SimConnect spike. Do not infer SimVar units from names alone.
@@ -144,6 +149,31 @@ Speed fields extend the live example above:
 ```
 
 `tests/fixtures/speed-samples.json` defines independent speed-profile checkpoints.
+
+### Optional altitude and pressure setting
+
+* Altitude is a source-supplied indication for its pressure setting; the browser does not calculate pressure corrections.
+* Both fields are independently optional and share the sample sequence, age, and expiry deadline.
+* Rust omits absent values and both fields outside `live`; attitude-only publication clears both.
+* Missing, null, nonnumeric, or non-finite altitude becomes unavailable independently of pressure and other indications.
+* Missing, null, nonnumeric, non-finite, or nonpositive pressure becomes unavailable independently of altitude.
+* Each sample replaces both previous values; missing values never become zero or retain a previous reading.
+* Finite values outside the presentation limits remain valid telemetry.
+* Source or transport loss invalidates the entire panel.
+
+Example additions to a live v1 snapshot:
+
+```json
+{"altitude_ft": -120.0, "baro_inhg": 29.92}
+```
+
+The shared 18-second Rust demo adds six three-second altitude sweeps: -120 to 120, 980 to 1020, 9980 to 10020, 10020 to 9980, 1020 to 980, and 120 to -120 ft.
+Each sweep includes both endpoints over 60 samples.
+Pressure changes every six seconds through 29.92, 30.12, and 29.72 inHg.
+Transitions between sweeps are synthetic test cases, not a physical flight trajectory or a pressure-response model.
+
+`tests/fixtures/altitude-samples.json` contains independent checkpoints and cycle boundaries.
+[Altitude presentation](pfd-presentation.md#altitude-and-barometric-setting) defines the display limits and rolling drums.
 
 ### Optional airspeed ranges and trend
 

@@ -7,7 +7,7 @@ import { createInterface } from 'node:readline';
 
 const profile = JSON.parse(readFileSync(new URL('./fixtures/airspeed-profile.json', import.meta.url)));
 let fixture = { state: 'live', pitch_deg: 0, roll_deg: 0, slip_skid: 0, turn_rate_dps: 0,
-  ias_kt: 123, gs_kt: 137, airspeed_profile: profile, ias_acceleration_ktps: 5, hold: false };
+  altitude_ft: 10000, baro_inhg: 29.92, ias_kt: 123, gs_kt: 137, airspeed_profile: profile, ias_acceleration_ktps: 5, hold: false };
 let sequence = 0;
 let clients = 0;
 const input = createInterface({ input: process.stdin });
@@ -15,7 +15,9 @@ input.on('line', line => {
   try { fixture = { ...fixture, ...JSON.parse(line) }; console.log('Fixture:', fixture); }
   catch { console.error('Expected a JSON object'); }
 });
-const types = { '/': 'text/html', '/styles.css': 'text/css', '/app.js': 'text/javascript',
+const types = {
+  '/altitude/index.js': 'text/javascript', '/altitude/tape.js': 'text/javascript',
+  '/altitude/readout.js': 'text/javascript', '/altitude/baro.js': 'text/javascript', '/': 'text/html', '/styles.css': 'text/css', '/app.js': 'text/javascript',
   '/telemetry/client.js': 'text/javascript', '/horizon/index.js': 'text/javascript',
   '/horizon/world.js': 'text/javascript',
   '/horizon/pitch-scale.js': 'text/javascript',
@@ -42,6 +44,8 @@ const server = createServer((request, response) => {
       if (fixture.state === 'live' && !fixture.attitude_only) {
         snapshot.slip_skid = fixture.slip_skid;
         snapshot.turn_rate_dps = fixture.turn_rate_dps;
+        snapshot.altitude_ft = fixture.altitude_ft;
+        snapshot.baro_inhg = fixture.baro_inhg;
         snapshot.ias_kt = fixture.ias_kt;
         snapshot.gs_kt = fixture.gs_kt;
         snapshot.airspeed_profile = fixture.airspeed_profile;

@@ -41,26 +41,13 @@ function render() {
   badge.setAttribute('transform', `translate(6 ${height - 36})`);
   for (const group of Object.values(groups)) group.replaceChildren();
   const layer = groups.supplemental;
-  for (const name of ['altitude', 'vsi', 'heading']) {
+  for (const name of ['vsi', 'heading']) {
     groups[name].append(svgElement('rect', { ...layout[name], class: 'instrument-background' }));
   }
   const { airspeed: a, altitude: b, vsi: v, heading: h } = layout;
-  for (const [r, labels] of [[b, ['10200', '10100', '10000', '9900', '9800']]]) {
-    const parent = r === a ? groups.airspeed : groups.altitude;
-    labels.forEach((value, i) => text(parent, r.x + r.width / 2,
-      r.y + r.height * (i + 0.5) / 5, value, 12));
-  }
-  for (const [r, value] of [[b, '10000']]) {
-    const parent = r === a ? groups.airspeed : groups.altitude;
-    parent.append(svgElement('rect', { x: r.x + 1, y: layout.cy - 14,
-      width: r.width - 2, height: 28, fill: '#080d12', stroke: '#fff' }));
-    text(parent, r.x + r.width / 2, layout.cy, value, 19);
-  }
   layer.append(svgElement('rect', { x: b.x, y: 0, width: b.width, height: 32, class: 'instrument-background' }));
-  layer.append(svgElement('rect', { x: b.x, y: height - 24, width: b.width, height: 22, class: 'instrument-background' }));
   layer.append(svgElement('rect', { x: a.x, y: 0, width: a.width, height: 32, class: 'instrument-background' }));
   text(layer, b.x + b.width / 2, 16, '12000', 15, '#86def5');
-  text(layer, b.x + b.width / 2, height - 15, '29.92', 13, '#86def5');
   groups.altitude.append(svgElement('path', { d: `M ${b.x} ${layout.cy - 30} l 10 -5 v 10 Z`, fill: '#86def5' }));
   text(groups.vsi, v.x + v.width / 2, v.y + 16, '2', 12);
   text(groups.vsi, v.x + v.width / 2, layout.cy, '0', 12);

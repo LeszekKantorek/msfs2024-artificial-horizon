@@ -6,6 +6,7 @@ import { mkdir } from 'node:fs/promises';
 import { once } from 'node:events';
 import { readFileSync } from 'node:fs';
 import { checkAirspeedIndications, checkAirspeedAvailabilityTransitions } from './airspeed-browser-checks.mjs';
+import { checkAltitude } from './altitude-browser-checks.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
@@ -44,7 +45,7 @@ function instrumentNodesUnchanged() {
 try {
   for (const path of ['/helpers.js', '/telemetry/client.js', '/airspeed/index.js', '/airspeed/ias.js',
     '/airspeed/ground-speed.js', '/airspeed/tape.js', '/airspeed/readout.js', '/airspeed/references.js',
-    '/airspeed/helpers.js',
+    '/airspeed/helpers.js', '/altitude/index.js', '/altitude/tape.js', '/altitude/readout.js', '/altitude/baro.js',
     '/horizon/index.js', '/horizon/world.js', '/horizon/pitch-scale.js', '/horizon/bank-pointer.js', '/fixed-symbols/index.js', '/fixed-symbols/bank-scale.js', '/fixed-symbols/aircraft.js']) {
     const response = await fetch(url + path);
     assert.equal(response.status, 200);
@@ -117,15 +118,6 @@ try {
       if (path === '/layout.html') {
         const collisions = await page.evaluate(() => {
           const failures = [];
-          for (const name of ['altitude']) {
-            const group = document.querySelector(`#fixture-${name}`);
-            const window = group.querySelector('rect[stroke]');
-            const text = window.nextElementSibling.getBBox();
-            const rect = window.getBBox();
-            // Text stays within the opaque value window, clear of its 1px stroke.
-            if (text.x < rect.x + 0.5 || text.x + text.width > rect.x + rect.width - 0.5)
-              failures.push(`${name} readout crosses its painted window`);
-          }
           // Background overlap is intentional; compare painted label content.
           const badge = document.querySelector('#layout-badge .fixture-label').getBoundingClientRect();
           const gs = document.querySelector('#ground-speed').getBoundingClientRect();
@@ -180,7 +172,7 @@ try {
     worldPaths: ['sky', 'ground', 'horizon-line'],
     fixed: ['bank-scale', 'aircraft-outline', 'aircraft'],
     symbols: ['bank-pointer-clip', 'fixed-symbols-clip', 'slip-skid', 'turn-rate'],
-    warnings: ['warning-origin', 'airspeed-warning', 'ground-speed-warning', 'slip-warning', 'turn-warning'],
+    warnings: ['warning-origin', 'airspeed-warning', 'ground-speed-warning', 'altitude-warning', 'slip-warning', 'turn-warning'],
     pitchParent: 'scale-rotation', warningParent: 'warning-rotation',
     sharedAttitudeClip: ['url(#attitude-clip)', 'url(#attitude-clip)'],
     fixedPitchClip: 'url(#pitch-clip)',
@@ -225,7 +217,7 @@ try {
     const doc = new DOMParser().parseFromString(await (await fetch('/')).text(), 'text/html');
     const panel = createPanel(doc.querySelector('.instrument'), createStatusView(doc));
     const frame = Object.freeze({ attitude: Object.freeze({ pitch_deg: 10, roll_deg: 25 }),
-      slip_skid: 0.5, turn_rate_dps: 3, ias_kt: 99.5, gs_kt: 137.6, expiresAt: 1000,
+      slip_skid: 0.5, turn_rate_dps: 3, ias_kt: 99.5, gs_kt: 137.6, altitude_ft: -90, baro_inhg: 29.92, expiresAt: 1000,
       ias_acceleration_ktps: 5, airspeed_profile: Object.freeze({ vs0_kt: 40, vs1_kt: 50,
         vfe_kt: 85, vno_kt: 110, vne_kt: 140,
         references: Object.freeze({ vr_kt: 55, vx_kt: 65, vy_kt: 75, vg_kt: 90 }) }),
@@ -251,6 +243,7 @@ try {
   assert.deepEqual(scaleGeometry.labels, [{ text: '0', y: 0 }, { text: '10', y: -40 }, { text: '20', y: -80 }]);
   await checkAirspeedIndications(page, setFixture,
     JSON.parse(readFileSync(new URL('./fixtures/airspeed-profile.json', import.meta.url))));
+  await checkAltitude(page, setFixture, url);
   // Verify actual SVG columns and tape positions against independent expected values.
   for (const [width, height] of [[326, 246], [320, 480], [568, 240]]) {
     await page.setViewportSize({ width, height });

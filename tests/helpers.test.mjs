@@ -11,6 +11,7 @@ test('helpers, visual objects and telemetry import and calculate in Node without
   const ias = await import('../web/airspeed/ias.js');
   const telemetry = await import('../web/telemetry/client.js');
   const airspeed = await import('../web/airspeed/index.js');
+  const altitude = await import('../web/altitude/index.js');
   const horizon = await import('../web/horizon/index.js');
   const fixedSymbols = await import('../web/fixed-symbols/index.js');
   assert.deepEqual(Object.keys(helpers).sort(), ['clamp', 'setAttributes', 'svgElement']);
@@ -28,6 +29,7 @@ test('helpers, visual objects and telemetry import and calculate in Node without
     { prediction: 140, overspeed: false, approaching: true });
   assert.equal(typeof telemetry.createTelemetryClient, 'function');
   assert.deepEqual(Object.keys(airspeed), ['createAirspeed']);
+  assert.deepEqual(Object.keys(altitude), ['createAltitude']);
   assert.equal(typeof horizon.createHorizon, 'function');
   assert.deepEqual(horizon.attitudeTransforms({ pitch_deg: 15, roll_deg: 30 }),
     { rotation: 'rotate(-30 0 0)', translation: 'translate(0 60)' });

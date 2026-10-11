@@ -41,6 +41,19 @@ test('speed indications stay in the same latest frame and retain their deadline 
   assert.equal(h.drawn.length, 2);
 });
 
+test('altitude and pressure coalesce together and expire before a resize draw', () => {
+  const h = harness();
+  h.renderer.accept({ ...sample(0, 0, 500), altitude_ft: -20, baro_inhg: 29.92 });
+  const latest = { ...sample(0, 0, 500), altitude_ft: 20, baro_inhg: 30.12 };
+  h.renderer.accept(latest); h.flush();
+  assert.deepEqual(h.drawn, [latest]);
+  h.advance(499); h.renderer.resize(pfdLayout(568, 240)); h.flush();
+  assert.deepEqual(h.drawn.at(-1), latest);
+  h.advance(1); h.renderer.resize(pfdLayout(320, 480)); h.flush();
+  assert.equal(h.drawn.length, 2);
+  assert.deepEqual(h.obscured, ['stale']);
+});
+
 test('a burst draws only its newest sample in one frame, without continuous animation', () => {
   const h = harness();
   h.renderer.accept(sample(15)); h.renderer.accept(sample(-15)); h.renderer.accept(sample(10, 25));

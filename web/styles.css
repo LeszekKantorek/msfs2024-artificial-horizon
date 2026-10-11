@@ -89,3 +89,13 @@ noscript { position: absolute; inset: 12px 12px auto; color: var(--warning); tex
 #airspeed[data-overspeed="true"] .airspeed-window { fill: var(--speed-red); }
 #airspeed[data-approaching="true"] .airspeed-digit { fill: var(--speed-yellow); }
 .instrument[data-fixture="true"]:has(#airspeed-references-bottom[data-visible="true"]) #layout-badge { display: none; }
+.altitude-tick { fill: none; stroke: var(--text); stroke-width: 1; }
+.altitude-label { fill: var(--text); font-size: 11px; text-anchor: end; dominant-baseline: central; }
+.altitude-window { fill: var(--value-window); stroke: var(--text); stroke-width: 1; }
+.altitude-digit { fill: var(--text); font-family: monospace; font-size: 14px; text-anchor: middle; dominant-baseline: central; }
+.altitude-unit { fill: var(--text); font-size: 9px; text-anchor: middle; dominant-baseline: central; }
+.barometric-value { fill: var(--speed-reference); font-size: 13px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+.barometric-unit { fill: var(--text); font-size: 8px; text-anchor: middle; dominant-baseline: central; }
+.altitude-warning { fill: var(--danger); font-size: 15px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+#altitude:not([data-state="available"]) :is(.altitude-tape, #altitude-digits) { visibility: hidden; }
+#barometric-setting:not([data-state="available"]) .barometric-value { fill: var(--danger); }
