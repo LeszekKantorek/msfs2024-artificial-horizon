@@ -5,7 +5,7 @@ import { spawn } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
 import { once } from 'node:events';
 import { readFileSync } from 'node:fs';
-import { checkAirspeedIndications } from './airspeed-browser-checks.mjs';
+import { checkAirspeedIndications, checkAirspeedAvailabilityTransitions } from './airspeed-browser-checks.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
@@ -42,6 +42,17 @@ function instrumentNodesUnchanged() {
     nodes.every((node, index) => node === window.initialInstrumentNodes[index]);
 }
 try {
+  for (const path of ['/helpers.js', '/telemetry/client.js', '/airspeed/index.js', '/airspeed/ias.js',
+    '/airspeed/ground-speed.js', '/airspeed/tape.js', '/airspeed/readout.js', '/airspeed/references.js',
+    '/airspeed/helpers.js',
+    '/horizon/index.js', '/horizon/world.js', '/horizon/pitch-scale.js', '/horizon/bank-pointer.js', '/fixed-symbols/index.js', '/fixed-symbols/bank-scale.js', '/fixed-symbols/aircraft.js']) {
+    const response = await fetch(url + path);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('content-type'), 'text/javascript; charset=utf-8');
+  }
+  for (const path of ['/math.js', '/svg.js', '/telemetry-client.js', '/airspeed.js', '/horizon.js', '/fixed-symbols.js', '/airspeed/calculations.js', '/horizon/calculations.js']) {
+    assert.equal((await fetch(url + path)).status, 404);
+  }
   browser = await chromium.launch({ headless: true, channel: process.env.BROWSER_CHANNEL || undefined });
   const page = await browser.newPage();
   await page.addInitScript(() => {
@@ -125,6 +136,8 @@ try {
       }
       await page.screenshot({ path: `.local/pfd-browser/${path === '/' ? 'g1' : 'layout'}-${width}x${height}.png` });
     }
+    await checkAirspeedAvailabilityTransitions(page, setFixture,
+      JSON.parse(readFileSync(new URL('./fixtures/airspeed-profile.json', import.meta.url))));
   }
   // Candidate opacity is a development experiment; mobile evidence selects the final value.
   for (const opacity of [0.50, 0.65, 0.80]) {
@@ -145,7 +158,57 @@ try {
   setFixture({ pitch_deg: 0, roll_deg: 0 });
   await page.goto(url);
   await page.locator('.instrument[data-available="true"]').waitFor();
+  const attitudeOrder = await page.evaluate(() => {
+    const names = nodes => [...nodes].map(node => node.id || node.getAttribute('class'));
+    return {
+      clips: names(document.querySelector('defs').children).slice(0, 3),
+      world: names(document.querySelector('.moving-world').children),
+      worldPaths: names(document.querySelector('#world-pitch').children),
+      fixed: names(document.querySelector('#fixed-symbols').children),
+      symbols: names(document.querySelector('#layer-symbols').children),
+      warnings: names(document.querySelector('#layer-warnings').children),
+      pitchParent: document.querySelector('#scale-pitch').parentElement.id,
+      warningParent: document.querySelector('#warning-pitch').parentElement.id,
+      sharedAttitudeClip: ['#fixed-symbols-clip', '#bank-pointer-clip'].map(selector =>
+        document.querySelector(selector).getAttribute('clip-path')),
+      fixedPitchClip: document.querySelector('#scale-rotation').parentElement.getAttribute('clip-path'),
+    };
+  });
+  assert.deepEqual(attitudeOrder, {
+    clips: ['background-clip', 'attitude-clip', 'pitch-clip'],
+    world: ['world-rotation', null],
+    worldPaths: ['sky', 'ground', 'horizon-line'],
+    fixed: ['bank-scale', 'aircraft-outline', 'aircraft'],
+    symbols: ['bank-pointer-clip', 'fixed-symbols-clip', 'slip-skid', 'turn-rate'],
+    warnings: ['warning-origin', 'airspeed-warning', 'ground-speed-warning', 'slip-warning', 'turn-warning'],
+    pitchParent: 'scale-rotation', warningParent: 'warning-rotation',
+    sharedAttitudeClip: ['url(#attitude-clip)', 'url(#attitude-clip)'],
+    fixedPitchClip: 'url(#pitch-clip)',
+  });
   // Instrument nodes survive samples and orientation changes.
+  const airspeedOrder = await page.evaluate(() => {
+    const names = nodes => [...nodes].map(node => node.id || node.getAttribute('class'));
+    return {
+      defs: [...document.querySelector('defs').children].map(node => node.id).filter(id => id.startsWith('airspeed-')),
+      ias: names(document.querySelector('#airspeed').children),
+      tape: names(document.querySelector('.airspeed-tape').children),
+      references: [...document.querySelector('#airspeed-references').children].map(node => [node.tagName, node.dataset.reference]),
+      bottom: names(document.querySelector('#airspeed-references-bottom').children),
+      instruments: names(document.querySelector('#layer-airspeed').children),
+      warnings: [...document.querySelector('#layer-warnings').children].map(node => node.id)
+        .filter(id => id === 'airspeed-warning' || id === 'ground-speed-warning'),
+    };
+  });
+  assert.deepEqual(airspeedOrder, {
+    defs: ['airspeed-tape-clip', 'airspeed-digits-clip', 'airspeed-barber-pole'],
+    ias: ['instrument-background', 'airspeed-tape', 'airspeed-window', 'airspeed-digits', 'speed-unit', 'airspeed-references-bottom'],
+    tape: ['airspeed-scale', 'airspeed-ranges', 'airspeed-trend', 'airspeed-references'],
+    references: [['path', 'R'], ['path', 'X'], ['path', 'Y'], ['path', 'G'],
+      ['text', 'R'], ['text', 'X'], ['text', 'Y'], ['text', 'G']],
+    bottom: ['speed-unit', 'airspeed-reference-value', 'airspeed-reference-value', 'airspeed-reference-value', 'airspeed-reference-value'],
+    instruments: ['airspeed', 'ground-speed'],
+    warnings: ['airspeed-warning', 'ground-speed-warning'],
+  });
   await page.evaluate(() => { window.initialInstrumentNodes = [...document.querySelectorAll('svg *')]; });
   for (const viewport of [{ width: 320, height: 480 }, { width: 844, height: 320 }]) {
     await page.setViewportSize(viewport);
@@ -302,6 +365,13 @@ try {
     assert.ok(Math.abs(geometry.y - (geometry.cy + Math.cos(bank) * displacement)) < 1e-4,
       JSON.stringify({ index, geometry, expectedY: geometry.cy + Math.cos(bank) * displacement }));
     assert.equal(await page.evaluate(backgroundCovered), true, `Full background coverage for pose ${index}`);
+    assert.equal(await page.evaluate(() => {
+      const transform = selector => document.querySelector(selector).getAttribute('transform');
+      const rotation = transform('#world-rotation'), pitch = transform('#world-pitch');
+      return ['#scale-rotation', '#warning-rotation', '#bank-pointer'].every(selector => transform(selector) === rotation) &&
+        ['#scale-pitch', '#warning-pitch'].every(selector => transform(selector) === pitch) &&
+        document.querySelector('.aircraft').getAttribute('d') === document.querySelector('.aircraft-outline').getAttribute('d');
+    }), true, `Shared attitude transforms and aircraft outline for pose ${index}`);
     assert.equal(await page.evaluate(instrumentNodesUnchanged), true);
     await page.screenshot({ path: `.local/pfd-browser/pose-${index}.png` });
   }

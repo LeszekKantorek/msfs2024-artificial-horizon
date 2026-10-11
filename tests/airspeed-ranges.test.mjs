@@ -1,13 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { speedRanges, speedIndications, referenceReadout, referenceGeometry } from '../web/airspeed.js';
-import { validateAirspeedProfile, optionalIndications } from '../web/telemetry-client.js';
+import { speedRanges, rangeBounds } from '../web/airspeed/tape.js';
+import { speedIndications } from '../web/airspeed/ias.js';
+import { referenceReadout, placeReferenceLabels } from '../web/airspeed/references.js';
+import { normalizeAirspeedProfile, normalizeOptionalIndications } from '../web/telemetry/validation.js';
 
 const profile = JSON.parse(readFileSync(new URL('./fixtures/airspeed-profile.json', import.meta.url)));
 
 test('profile validation preserves known knots and rejects malformed or incoherent configuration locally', () => {
-  assert.deepEqual(validateAirspeedProfile(profile), profile);
+  assert.deepEqual(normalizeAirspeedProfile(profile), profile);
   for (const bad of [undefined, null, [], false, 'profile', {},
     { ...profile, vs0_kt: 0 }, { ...profile, vs1_kt: 39 },
     { ...profile, vfe_kt: 49 }, { ...profile, vno_kt: 85 },
@@ -15,23 +17,26 @@ test('profile validation preserves known knots and rejects malformed or incohere
     { ...profile, references: { ...profile.references, vr_kt: '55' } },
     { ...profile, references: { ...profile.references, vy_kt: 0 } },
     { ...profile, references: { ...profile.references, vg_kt: 141 } }]) {
-    assert.equal(validateAirspeedProfile(bad), null);
-    const sample = optionalIndications({ airspeed_profile: bad, ias_kt: 123, gs_kt: 137, ias_acceleration_ktps: 2 });
+    assert.equal(normalizeAirspeedProfile(bad), null);
+    const sample = normalizeOptionalIndications({ airspeed_profile: bad, ias_kt: 123, gs_kt: 137, ias_acceleration_ktps: 2 });
     assert.equal(sample.airspeed_profile, null);
     assert.equal(sample.ias_kt, 123);
     assert.equal(sample.ias_acceleration_ktps, 2);
   }
   for (const key of ['vs0_kt', 'vs1_kt', 'vfe_kt', 'vno_kt', 'vne_kt']) {
     for (const bad of [undefined, null, false, '40', NaN, Infinity, -Infinity, -1])
-      assert.equal(validateAirspeedProfile({ ...profile, [key]: bad }), null);
+      assert.equal(normalizeAirspeedProfile({ ...profile, [key]: bad }), null);
   }
   for (const key of ['vr_kt', 'vx_kt', 'vy_kt', 'vg_kt']) {
     for (const bad of [undefined, null, false, '55', NaN, Infinity, -Infinity, -1])
-      assert.equal(validateAirspeedProfile({ ...profile, references: { ...profile.references, [key]: bad } }), null);
+      assert.equal(normalizeAirspeedProfile({ ...profile, references: { ...profile.references, [key]: bad } }), null);
   }
   // Unknown additive fields are ignored, and normalized data does not share mutable input objects.
   const input = structuredClone(profile); input.extra = 123;
-  const normalized = validateAirspeedProfile(input);
+  const normalized = normalizeAirspeedProfile(input);
+  assert.notStrictEqual(normalized, input);
+  assert.notStrictEqual(normalized.references, input.references);
+  input.vne_kt = 999;
   input.references.vr_kt = 1;
   assert.deepEqual(normalized, profile);
 });
@@ -50,6 +55,22 @@ test('five configured ranges include parallel flap and normal ranges at independ
     [109.99, ['normal']], [110, ['caution']], [110.01, ['caution']],
     [139.99, ['caution']], [140, ['overspeed']], [140.01, ['overspeed']],
   ]) assert.deepEqual(ranges.filter(r => r.min <= speed && speed < r.max).map(r => r.name), expected);
+});
+
+test('unbounded overspeed ranges clip to the tape while invalid coordinates remain invalid', () => {
+  const tape = { centerY: 77, clipTopY: 1, clipBottomY: 137 };
+  const overspeed = speedRanges(profile).find(range => range.name === 'overspeed');
+  for (const [ias, expected] of [[110, { y: 1, height: 0 }],
+    [140, { y: 1, height: 76 }], [150, { y: 1, height: 116 }], [999, { y: 1, height: 136 }]]) {
+    assert.deepEqual(rangeBounds(ias, overspeed, tape), expected);
+  }
+  assert.deepEqual(rangeBounds(75, { min: 0, max: Infinity }, tape), { y: 1, height: 136 });
+  assert.deepEqual(rangeBounds(75, { min: -Infinity, max: Infinity }, tape), { y: 1, height: 136 });
+  for (const bounds of [rangeBounds(NaN, overspeed, tape),
+    rangeBounds(140, overspeed, { ...tape, centerY: NaN })]) {
+    assert.ok(Number.isNaN(bounds.y));
+    assert.ok(Number.isNaN(bounds.height));
+  }
 });
 
 test('source acceleration predicts six seconds and separates actual overspeed from approaching VNE', () => {
@@ -80,11 +101,11 @@ test('fallback references stay compact and colliding labels retain their exact s
   for (const [value, expected] of [[55, '55'], [55.123456789, '55.1'], [0.01, '<0.1'],
     [1e-300, '<0.1'], [998.99, '999'], [999, '999'], [1234.5678, 'OVR'], [Number.MAX_VALUE, 'OVR']])
     assert.equal(referenceReadout(value), expected);
-  const ordinary = referenceGeometry(75, [55, 65, 75, 90], 200, 1, 383);
+  const ordinary = placeReferenceLabels(75, [55, 65, 75, 90], { centerY: 200, clipTopY: 1, clipBottomY: 383 });
   assert.deepEqual(ordinary.map(p => p.labelPosition), [280, 240, 200, 140]);
   for (const values of [[60, 60, 60, 60], [60, 60.1, 60.2, 60.3]]) {
     for (const ias of [44, 60, 74]) {
-      const positions = referenceGeometry(ias, values, 77, 1, 137);
+      const positions = placeReferenceLabels(ias, values, { centerY: 77, clipTopY: 1, clipBottomY: 137 });
       const visible = positions.filter(p => p.visible).sort((a, b) => a.labelPosition - b.labelPosition);
       positions.forEach((p, i) => assert.equal(p.position, 77 + (ias - values[i]) * 4));
       assert.ok(visible.every(p => p.labelPosition >= 9 && p.labelPosition <= 129));

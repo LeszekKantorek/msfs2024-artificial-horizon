@@ -1,6 +1,6 @@
 // Development only: implemented instruments plus illustrations of future features.
 import { pfdLayout } from '/layout.js';
-import { svgElement } from '/svg.js';
+import { svgElement } from '/helpers.js';
 
 const svg = document.querySelector('svg');
 const instrument = document.querySelector('.instrument');

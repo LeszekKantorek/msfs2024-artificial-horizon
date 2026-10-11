@@ -2,13 +2,14 @@
 
 use std::{future::Future, io, net::SocketAddr};
 
-use axum::{Json, Router, http::header, response::Html, routing::get};
+use axum::{Json, Router, routing::get};
 use serde::Serialize;
 use tokio::net::TcpListener;
 
 use crate::telemetry::{self, Publisher, Subscription};
 use crate::{Config, ConfigError};
 
+mod assets;
 mod connection;
 mod sse;
 
@@ -100,129 +101,7 @@ impl Server {
 }
 
 pub fn router() -> Router {
-    Router::new()
-        .route(
-            "/airspeed.js",
-            get(|| async {
-                (
-                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
-                    include_str!("../../web/airspeed.js"),
-                )
-            }),
-        )
-        .route(
-            "/layout.js",
-            get(|| async {
-                (
-                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
-                    include_str!("../../web/layout.js"),
-                )
-            }),
-        )
-        .route(
-            "/panel.js",
-            get(|| async {
-                (
-                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
-                    include_str!("../../web/panel.js"),
-                )
-            }),
-        )
-        .route(
-            "/frame-scheduler.js",
-            get(|| async {
-                (
-                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
-                    include_str!("../../web/frame-scheduler.js"),
-                )
-            }),
-        )
-        .route(
-            "/fixed-symbols.js",
-            get(|| async {
-                (
-                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
-                    include_str!("../../web/fixed-symbols.js"),
-                )
-            }),
-        )
-        .route(
-            "/slip-skid.js",
-            get(|| async {
-                (
-                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
-                    include_str!("../../web/slip-skid.js"),
-                )
-            }),
-        )
-        .route(
-            "/turn-rate.js",
-            get(|| async {
-                (
-                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
-                    include_str!("../../web/turn-rate.js"),
-                )
-            }),
-        )
-        .route(
-            "/status.js",
-            get(|| async {
-                (
-                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
-                    include_str!("../../web/status.js"),
-                )
-            }),
-        )
-        .route(
-            "/svg.js",
-            get(|| async {
-                (
-                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
-                    include_str!("../../web/svg.js"),
-                )
-            }),
-        )
-        .route(
-            "/horizon.js",
-            get(|| async {
-                (
-                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
-                    include_str!("../../web/horizon.js"),
-                )
-            }),
-        )
-        .route(
-            "/",
-            get(|| async { Html(include_str!("../../web/index.html")) }),
-        )
-        .route(
-            "/styles.css",
-            get(|| async {
-                (
-                    [(header::CONTENT_TYPE, "text/css; charset=utf-8")],
-                    include_str!("../../web/styles.css"),
-                )
-            }),
-        )
-        .route("/health", get(|| async { Json(Health { status: "ok" }) }))
-        .route(
-            "/app.js",
-            get(|| async {
-                (
-                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
-                    include_str!("../../web/app.js"),
-                )
-            }),
-        )
-        .route(
-            "/telemetry-client.js",
-            get(|| async {
-                (
-                    [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
-                    include_str!("../../web/telemetry-client.js"),
-                )
-            }),
-        )
+    assets::router().route("/health", get(|| async { Json(Health { status: "ok" }) }))
 }
 
 /// Serve one shared telemetry source; each request owns a latest-value subscription.

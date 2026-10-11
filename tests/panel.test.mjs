@@ -19,12 +19,16 @@ test('all render methods receive the same complete read-only frame', () => {
     futureField: 123,
   });
   const attributes = {};
-  const panel = composePanel({ setAttribute: (name, value) => { attributes[name] = value; } }, instruments, {
+  const clipAttributes = {};
+  const panel = composePanel({ setAttribute: (name, value) => { attributes[name] = value; },
+    querySelector: () => ({ setAttribute: (name, value) => { clipAttributes[name] = value; } }),
+  }, instruments, {
     render: frame => received.push(frame), invalidate: reason => invalidated.push(reason),
   });
   const layout = pfdLayout(320, 440);
   panel.resize(layout); panel.render(frame); panel.invalidate('stale');
   assert.equal(attributes.viewBox, '0 0 320 440');
+  assert.deepEqual(clipAttributes, layout.attitude);
   assert.equal(received.length, 4);
   assert.ok(received.every(value => value === frame));
   assert.ok(resized.every(value => value === layout));
@@ -68,7 +72,10 @@ test('expiry during resize obscures the panel without painting or restoring an o
   const h = statusHarness();
   let now = 0, callback;
   const drawn = [], resized = [];
-  const panel = composePanel({ setAttribute() {} }, [{
+  const clipAttributes = {};
+  const panel = composePanel({ setAttribute() {},
+    querySelector: () => ({ setAttribute: (name, value) => { clipAttributes[name] = value; } }),
+  }, [{
     resize: layout => resized.push(layout), render: frame => drawn.push(frame),
   }], h.view);
   const scheduler = createFrameScheduler({ panel, now: () => now,
@@ -79,7 +86,9 @@ test('expiry during resize obscures the panel without painting or restoring an o
   callback();
   assert.equal(drawn.length, 1);
   now = 500;
-  scheduler.resize(pfdLayout(568, 204)); callback();
+  const expiredLayout = pfdLayout(568, 204);
+  scheduler.resize(expiredLayout); callback();
+  assert.deepEqual(clipAttributes, expiredLayout.attitude);
   assert.equal(drawn.length, 1);
   assert.equal(h.get('.instrument').dataset.available, 'false');
   assert.equal(h.get('.instrument').dataset.state, 'stale');

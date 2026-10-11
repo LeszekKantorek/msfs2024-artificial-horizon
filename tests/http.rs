@@ -18,16 +18,62 @@ async fn embedded_page_assets_and_liveness_match_the_contract() {
             "createTelemetryClient",
         ),
         (
-            "/horizon.js",
+            "/horizon/index.js",
             "text/javascript; charset=utf-8",
             "createHorizon",
         ),
         (
-            "/airspeed.js",
+            "/horizon/world.js",
+            "text/javascript; charset=utf-8",
+            "createWorld",
+        ),
+        (
+            "/horizon/pitch-scale.js",
+            "text/javascript; charset=utf-8",
+            "createPitchScale",
+        ),
+        (
+            "/horizon/bank-pointer.js",
+            "text/javascript; charset=utf-8",
+            "createBankPointer",
+        ),
+        (
+            "/airspeed/index.js",
             "text/javascript; charset=utf-8",
             "createAirspeed",
         ),
+        (
+            "/airspeed/ias.js",
+            "text/javascript; charset=utf-8",
+            "createIas",
+        ),
+        (
+            "/airspeed/ground-speed.js",
+            "text/javascript; charset=utf-8",
+            "createGroundSpeed",
+        ),
+        (
+            "/airspeed/tape.js",
+            "text/javascript; charset=utf-8",
+            "createTape",
+        ),
+        (
+            "/airspeed/readout.js",
+            "text/javascript; charset=utf-8",
+            "createReadout",
+        ),
+        (
+            "/airspeed/references.js",
+            "text/javascript; charset=utf-8",
+            "createReferences",
+        ),
+        (
+            "/airspeed/helpers.js",
+            "text/javascript; charset=utf-8",
+            "speedState",
+        ),
         ("/layout.js", "text/javascript; charset=utf-8", "pfdLayout"),
+        ("/helpers.js", "text/javascript; charset=utf-8", "clamp"),
         ("/panel.js", "text/javascript; charset=utf-8", "createPanel"),
         (
             "/frame-scheduler.js",
@@ -35,9 +81,19 @@ async fn embedded_page_assets_and_liveness_match_the_contract() {
             "createFrameScheduler",
         ),
         (
-            "/fixed-symbols.js",
+            "/fixed-symbols/index.js",
             "text/javascript; charset=utf-8",
             "createFixedSymbols",
+        ),
+        (
+            "/fixed-symbols/bank-scale.js",
+            "text/javascript; charset=utf-8",
+            "createBankScale",
+        ),
+        (
+            "/fixed-symbols/aircraft.js",
+            "text/javascript; charset=utf-8",
+            "createAircraft",
         ),
         (
             "/slip-skid.js",
@@ -54,9 +110,23 @@ async fn embedded_page_assets_and_liveness_match_the_contract() {
             "text/javascript; charset=utf-8",
             "createStatusView",
         ),
-        ("/svg.js", "text/javascript; charset=utf-8", "svgElement"),
         (
-            "/telemetry-client.js",
+            "/helpers.js",
+            "text/javascript; charset=utf-8",
+            "svgElement",
+        ),
+        (
+            "/helpers.js",
+            "text/javascript; charset=utf-8",
+            "setAttributes",
+        ),
+        (
+            "/telemetry/validation.js",
+            "text/javascript; charset=utf-8",
+            "normalizeOptionalIndications",
+        ),
+        (
+            "/telemetry/client.js",
             "text/javascript; charset=utf-8",
             "EventSource",
         ),
@@ -87,6 +157,14 @@ async fn static_router_does_not_create_a_telemetry_source() {
         "/layout.html",
         "/layout-fixture.js",
         "/tests/layout-fixture.js",
+        "/math.js",
+        "/svg.js",
+        "/telemetry-client.js",
+        "/airspeed.js",
+        "/horizon.js",
+        "/fixed-symbols.js",
+        "/airspeed/calculations.js",
+        "/horizon/calculations.js",
     ] {
         let response = router()
             .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())

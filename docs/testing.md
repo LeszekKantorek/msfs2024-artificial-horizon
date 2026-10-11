@@ -41,7 +41,8 @@ Automated lifecycle tests cover normal shutdown and cancellation:
 * Cancellation tests abort a task or drop a polled server future after publication with two active SSE clients.
 * Check producer/subscription closure, client EOF, and port reuse after cancellation.
 * Permit the final pending sample before subscription closure.
-* Public configuration rejects port zero; internal listener tests use OS-assigned ports to avoid collisions.
+* Public configuration rejects port zero.
+* Internal listener tests use OS-assigned ports to avoid collisions.
 
 > Desktop checks do not establish real-phone or simulator compatibility.
 
@@ -69,7 +70,8 @@ cargo build --locked --release
 CI runs these checks in the `Build & Test` job without restoring artifacts from previous workflow runs.
 Cargo commands reuse artifacts in `target` within the job and during local development.
 The final step builds the release executable at `target/x86_64-pc-windows-msvc/release/msfs2024-artificial-horizon.exe`.
-Tests use the debug profile; the release build compiles optimized artifacts separately.
+Tests use the debug profile.
+The release build compiles optimized artifacts separately.
 
 > The Windows SimConnect module contains no SDK integration. Passing these checks does not establish simulator compatibility.
 > Future SDK-dependent checks require documented prerequisites and distribution constraints.
@@ -110,9 +112,13 @@ These checks run in Windows CI.
 | Socket unit tests | Subscriber release and write/shutdown deadlines with bounded duplex transport |
 | Local TCP | Two active SSE connections and port reuse after shutdown |
 | Browser controller | Independent fixtures, one EventSource/retry timer, two-second retry, sequence reset, freshness, malformed messages, suspend/resume |
-| Horizon | Pose signs, nested transforms, angle bounds, local-to-panel geometry |
+| Telemetry validation | Direct internal-module tests, independent optional fields, old snapshots, copied profile/reference values, and unbounded finite speed input |
+| Sample callbacks | Current status before attitude before full sample, with separate attitude copies, original attitude-only shape, and matching deadlines |
+| DOM-free imports | `tests/helpers.test.mjs` imports visual owners/helpers/telemetry without `document` and exercises meaningful pure behavior |
+| Speed calculations | `tests/airspeed.test.mjs` and `tests/airspeed-ranges.test.mjs` import readout, tape, references, IAS, and shared speed helpers directly |
+| Horizon | `tests/horizon.test.mjs` imports `attitudeTransforms` from `web/horizon/index.js` for independent pose signs and extreme/default transforms |
 | Frame scheduler | Latest-frame/layout coalescing, coherent resize and render, expiry before draw, cancellation on data loss, resize without renewing age, fresh identical values |
-| Panel/status | Complete read-only frame delegation, status without a sample, immediate stale obscuring, independent source/transport state and accessible announcements |
+| Panel/status | Complete read-only frame delegation, shared attitude clip through resize/expiry, status without a sample, stale obscuring, separate source/transport state and announcements |
 | Coordinated turn | Typed bounds, independent optional failures, old snapshots, shared sample age, +/-3 deg/s, resize without refreshing age |
 
 ### Desktop exploration
@@ -232,12 +238,12 @@ No fixture page, script, or future instrument values enter the Rust binary.
 
 | Check | Expected result |
 | --- | --- |
-| 320x240, 326x246, 320x480, 390x664, 568x240, 667x280, 844x320 CSS px | No scrolling or indication-content collisions; readable central attitude and supplemental values |
+| 320x240, 326x246, 320x480, 390x664, 568x240, 667x280, 844x320 CSS px | No scrolling or indication-content collisions, with readable central attitude and supplemental values |
 | Minimum usable area | 320 CSS px wide and 240 CSS px high after browser bars/safe areas |
-| Rotation / viewport changes during streaming | Preserve values and sample deadline; round ball and undistorted symbols |
-| Pitch scale / warnings | 2.5-degree intervals; red chevrons start at +60/-40 scale positions and point toward the horizon |
-| Slip/skid | Center and both directions; a local unavailable mark for missing or invalid data |
-| Turn rate | +/-3 deg/s reaches the standard-rate marks; beyond +/-6 deg/s shows an edge arrow |
+| Rotation / viewport changes during streaming | Preserve values and sample deadline, with a round ball and undistorted symbols |
+| Pitch scale / warnings | 2.5-degree intervals, with red chevrons starting at +60/-40 scale positions and pointing toward the horizon |
+| Slip/skid | Center and both directions, with a local unavailable mark for missing or invalid data |
+| Turn rate | +/-3 deg/s reaches the standard-rate marks, with an edge arrow beyond +/-6 deg/s |
 | Reserved future regions | No fake readings or unfinished instrument scales on the production page |
 
 An optional scripted desktop run uses Playwright with an installed browser.
@@ -249,19 +255,45 @@ npm install --prefix .local/browser --no-save playwright
 $env:PLAYWRIGHT_MODULE = Join-Path $PWD '.local/browser/node_modules/playwright'
 $env:BROWSER_CHANNEL = 'msedge'
 node tests/pfd-browser.mjs
-node tests/pfd-runtime-browser.mjs
+node tests/pfd-runtime-browser.mjs target/x86_64-pc-windows-msvc/release/msfs2024-artificial-horizon.exe
 ```
 
 | Script | Input | Checks | Output |
 | --- | --- | --- | --- |
-| `pfd-browser.mjs` | Real web assets and isolated loopback fixture on an OS-assigned port | Viewports, poses, partial/old snapshots, stale states, resize, lifecycle, node identity, read-only frames, and clipping-aware background coverage | Screenshots under `.local/pfd-browser/`, including opacity candidates in both orientations against sky and ground |
-| `pfd-runtime-browser.mjs` | Compiled Windows binary from the required build | Embedded assets, Rust demo SSE, coherent bank/turn state within 25 seconds, and restart recovery without page reload | `.local/pfd-runtime-landscape.png` |
+| `pfd-browser.mjs` | Real web assets and isolated loopback fixture on an OS-assigned port | Viewports, poses, partial/old snapshots, stale states, resize, lifecycle, identity, frozen frames, hierarchy/paint order, shared clips, and background coverage | Screenshots under `.local/pfd-browser/`, including opacity candidates in both orientations against sky and ground |
+| `pfd-runtime-browser.mjs` | Fresh compiled release binary passed explicitly | All 24 imported modules with HTTP 200/JavaScript MIME, Rust demo SSE, coherent bank/turn state within 25 seconds, and restart recovery without reload | `.local/pfd-runtime-landscape.png` |
 
 The scripted geometry checks include these regression cases:
 
 * The coverage check must reject a deliberately narrowed background clip and pass after restoration.
 * Check pitch geometry immediately after `ResizeObserver`, before the next animation callback.
 * The 326x246 viewport provides a 320x240 usable panel with the normal 3-pixel margins.
+* Import changes require matching Rust embedded routes, fixture allowlist/MIME, HTTP asset tests, and the runtime expected-module set.
+* Check the shared panel attitude clip used by the bank pointer and fixed symbols, including resize while data is expired.
+* Check matching world/pitch/chevron transforms, fixed aircraft/outline paths, and original SVG hierarchy across poses and resize.
+
+Asset checks cover the current module graph:
+
+* The [architecture tree](architecture.md#intended-source-layout) lists the current 24 runtime modules.
+* `src/http/assets.rs` registers 26 embedded files: the 24 modules, HTML, and CSS.
+* `tests/http.rs` checks the explicit embedded routes and JavaScript MIME.
+* Both browser scripts check retired routes return 404 without compatibility facades.
+
+Retired paths map to these current owners:
+
+| Retired route | Current owner |
+| --- | --- |
+| `/math.js`, `/svg.js` | `/helpers.js` |
+| `/telemetry-client.js` | `/telemetry/client.js` |
+| `/airspeed.js` | `/airspeed/index.js` and its visual objects |
+| `/horizon.js`, `/fixed-symbols.js` | Their feature directories |
+| `/airspeed/calculations.js`, `/horizon/calculations.js` | Pure functions in the implementing visual objects |
+
+Pure checks follow the existing module boundaries:
+
+* Pure functions remain testable from their visual modules in Node without DOM.
+* Separate calculation files are not required for tests.
+* Check observable boundaries, carry behavior, references, warnings, clipping, and recovery instead of duplicating private implementation formulas.
 
 > Review the screenshots: geometry checks alone do not establish readability.
 > Synthetic padding and page events do not establish actual cutout, browser-bar, or background behavior on phones.
@@ -312,7 +344,7 @@ These tests require no simulator or SDK.
 | --- | --- |
 | Cycle | Nine poses over 18 seconds, each held for two seconds |
 | Poses | Level, nose up/down, left/right bank, two combined attitudes, then +70/-50 pitch |
-| Coordinated turn | Centered and both-direction slip/skid; coordinated and uncoordinated +/-3 deg/s turns |
+| Coordinated turn | Centered and both-direction slip/skid, with coordinated and uncoordinated +/-3 deg/s turns |
 | IAS/GS | 0–2 s: zero. 2–8 s: acceleration to IAS 150 / GS 170 kt. 8–10 s: hold. 10–16 s: deceleration to zero. 16–18 s: zero |
 | Sampling | One fresh sample every 50 ms, including unchanged poses. Skip missed ticks |
 | Initial state | `waiting`, then `live` on fresh data |
@@ -393,6 +425,7 @@ The [contract](telemetry-contract.md#optional-airspeed-ranges-and-trend) defines
 | --- | --- |
 | Profile | Five positive, strictly increasing thresholds and four named positive references at or below VNE. Invalid configuration affects only its indications |
 | Ranges | Red below 40, white 40-85, green 50-110, yellow 110-140, red/white from 140 kt. White and green appear in parallel |
+| Range clipping | Unbounded overspeed ranges clip to the tape. Literal expectations cover infinite bounds and preserve `NaN` coordinates without zero substitution |
 | Boundaries | Values below, at, and above every threshold retain coherent geometry. Marker positions match configured speeds |
 | Trend | Six-second prediction comes from source acceleration. Positive, negative, zero, missing, malformed, and overflowing calculations have independent expectations |
 | VNE | IAS 140 kt makes the pointer red. IAS 110 with +5 kt/s predicts exactly 140 and makes digits yellow. Current readings never become predictions |
@@ -405,6 +438,22 @@ The [contract](telemetry-contract.md#optional-airspeed-ranges-and-trend) defines
 
 The browser checks use independent expected positions and inspect computed colors, SVG bounds, clipping edges, and node identity.
 Screenshots include `speed-approaching-vne.png`, `speed-at-vne.png`, and fallback views under `.local/pfd-browser/`.
+
+`checkAirspeedAvailabilityTransitions` in `tests/airspeed-browser-checks.mjs` checks 40 loss/resize/recovery transitions through `pfd-browser.mjs`:
+
+| Scenario | Coverage |
+| --- | --- |
+| Ten-step sequence | IAS loss, profile loss, combined loss with IAS recovering first, and combined loss with profile recovering first |
+| Initial states | Actual overspeed and predictive warning |
+| Pages | `/` and `/layout.html` |
+| Resize | 844x320 to 326x246, alternating with 320x480 during recovery |
+
+Transition assertions preserve independent availability and state resets:
+
+* Check computed colors/visibility, state resets, exact replacement-profile ARIA, fresh fractional digits/tape offsets, and fallback/unit/badge behavior.
+* GS remains independently available with nonzero painted bounds inside the panel and viewport.
+* Production SVG node identity remains stable.
+* The development fixture's recreated future illustrations are excluded from that identity check.
 
 ### Real-phone checks for #22
 
@@ -454,7 +503,7 @@ Real-phone acceptance requires passing records from both devices. Desktop checks
 | Attitude/turn geometry | Pitch/bank signs and extremes, slip/skid both ways, +/-3 deg/s turns |
 | Tape geometry | IAS/altitude rolling digits, speed boundaries, six-second trend, altitude bugs outside tape, VSI limits, heading wrap at 359/0 |
 | Mobile layout | From 320 CSS px, portrait, short landscape, safe areas, browser-bar changes, rotation while streaming |
-| Layout acceptance | No scrolling, indication-content collisions, clipped warnings, or distorted symbols; intentional background overlap is allowed |
+| Layout acceptance | No scrolling, indication-content collisions, clipped warnings, or distorted symbols, with intentional background overlap allowed |
 | Lifecycle | Wi-Fi recovery, server restart, lock/background/resume, source pause/stale/invalid states, partial failures |
 | Recovery | Fresh sample before valid readings return. No duplicate subscription |
 
@@ -467,7 +516,11 @@ Real-phone acceptance requires passing records from both devices. Desktop checks
 
 ## Modular and layered PFD acceptance
 
-* #36 implements modular rendering; #37 implements layer containers and full-panel background coverage.
+These checks cover instrument composition, layers, and visual objects:
+
+* #36 implements modular rendering.
+* #37 implements layer containers and full-panel background coverage.
+* #56 composes visual objects and keeps object-specific calculations with their implementations under [ADR 0005](adr/0005-visual-object-composition.md).
 * Opacity acceptance requires real-phone results.
 * Run the required automated checks above for each implementation PR.
 * Record real iOS Safari and Android Chrome results separately from desktop evidence.
@@ -477,25 +530,41 @@ Real-phone acceptance requires passing records from both devices. Desktop checks
 | Owner | Checks |
 | --- | --- |
 | #36: modules | Preserve the current image, pose signs, combined transforms, slip/skid, turn rate, and local unavailable indications |
-| #36: lifecycle | Coalesce latest samples; preserve deadlines through resize; cancel invalid work; renew freshness for unchanged fresh values |
-| #36: recovery | Expire without new samples; reject an expired sample before paint; recover after reconnect and resume only with fresh data |
+| #36: lifecycle | Coalesce latest samples, preserve deadlines through resize, cancel invalid work, and renew freshness for unchanged fresh values |
+| #36: recovery | Expire without new samples, reject an expired sample before paint, and recover after reconnect and resume only with fresh data |
 | #36: assets | Serve every imported module through the compiled Rust server and the development fixture server |
 | #36: DOM ownership | Preserve SVG node identity across samples and resize. Check actual transformed geometry, not only transform strings |
-| #37: layers | Fill the entire panel with sky/ground; clip pitch markings centrally; preserve fixed references and layer order |
-| #37: readability | Check digits, ticks, and value windows against sky and ground; record the selected background opacity |
-| #37: bounds | Permit intentional background overlap; reject content collisions; include painted strokes in bounds checks |
-| #37: status | No top bar or success labels; no DEMO label; unavailable reasons on an opaque full-panel cover; accessible state changes |
-| #37: invalidation | Obscure the expanded background on global loss; keep optional failures local |
+| #37: layers | Fill the entire panel with sky/ground, clip pitch markings centrally, and preserve fixed references and layer order |
+| #37: readability | Check digits, ticks, and value windows against sky and ground, and record the selected background opacity |
+| #37: bounds | Permit intentional background overlap, reject content collisions, and include painted strokes in bounds checks |
+| #37: status | No top bar, success labels, or DEMO label, with unavailable reasons on an opaque full-panel cover and accessible state changes |
+| #37: invalidation | Obscure the expanded background on global loss, keeping optional failures local |
+| #56: ownership | Same complete read-only frame at instrument entry points, concrete child inputs, immediate-parent shared hosts/clips, and no visual frame cache/timer |
+| #56: composition | Preserve hierarchy, defs/paint order, SVG identity, ARIA, common attitude clip, and coherent once-per-frame transforms |
+| #56: recovery | Repeat IAS/profile loss during resize and both recovery orders, with independently painted GS and reset warnings/references |
+| #56: assets | Verify all 24 modules through explicit Rust/fixture registration and HTTP/MIME checks, with all eight retired routes returning 404 |
+
+Record refactor validation against the final revision:
+
+1. Preserve baseline screenshots.
+2. Record the tested commit, environment, complete logs, native exits, and raw comparisons.
+3. Explain every screenshot difference with quantitative and visual evidence.
+4. Run fresh checks on the final revision independently of historical stage results.
+5. Keep actual iOS Safari and Android Chrome acceptance unchecked until passing device evidence exists.
+6. Record remaining checks under the issue and PR `Additional verification`.
 
 Use the development fixture to assess layout and compare opacity on real phones:
 
-1. Open the full 18-element development fixture; keep unfinished readings out of production.
+1. Open the full 18-element development fixture.
 2. Compare `/layout.html?opacity=0.50`, `0.65`, and `0.80` against sky and ground.
 3. Record the selected value and real-device evidence in #37.
 4. Check 320 CSS px page width and 240 CSS px usable height after browser bars and safe areas, as defined in the brief.
 5. Check portrait, short landscape, orientation changes, extreme poses, and no scrolling.
 6. Repeat lifecycle checks after geometry changes without renewing the sample deadline.
 
-Later feature slices repeat relevant layer checks with real demo indications.
-#24 additionally tests timed alert cancellation with a controlled monotonic clock.
-#26 collects full-panel acceptance after all preceding instrument steps.
+Later feature slices extend these checks:
+
+* Keep unfinished readings out of production.
+* Repeat relevant layer checks with real demo indications.
+* #24 additionally tests timed alert cancellation with a controlled monotonic clock.
+* #26 collects full-panel acceptance after all preceding instrument steps.

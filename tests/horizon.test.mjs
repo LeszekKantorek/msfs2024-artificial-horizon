@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { attitudeTransforms } from '../web/horizon.js';
+import { attitudeTransforms } from '../web/horizon/index.js';
 
 // Expected transforms are independent of the implementation and reuse source poses.
 test('known poses use the correct signs and local pitch displacement', () => {

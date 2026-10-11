@@ -1,3 +1,7 @@
+export function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
 export function svgElement(name, attributes, text) {
   const element = document.createElementNS('http://www.w3.org/2000/svg', name);
   setAttributes(element, attributes);

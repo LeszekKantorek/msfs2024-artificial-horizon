@@ -40,8 +40,10 @@ flowchart LR
 * Give a dedicated worker ownership of blocking SimConnect callbacks.
 * Send normalized state from that worker to the async runtime.
 * Support Rust builds, runtime, and CI on Windows x64 MSVC only.
-* Reject other targets at the library root; provider modules do not need separate platform gates.
-* Expose no Cargo features from this package; select the source through runtime configuration.
+* Reject other targets at the library root.
+* Provider modules do not need separate platform gates.
+* Expose no Cargo features from this package.
+* Select the source through runtime configuration.
 * Keep SimConnect integration inside the Windows provider module.
 * Keep Windows tests and demo builds independent of the SDK.
 
@@ -73,22 +75,40 @@ src/
     demo.rs
     simconnect.rs           # Windows SDK integration
   http/
-    mod.rs                  # routes and application state
+    mod.rs                  # asset/health composition, telemetry routes, application state
+    assets.rs               # explicit compile-time asset table and registration loop
     sse.rs
 web/
   index.html
   styles.css
-  app.js                    # EventSource, DOM, page lifecycle
+  app.js                    # telemetry, panel, resize, and page lifecycle assembly
+  telemetry/
+    client.js               # EventSource, status, freshness, retries, and lifecycle
+    validation.js           # pure snapshot validation and optional-value normalization
   frame-scheduler.js        # latest-frame scheduling and expiry checks
-  panel.js                  # instrument composition and delegation
-  horizon.js                # local attitude geometry and transforms
-  fixed-symbols.js          # fixed bank scale and aircraft references
-  slip-skid.js               # local slip/skid presentation
-  turn-rate.js               # local turn-rate presentation
-  airspeed.js                # IAS tape, rolling digits, and ground-speed presentation
-  status.js                  # accessible status, and unavailability
-  svg.js                     # shared SVG helpers
-  layout.js                  # responsive instrument regions in CSS pixels
+  panel.js                  # composition, shared attitude clip, and delegation
+  horizon/
+    index.js                # composition, shared origins/clips, pure attitude transforms
+    world.js                # sky, ground, and horizon line
+    pitch-scale.js          # pitch ticks, labels, and extreme-pitch chevrons
+    bank-pointer.js         # moving bank pointer
+  fixed-symbols/
+    index.js                # fixed-symbol composition and common origin
+    bank-scale.js           # fixed bank scale
+    aircraft.js             # aircraft reference and outline
+  slip-skid.js              # local slip/skid presentation
+  turn-rate.js              # local turn-rate presentation
+  airspeed/
+    index.js                # IAS/GS composition and shared GS vertical position
+    ias.js                  # IAS readings/geometry, composition, shared tape host/clip
+    ground-speed.js         # independent GS readout and warning
+    tape.js                 # scale, ranges, and trend
+    readout.js              # window, rolling digits, unit, and IAS warning
+    references.js           # tape markers/leaders and fallback values
+    helpers.js              # shared speed state, display limit, and tape offset
+  status.js                 # accessible status and unavailability
+  helpers.js                # clamp, SVG creation, and attribute updates
+  layout.js                 # responsive instrument regions in CSS pixels
 tests/
   http_sse.rs
   fixtures/                 # known attitudes and lifecycle states
@@ -116,7 +136,8 @@ Providers must not depend on application configuration.
 
 Run the application with the [README procedure](../README.md#start-the-demo).
 Future executables use their own binary names.
-Cargo names the current executable `msfs2024-artificial-horizon`; its entry point remains `src/bin/main.rs`.
+Cargo names the current executable `msfs2024-artificial-horizon`.
+Its entry point remains `src/bin/main.rs`.
 
 * Embed web assets in the release binary.
 * Use a relative, same-origin SSE URL.
@@ -186,16 +207,19 @@ The server owns validated samples and deterministic demo scenarios:
 * `FlightSample::with_airspeed_indications` adds optional configuration and acceleration. Demo configuration is fictional and shared by all clients.
 * `Publisher::publish_sample` uses the existing latest-value channel, sequence, and monotonic age.
 * `Publisher::publish(State)` keeps the attitude-only path and clears all optional indications.
-* `demo::sample` defines nine deterministic two-second segments; `demo::attitude` retains its original seven-pose helper contract.
+* `demo::sample` defines nine deterministic two-second segments.
+* `demo::attitude` retains its original seven-pose helper contract.
 * The same 18-second sample cycle supplies acceleration, a constant-speed segment, and deceleration for independently valued IAS and GS.
 
 The browser validates those samples and presents them within the available panel area:
 
-* `createTelemetryClient` validates optional values independently and calls `onSample` with normalized values or `null` and one expiry deadline.
-* `airspeed.js` renders IAS, GS, configured speed ranges, references, and six-second trend from that same frame, with independent availability.
+* `telemetry/validation.js` validates the snapshot and normalizes optional values independently, including copied profile references.
+* `createTelemetryClient` owns the connection and publishes normalized samples with one expiry deadline.
+* `airspeed/index.js` composes IAS and GS visual objects. Each object owns its readings, geometry, and pure calculations.
 * The existing `onAttitude` callback retains its attitude-only shape.
 * `pfdLayout` allocates instrument regions from available CSS width/height.
-* `frame-scheduler.js` schedules fresh frames; `panel.js` composes instrument modules.
+* `frame-scheduler.js` schedules fresh frames.
+* `panel.js` composes instrument modules.
 * Resize preserves the latest accepted sample and its original deadline.
 * Sky/ground and pitch markings use separate transformed groups with separate screen-space clipping.
 * Future instrument regions contain no readings or scales in the production page.
@@ -204,19 +228,59 @@ The browser validates those samples and presents them within the available panel
 ### Panel boundary
 
 [Panel presentation](pfd-presentation.md) defines the module tree, frame lifecycle, and layer composition.
-[ADR 0004](adr/0004-modular-pfd-presentation.md) records the decision; #36 and #37 own implementation.
+
+The architecture records these distinct changes:
+
+| Record | Boundary |
+| --- | --- |
+| [ADR 0004](adr/0004-modular-pfd-presentation.md), #36 and #37 | Instrument composition and layers |
+| Maintenance [#54](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/54) | Historical separation of pure calculations and validation |
+| [#56](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/56) and [ADR 0005](adr/0005-visual-object-composition.md) | Visual-object composition with object-specific calculations in implementing modules |
+
+The implemented application imports 24 JavaScript modules.
 
 | Module | Responsibility |
 | --- | --- |
 | Application assembly | Connect telemetry, layout, lifecycle, and presentation |
+| Telemetry client | Own EventSource, sequence, retries, expiry, status, and lifecycle |
+| Telemetry validation | Pure envelope validation and independent optional-value normalization |
 | Frame scheduler | Coalesce latest samples, retain deadlines, cancel invalid work |
-| Panel | Compose instruments through resize, render, and invalidate operations |
-| Instruments | Own local geometry, SVG updates, and indication availability |
+| Panel | Compose instruments, own their shared attitude clip, and delegate resize/render/invalidate |
+| Instrument composition | Select required frame fields, own shared origins/hosts/clips, and invoke visual-object operations |
+| Visual objects | Own their nodes, local geometry, SVG updates, and indication availability |
+| Object-specific calculations | Remain in the implementing visual module, including geometry inside its resize operation |
+| Airspeed helpers | Share speed classification between IAS/GS and tape conversion between tape/references |
+| Horizon composition | Derive common attitude transforms once per horizon frame |
+| Helpers | Export clamp, SVG creation, and attribute updates without import-time DOM access |
 | Status presentation | Show source/transport status and obscure invalid data |
 
+Presentation boundaries follow these rules:
+
 * [Panel presentation](pfd-presentation.md#panel-interface-and-frame-lifecycle) owns implemented interfaces and frame rules.
+* [Internal seams](pfd-presentation.md#internal-module-seams) define calculation and validation responsibilities.
 * The internal frame is not a new wire format.
+* Instrument entry points receive the same complete read-only frame.
+* Children receive concrete hosts, geometry, and required readings.
+* Shared hosts and clips belong to their immediate common parent.
+* Children hide their node updates behind operations.
+* Pure calculations and validation import in Node without DOM.
+* Visual objects retain no telemetry frame or timer.
+* Independent consumers justify shared calculation modules.
+* Pure tests alone do not require separate files.
 * Future instrument modules arrive with their feature slices.
+
+Embedded assets have a separate registration boundary:
+
+| Module | Responsibility |
+| --- | --- |
+| `src/http/assets.rs` | Explicit table of 26 literal path/MIME/compile-time body mappings: 24 JavaScript files, HTML, and CSS |
+| `assets::router()` | Register the table through one loop |
+| `src/http/mod.rs` | Compose the asset router and health route, with unchanged telemetry composition |
+
+* Preserve existing paths, MIME types, status codes, response bodies, and GET/HEAD behavior.
+* Keep static routes independent of telemetry.
+* Replaced root and calculation-module routes return 404 without compatibility facades.
+* Add no wildcard routes, directory serving, runtime file access, or dependencies.
 
 ## Library telemetry interface
 
