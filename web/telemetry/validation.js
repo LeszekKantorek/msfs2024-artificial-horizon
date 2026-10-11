@@ -31,6 +31,7 @@ export function normalizeOptionalIndications(value) {
   return {
     altitude_ft: Number.isFinite(value.altitude_ft) ? value.altitude_ft : null,
     selected_altitude_ft: Number.isFinite(value.selected_altitude_ft) ? value.selected_altitude_ft : null,
+    vertical_speed_fpm: Number.isFinite(value.vertical_speed_fpm) ? value.vertical_speed_fpm : null,
     baro_inhg: Number.isFinite(value.baro_inhg) && value.baro_inhg > 0 ? value.baro_inhg : null,
     slip_skid: Number.isFinite(value.slip_skid) && Math.abs(value.slip_skid) <= 1 ? value.slip_skid : null,
     turn_rate_dps: Number.isFinite(value.turn_rate_dps) ? value.turn_rate_dps : null,

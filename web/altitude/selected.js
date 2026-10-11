@@ -1,10 +1,10 @@
 import { svgElement, setAttributes, clamp } from '../helpers.js';
-import { altitudeState } from './readout.js';
+import { altitudeState, ALTITUDE_POINTER } from './readout.js';
 import { tickPosition } from './tape.js';
 
 const FLASH_DURATION = 5000;
 const FLASH_PHASE = 250;
-const BUG_HALF_HEIGHT = 6.5;
+const BUG_HALF_HEIGHT = ALTITUDE_POINTER.halfHeight + 0.5;
 
 export function initialAlert() {
   return { target: null, error: null, approached: false, captured: false,
@@ -45,12 +45,14 @@ export function selectedBugPosition(altitude, target, height) {
 }
 
 export function createSelectedAltitude(parent, bugHost) {
+  const { tip, shoulder, halfHeight } = ALTITUDE_POINTER;
+  const symbol = `M 0 ${-halfHeight} H ${shoulder} L ${tip} 0 L ${shoulder} ${halfHeight} H 0 Z`;
   const group = svgElement('g', { id: 'selected-altitude', 'data-state': 'unavailable' });
   const background = svgElement('rect', { class: 'selected-altitude-window' });
-  const icon = svgElement('path', { class: 'selected-altitude-symbol', d: 'M 3 10 H 8 V 13 L 11 16 L 8 19 V 22 H 3 Z' });
+  const icon = svgElement('path', { class: 'selected-altitude-symbol', d: symbol, transform: 'translate(3 16)' });
   const value = svgElement('text', { id: 'selected-altitude-value', class: 'selected-altitude-value' }, 'X');
   group.append(background, icon, value); parent.append(group);
-  const bug = svgElement('path', { id: 'selected-altitude-bug', class: 'selected-altitude-bug', d: 'M 1 -6 H 3 L 6 0 L 3 6 H 1 Z' });
+  const bug = svgElement('path', { id: 'selected-altitude-bug', class: 'selected-altitude-bug', d: symbol });
   bugHost.append(bug);
   let geometry;
   let alert = initialAlert();

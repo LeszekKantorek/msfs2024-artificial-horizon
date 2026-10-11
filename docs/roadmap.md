@@ -54,7 +54,7 @@ flowchart LR
 | 5 | [#22 Speed ranges, V-speeds and trend](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/22) | #21 | Demo profile, references, trend and VNE indications |
 | 6 | [#23 Altitude and barometric setting](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/23) | #37 | Altitude tape/readout and baro |
 | 7 | [#24 Selected altitude and alerts](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/24) | #23 | Target bug/readout and approach/deviation alerts |
-| 8 | [#25 Vertical speed](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/25) | #23 | VSI scale and indication |
+| 8 | [#25 Vertical speed](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/25) | #23 | Compact VSI readout below current altitude and source-rate altitude trend |
 | 9 | [#26 Heading, track and selected direction](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/26) | #37 | PFD direction tape and accumulated full-panel demo acceptance |
 
 * Deliver in steps 1-9 order.

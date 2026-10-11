@@ -7,7 +7,7 @@ Delivery order: [roadmap](roadmap.md). Validation: [testing](testing.md#modular-
 ## Current implementation and planned changes
 
 The panel implements attitude, slip/skid, and turn rate from #20, IAS and GS from #21, and ranges/trend from #22.
-It also implements altitude/pressure from #23 and selected-altitude alerts from #24.
+It also implements altitude/pressure from #23, selected-altitude alerts from #24, and vertical speed from #25.
 #36 separates rendering from scheduling. #37 implements layers and full-panel background coverage.
 Maintenance [#54](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/54) introduced internal calculation and validation seams.
 [#56](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/56) composes visual objects and places object-specific calculations with their implementing modules:
@@ -23,7 +23,8 @@ Maintenance [#54](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/
 | `fixed-symbols/` | Compose fixed bank scale and aircraft reference with outline |
 | `slip-skid.js`, `turn-rate.js` | Local geometry, readings, and indication availability |
 | `airspeed/` | Compose IAS and independent GS, with SVG operations and calculations in each visual object |
-| `altitude/` | Compose altitude tape, rolling readout, and independent pressure setting with local calculations |
+| `altitude/` | Compose the tape, rolling readout, selected target/alerts, pressure setting and compact VSI |
+| `altitude/vsi.js` | Compact numeric readout, local window geometry, and independent availability |
 | `status.js` | Accessible status, and global unavailability |
 | `helpers.js` | Named clamp, SVG creation, and attribute updates without import-time DOM access |
 
@@ -46,7 +47,11 @@ Panel
 |   |   |-- Readout (window, digits, unit, warning)
 |   |   `-- References (markers, leaders, fallback values)
 |   `-- Ground speed
-|-- Altitude (tape, rolling readout, pressure setting)
+|-- Altitude
+|   |-- Tape and rolling readout
+|   |-- Pressure setting
+|   |-- Selected altitude and alerts
+|   `-- Vertical speed
 |-- Slip/skid
 |-- Turn rate
 |-- Fixed symbols (bank scale, aircraft and outline)
@@ -55,7 +60,7 @@ Panel
 
 * A module does not require one file per graphic element.
 * Add future instruments in their feature issues, without empty implementations or production placeholder readings.
-* Vertical speed and heading/track remain planned in #25-#26.
+* Heading/track remains planned in #26.
 
 | Owner | Responsibility |
 | --- | --- |
@@ -280,6 +285,7 @@ panel.invalidate(reason);
 | `airspeed_profile`, `ias_acceleration_ktps` | Independently normalized configuration and source acceleration, or `null` |
 | `altitude_ft`, `baro_inhg` | Independently normalized signed altitude and positive pressure setting, or `null` |
 | `selected_altitude_ft` | Independently normalized signed selected altitude, or `null` |
+| `vertical_speed_fpm` | Independently normalized signed ft/min, or `null` |
 | `expiresAt` | Original monotonic expiry deadline |
 | `status` | Copied `source`, `transport`, and `state` values |
 
@@ -405,6 +411,72 @@ Keep indications readable across the full panel:
 * Use the full 18-element development fixture before later instruments reduce usable space.
 * Preserve responsive sizing, safe areas, and the minima in the [brief](project-brief.md#mobile-presentation).
 
+## Vertical speed
+
+`altitude/index.js` composes the stateless `vsi.js` object inside the altitude group:
+
+* A 51-by-27 CSS px rectangle sits below the current-altitude window, with aligned right borders and three pixels between painted strokes.
+* The window shares altitude's monospace font family, text color, background and one-pixel border.
+* VSI uses 13 CSS px text, one pixel smaller than altitude's 14 CSS px text.
+* The value aligns with the right edge of altitude's digits, using feet per minute without a visible unit label or arrow.
+* The altitude readout supplies that edge from the measured bounds of its two-digit monospace drum during resize.
+* VSI accounts for glyph bounds when positioning text, including the wider unavailable `X`.
+* Altitude keeps its existing tape width beside a four-pixel trend lane at the right edge.
+* VSI owns its formatting, window geometry and availability, with altitude delegating resize, rendering and invalidation.
+* The tape uses VSI's local window bounds to hide whole intersecting labels and shorten intersecting ticks with two pixels of clearance.
+* The selected-altitude bug paints below both opaque windows and remains visible to their left.
+
+The local window position uses altitude tape width `W` and height `H`:
+
+```text
+x = W - 1 - 51
+y = H/2 + 14 + 1 + 3
+```
+
+Reading and availability follow these rules:
+
+| Input | Presentation |
+| --- | --- |
+| Raw value within -9999 to +9999 ft/min | Rounded whole ft/min, with `+` for positive and `-` for negative readings |
+| Rounded positive or negative zero | `0` |
+| Raw value beyond the numeric limit | White `+OVR` or `-OVR` in the same window |
+| Missing or invalid value | Red `X` in the same window |
+| Missing altitude or pressure | Valid VSI remains available |
+
+Bounds and availability use raw values before rounding.
+The accessible label includes the raw value and feet per minute.
+VSI uses the common frame and expiry deadline without a timer, interpolation, filtering, or sample history.
+The full layout fixture uses the same module as production.
+
+Garmin G5 Guide 190-01112-12 Rev. 2, section 3.3.9, provides the vertical-speed reference.
+The compact numeric window and its numeric limits are application design decisions.
+
+## Altitude trend
+
+`altitude/index.js` composes the stateless `trend.js` object beside the tape:
+
+* A four CSS px lane follows the tape's right edge without reducing tape or readout width.
+* The magenta line shares the airspeed trend's two-pixel stroke and color.
+* It extends from the current-altitude center toward the altitude predicted in six seconds.
+* Source VSI supplies the rate without estimating browser altitude differences.
+* Climb extends upward and descent downward at the tape's fixed 0.4 CSS px/ft spacing.
+* The line stops one pixel inside either vertical edge when its prediction exceeds the visible tape.
+* The altitude and VSI windows end before this lane, retaining aligned right text edges.
+
+The prediction uses feet and feet per minute:
+
+```text
+predicted_altitude_ft = altitude_ft + vertical_speed_fpm / 10
+```
+
+At 10060 ft and +1500 ft/min, the endpoint represents 10210 ft, 60 CSS px above the center.
+Finite rates beyond VSI's numeric display limit still produce a clipped trend.
+Zero rate, missing or invalid rate, and unavailable or overflowing current altitude hide the line.
+Pressure and selected-target availability do not affect it.
+The common frame and original sample deadline control rendering and invalidation, with no additional timer or interpolation.
+
+This six-second altitude trend is an application design decision.
+
 ## Selected altitude and alerts
 
 The altitude composition adds `selected.js` in layer 2:
@@ -413,9 +485,12 @@ The altitude composition adds `selected.js` in layer 2:
 * The readout occupies the existing 32 CSS px strip above the altitude allocation.
 * The bug shares altitude's tape host and clip, using the existing 0.4 CSS px/ft scale.
 * The bug stays fully inside either tape edge, including its stroke.
+* The turquoise symbol is a seven-pixel vertical block with a right-side notch matching the altitude window's pointer.
+* Its 28-pixel height matches that window, and the header uses the same path.
 * Ordinary selected values use turquoise text.
 * Deviation uses yellow text on black.
-* The bug paints after the current-altitude window and remains clear of the minus sign at capture.
+* The bug paints below the opaque current-altitude window, its border and digits.
+* At capture, the black pointer fits its notch while the turquoise strip remains visible on the left.
 * The readout rounds finite targets to whole feet without rounding the alert inputs.
 * Available selected values span -9999 through 99999 ft, with `X` for unavailable and `OVR` beyond these limits.
 * Missing or overflowing targets hide the bug and reset alert history.

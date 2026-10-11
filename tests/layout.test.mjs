@@ -7,7 +7,7 @@ test('portrait and short landscape allocate disjoint instrument regions without 
     const l = pfdLayout(width, height);
     assert.ok(l.attitude.width >= 160);
     assert.ok(l.attitude.height >= 120);
-    const regions = [l.airspeed, l.attitude, l.altitude, l.vsi];
+    const regions = [l.airspeed, l.attitude, l.altitude, l.altitudeTrend];
     for (const r of [...regions, l.heading]) {
       assert.ok(r.x >= 0 && r.y >= 0 && r.width > 0 && r.height > 0);
       assert.ok(r.x + r.width <= width && r.y + r.height <= height);

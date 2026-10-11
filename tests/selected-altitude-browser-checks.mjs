@@ -25,7 +25,7 @@ window.alertHarness = {
   accept(altitude, target, pressure = 29.92) {
     const sourceStatus = { source: 'demo', transport: 'connected', state: 'live' };
     status.update(sourceStatus);
-    scheduler.accept({ ...normalizeOptionalIndications({ altitude_ft: altitude, selected_altitude_ft: target, baro_inhg: pressure }),
+    scheduler.accept({ ...normalizeOptionalIndications({ altitude_ft: altitude, selected_altitude_ft: target, baro_inhg: pressure, vertical_speed_fpm: 1500 }),
       attitude: { pitch_deg: 0, roll_deg: 0 }, expiresAt: time + 1000, status: sourceStatus }); flush();
   },
   tick(value) { time = value; for (const [key, timer] of [...timers]) if (timer.at <= time) { timers.delete(key); timer.fn(); } flush(); },
@@ -91,7 +91,7 @@ export async function checkSelectedAltitude(page, setFixture, url) {
           });
           assert.ok(bounds.valueContained && bounds.panelContained && bounds.nodesRetained, JSON.stringify({ width, height, target, bounds }));
           // SVG matrices round to single precision; compare well below one CSS pixel.
-          assert.ok(Math.abs(bounds.bugY - Math.min(bounds.height - 6.5, Math.max(6.5, bounds.height / 2 + (altitude - target) * 0.4))) < 1e-4,
+          assert.ok(Math.abs(bounds.bugY - Math.min(bounds.height - 14.5, Math.max(14.5, bounds.height / 2 + (altitude - target) * 0.4))) < 1e-4,
             JSON.stringify({ width, height, altitude, target, bounds }));
         }
         for (const altitude of [10000, -120]) {
@@ -99,15 +99,20 @@ export async function checkSelectedAltitude(page, setFixture, url) {
           const paint = await page.evaluate(() => {
             const bug = document.querySelector('#selected-altitude-bug');
             const matrix = bug.getScreenCTM();
-            const hits = [[2, -4], [2, 4], [4, 0]].map(([x, y]) => {
+            const hits = [[2, -4], [2, 4], [2, 0]].map(([x, y]) => {
               const point = new DOMPoint(x, y).matrixTransform(matrix);
               return document.elementFromPoint(point.x, point.y) === bug;
             });
-            const sign = document.querySelector('#altitude-sign').getBoundingClientRect();
-            const bounds = bug.getBoundingClientRect();
-            return { hits, clearOfSign: !sign.width || bounds.right + 0.5 <= sign.left };
+            const notch = new DOMPoint(4, 0).matrixTransform(matrix);
+            const window = document.querySelector('.altitude-window');
+            const sign = document.querySelector('#altitude-sign');
+            const signBox = sign.getBoundingClientRect();
+            return { hits, notchFilledByReadout: document.elementFromPoint(notch.x, notch.y) === window,
+              sameSymbol: bug.getAttribute('d') === document.querySelector('.selected-altitude-symbol').getAttribute('d'),
+              clearOfSign: !signBox.width || document.elementFromPoint(signBox.left + signBox.width / 2, signBox.top + signBox.height / 2) !== bug };
           });
-          assert.ok(paint.hits.every(Boolean) && paint.clearOfSign, JSON.stringify({ width, height, altitude, paint }));
+          assert.ok(paint.hits.every(Boolean) && paint.clearOfSign && paint.notchFilledByReadout && paint.sameSymbol,
+            JSON.stringify({ width, height, altitude, paint }));
           if (width === 320 && height === 240 && path === '/') {
             await page.screenshot({ path: `.local/pfd-browser/selected-altitude-capture-${altitude}.png` });
           }
@@ -144,9 +149,13 @@ export async function checkSelectedAltitude(page, setFixture, url) {
         }
         await page.evaluate(() => { window.alertHarness.reset(); window.alertHarness.accept(10000, 10000); window.alertHarness.accept(10201, 10000); window.alertHarness.tick(1000); });
         assert.equal((await reading(page)).available, 'false'); assert.equal((await reading(page)).alert, 'none');
+        assert.equal(await page.locator('#altitude-trend').getAttribute('d'), null);
+        await page.evaluate(() => window.alertHarness.tick(1500));
+        assert.equal(await page.locator('#altitude-trend').getAttribute('d'), null);
         assert.deepEqual(await page.evaluate(() => window.alertHarness.pending()), { timers: 0, frames: 0 });
         await page.evaluate(() => window.alertHarness.accept(10201, 10000));
         assert.equal((await reading(page)).alert, 'none'); assert.equal((await reading(page)).available, 'true');
+        assert.equal(await page.locator('#altitude-trend').evaluate(n => getComputedStyle(n).display), 'inline');
       }
     }
   } finally { await page.unroute('**/app.js', route); }

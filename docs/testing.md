@@ -129,11 +129,11 @@ Automated coverage exercises these boundaries:
 
 | Boundary | Checks |
 | --- | --- |
-| Rust model and demo | Finite signed targets, independent omission, shared freshness, old publications, two SSE clients, 90-second checkpoints and unchanged 18-second cycles |
+| Rust model and demo | Finite signed targets, independent omission, shared freshness, old publications, two SSE clients, 198-second checkpoints and unchanged 18-second cycles |
 | Alert transitions | Both approach directions, exact thresholds, unrounded values, skipped bands, sustained values, target changes, capture, departure, return and repeat departure |
 | Controlled time | 250-ms flash phases, completion at 5000 ms, delayed/early callbacks, identical fresh samples, resize, coalesced samples and expiry before draw |
 | Invalidation | Local missing/overflow values, paused/stale/disconnected/waiting/invalid states, suspension, stale callbacks and silent recovery |
-| SVG | Readout and bug bounds, stroke clearance at tape edges, colors, availability, stable nodes and the full layout fixture |
+| SVG | Matching notched symbols in header and tape, readout above bug, signed capture, edge clearance, colors, availability and stable nodes |
 | Release runtime | Embedded selected module, actual Rust target in SSE/SVG, pinned bug and recovery after restart |
 
 Use these checks and artifacts for automated acceptance:
@@ -147,12 +147,69 @@ Use these checks and artifacts for automated acceptance:
 Real-device acceptance uses this procedure on iOS Safari and Android Chrome separately:
 
 1. Record device, OS, browser/version, tested commit, date, viewport, and observations in #24 or its PR.
-2. Watch the 90-second demo for both approach directions, full flash intervals, target changes, and yellow deviation.
+2. Watch the 198-second demo for both approach directions, full flash intervals, target changes, and yellow deviation.
 3. Check the pinned bug and selected value against sky and ground in portrait and short landscape, including 320 CSS px width.
 4. Rotate and change browser-bar visibility. Check safe areas, readable text, undistorted symbols, and no scrolling or collisions.
 5. Use the development fixture to check target loss, malformed target, both overflow boundaries, current-altitude loss, pressure-only loss, and return into the captured band.
 6. Check Wi-Fi/server loss, lock/unlock, and background/resume during an alert. Recovery requires fresh data and silent initialization.
 7. Leave device acceptance unchecked until both device results identify the tested build and satisfy these checks.
+
+## Vertical-speed acceptance
+
+Issue [#25](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/25) owns VSI evidence.
+Use the [contract](telemetry-contract.md#optional-vertical-speed) and [presentation rules](pfd-presentation.md#vertical-speed) for units, ranges, and availability.
+
+Automated acceptance covers these boundaries:
+
+| Boundary | Checks |
+| --- | --- |
+| Rust model and SSE | Finite signed rates, zero, no telemetry limit, omission, state clearing, shared age, stale suppression, old snapshots, and matching clients |
+| Scenario | Independent 3960-sample checkpoints, every jump and phase, analytic altitude/rate agreement, 25 ft/s producing +1500 ft/min, and unchanged other cycles |
+| Node calculations | Signed zero, rounding, raw +/-9999 boundaries, invalid values, window geometry, recovered horizon width, and label/tick obstruction |
+| Altitude trend | Source +1500 ft/min predicts +150 ft over six seconds and extends 60 px upward. Descent, clipping, zero, missing inputs and independent pressure |
+| Shared lifecycle | Latest coherent frame, resize without renewed freshness, expiry before drawing, pause/disconnect, reconnect and background/resume without duplicate subscriptions |
+| SVG | Shared font family/color, 13-pixel VSI text, matching right text edges and 51-by-27 window. Three-pixel painted gap, text bounds, target bug, label/tick clearance, nodes and partial loss |
+| Release runtime | Embedded altitude/VSI/trend modules with GET/HEAD and JavaScript MIME, actual Rust ft/min in SSE/SVG, six-second climb prediction, hold and restart recovery |
+
+Use these checks and artifacts:
+
+* Run the [automated Rust and Node commands](#automated-checks) and both [desktop browser scripts](#responsive-pfd-layout-and-desktop-checks).
+* Retain the selected-altitude alert regressions, including expiry while flashing and delayed callback cancellation.
+* Inspect `.local/pfd-browser/vsi-*` for the minimum viewport, narrow portrait, short landscape, negative-altitude capture and long signed values.
+* Inspect `.local/pfd-browser/altitude-trend-*` for upward/downward paint in the separate four-pixel lane, clear of both windows and the cyan block.
+* Inspect `.local/pfd-runtime-vertical-speed.png` for the compiled demo's +1500 ft/min climb beside altitude and its selected target.
+
+Real-device acceptance requires separate iOS Safari and Android Chrome results:
+
+1. Record device, OS, browser/version, tested commit, viewport, date, and observations in #25 or its PR.
+2. Start the demo through the [phone procedure](../README.md#use-your-phone) and watch the 198-second altitude/VSI cycle.
+3. Check `0` during holds, positive climb and negative descent in the window directly below altitude.
+4. Inspect matching readout styles, the narrower rectangle, selected target/bug and pressure against sky and ground.
+   Check that the magenta trend extends up for climb, down for descent, and disappears during holds.
+   Check that its lane remains separate from both readouts and the notched turquoise bug.
+5. Rotate, expand/collapse browser bars, and check safe areas, readability, undistorted symbols, and no scrolling or collisions.
+6. Use the [development fixture](#real-phone-checks) with the inputs below to inspect signed limits, partial failures, and missing data.
+7. Check Wi-Fi/server loss, lock/unlock, and background/resume. Require fresh readings without reload or duplicate subscriptions.
+8. Leave each device unchecked until its passing record exists. Desktop emulation does not establish phone acceptance.
+
+Enter these JSON lines into the fixture terminal:
+
+```json
+{"vertical_speed_fpm":1500}
+{"vertical_speed_fpm":-1500}
+{"vertical_speed_fpm":0}
+{"vertical_speed_fpm":2000.01}
+{"vertical_speed_fpm":-2000.01}
+{"vertical_speed_fpm":9999}
+{"vertical_speed_fpm":-9999}
+{"vertical_speed_fpm":-9999,"altitude_ft":-60,"selected_altitude_ft":-100}
+{"vertical_speed_fpm":9999.01}
+{"vertical_speed_fpm":-9999.01}
+{"vertical_speed_fpm":null}
+{"vertical_speed_fpm":1500,"altitude_ft":null,"baro_inhg":null}
+{"vertical_speed_fpm":1500,"altitude_ft":8500,"baro_inhg":29.92,"hold":true}
+{"hold":false}
+```
 
 ## Automated checks
 

@@ -8,6 +8,8 @@ import { readFileSync } from 'node:fs';
 import { checkAirspeedIndications, checkAirspeedAvailabilityTransitions } from './airspeed-browser-checks.mjs';
 import { checkAltitude } from './altitude-browser-checks.mjs';
 import { checkSelectedAltitude } from './selected-altitude-browser-checks.mjs';
+import { checkVerticalSpeed } from './vertical-speed-browser-checks.mjs';
+import { checkAltitudeTrend } from './altitude-trend-browser-checks.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
@@ -47,7 +49,7 @@ function instrumentNodesUnchanged() {
     added.every(node => node.parentElement.id === 'altitude-scale');
 }
 try {
-  for (const path of ['/helpers.js', '/telemetry/client.js', '/airspeed/index.js', '/airspeed/ias.js',
+  for (const path of ['/altitude/trend.js', '/altitude/vsi.js', '/helpers.js', '/telemetry/client.js', '/airspeed/index.js', '/airspeed/ias.js',
     '/airspeed/ground-speed.js', '/airspeed/tape.js', '/airspeed/readout.js', '/airspeed/references.js',
     '/airspeed/helpers.js', '/altitude/index.js', '/altitude/tape.js', '/altitude/readout.js', '/altitude/baro.js', '/altitude/selected.js',
     '/horizon/index.js', '/horizon/world.js', '/horizon/pitch-scale.js', '/horizon/bank-pointer.js', '/fixed-symbols/index.js', '/fixed-symbols/bank-scale.js', '/fixed-symbols/aircraft.js']) {
@@ -55,7 +57,13 @@ try {
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('content-type'), 'text/javascript; charset=utf-8');
   }
-  for (const path of ['/math.js', '/svg.js', '/telemetry-client.js', '/airspeed.js', '/horizon.js', '/fixed-symbols.js', '/airspeed/calculations.js', '/horizon/calculations.js']) {
+  for (const path of ['/altitude/vsi.js', '/altitude/trend.js']) {
+    const response = await fetch(url + path, { method: 'HEAD' });
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('content-type'), 'text/javascript; charset=utf-8');
+    assert.equal(await response.text(), '');
+  }
+  for (const path of ['/math.js', '/svg.js', '/telemetry-client.js', '/airspeed.js', '/horizon.js', '/fixed-symbols.js', '/airspeed/calculations.js', '/horizon/calculations.js', '/vertical-speed.js']) {
     assert.equal((await fetch(url + path)).status, 404);
   }
   browser = await chromium.launch({ headless: true, channel: process.env.BROWSER_CHANNEL || undefined });
@@ -249,6 +257,8 @@ try {
     JSON.parse(readFileSync(new URL('./fixtures/airspeed-profile.json', import.meta.url))));
   await checkAltitude(page, setFixture, url);
   await checkSelectedAltitude(page, setFixture, url);
+  await checkVerticalSpeed(page, setFixture, url);
+  await checkAltitudeTrend(page, setFixture, url);
   // Verify actual SVG columns and tape positions against independent expected values.
   for (const [width, height] of [[326, 246], [320, 480], [568, 240]]) {
     await page.setViewportSize({ width, height });

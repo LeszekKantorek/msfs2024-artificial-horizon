@@ -2,11 +2,11 @@
 use crate::telemetry::{
     AirspeedProfile, Attitude, BarometricAltitude, BarometricSetting, FlightSample, GroundSpeed,
     IasAcceleration, IndicatedAirspeed, Publisher, SAMPLE_PERIOD, SelectedAltitude, SlipSkid,
-    TelemetryError, TurnRate, VSpeedReferences,
+    TelemetryError, TurnRate, VSpeedReferences, VerticalSpeed,
 };
 use std::future::Future;
 use tokio::time::{MissedTickBehavior, interval};
-const CYCLE_SAMPLES: u64 = 1800;
+const CYCLE_SAMPLES: u64 = 3960;
 pub fn attitude(sample: u64) -> Attitude {
     let (pitch, roll) = match (sample / 40) % 7 {
         0 => (0.0, 0.0),
@@ -43,7 +43,7 @@ pub fn sample(index: u64) -> FlightSample {
         160..200 => 1.0,
         _ => (320 - step) as f64 / 120.0,
     };
-    let (altitude, selected) = altitude_scenario(index);
+    let (altitude, selected, vertical_speed) = altitude_scenario(index);
     let baro = [29.92, 30.12, 29.72][(step / 120) as usize];
     FlightSample::new(
         attitude,
@@ -56,6 +56,10 @@ pub fn sample(index: u64) -> FlightSample {
     )
     .with_selected_altitude(
         selected.map(|feet| SelectedAltitude::new(feet).expect("built-in target is valid")),
+    )
+    .with_vertical_speed(
+        vertical_speed
+            .map(|fpm| VerticalSpeed::new(fpm).expect("built-in vertical speed is valid")),
     )
     .with_speeds(
         Some(IndicatedAirspeed::new(150.0 * fraction).expect("built-in IAS is valid")),
@@ -73,9 +77,11 @@ pub fn sample(index: u64) -> FlightSample {
         ),
     )
 }
-// Original sweeps, then two 36-second approaches. No browser owns a demo trajectory.
-fn altitude_scenario(index: u64) -> (f64, Option<f64>) {
+// Heights and their analytical slopes share the same segment definition.
+fn altitude_scenario(index: u64) -> (f64, Option<f64>, Option<f64>) {
     let step = index % CYCLE_SAMPLES;
+    let discontinuity = matches!(step, 0 | 60 | 120 | 240 | 300 | 360 | 2160);
+    let samples_per_minute = 60.0 / SAMPLE_PERIOD.as_secs_f64();
     if step < 360 {
         let (start, end) = [
             (-120.0, 120.0),
@@ -85,23 +91,36 @@ fn altitude_scenario(index: u64) -> (f64, Option<f64>) {
             (1020.0, 980.0),
             (120.0, -120.0),
         ][(step / 60) as usize];
-        return (start + (end - start) * (step % 60) as f64 / 59.0, None);
+        return (
+            start + (end - start) * (step % 60) as f64 / 59.0,
+            None,
+            (!discontinuity).then_some((end - start) * samples_per_minute / 59.0),
+        );
     }
-    let (target, direction) = if step < 1080 {
+    let (target, direction) = if step < 2160 {
         (10000.0, -1.0)
     } else {
         (1000.0, 1.0)
     };
-    let local = (step - 360) % 720;
-    let distance = match local {
-        0..120 => 1500.0,
-        120..280 => 1500.0 - (local - 120) as f64 * 1000.0 / 160.0,
-        280..440 => 500.0 - (local - 280) as f64 * 500.0 / 160.0,
-        440..560 => 0.0,
-        560..600 => -((local - 560) as f64) * 300.0 / 40.0,
-        _ => -300.0,
-    };
-    (target + direction * distance, Some(target))
+    let local = (step - 360) % 1800;
+    let (begin, end, from, to) = [
+        (0, 120, 1500.0, 1500.0),
+        (120, 920, 1500.0, 500.0),
+        (920, 1320, 500.0, 0.0),
+        (1320, 1440, 0.0, 0.0),
+        (1440, 1680, 0.0, -300.0),
+        (1680, 1800, -300.0, -300.0),
+    ]
+    .into_iter()
+    .find(|&(begin, end, _, _)| (begin..end).contains(&local))
+    .expect("built-in segments cover the approach");
+    let slope = (to - from) / (end - begin) as f64;
+    let distance = from + slope * (local - begin) as f64;
+    (
+        target + direction * distance,
+        Some(target),
+        (!discontinuity).then_some(direction * slope * samples_per_minute),
+    )
 }
 /// Fictional demo configuration, not verified performance of any real aircraft.
 pub fn speed_profile() -> AirspeedProfile {
