@@ -106,6 +106,11 @@ fn pfd_demo_matches_independent_fixtures_through_every_segment_and_repeat() {
                 actual.as_object_mut().unwrap().remove("gs_kt");
                 actual.as_object_mut().unwrap().remove("altitude_ft");
                 actual.as_object_mut().unwrap().remove("vertical_speed_fpm");
+                actual.as_object_mut().unwrap().remove("heading_deg");
+                actual
+                    .as_object_mut()
+                    .unwrap()
+                    .remove("selected_heading_deg");
                 actual
                     .as_object_mut()
                     .unwrap()
@@ -148,6 +153,10 @@ async fn extended_publication_shares_age_and_clears_absent_or_unavailable_indica
     let mut full = value(subscription.snapshot());
     assert!((full["vertical_speed_fpm"].as_f64().unwrap() + 813.5593220338983).abs() < 1e-10);
     full.as_object_mut().unwrap().remove("vertical_speed_fpm");
+    assert_eq!(full["heading_deg"], 354.0);
+    assert_eq!(full["selected_heading_deg"], 0.0);
+    full.as_object_mut().unwrap().remove("heading_deg");
+    full.as_object_mut().unwrap().remove("selected_heading_deg");
     assert_eq!(
         full,
         json!({"schema_version":1,"sequence":1,"source":"demo","state":"live",

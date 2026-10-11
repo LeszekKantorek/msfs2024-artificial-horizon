@@ -8,6 +8,7 @@ Delivery order: [roadmap](roadmap.md). Validation: [testing](testing.md#modular-
 
 The panel implements attitude, slip/skid, and turn rate from #20, IAS and GS from #21, and ranges/trend from #22.
 It also implements altitude/pressure from #23, selected-altitude alerts from #24, and vertical speed from #25.
+Current heading and the selected-heading bug implement #26.
 #36 separates rendering from scheduling. #37 implements layers and full-panel background coverage.
 Maintenance [#54](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/54) introduced internal calculation and validation seams.
 [#56](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/56) composes visual objects and places object-specific calculations with their implementing modules:
@@ -25,6 +26,7 @@ Maintenance [#54](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/
 | `airspeed/` | Compose IAS and independent GS, with SVG operations and calculations in each visual object |
 | `altitude/` | Compose the tape, rolling readout, selected target/alerts, pressure setting and compact VSI |
 | `altitude/vsi.js` | Compact numeric readout, local window geometry, and independent availability |
+| `heading.js` | Magnetic-heading scale, pointer readout, selected bug, pure calculations and independent availability |
 | `status.js` | Accessible status, and global unavailability |
 | `helpers.js` | Named clamp, SVG creation, and attribute updates without import-time DOM access |
 
@@ -52,6 +54,7 @@ Panel
 |   |-- Pressure setting
 |   |-- Selected altitude and alerts
 |   `-- Vertical speed
+|-- Heading (scale, current readout and selected bug)
 |-- Slip/skid
 |-- Turn rate
 |-- Fixed symbols (bank scale, aircraft and outline)
@@ -60,7 +63,6 @@ Panel
 
 * A module does not require one file per graphic element.
 * Add future instruments in their feature issues, without empty implementations or production placeholder readings.
-* Heading/track remains planned in #26.
 
 | Owner | Responsibility |
 | --- | --- |
@@ -94,6 +96,7 @@ The instrument factories retain their external interfaces:
 | `createAirspeed(instrument, layers)` in `airspeed/index.js` | `resize(layout)`, `render(frame)` |
 | `createHorizon(instrument, layers)` in `horizon/index.js` | `resize(layout)`, `render(frame)` |
 | `createFixedSymbols(instrument, symbols)` in `fixed-symbols/index.js` | `resize(layout)` only |
+| `createHeading(instrument, layers)` in `heading.js` | `resize(layout)`, `render(frame)`, `invalidate(reason)` |
 
 Internal objects use these ownership rules:
 
@@ -286,6 +289,7 @@ panel.invalidate(reason);
 | `altitude_ft`, `baro_inhg` | Independently normalized signed altitude and positive pressure setting, or `null` |
 | `selected_altitude_ft` | Independently normalized signed selected altitude, or `null` |
 | `vertical_speed_fpm` | Independently normalized signed ft/min, or `null` |
+| `heading_deg`, `selected_heading_deg` | Independently normalized magnetic degrees in `[0, 360)`, or `null` |
 | `expiresAt` | Original monotonic expiry deadline |
 | `status` | Copied `source`, `transport`, and `state` values |
 
@@ -400,7 +404,7 @@ Layer ownership, clipping, and transforms follow these rules:
 * Pitch translation remains nested inside bank rotation.
 * Transform only moving elements and preserve rotation centers during resize.
 * Size text, symbols, and scales independently without distorting their proportions.
-* The development fixture uses the layer containers intended for future tape and heading modules.
+* The development fixture uses the same instrument modules and layer containers as production.
 
 Keep indications readable across the full panel:
 
@@ -408,8 +412,50 @@ Keep indications readable across the full panel:
 * Intentional background overlap is allowed.
 * Collisions between digits, ticks, and unrelated symbols are not allowed.
 * Check painted extents, including stroke clearance, rather than only allocated rectangles.
-* Use the full 18-element development fixture before later instruments reduce usable space.
+* Use the full 17-element development fixture when checking instrument geometry.
 * Preserve responsive sizing, safe areas, and the minima in the [brief](project-brief.md#mobile-presentation).
+
+## Current and selected heading
+
+`heading.js` owns its SVG, formatting, geometry, availability, and pure calculations:
+
+* The module occupies `layout.heading` in the existing 32 CSS px strip between IAS and altitude.
+* It uses layer 3 (`symbols`) with its own screen-space clip. Horizon geometry remains unchanged.
+* Resize updates geometry and grows the retained tick pool only when needed.
+* Render consumes the complete frame. Invalidation clears availability, scale visibility, and bug position.
+* Shared frame scheduling and the original expiry deadline apply without history, filtering, interpolation, or a new timer.
+
+The scale and current readout use these dimensions:
+
+| Element | Rule |
+| --- | --- |
+| Scale | Fixed 4 CSS px per degree. Minor ticks every degree, major ticks every 5 degrees |
+| Labels | Every 10 degrees, three digits, monospace 11 px. North is `360` |
+| Current value | Three digits and degree symbol, rounded to whole degrees, monospace 14 px. North is `360°` |
+| Window | Centered 44 by 22 px rectangle, with a lower pointer 16 px wide and 8 px high |
+| Colors | Existing text and value-window tokens, with a white 1 px border |
+| Selected bug | Cyan 16 by 7 px block at the tape's bottom, with a complementary upper notch |
+
+Geometry and paint order preserve capture and edge clearance:
+
+* The pointer and notch share dimensions in one module.
+* The scale paints first, then the bug, then the opaque black window, border, and current value.
+* At capture, cyan remains visible around the pointer.
+* Selected position uses the shortest angular difference in `[-180, 180)`. Exactly 180 degrees goes left.
+* Clamp the bug center with an 8.5 px inset, preserving the whole symbol and its stroke at either edge.
+* For current 359 degrees and selected 1 degree, the bug is 8 px right of center.
+* Scale calculations use unrounded heading and wrap continuously across north in either direction.
+* Hide entire labels that intersect the readout or either clip edge. Do not clip individual digits.
+
+Availability remains local:
+
+* Missing or invalid current heading shows red `X`, hiding the scale and bug.
+* Missing or invalid selected heading hides only the bug.
+* Missing altitude, pressure, or other optional fields does not affect a valid heading.
+* Ground track does not substitute for heading. No separate selected-heading readout or control is provided.
+
+Garmin G5 Guide 190-01112-12 Rev. 2, section 3.3.8, provides the presentation reference.
+Fixed spacing, edge pinning, dimensions, and independent availability are application design decisions.
 
 ## Vertical speed
 
@@ -556,7 +602,9 @@ SVG identity and paint order remain stable:
 | Definitions | Background clip, attitude clip, pitch clip, IAS tape clip, digit clip, barber pattern |
 | IAS tape | Scale, ranges, trend, references |
 | IAS | Background, tape, window, digits, unit, fallback references |
-| Symbols layer | Bank pointer, fixed symbols, slip/skid, turn rate |
+| Symbols layer | Bank pointer, fixed symbols, heading, slip/skid, turn rate |
+| Heading | Background, scale, selected bug, current window, current value |
+| Heading definitions | Exclusive heading tape clip |
 | Fixed children | Bank scale, aircraft outline, aircraft shape |
 | Warnings layer | Pitch warnings, IAS warning, GS warning, slip warning, turn warning |
 
@@ -567,6 +615,7 @@ SVG identity and paint order remain stable:
 | IAS `data-state` | Hide tape and digits unless the value is available |
 | IAS `data-overspeed`, `data-approaching` | Red pointer window and yellow predictive-warning digits |
 | Bottom references `data-visible` | Hide the development badge while fallback references occupy its area |
+| Heading `data-state`, `data-selected-available` | Local red `X`, scale visibility and independent selected-bug visibility |
 
 State updates preserve availability and accessible meanings:
 
@@ -727,6 +776,5 @@ Delivery preserves production scope and asset integration:
 
 * Each implementation issue updates its tests, documentation, and mobile evidence.
 * Update embedded Rust asset routes and the fixture server when imports change.
-* The full development fixture uses the implemented IAS/GS and altitude/pressure modules.
-* Remaining instrument illustrations stay development-only until their feature slices arrive.
+* The full development fixture uses production modules for all 17 included illustration elements.
 * No new telemetry fields, framework, build pipeline, Solid.js, three.js, or custom signals are required for #36 or #37.

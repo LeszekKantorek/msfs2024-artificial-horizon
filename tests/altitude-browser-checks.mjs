@@ -56,6 +56,7 @@ export async function checkAltitude(page, setFixture, url) {
             height: clip.height, ticks: [...document.querySelectorAll('.altitude-tick')]
               .filter(n => getComputedStyle(n).display !== 'none').map(n => ({
                 value: Number(n.dataset.altitudeFt), y: Number(n.getAttribute('d').split(' ')[2]), cssY: n.getBoundingClientRect().top })),
+            digitBoxes, digitsClip: { x: digitsClip.x, width: digitsClip.width },
             digitsInside: digitBoxes.every(b => b.left >= digitsClip.x && b.right <= digitsClip.x + digitsClip.width),
             digitOverlap: digitBoxes.slice(1).some((b, i) => b.left < digitBoxes[i].right),
             baroContained: baroTexts.every(b => b.left >= baro.left && b.right <= baro.right && b.top >= baro.top && b.bottom <= baro.bottom),
@@ -67,7 +68,7 @@ export async function checkAltitude(page, setFixture, url) {
             digitsOpacity: getComputedStyle(document.querySelector('.altitude-digit')).fillOpacity };
         });
         assert.equal(actual.sign, value < 0 ? '−' : '');
-        assert.ok(actual.digitsInside, `Digits clipped at ${value}, ${width}x${height}`);
+        assert.ok(actual.digitsInside, `Digits clipped at ${value}, ${width}x${height}: ${JSON.stringify({ boxes: actual.digitBoxes, clip: actual.digitsClip })}`);
         assert.equal(actual.digitOverlap, false, `Digits overlap at ${value}, ${width}x${height}`);
         assert.ok(actual.baroContained && actual.panelContained && actual.baroGap >= 0,
           JSON.stringify({ value, width, height, baroContained: actual.baroContained, panelContained: actual.panelContained, baroGap: actual.baroGap }));

@@ -36,7 +36,7 @@ Prioritize mobile readability, low delay, and explicit unavailable states.
 | Scope | Data and controls | Boundary |
 | --- | --- | --- |
 | Original simulator MVP | Pitch/bank, scales, aircraft reference, source/connection status | Preserve #5-#8 scope and dependencies |
-| Planned PFD demo | Deterministic Rust scenarios, including selected altitude, heading/track, and barometric setting | Deliver separate feature slices |
+| PFD demo | Deterministic Rust scenarios, including selected altitude, magnetic heading, selected-heading bug, and barometric setting | Deliver separate feature slices |
 | Future live PFD | Additional MSFS2024 indications | Requires separate scope. The attitude-only provider leaves these unavailable |
 | Browser controls | Read-only presentation | No menu, knob, editing, or sync actions |
 
@@ -61,14 +61,14 @@ Use original graphics. Do not embed PDF screenshots or copy the bezel.
 | 9, 13, 15 | Barometric setting, current altitude, altimeter tape | [#23](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/23) |
 | 11, 16 | Selected-altitude bug/readout, approach/deviation alerts | [#24](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/24) |
 | 12 | Vertical speed | [#25](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/25) |
-| 18, 19, 20 | Heading/track tape, current track, selected direction | [#26](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/26) |
+| 18, 20 | Current heading and selected-heading bug | [#26](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/26) |
 
-**Coverage: 18 of 22 illustration items.**
+**Coverage: 17 of 22 illustration items.**
 
 | Exclusion | Rule |
 | --- | --- |
-| CDI (6), vertical navigation guidance (14), navigation course (17), battery (22) | No UI space, model fields, or demo scenarios |
-| HSI, ILS, GPS glidepath, VNAV | Outside scope. Heading/ground track remain PFD indications |
+| CDI (6), vertical navigation guidance (14), navigation course (17), ground track (19), battery (22) | No UI space, model fields, or demo scenarios |
+| HSI, ILS, GPS glidepath, VNAV | Outside scope. Current and selected heading remain PFD indications |
 | Flight director, autopilot controls, recording, internet hosting | Outside scope |
 | Full G5 replica | Outside scope |
 | Fullscreen, wake lock, PWA installation | Later candidates |
@@ -82,7 +82,7 @@ Use original graphics. Do not embed PDF screenshots or copy the bezel.
 
 | Area | Layout rule |
 | --- | --- |
-| Portrait | Attitude center, IAS left, altitude right. Compact VSI below altitude and a narrow trend lane beside the tape. Heading/track above |
+| Portrait | Attitude center, IAS left, altitude right. Compact VSI below altitude and a narrow trend lane beside the tape. Heading above |
 | Landscape | Use extra width and reduced height. Retain familiar instrument positions |
 | Instrument sizing | Size digits, symbols, tapes, and horizon independently. Preserve undistorted symbols and readable central attitude |
 | Page chrome | Minimize bezel, headings, and margins |
@@ -110,7 +110,7 @@ Each instrument feature issue owns:
 * Focused tests and affected documentation.
 * Readability evidence from real iOS Safari and Android Chrome, starting with the first slice.
 
-#26 also owns full-panel acceptance of all 18 elements.
+#26 also owns full-panel acceptance of all 17 elements.
 This does not expand #7 or establish live PFD compatibility.
 
 Acceptance criteria:

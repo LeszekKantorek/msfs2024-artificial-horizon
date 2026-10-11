@@ -13,6 +13,8 @@
 | `BarometricSetting` | Positive finite inHg, with `new` and `inches_of_mercury` methods |
 | `VerticalSpeed` | Finite signed ft/min, with `new` and `feet_per_minute` methods. No telemetry display limit |
 | `FlightSample::with_vertical_speed(speed)` | Add independently optional source-supplied vertical speed |
+| `Heading`, `SelectedHeading` | Finite magnetic degrees in `[0, 360)`, with `new` and `degrees` methods |
+| `FlightSample::with_heading(heading, selected)` | Add independently optional current and selected magnetic heading |
 | `FlightSample::with_altitude(altitude, setting)` | Add independently optional altitude and pressure setting |
 | `FlightSample` | One acquisition with attitude and independently optional indications |
 | `FlightSample::with_speeds(ias, gs)` | Add independently optional speeds. The existing `new` constructor remains attitude/turn-only |
@@ -98,6 +100,8 @@ These durations are initial tuning values.
 | `baro_inhg` | Optional finite positive pressure setting in inches of mercury |
 | `selected_altitude_ft` | Optional finite signed selected altitude in feet, supplied by the source and read-only |
 | `vertical_speed_fpm` | Optional finite signed feet per minute. Positive means climb, negative means descent, zero means level |
+| `heading_deg` | Optional finite magnetic heading in `[0, 360)`. Zero means north |
+| `selected_heading_deg` | Independently optional finite selected magnetic heading in `[0, 360)` |
 
 * Providers convert SDK values to these conventions.
 * Check conversion in the SimConnect spike. Do not infer SimVar units from names alone.
@@ -222,6 +226,43 @@ Each 90-second approach uses this schedule:
 Attitude, speeds, coordinated-turn values, and pressure retain their existing 18-second cycles.
 `tests/fixtures/selected-altitude-samples.json` contains independent checkpoints.
 See [selected-altitude presentation](pfd-presentation.md#selected-altitude-and-alerts) for alert rules and display validity.
+
+### Optional magnetic headings
+
+Current and selected headings follow the shared optional-field lifecycle:
+
+* Rust validates each finite value in `[0, 360)`. Negative values and 360 are invalid.
+* Zero is valid north. The browser formats north as `360°` without changing telemetry.
+* Missing, null, nonnumeric, non-finite, or out-of-range browser values normalize independently to `null`.
+* Each field shares the sample sequence, age, and expiry deadline.
+* Rust omits absent fields and both fields outside `live`.
+* A new sample replaces both values. Publishing `State` clears both, including attitude-only live publications.
+* No ground-track data or fallback is defined. Both headings are source-supplied and read-only.
+
+Example additions to a live v1 snapshot:
+
+```json
+{"heading_deg": 359.0, "selected_heading_deg": 1.0}
+```
+
+The heading demo repeats every 360 samples at 20 Hz, following source turn rate:
+
+| Time | Current heading | Selected heading | Turn rate |
+| --- | --- | --- | --- |
+| 0-2 seconds | 354 degrees | 350 degrees | 0 deg/s |
+| 2-4 seconds | 354 degrees | 90 degrees | 0 deg/s |
+| 4-6 seconds | 354 degrees | 180 degrees | 0 deg/s |
+| 6-8 seconds | 354 to 348 degrees | 350 degrees | -3 deg/s |
+| 8-10 seconds | 348 to 354 degrees | 350 degrees | +3 deg/s |
+| 10-12 seconds | 354 to 0 degrees | 0 degrees | +3 deg/s |
+| 12-14 seconds | 0 to 354 degrees | 0 degrees | -3 deg/s |
+| 14-16 seconds | 354 degrees | Unavailable | 0 deg/s |
+| 16-18 seconds | 354 degrees | 354 degrees | 0 deg/s |
+
+Phase boundaries use the starting phase's values. Normalization wraps calculations into `[0, 360)`.
+The producer still wraps after 3960 samples. The altitude cycle remains 198 seconds.
+`tests/fixtures/heading-samples.json` supplies independent checkpoints, including both north crossings.
+See [heading presentation](pfd-presentation.md#current-and-selected-heading) and [heading acceptance](testing.md#heading-acceptance).
 
 ### Optional vertical speed
 

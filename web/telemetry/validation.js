@@ -29,6 +29,8 @@ export function normalizeAirspeedProfile(value) {
 
 export function normalizeOptionalIndications(value) {
   return {
+    heading_deg: validHeading(value.heading_deg),
+    selected_heading_deg: validHeading(value.selected_heading_deg),
     altitude_ft: Number.isFinite(value.altitude_ft) ? value.altitude_ft : null,
     selected_altitude_ft: Number.isFinite(value.selected_altitude_ft) ? value.selected_altitude_ft : null,
     vertical_speed_fpm: Number.isFinite(value.vertical_speed_fpm) ? value.vertical_speed_fpm : null,
@@ -40,4 +42,8 @@ export function normalizeOptionalIndications(value) {
     airspeed_profile: normalizeAirspeedProfile(value.airspeed_profile),
     ias_acceleration_ktps: Number.isFinite(value.ias_acceleration_ktps) ? value.ias_acceleration_ktps : null,
   };
+}
+
+function validHeading(value) {
+  return Number.isFinite(value) && value >= 0 && value < 360 ? value : null;
 }
