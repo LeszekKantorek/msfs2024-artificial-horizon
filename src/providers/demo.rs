@@ -2,7 +2,8 @@
 use crate::telemetry::{
     AirspeedProfile, Attitude, BarometricAltitude, FlightSample, GroundSpeed, Heading,
     IasAcceleration, IndicatedAirspeed, Publisher, SAMPLE_PERIOD, SelectedAltitude,
-    SelectedHeading, SlipSkid, TelemetryError, TurnRate, VSpeedReferences, VerticalSpeed,
+    SelectedHeading, SlipSkid, TelemetryError, TrueAirspeed, TurnRate, VSpeedReferences,
+    VerticalSpeed,
 };
 use std::future::Future;
 use tokio::time::{MissedTickBehavior, interval};
@@ -77,6 +78,9 @@ pub fn sample(index: u64) -> FlightSample {
         Some(IndicatedAirspeed::new(150.0 * fraction).expect("built-in IAS is valid")),
         Some(GroundSpeed::new(170.0 * fraction).expect("built-in GS is valid")),
     )
+    .with_true_airspeed(Some(
+        TrueAirspeed::new(160.0 * fraction).expect("built-in TAS is valid"),
+    ))
     .with_airspeed_indications(
         Some(speed_profile()),
         Some(

@@ -74,6 +74,13 @@ noscript { position: absolute; inset: 12px 12px auto; color: var(--warning); tex
 .ground-speed-label, .ground-speed-value { fill: var(--text); font-size: 13px; font-weight: 600; dominant-baseline: central; }
 .ground-speed-label { text-anchor: start; }
 .ground-speed-value { text-anchor: end; }
+.true-airspeed-label, .true-airspeed-value { fill: var(--text); font-size: 11px; font-weight: 600; dominant-baseline: central; }
+.true-airspeed-label { text-anchor: start; }
+.true-airspeed-value { text-anchor: end; }
+.true-airspeed-background { fill: var(--value-window); fill-opacity: 1; }
+.true-airspeed-border { fill: none; stroke: var(--text); stroke-width: 1; }
+#true-airspeed[data-state="unavailable"] .true-airspeed-value,
+#true-airspeed[data-state="overflow"] .true-airspeed-value { fill: var(--danger); }
 .speed-warning { fill: var(--danger); font-size: 15px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
 #ground-speed-warning { font-size: 13px; text-anchor: end; }
 #airspeed:not([data-state="available"]) :is(.airspeed-tape, #airspeed-digits) { visibility: hidden; }

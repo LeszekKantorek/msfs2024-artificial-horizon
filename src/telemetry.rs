@@ -126,6 +126,21 @@ impl GroundSpeed {
         self.0
     }
 }
+/// Validated true airspeed in knots, independently available from IAS and GS.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[serde(transparent)]
+pub struct TrueAirspeed(f64);
+impl TrueAirspeed {
+    pub fn new(knots: f64) -> Result<Self, TelemetryError> {
+        if !knots.is_finite() || knots < 0.0 {
+            return Err(TelemetryError::InvalidTrueAirspeed);
+        }
+        Ok(Self(knots))
+    }
+    pub fn knots(self) -> f64 {
+        self.0
+    }
+}
 /// Barometric altitude in feet for the supplied pressure setting, including negatives.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 #[serde(transparent)]
@@ -270,6 +285,8 @@ pub struct FlightSample {
     #[serde(skip_serializing_if = "Option::is_none")]
     gs_kt: Option<GroundSpeed>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    tas_kt: Option<TrueAirspeed>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     airspeed_profile: Option<AirspeedProfile>,
     #[serde(skip_serializing_if = "Option::is_none")]
     ias_acceleration_ktps: Option<IasAcceleration>,
@@ -296,6 +313,7 @@ impl FlightSample {
             turn_rate_dps: turn_rate,
             ias_kt: None,
             gs_kt: None,
+            tas_kt: None,
             airspeed_profile: None,
             ias_acceleration_ktps: None,
             altitude_ft: None,
@@ -336,6 +354,10 @@ impl FlightSample {
     pub fn with_speeds(mut self, ias: Option<IndicatedAirspeed>, gs: Option<GroundSpeed>) -> Self {
         self.ias_kt = ias;
         self.gs_kt = gs;
+        self
+    }
+    pub fn with_true_airspeed(mut self, speed: Option<TrueAirspeed>) -> Self {
+        self.tas_kt = speed;
         self
     }
     pub fn with_airspeed_indications(
@@ -380,6 +402,8 @@ pub struct Snapshot {
     #[serde(skip_serializing_if = "Option::is_none")]
     gs_kt: Option<GroundSpeed>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    tas_kt: Option<TrueAirspeed>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     airspeed_profile: Option<AirspeedProfile>,
     #[serde(skip_serializing_if = "Option::is_none")]
     ias_acceleration_ktps: Option<IasAcceleration>,
@@ -404,6 +428,7 @@ struct Current {
     turn_rate: Option<TurnRate>,
     ias: Option<IndicatedAirspeed>,
     gs: Option<GroundSpeed>,
+    tas: Option<TrueAirspeed>,
     airspeed_profile: Option<AirspeedProfile>,
     ias_acceleration: Option<IasAcceleration>,
     altitude: Option<BarometricAltitude>,
@@ -443,6 +468,7 @@ impl Current {
             turn_rate_dps: attitude.and(self.turn_rate),
             ias_kt: attitude.and(self.ias),
             gs_kt: attitude.and(self.gs),
+            tas_kt: attitude.and(self.tas),
             airspeed_profile: attitude.and(self.airspeed_profile),
             ias_acceleration_ktps: attitude.and(self.ias_acceleration),
             altitude_ft: attitude.and(self.altitude),
@@ -473,6 +499,7 @@ pub fn channel(source: Source) -> (Publisher, Subscription) {
         turn_rate: None,
         ias: None,
         gs: None,
+        tas: None,
         airspeed_profile: None,
         ias_acceleration: None,
         altitude: None,
@@ -511,6 +538,7 @@ impl Publisher {
         self.current.turn_rate = sample.as_ref().and_then(|s| s.turn_rate_dps);
         self.current.ias = sample.as_ref().and_then(|s| s.ias_kt);
         self.current.gs = sample.as_ref().and_then(|s| s.gs_kt);
+        self.current.tas = sample.as_ref().and_then(|s| s.tas_kt);
         self.current.airspeed_profile = sample.as_ref().and_then(|s| s.airspeed_profile);
         self.current.ias_acceleration = sample.as_ref().and_then(|s| s.ias_acceleration_ktps);
         self.current.altitude = sample.as_ref().and_then(|s| s.altitude_ft);
@@ -569,6 +597,8 @@ pub enum TelemetryError {
     InvalidAirspeedProfile,
     #[error("indicated airspeed must be finite nonnegative knots")]
     InvalidIndicatedAirspeed,
+    #[error("true airspeed must be finite nonnegative knots")]
+    InvalidTrueAirspeed,
     #[error("ground speed must be finite nonnegative knots")]
     InvalidGroundSpeed,
     #[error(

@@ -88,6 +88,11 @@ async fn embedded_page_assets_and_liveness_match_the_contract() {
             "createIas",
         ),
         (
+            "/airspeed/true-airspeed.js",
+            "text/javascript; charset=utf-8",
+            "createTrueAirspeed",
+        ),
+        (
             "/airspeed/ground-speed.js",
             "text/javascript; charset=utf-8",
             "createGroundSpeed",

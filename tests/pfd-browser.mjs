@@ -12,6 +12,7 @@ import { checkVerticalSpeed } from './vertical-speed-browser-checks.mjs';
 import { checkAltitudeTrend } from './altitude-trend-browser-checks.mjs';
 import { checkHeading } from './heading-browser-checks.mjs';
 import { checkTapeFooters } from './tape-footer-browser-checks.mjs';
+import { checkTrueAirspeed } from './true-airspeed-browser-checks.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
@@ -52,14 +53,14 @@ function instrumentNodesUnchanged() {
 }
 try {
   for (const path of ['/heading.js', '/altitude/trend.js', '/altitude/vsi.js', '/helpers.js', '/telemetry/client.js', '/airspeed/index.js', '/airspeed/ias.js',
-    '/airspeed/ground-speed.js', '/airspeed/tape.js', '/airspeed/readout.js', '/airspeed/references.js',
+    '/airspeed/ground-speed.js', '/airspeed/true-airspeed.js', '/airspeed/tape.js', '/airspeed/readout.js', '/airspeed/references.js',
     '/airspeed/helpers.js', '/altitude/index.js', '/altitude/tape.js', '/altitude/readout.js', '/altitude/baro.js', '/altitude/selected.js',
     '/horizon/index.js', '/horizon/world.js', '/horizon/pitch-scale.js', '/horizon/bank-pointer.js', '/fixed-symbols/index.js', '/fixed-symbols/bank-scale.js', '/fixed-symbols/aircraft.js']) {
     const response = await fetch(url + path);
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('content-type'), 'text/javascript; charset=utf-8');
   }
-  for (const path of ['/altitude/vsi.js', '/altitude/trend.js', '/heading.js']) {
+  for (const path of ['/altitude/vsi.js', '/altitude/trend.js', '/heading.js', '/airspeed/true-airspeed.js']) {
     const response = await fetch(url + path, { method: 'HEAD' });
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('content-type'), 'text/javascript; charset=utf-8');
@@ -216,7 +217,7 @@ try {
     references: [['path', 'R'], ['path', 'X'], ['path', 'Y'], ['path', 'G'],
       ['text', 'R'], ['text', 'X'], ['text', 'Y'], ['text', 'G']],
     bottom: ['airspeed-reference-value', 'airspeed-reference-value', 'airspeed-reference-value', 'airspeed-reference-value'],
-    instruments: ['airspeed', 'ground-speed'],
+    instruments: ['airspeed', 'ground-speed', 'true-airspeed'],
     warnings: ['airspeed-warning', 'ground-speed-warning'],
   });
   await page.evaluate(() => { window.initialInstrumentNodes = [...document.querySelectorAll('svg *')]; });
@@ -267,6 +268,7 @@ try {
   await checkAltitudeTrend(page, setFixture, url);
   await checkHeading(page, setFixture, url);
   await checkTapeFooters(page, setFixture, url);
+  await checkTrueAirspeed(page, setFixture, url);
   // Verify actual SVG columns and tape positions against independent expected values.
   for (const [width, height] of [[326, 246], [320, 480], [568, 240]]) {
     await page.setViewportSize({ width, height });

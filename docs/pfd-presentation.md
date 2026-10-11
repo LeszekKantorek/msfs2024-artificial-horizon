@@ -7,6 +7,7 @@ Delivery order: [roadmap](roadmap.md). Validation: [testing](testing.md#modular-
 ## Current implementation and planned changes
 
 The panel implements attitude, slip/skid, and turn rate from #20, IAS and GS from #21, and ranges/trend from #22.
+TAS above the left tape implements #66.
 It also implements altitude/pressure from #23, selected-altitude alerts from #24, and vertical speed from #25.
 Current heading and the selected-heading bug implement #26.
 #36 separates rendering from scheduling. #37 implements layers and full-panel background coverage.
@@ -23,7 +24,7 @@ Maintenance [#54](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/
 | `horizon/` | Compose world, pitch scale with chevrons, and bank pointer. Calculate common attitude transforms |
 | `fixed-symbols/` | Compose fixed bank scale and aircraft reference with outline |
 | `slip-skid.js`, `turn-rate.js` | Local geometry, readings, and indication availability |
-| `airspeed/` | Compose IAS and independent GS, with SVG operations and calculations in each visual object |
+| `airspeed/` | Compose IAS and independent TAS/GS, with SVG operations and calculations in each visual object |
 | `altitude/` | Compose the tape, rolling readout, selected target/alerts, pressure setting and compact VSI |
 | `altitude/vsi.js` | Compact numeric readout, local window geometry, and independent availability |
 | `heading.js` | Magnetic-heading scale, pointer readout, selected bug, pure calculations and independent availability |
@@ -48,6 +49,7 @@ Panel
 |   |   |-- Tape (scale, ranges, trend)
 |   |   |-- Readout (window, digits, unit, warning)
 |   |   `-- References (markers, leaders, fallback values)
+|   |-- True airspeed
 |   `-- Ground speed
 |-- Altitude
 |   |-- Tape and rolling readout
@@ -111,12 +113,12 @@ Internal objects use these ownership rules:
 
 ### Airspeed objects
 
-`airspeed/index.js` composes IAS and GS:
+`airspeed/index.js` composes IAS, TAS, and GS:
 
 * Compute the shared GS panel position once per resize.
 * Pass `layout.airspeed` and the shared position to IAS.
-* Pass `{ x, y, width }` to GS.
-* Select IAS/profile/acceleration and GS from the complete frame during render.
+* Pass `{ x, y, width }` to GS and the unused top-left `{ x, y, width, height }` allocation to TAS.
+* Select IAS/profile/acceleration and TAS/GS from the complete frame during render.
 * Keep coherent IAS readings and child geometry in IAS.
 * Keep GS state, rounding, and geometry in GS.
 
@@ -126,7 +128,8 @@ Internal objects use these ownership rules:
 | Tape: `createTape(defs, tapeHost)` | Barber pattern, scale/ticks/labels, named range rectangles, trend | Tape geometry | IAS reading, profile, prediction |
 | Readout: `createReadout(defs, iasHost, warnings)` | Exclusive digit clip, window, columns, unit, IAS warning | Readout geometry and unit position | IAS reading and fallback-reference flag |
 | References: `createReferences(tapeHost, iasHost)` | Markers/leaders and bottom group/unit/values | Tape geometry | IAS reading, profile, fallback-reference flag |
-| GS: `createGroundSpeed(parent, warnings)` | Independent GS group/background/label/value/unit and warning | `{ x, y, width }` | GS value |
+| GS: `createGroundSpeed(parent, warnings)` | Independent GS group/background/label/value and warning | `{ x, y, width }` | GS value |
+| TAS: `createTrueAirspeed(parent)` | Independent TAS group/background/frame/label/value and local availability | `{ x, y, width, height }` | TAS value |
 
 Ownership and availability remain local:
 
@@ -134,7 +137,7 @@ Ownership and availability remain local:
 * Readout owns its exclusive digit clip.
 * References owns both tape markers/leaders and fallback values, keeping each reference in one record.
 * Tape retains named `renderRanges` and `renderTrend` operations inside the same object.
-* IAS, GS, profile, and acceleration availability remain independent.
+* IAS, TAS, GS, profile, and acceleration availability remain independent.
 * Every frame resets relevant warning, visibility, unit, fallback, and trend states, including missing data.
 
 ### Horizon and fixed objects
@@ -172,6 +175,7 @@ Object-specific calculations remain in the modules that implement their objects:
 | `horizon/index.js` | `attitudeTransforms` |
 | `airspeed/ias.js` | IAS readings, `speedIndications`, and child geometry |
 | `airspeed/ground-speed.js` | GS state, rounding, and geometry |
+| `airspeed/true-airspeed.js` | TAS state, rounding, and top-strip geometry |
 | `airspeed/readout.js` | `rollingDigits` and local `DIGIT_HEIGHT` |
 | `airspeed/tape.js` | `speedRanges`, `rangeBounds`, and local tick constants |
 | `airspeed/references.js` | `referenceReadout` and `placeReferenceLabels` |
@@ -187,7 +191,7 @@ Shared speed rules have these consumers and units:
 
 | Rule | Consumers / value |
 | --- | --- |
-| `speedState` | IAS and GS |
+| `speedState` | IAS, TAS, and GS |
 | `tapeOffset` | Tape and references, using 4 px/kt |
 | `MAX_SPEED` | Speed classification, tape, and references |
 | Tape steps | Tape owns 2 kt minor steps and 10 kt major steps |
@@ -284,7 +288,7 @@ panel.invalidate(reason);
 | Frame field | Meaning |
 | --- | --- |
 | `attitude`, `slip_skid`, `turn_rate_dps` | Values from one accepted sample |
-| `ias_kt`, `gs_kt` | Independently normalized speeds from the same accepted sample, or `null` |
+| `ias_kt`, `tas_kt`, `gs_kt` | Independently normalized speeds from the same accepted sample, or `null` |
 | `airspeed_profile`, `ias_acceleration_ktps` | Independently normalized configuration and source acceleration, or `null` |
 | `altitude_ft` | Independently normalized signed altitude, or `null` |
 | `baro_text` | Verbatim source-formatted display string, or `null` for missing/non-string data |
@@ -603,6 +607,7 @@ SVG identity and paint order remain stable:
 | Definitions | Background clip, attitude clip, pitch clip, IAS tape clip, digit clip, barber pattern |
 | IAS tape | Scale, ranges, trend, references |
 | IAS | Background, tape, window, digits, unit, fallback references |
+| Airspeed layer | IAS, GS, TAS |
 | Symbols layer | Bank pointer, fixed symbols, heading, slip/skid, turn rate |
 | Heading | Background, scale, selected bug, current window, current value |
 | Heading definitions | Exclusive heading tape clip |
@@ -621,8 +626,8 @@ SVG identity and paint order remain stable:
 State updates preserve availability and accessible meanings:
 
 * IAS root state updates run before its child indication updates on every frame.
-* GS updates its state independently.
-* IAS and GS reset warning colors, availability, local X/OVR marks, profile visibility, and fallback flags.
+* TAS and GS update their states independently.
+* IAS, TAS, and GS reset warning colors, availability, local X/OVR marks, profile visibility, and fallback flags.
 * Trend updates clear the path and prediction attribute when no prediction exists.
 * Accessible speed labels retain current values or unavailable/overflow states.
 * Reference labels retain exact configured values despite compact visible text.
@@ -674,8 +679,8 @@ Real-phone acceptance remains separate in [#23](https://github.com/LeszekKantore
 Composition and geometry preserve the existing panel allocation:
 
 * `airspeed/index.js` composes objects once and exposes `resize(layout)` and `render(frame)`.
-* IAS and GS use layer 1.
-* Their local failure and overflow marks use layer 4.
+* IAS, TAS, and GS use layer 1.
+* IAS and GS local failure and overflow marks use layer 4. TAS marks stay inside its opaque layer-1 field.
 * The existing airspeed rectangle defines tape geometry.
 * The central attitude allocation remains unchanged.
 * GS stays at the bottom of the panel, with the same left edge and width as IAS.
@@ -707,8 +712,25 @@ Availability and lifecycle remain independent:
 * Above 999 kt, show `OVR`.
 * Unavailable values show `X`.
 * Neither missing nor overflowing IAS leaves a visible numeric tape.
-* GS availability remains independent.
+* TAS and GS availability remain independent.
 * No independent animation, timer, interpolation, or client-generated flight values are used.
+
+### True airspeed
+
+The independent TAS object occupies the existing top-left area above the IAS tape:
+
+* The field starts at SVG `(0, 0)`, shares the tape width, and ends at its top edge at 32 CSS px.
+* Background fill uses opaque `--value-window`. A white `--text` frame has a 1 CSS px stroke inset by 0.5 CSS px.
+* The label `TAS` is left-aligned and the value is right-aligned with 3 CSS px side padding and a common vertical center.
+* Both texts use the GS font family, 11 CSS px, weight 600, and white `--text`.
+* Finite nonnegative source values through 999 kt round to the nearest knot, with halves rounded up and no leading zeros.
+* The visible value has no unit suffix. The persistent `[KT]` tape label and accessible description identify knots.
+* Missing or invalid values show red `X`; values above the display limit show red `OVR`, using the same 11 CSS px size.
+* The label stays white and visible during local failure. TAS does not depend on IAS, GS, profile, or acceleration.
+* Each render replaces the previous reading. TAS shares the frame deadline and full-panel unavailable cover without its own cache or timer.
+* TAS does not move heading, alter tape clips, or reduce central attitude space.
+
+Real-device acceptance belongs to [#66](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/66).
 
 ### Ranges, references, and trend
 

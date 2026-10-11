@@ -100,9 +100,10 @@ web/
   slip-skid.js              # local slip/skid presentation
   turn-rate.js              # local turn-rate presentation
   airspeed/
-    index.js                # IAS/GS composition and shared GS vertical position
+    index.js                # IAS/TAS/GS composition and shared GS vertical position
     ias.js                  # IAS readings/geometry, composition, shared tape host/clip
     ground-speed.js         # independent GS readout and warning
+    true-airspeed.js         # independent top-strip TAS readout and local availability
     tape.js                 # scale, ranges, and trend
     readout.js              # window, rolling digits, unit, and IAS warning
     references.js           # tape markers/leaders and fallback values
@@ -230,13 +231,13 @@ The server owns validated samples and deterministic demo scenarios:
 * `Publisher::publish(State)` keeps the attitude-only path and clears all optional indications.
 * `demo::sample` defines nine deterministic two-second segments.
 * `demo::attitude` retains its original seven-pose helper contract.
-* The same 18-second sample cycle supplies acceleration, a constant-speed segment, and deceleration for independently valued IAS and GS.
+* The same 18-second sample cycle supplies acceleration, a constant-speed segment, and deceleration for independently valued IAS, TAS, and GS.
 
 The browser validates those samples and presents them within the available panel area:
 
 * `telemetry/validation.js` validates the snapshot and normalizes optional values independently, including copied profile references.
 * `createTelemetryClient` owns the connection and publishes normalized samples with one expiry deadline.
-* `airspeed/index.js` composes IAS and GS visual objects. Each object owns its readings, geometry, and pure calculations.
+* `airspeed/index.js` composes IAS, TAS, and GS visual objects. Each object owns its readings, geometry, and pure calculations.
 * `altitude/index.js` composes its signed tape, rolling readout, independent pressure setting, and selected-altitude object in the existing right-side allocation.
 * `altitude/selected.js` owns the selected readout, bug, and alert history, with DOM-free transition and phase calculations.
 * `heading.js` owns the heading scale, pointer window, selected bug, pure calculations, and local availability.

@@ -8,7 +8,7 @@
 | --- | --- |
 | `telemetry::Attitude` | Validated attitude |
 | `SlipSkid`, `TurnRate` | Independently validated optional indications |
-| `IndicatedAirspeed`, `GroundSpeed` | Independently validated finite nonnegative knots, with `new` and `knots` methods |
+| `IndicatedAirspeed`, `TrueAirspeed`, `GroundSpeed` | Independently validated finite nonnegative knots, with `new` and `knots` methods |
 | `BarometricAltitude` | Finite signed feet, with `new` and `feet` methods; no telemetry display limit |
 | `VerticalSpeed` | Finite signed ft/min, with `new` and `feet_per_minute` methods. No telemetry display limit |
 | `FlightSample::with_vertical_speed(speed)` | Add independently optional source-supplied vertical speed |
@@ -19,6 +19,7 @@
 | `FlightSample::with_speeds(ias, gs)` | Add independently optional speeds. The existing `new` constructor remains attitude/turn-only |
 | `AirspeedProfile`, `VSpeedReferences` | Validated positive speed thresholds and four named references in knots |
 | `IasAcceleration` | Validated finite IAS acceleration in kt/s. Negative values indicate deceleration |
+| `FlightSample::with_true_airspeed(speed)` | Add independently optional true airspeed without changing `with_speeds` or the existing constructor |
 | `FlightSample::with_airspeed_indications(profile, acceleration)` | Add independently optional configuration and acceleration without requiring IAS |
 | `Publisher::publish_sample` | Atomically publish a fresh extended sample with shared sequence and age |
 | `Publisher::publish(State)` | Preserve attitude-only and lifecycle publication; clear prior optional values |
@@ -92,6 +93,7 @@ These durations are initial tuning values.
 | `slip_skid` | Optional finite normalized ball displacement in [-1, 1]. Negative left, positive right, zero centered |
 | `turn_rate_dps` | Optional finite degrees/second. Negative left, positive right. Standard rate is +/-3 deg/s |
 | `ias_kt` | Optional finite nonnegative indicated airspeed in knots |
+| `tas_kt` | Optional finite nonnegative true airspeed in knots, supplied by the source |
 | `gs_kt` | Optional finite nonnegative ground speed in knots |
 | `airspeed_profile` | Optional validated speed configuration, defined below |
 | `ias_acceleration_ktps` | Optional finite source-supplied IAS acceleration in knots per second |
@@ -140,10 +142,10 @@ Extended live example:
 
 ### Optional speed indications
 
-* Rust omits absent speeds and both speed fields in non-live snapshots.
+* Rust omits absent speeds and all three speed fields in non-live snapshots.
 * Each speed is independently optional. Missing, `null`, malformed, negative, or non-finite browser values become unavailable.
 * Speeds share the accepted sample's sequence, age, and expiry deadline with attitude.
-* A new snapshot replaces both previous speeds. Missing values never become zero or retain the previous reading.
+* A new snapshot replaces all previous speeds. Missing values never become zero or retain the previous reading.
 * `Publisher::publish(State)` clears speed fields, including in attitude-only live publications.
 * Finite values above the 999 kt display limit remain valid telemetry without clamping.
 
@@ -152,7 +154,7 @@ Extended live example:
 Speed fields extend the live example above:
 
 ```json
-{"ias_kt": 99.5, "gs_kt": 137.6}
+{"ias_kt": 99.5, "tas_kt": 110.5, "gs_kt": 137.6}
 ```
 
 `tests/fixtures/speed-samples.json` defines independent speed-profile checkpoints.

@@ -67,6 +67,11 @@ const ASSETS: &[(&str, &str, &str)] = &[
         include_str!("../../web/airspeed/ias.js"),
     ),
     (
+        "/airspeed/true-airspeed.js",
+        JAVASCRIPT,
+        include_str!("../../web/airspeed/true-airspeed.js"),
+    ),
+    (
         "/airspeed/ground-speed.js",
         JAVASCRIPT,
         include_str!("../../web/airspeed/ground-speed.js"),
