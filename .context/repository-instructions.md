@@ -15,6 +15,7 @@ status: active
 ## Repository rules
 
 * Use English for code, comments, documentation, knowledge entries, commit messages, and GitHub issues and PRs; follow the [writing style](writing-style.md) for project text, including GitHub comments.
+* Preserve supplied accepted plans verbatim in their original language, as required by [accepted plans and handoffs](iterative-development.md#accepted-plans-and-handoffs).
 * Commit `Cargo.lock`.
 * Preserve the MIT license.
 * Record material architecture changes in `docs/adr/`.
@@ -34,7 +35,7 @@ status: active
 * [ ] Manual results identify the environment and observations separately from unavailable hardware checks.
 * [ ] Runtime changes address errors, source loss, and reconnects.
 * [ ] Telemetry changes include compatible fixtures and consumer updates.
-* [ ] Documentation distinguishes implemented and planned behavior.
+* [ ] Documentation distinguishes planned behavior, implemented behavior, and confirmed device acceptance.
 
 Sources: repository CONTRIBUTING rules, moved here by an accepted documentation decision on 2026-10-09, and the linked project documents.
 

@@ -2,6 +2,45 @@
 
 > Procedures and criteria belong here. Record results and acceptance progress in the related GitHub issue or PR.
 
+## Validation by change scope
+
+Use the changed behavior and acceptance criteria to select local checks:
+
+| Change | Required checks | Scope |
+| --- | --- | --- |
+| Documentation or context only | Diff, links, anchors, terminology, preserved requirements, and claims against current sources | No local application build or browser run |
+| Session hooks or other development tooling | Changed behavior and failure paths | Application checks only when application inputs change |
+| PR acceptance control | [Validator suite](pr-acceptance.md#validate-changes-to-the-control), permissions, and trusted-code boundary | Acceptance tooling |
+| Rust or browser application code, dependencies, or build configuration | [Automated checks](#automated-checks) and relevant behavior checks below | Affected application behavior |
+| PFD rendering, geometry, lifecycle, or module/asset integration | Both [desktop browser scripts](#responsive-pfd-layout-and-desktop-checks) and relevant screenshot inspection | Additional PFD evidence |
+| Mobile behavior or feature acceptance | Applicable real iOS Safari and Android Chrome checks | Device evidence separate from desktop results |
+
+Apply these scope rules:
+
+* Use every applicable row when a change crosses boundaries.
+* Preserve CI triggers and required GitHub statuses independently of this local matrix.
+* Report checks prevented by explicit task restrictions.
+* Leave the corresponding acceptance criteria unconfirmed when required evidence is missing.
+
+### Evidence reuse
+
+Check existing evidence before repeating a validation run:
+
+1. Identify the tested revision and environment.
+2. Compare relevant source, fixtures, dependencies, commands, configuration, and the tested artifact.
+3. Explain why later changes do or do not affect the recorded result.
+4. Select the action below.
+
+| Evidence condition | Action |
+| --- | --- |
+| Relevant inputs and environment unchanged | Reuse the recorded result |
+| Prose-only correction outside application inputs | Retain applicable application evidence |
+| New summary of the same unchanged result | No additional run |
+| Relevant changes, failures, incomplete logs, or unresolved concerns | Run affected checks again |
+| Staged refactor without final integration evidence | Run required final checks on the combined outcome |
+
+> Stage results alone do not establish final integration. A recorded final run remains reusable under the same conditions.
+
 ## HTTP startup checks
 
 Prerequisites: Rust stable, rustfmt, and Clippy on Windows x64 MSVC.
@@ -246,7 +285,8 @@ No fixture page, script, or future instrument values enter the Rust binary.
 | Turn rate | +/-3 deg/s reaches the standard-rate marks, with an edge arrow beyond +/-6 deg/s |
 | Reserved future regions | No fake readings or unfinished instrument scales on the production page |
 
-An optional scripted desktop run uses Playwright with an installed browser.
+The scripted desktop checks use Playwright with an installed browser.
+They are required for the PFD changes in the [validation matrix](#validation-by-change-scope) and optional for unrelated exploration.
 It adds no application dependency or frontend build step.
 Install the test tool in ignored local storage if it is not already available:
 
@@ -261,7 +301,7 @@ node tests/pfd-runtime-browser.mjs target/x86_64-pc-windows-msvc/release/msfs202
 | Script | Input | Checks | Output |
 | --- | --- | --- | --- |
 | `pfd-browser.mjs` | Real web assets and isolated loopback fixture on an OS-assigned port | Viewports, poses, partial/old snapshots, stale states, resize, lifecycle, identity, frozen frames, hierarchy/paint order, shared clips, and background coverage | Screenshots under `.local/pfd-browser/`, including opacity candidates in both orientations against sky and ground |
-| `pfd-runtime-browser.mjs` | Fresh compiled release binary passed explicitly | All 24 imported modules with HTTP 200/JavaScript MIME, Rust demo SSE, coherent bank/turn state within 25 seconds, and restart recovery without reload | `.local/pfd-runtime-landscape.png` |
+| `pfd-runtime-browser.mjs` | Release binary built from the checked source and passed explicitly | Every current imported module with HTTP 200/JavaScript MIME, Rust demo SSE, coherent bank/turn state within 25 seconds, and restart recovery without reload | `.local/pfd-runtime-landscape.png` |
 
 The scripted geometry checks include these regression cases:
 
@@ -274,8 +314,8 @@ The scripted geometry checks include these regression cases:
 
 Asset checks cover the current module graph:
 
-* The [architecture tree](architecture.md#intended-source-layout) lists the current 24 runtime modules.
-* `src/http/assets.rs` registers 26 embedded files: the 24 modules, HTML, and CSS.
+* The [architecture tree](architecture.md#intended-source-layout) lists the runtime modules.
+* `src/http/assets.rs` registers the current modules, HTML, and CSS through explicit mappings.
 * `tests/http.rs` checks the explicit embedded routes and JavaScript MIME.
 * Both browser scripts check retired routes return 404 without compatibility facades.
 
@@ -330,6 +370,53 @@ Attach results to the validation issue.
 Keep hardware-dependent tasks open until observations support acceptance.
 Unit tests cannot certify simulator or phone behavior.
 
+### Build provenance
+
+Distinguish build execution from artifact creation:
+
+* Cargo can reuse an existing artifact after a successful command.
+* A changed executable hash establishes different bytes, not their source inputs.
+
+Record these fields with binary-dependent validation:
+
+| Field | Required evidence |
+| --- | --- |
+| Source | Commit, relevant uncommitted changes, and source checkout path |
+| Build | Exact command, target/profile, toolchain, target directory, complete output, and native exit code |
+| Artifact | Absolute executable path, size, timestamp, and structured SHA-256 value |
+| Runtime check | Exact command, artifact path, environment, output, and native exit code |
+
+Preserve usable artifact records:
+
+* Store hash data as structured JSON or an object with path and hash fields.
+* Avoid display tables that truncate paths or hash values.
+* Link existing logs and artifacts from context entries instead of copying their full contents.
+
+If a copied checkout and build cache leave artifact provenance uncertain:
+
+1. Select a fresh target directory.
+2. Rebuild from the source checkout into that target directory.
+3. Record the new artifact before making claims about that binary.
+
+> Command success or a runtime screenshot alone does not establish recompilation.
+
+### Screenshot comparisons
+
+Compare captures only after recording viewport, scale, browser, fonts, input state, capture method, and source/artifact identity.
+
+1. Preserve baseline and candidate captures with their metadata.
+2. Record the difference extent and location, including raw comparison output.
+3. Inspect the changed area visually.
+4. Assess whether the difference violates the applicable geometry, readability, color, or availability requirement.
+5. Record a cause only when evidence establishes it.
+
+Report uncertainty explicitly:
+
+* Use "cause not established" when the mechanism behind a pixel difference remains unknown.
+* Separate the observed difference, its impact assessment, and any possible cause.
+* Do not present browser noise or rendering variation as an established cause without evidence.
+* Leave affected acceptance unresolved when the evidence cannot determine the impact.
+
 ## Telemetry and demo checks
 
 ```powershell
@@ -372,7 +459,8 @@ Maintain fixtures and timing checks as follows:
 
 ## Airspeed and ground-speed acceptance
 
-Run the automated checks above, including both browser scripts. Check these speed-specific behaviors:
+Run the automated checks and both desktop browser scripts for airspeed implementation changes.
+Check these speed-specific behaviors:
 
 | Area | Expected behavior |
 | --- | --- |
@@ -418,7 +506,8 @@ Restrict firewall access to the trusted private subnet. Remove `PFD_FIXTURE_HOST
 
 ## Airspeed ranges, references, and trend acceptance
 
-Run the automated checks and both browser scripts above. The #22 checks use the existing demo and fixture transport.
+Run the automated checks and both browser scripts for range, reference, or trend implementation changes.
+The #22 checks use the existing demo and fixture transport.
 The [contract](telemetry-contract.md#optional-airspeed-ranges-and-trend) defines the fictional profile and source acceleration.
 
 | Area | Expected behavior |
@@ -542,14 +631,14 @@ These checks cover instrument composition, layers, and visual objects:
 | #56: ownership | Same complete read-only frame at instrument entry points, concrete child inputs, immediate-parent shared hosts/clips, and no visual frame cache/timer |
 | #56: composition | Preserve hierarchy, defs/paint order, SVG identity, ARIA, common attitude clip, and coherent once-per-frame transforms |
 | #56: recovery | Repeat IAS/profile loss during resize and both recovery orders, with independently painted GS and reset warnings/references |
-| #56: assets | Verify all 24 modules through explicit Rust/fixture registration and HTTP/MIME checks, with all eight retired routes returning 404 |
+| #56: assets | Verify the complete module graph through explicit Rust/fixture registration and HTTP/MIME checks, with the listed retired routes returning 404 |
 
 Record refactor validation against the final revision:
 
 1. Preserve baseline screenshots.
-2. Record the tested commit, environment, complete logs, native exits, and raw comparisons.
-3. Explain every screenshot difference with quantitative and visual evidence.
-4. Run fresh checks on the final revision independently of historical stage results.
+2. Record the tested commit, environment, complete logs, native exits, and [build provenance](#build-provenance).
+3. Describe and assess each [screenshot difference](#screenshot-comparisons) without inventing an unverified cause.
+4. Run required final checks on the combined revision, following the [evidence reuse rules](#evidence-reuse).
 5. Keep actual iOS Safari and Android Chrome acceptance unchecked until passing device evidence exists.
 6. Record remaining checks under the issue and PR `Additional verification`.
 

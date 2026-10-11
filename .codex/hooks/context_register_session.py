@@ -67,7 +67,17 @@ def write_record(path, row):
             temporary = Path(handle.name)
             json.dump(row, handle, ensure_ascii=False, indent=2)
             handle.write("\n")
-        os.replace(temporary, path)
+        # Unlocked readers can briefly prevent replacement on Windows.
+        deadline = time.monotonic() + 1
+        while True:
+            try:
+                os.replace(temporary, path)
+                break
+            except OSError as error:
+                if (os.name != "nt" or getattr(error, "winerror", None) not in (5, 32, 33)
+                        or time.monotonic() >= deadline):
+                    raise
+                time.sleep(0.02)
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)

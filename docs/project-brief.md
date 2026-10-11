@@ -19,7 +19,7 @@ Prioritize mobile readability, low delay, and explicit unavailable states.
 | Connection | Subscribe on page load. Recover automatically after interruption |
 | Simulator access | Read-only. No browser control commands |
 | Visuals | G5-inspired hierarchy and readability, original assets |
-| Project | GitHub Issues track work. All repository content uses English |
+| Project | GitHub Issues track work. New project text uses English, with the [original-plan exception](../.context/writing-style.md) |
 
 ## Working assumptions
 

@@ -235,6 +235,23 @@ Further generalization remains deferred:
 * Compare concrete scale, sign, digit, selection, and alert rules before sharing an operation.
 * The current implementation adds no instrument base class, general tape renderer, or shared lower-indication controller.
 
+### Callback reentrancy limit
+
+The current client has these limits when a callback changes its lifecycle:
+
+| Callback action | Possible continuation |
+| --- | --- |
+| Call `stop()` inside `onAttitude` | Invoke `onSample` and schedule expiry for the same acceptance |
+| Call `stop()` inside `onSample` | Schedule expiry after the callback returns |
+| Accept a nested sample | Retain the original timer behavior |
+
+These limits remain outside the cancellation guarantee:
+
+* An acceptance operation already executing a callback may continue after `stop()`.
+* The #56 stage-1 review preserved these legacy behaviors for refactor equivalence.
+* Future callers must not rely on these limitations as stable behavior guarantees.
+* Changes require separate behavior scope and regression checks for callback-triggered stop, restart, and nested acceptance.
+
 ## Panel interface and frame lifecycle
 
 ```js
@@ -314,7 +331,8 @@ Freshness and status handling follow these rules:
 * Scheduler expiry updates the visible stale reason even if the transport timer has not executed.
 * Optional failures affect only their indications.
 * Source/transport loss invalidates the panel.
-* Use no interpolation or extrapolation.
+* Do not interpolate or extrapolate current readings between accepted samples.
+* The source-based [airspeed trend](#ranges-references-and-trend) remains a separate prediction indication.
 
 Future timed alerts use the existing scheduling and cancellation path:
 
@@ -438,13 +456,13 @@ Composition and geometry preserve the existing panel allocation:
 The tape and readouts use these display rules:
 
 * Tape spacing is 4 CSS px/kt, with major labels every 10 kt and minor ticks every 2 kt.
-* The scale translates from received IAS.
+* The scale and rolling digits use fractional received IAS without rounding the input to whole knots.
 * Screen-space clipping hides readings outside the tape rectangle and its unit label.
 * The fixed opaque window clips three rolling digit columns.
 * Leading zeros are blank.
 * Units roll from fractional IAS.
 * Higher columns roll during the final knot before a decimal carry.
-* GS uses a separate labelled readout in kt, rounded to the nearest integer.
+* GS uses a separate labelled readout in kt, rounded to the nearest integer with halves rounded up.
 
 Availability and lifecycle remain independent:
 
@@ -459,6 +477,8 @@ Availability and lifecycle remain independent:
 
 The same module consumes the optional profile and acceleration from the complete frame.
 It creates all new SVG nodes once. Resize and render retain the existing panel lifecycle.
+An unavailable profile hides ranges, references, and VNE warnings while preserving valid IAS, GS, attitude, and acceleration-based trend.
+Unavailable acceleration hides the trend and predictive warning while preserving valid ranges, references, and actual overspeed.
 
 | Range | Bounds in configured knots | Demo bounds |
 | --- | --- | --- |
@@ -507,10 +527,13 @@ Trend uses source-supplied acceleration:
 
 * Zero IAS is valid.
 * `OVR` retains its existing meaning and hides the numeric tape and trend.
-* The magenta vector extends from current IAS toward the source-supplied six-second prediction.
+* The browser calculates the six-second prediction as `IAS + 6 * ias_acceleration_ktps` from source-supplied acceleration.
+* The magenta vector extends from current IAS toward that prediction.
 * Its stroke stays inside the tape clip.
+* A negative prediction remains a calculation result and clips at the tape boundary.
 * Constant speed, missing acceleration, or a non-finite prediction hides the vector.
 * Missing configuration does not prevent a valid trend calculation.
+* The prediction never replaces or extrapolates the current IAS reading.
 
 VNE changes the current-speed window and digits independently:
 
