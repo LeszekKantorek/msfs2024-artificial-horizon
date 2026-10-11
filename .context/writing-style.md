@@ -5,7 +5,7 @@ status: active
 
 * Apply these writing rules to documentation, knowledge entries, code comments, commit messages, and GitHub issues, comments, and PRs.
 * Use short English sentences and consistent terms.
-* Keep supplied accepted plans verbatim in their original language under the [plan-preservation rule](iterative-development.md#accepted-plans-and-handoffs).
+* Keep supplied accepted plans local and verbatim in their original language under the [plan-preservation rule](iterative-development.md#accepted-plans-and-handoffs).
 * Use `*` bullets for parallel rules and numbered steps for sequences.
 * Introduce long lists or distinct groups of bullets with one short sentence that states their topic or purpose.
 * A heading can introduce a list when its scope is clear, but a short lead-in can add useful context.

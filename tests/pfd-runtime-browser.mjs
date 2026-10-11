@@ -64,9 +64,27 @@ try {
   assert.equal(await page.locator('#telemetry-status').textContent().then(text => text.includes('DEMO')), false);
   assert.equal(await page.locator('#slip-skid').getAttribute('data-available'), 'true');
   assert.equal(await page.locator('#turn-rate').getAttribute('data-available'), 'true');
+  const altitudeReading = () => page.evaluate(() => ({
+    state: document.querySelector('#altitude').dataset.state,
+    feet: Number(document.querySelector('#altitude').getAttribute('aria-label').split(' ')[2]),
+    sign: document.querySelector('#altitude-sign').textContent,
+    drums: Number([...document.querySelectorAll('#altitude-digits > g')].map(n => n.firstElementChild.textContent).join('')),
+    baroState: document.querySelector('#barometric-setting').dataset.state,
+    pressure: Number(document.querySelector('#barometric-setting').getAttribute('aria-label').split(' ')[2]),
+    pressureText: document.querySelector('#barometric-value').textContent,
+  }));
+  function verifyAltitude(reading) {
+    assert.equal(reading.state, 'available');
+    assert.equal(reading.baroState, 'available');
+    assert.ok(Number.isFinite(reading.feet) && reading.pressure > 0);
+    assert.equal(reading.drums, Math.floor(Math.abs(reading.feet) / 20) * 20);
+    assert.equal(reading.sign, reading.feet < 0 ? '−' : '');
+    assert.equal(reading.pressureText, reading.pressure.toFixed(2));
+  }
+  verifyAltitude(await altitudeReading());
   assert.deepEqual([...loadedModules].sort(), [
     '/airspeed/ground-speed.js', '/airspeed/helpers.js', '/airspeed/ias.js', '/airspeed/index.js',
-    '/airspeed/readout.js', '/airspeed/references.js', '/airspeed/tape.js', '/app.js', '/fixed-symbols/aircraft.js', '/fixed-symbols/bank-scale.js', '/fixed-symbols/index.js', '/frame-scheduler.js', '/helpers.js', '/horizon/bank-pointer.js', '/horizon/index.js', '/horizon/pitch-scale.js', '/horizon/world.js', '/layout.js',
+    '/airspeed/readout.js', '/airspeed/references.js', '/airspeed/tape.js', '/altitude/baro.js', '/altitude/index.js', '/altitude/readout.js', '/altitude/tape.js', '/app.js', '/fixed-symbols/aircraft.js', '/fixed-symbols/bank-scale.js', '/fixed-symbols/index.js', '/frame-scheduler.js', '/helpers.js', '/horizon/bank-pointer.js', '/horizon/index.js', '/horizon/pitch-scale.js', '/horizon/world.js', '/layout.js',
     '/panel.js', '/slip-skid.js', '/status.js', '/telemetry/client.js', '/telemetry/validation.js', '/turn-rate.js',
   ]);
   for (const path of ['/math.js', '/svg.js', '/telemetry-client.js', '/airspeed.js', '/horizon.js', '/fixed-symbols.js', '/airspeed/calculations.js', '/horizon/calculations.js']) {
@@ -85,6 +103,8 @@ try {
   assert.ok(Number.isFinite(snapshot.turn_rate_dps));
   assert.ok(Number.isFinite(snapshot.ias_kt));
   assert.ok(Number.isFinite(snapshot.gs_kt));
+  assert.ok(Number.isFinite(snapshot.altitude_ft));
+  assert.ok(snapshot.baro_inhg > 0);
   assert.ok(Number.isFinite(snapshot.ias_acceleration_ktps));
   assert.equal(snapshot.airspeed_profile.vne_kt, 140);
   // Observe source-supplied acceleration and the corresponding six-second warning.
@@ -121,6 +141,7 @@ try {
   assert.equal(recovered.state, 'available');
   assert.equal(recovered.gsState, 'available');
   assert.equal(recovered.digits, String(Math.floor(recovered.ias)));
+  verifyAltitude(await altitudeReading());
   assert.deepEqual(errors, []);
   console.log(`Rust-to-browser PFD checks passed on ${await browser.version()}: embedded assets, extended SSE, standard-rate turn, source loss and restart without page reload.`);
 } finally {

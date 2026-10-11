@@ -41,6 +41,41 @@ Check existing evidence before repeating a validation run:
 
 > Stage results alone do not establish final integration. A recorded final run remains reusable under the same conditions.
 
+## Altitude and pressure acceptance
+
+Issue [#23](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/23) owns altitude and pressure evidence.
+Use the [altitude contract](telemetry-contract.md#optional-altitude-and-pressure-setting) and [presentation rules](pfd-presentation.md#altitude-and-barometric-setting).
+
+Automated coverage includes these scenarios:
+
+| Check | Expected behavior |
+| --- | --- |
+| Rust types and publication | Finite signed feet, positive finite inHg, independent omission, shared age, attitude-only clearing, and stale suppression |
+| Independent demo fixture | Six altitude sweeps, all segment endpoints, pressure changes, zero crossing, and repeated cycles |
+| HTTP/SSE | Both clients receive the same altitude/pressure and sample age; unavailable snapshots omit extensions |
+| Node tape geometry | Fixed pixel spacing, known tick positions, wider spans and more labels on taller tapes, signed ticks, and direction |
+| Node readouts | 20-ft drums, carries, fractions, signs, and range boundaries |
+| Node client and scheduler | Independent field normalization, old snapshots, unchanged callback shape, reconnect/resume, coalescing, and expiry before resize draw |
+| Browser fixture | Both compositions, fixed pixel spacing through resize, retained nodes, wider portrait coverage, painted clearance, local failures/overflow, and global recovery |
+| Release runtime | Embedded altitude modules with correct MIME, real Rust SSE values in SVG/ARIA, pressure formatting, and recovery after restart |
+
+The existing [automated commands](#automated-checks) include the altitude Rust and Node tests.
+Both [desktop browser scripts](#responsive-pfd-layout-and-desktop-checks) are required.
+Altitude screenshots appear under `.local/pfd-browser/altitude-*`.
+Inspect narrow portrait and short landscape captures, including long signed readouts over sky and ground.
+
+Real-device acceptance requires both iOS Safari and Android Chrome:
+
+1. Record the device, OS, browser/version, tested commit, viewport, date, and pass/fail observations in #23 or its PR.
+2. Start the Rust demo through the [phone procedure](../README.md#use-your-phone).
+3. Watch a complete cycle for climbing, descending, negative altitude, zero crossing, digit carries, and pressure changes.
+4. Check the 100/20-ft markings, fixed pointer, rolling digits, FT, and two-decimal inHg readout.
+5. Compare portrait and landscape at the same browser zoom and check the same tick spacing with more values on the taller tape.
+6. Rotate the phone and expand/collapse browser bars. Check safe areas, readable labels, undistorted symbols, and no scrolling or collisions.
+7. Stop/restart the server and lock/unlock the phone. Require a fresh sample before indications return without reload.
+8. Use the [development fixture procedure](#real-phone-checks) for independent missing/invalid altitude and pressure, both overflow boundaries, and long signed digits against sky and ground.
+9. Leave unavailable device results unchecked. Desktop emulation does not establish phone acceptance.
+
 ## HTTP startup checks
 
 Prerequisites: Rust stable, rustfmt, and Clippy on Windows x64 MSVC.

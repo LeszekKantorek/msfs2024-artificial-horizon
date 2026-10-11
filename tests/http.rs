@@ -9,6 +9,26 @@ use tower::ServiceExt;
 #[tokio::test]
 async fn embedded_page_assets_and_liveness_match_the_contract() {
     for (path, content_type, expected) in [
+        (
+            "/altitude/index.js",
+            "text/javascript; charset=utf-8",
+            "createAltitude",
+        ),
+        (
+            "/altitude/tape.js",
+            "text/javascript; charset=utf-8",
+            "createTape",
+        ),
+        (
+            "/altitude/readout.js",
+            "text/javascript; charset=utf-8",
+            "createReadout",
+        ),
+        (
+            "/altitude/baro.js",
+            "text/javascript; charset=utf-8",
+            "createBaro",
+        ),
         ("/", "text/html; charset=utf-8", "telemetry-status"),
         ("/styles.css", "text/css; charset=utf-8", "font-family"),
         ("/health", "application/json", "{\"status\":\"ok\"}"),

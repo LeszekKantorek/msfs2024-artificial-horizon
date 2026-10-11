@@ -7,6 +7,26 @@ const JAVASCRIPT: &str = "text/javascript; charset=utf-8";
 // Each entry defines an exact route, response MIME type and embedded body.
 const ASSETS: &[(&str, &str, &str)] = &[
     (
+        "/altitude/index.js",
+        JAVASCRIPT,
+        include_str!("../../web/altitude/index.js"),
+    ),
+    (
+        "/altitude/tape.js",
+        JAVASCRIPT,
+        include_str!("../../web/altitude/tape.js"),
+    ),
+    (
+        "/altitude/readout.js",
+        JAVASCRIPT,
+        include_str!("../../web/altitude/readout.js"),
+    ),
+    (
+        "/altitude/baro.js",
+        JAVASCRIPT,
+        include_str!("../../web/altitude/baro.js"),
+    ),
+    (
         "/helpers.js",
         JAVASCRIPT,
         include_str!("../../web/helpers.js"),

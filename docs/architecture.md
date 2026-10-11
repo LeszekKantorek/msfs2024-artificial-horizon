@@ -107,6 +107,11 @@ web/
     references.js           # tape markers/leaders and fallback values
     helpers.js              # shared speed state, display limit, and tape offset
   status.js                 # accessible status and unavailability
+  altitude/
+    index.js                # composition, shared tape clip, state and geometry
+    tape.js                 # fixed pixel spacing and a retained tick pool that grows on resize
+    readout.js              # pointer window, sign, 20-ft drums and display limits
+    baro.js                 # independent pressure setting and inHg formatting
   helpers.js                # clamp, SVG creation, and attribute updates
   layout.js                 # responsive instrument regions in CSS pixels
 tests/
@@ -205,6 +210,8 @@ The server owns validated samples and deterministic demo scenarios:
 * `IndicatedAirspeed` and `GroundSpeed` validate optional nonnegative knots. `FlightSample::with_speeds` adds them without changing its existing constructor.
 * `AirspeedProfile` validates speed thresholds and named `VSpeedReferences`. `IasAcceleration` validates source-supplied kt/s independently.
 * `FlightSample::with_airspeed_indications` adds optional configuration and acceleration. Demo configuration is fictional and shared by all clients.
+* `BarometricAltitude` validates finite signed feet; `BarometricSetting` validates positive finite inHg.
+* `FlightSample::with_altitude` adds the independently optional values without changing the constructor or attitude-only path.
 * `Publisher::publish_sample` uses the existing latest-value channel, sequence, and monotonic age.
 * `Publisher::publish(State)` keeps the attitude-only path and clears all optional indications.
 * `demo::sample` defines nine deterministic two-second segments.
@@ -216,6 +223,7 @@ The browser validates those samples and presents them within the available panel
 * `telemetry/validation.js` validates the snapshot and normalizes optional values independently, including copied profile references.
 * `createTelemetryClient` owns the connection and publishes normalized samples with one expiry deadline.
 * `airspeed/index.js` composes IAS and GS visual objects. Each object owns its readings, geometry, and pure calculations.
+* `altitude/index.js` composes its signed tape, rolling readout, and independent pressure setting in the existing right-side allocation.
 * The existing `onAttitude` callback retains its attitude-only shape.
 * `pfdLayout` allocates instrument regions from available CSS width/height.
 * `frame-scheduler.js` schedules fresh frames.

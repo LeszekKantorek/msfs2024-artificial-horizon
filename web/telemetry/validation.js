@@ -29,6 +29,8 @@ export function normalizeAirspeedProfile(value) {
 
 export function normalizeOptionalIndications(value) {
   return {
+    altitude_ft: Number.isFinite(value.altitude_ft) ? value.altitude_ft : null,
+    baro_inhg: Number.isFinite(value.baro_inhg) && value.baro_inhg > 0 ? value.baro_inhg : null,
     slip_skid: Number.isFinite(value.slip_skid) && Math.abs(value.slip_skid) <= 1 ? value.slip_skid : null,
     turn_rate_dps: Number.isFinite(value.turn_rate_dps) ? value.turn_rate_dps : null,
     ias_kt: Number.isFinite(value.ias_kt) && value.ias_kt >= 0 ? value.ias_kt : null,

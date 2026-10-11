@@ -1,5 +1,5 @@
 ---
-description: Choose module boundaries for agreed delivery and preserve the complete accepted plan through handoffs and amendments.
+description: Choose module boundaries for agreed delivery and preserve accepted plans locally without publishing them to GitHub.
 status: active
 ---
 
@@ -18,9 +18,12 @@ status: active
 ## Accepted plans and handoffs
 
 * Preserve the complete accepted plan verbatim, including supplied language, requirements, and invariants.
+* Store implementation plans, amendments, and handoff indexes under Git-ignored `.local/plans/<issue>-<topic>/`.
+* Do not commit implementation plans or publish them in GitHub issues or PRs unless explicitly requested.
 * Keep abbreviated execution notes as supplements, never replacements for the accepted plan.
 * Record subsequent corrections as separate dated amendments that identify the superseded requirements.
-* Keep a current handoff index that links the original plan, all amendments in application order, and the latest delivery evidence.
+* Keep a local handoff index that links the original plan, all amendments in application order, and the latest delivery evidence.
+* Record public acceptance evidence in the issue or PR without publishing the implementation plan.
 * Read the complete plan and applicable amendments before edits or delegated work, including all invariants.
 * Preserve prior-stage evidence when an amendment changes later implementation boundaries.
 
@@ -31,5 +34,7 @@ Source: conscious generic-tape deferral in maintenance [#54](https://github.com/
 Source: accepted full-plan preservation correction, 2026-10-10, and the separate calculation-ownership amendment for [#56](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/56), 2026-10-11.
 
 Source: approved context cleanup, 2026-10-11, after a later asset-registration amendment was missing from the earlier handoff navigation.
+
+Source: accepted correction for #23, 2026-10-11, to remove `docs/plans/23-altitude-baro` from the repository and PR and keep future implementation plans local.
 
 Evidence limit: no verified causal link connects plan abbreviation with earlier defects.

@@ -1,7 +1,8 @@
 //! Repeatable degree fixtures; no simulator SDK conventions are assumed.
 use crate::telemetry::{
-    AirspeedProfile, Attitude, FlightSample, GroundSpeed, IasAcceleration, IndicatedAirspeed,
-    Publisher, SAMPLE_PERIOD, SlipSkid, TelemetryError, TurnRate, VSpeedReferences,
+    AirspeedProfile, Attitude, BarometricAltitude, BarometricSetting, FlightSample, GroundSpeed,
+    IasAcceleration, IndicatedAirspeed, Publisher, SAMPLE_PERIOD, SlipSkid, TelemetryError,
+    TurnRate, VSpeedReferences,
 };
 use std::future::Future;
 use tokio::time::{MissedTickBehavior, interval};
@@ -41,10 +42,25 @@ pub fn sample(index: u64) -> FlightSample {
         160..200 => 1.0,
         _ => (320 - step) as f64 / 120.0,
     };
+    // Separate synthetic sweeps exercise signs and carries; jumps are not a flight model.
+    let (start, end) = [
+        (-120.0, 120.0),
+        (980.0, 1020.0),
+        (9980.0, 10020.0),
+        (10020.0, 9980.0),
+        (1020.0, 980.0),
+        (120.0, -120.0),
+    ][(step / 60) as usize];
+    let altitude = start + (end - start) * (step % 60) as f64 / 59.0;
+    let baro = [29.92, 30.12, 29.72][(step / 120) as usize];
     FlightSample::new(
         attitude,
         Some(SlipSkid::new(slip).expect("built-in ball positions are valid")),
         Some(TurnRate::new(turn).expect("built-in turn rates are valid")),
+    )
+    .with_altitude(
+        Some(BarometricAltitude::new(altitude).expect("built-in altitude is valid")),
+        Some(BarometricSetting::new(baro).expect("built-in pressure setting is valid")),
     )
     .with_speeds(
         Some(IndicatedAirspeed::new(150.0 * fraction).expect("built-in IAS is valid")),

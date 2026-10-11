@@ -5,8 +5,8 @@ then open its address in a browser on the same network.
 
 **Windows x64** · **Read-only browser display** · **No phone app or account**
 
-> **Try the demo today.** The current executable displays synthetic attitude, IAS, GS, slip/skid, and turn rate.
-> Altitude, vertical speed, heading/track, and MSFS2024 integration remain planned. This is not a real-flight instrument.
+> **Try the demo today.** The current executable displays synthetic attitude, IAS, GS, altitude, pressure setting, slip/skid, and turn rate.
+> Vertical speed, heading/track, and MSFS2024 integration remain planned. This is not a real-flight instrument.
 
 [Start the demo](#start-the-demo) · [Use your phone](#use-your-phone) · [Development](CONTRIBUTING.md)
 
@@ -40,7 +40,7 @@ Cargo builds the application before starting it.
 ### 3. Open the display
 
 Open [http://127.0.0.1:8080](http://127.0.0.1:8080) on the PC.
-Expect a moving attitude display, a left-side airspeed tape, and a separate ground-speed readout.
+Expect a moving attitude display, a left-side airspeed tape, ground speed, and a right-side altitude tape with pressure setting.
 Press `Ctrl+C` in PowerShell to stop the server gracefully.
 
 ## Use your phone
@@ -80,13 +80,16 @@ Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
 | Speed display | Rolling IAS digits, tape labels every 10 kt, colored speed ranges, R/X/Y/G references, and a magenta six-second trend. Separate rounded GS in kt |
 | Speed warnings | Red current-speed pointer at or above 140 kt. Yellow IAS digits when the rising trend predicts reaching 140 kt |
 | Speed unavailable | `X` means unavailable, `OVR` means above 999 kt. Configured references appear above GS when IAS is unavailable |
+| Altitude | Fixed 8 CSS px spacing per 20 ft. Labels every 100 ft. Taller panels show more altitude. Signed readout: -9999 to 99999 ft. |
+| Pressure | Read-only scenario setting below altitude, with two decimal places in inHg |
+| Altitude/pressure unavailable | Independent `X` marks; `OVR` beyond each display limit |
 | Data | Synthetic samples at 20 Hz, without a source badge |
 | Presentation | Sky/ground across the full panel, centrally clipped pitch scale, no top status bar |
 | Connection loss | Opaque full-panel cover with the reason and automatic retry after two seconds |
 | Stale or unavailable data | Explicit status, no fabricated level-flight reading |
 | Background/resume | A fresh snapshot is required before live attitude returns |
 | Sizing | No fixed aspect ratio; minimum 320 CSS px width and 240 CSS px usable height after browser bars and safe areas |
-| Old snapshots | Attitude-only snapshots show attitude with unavailable IAS, GS, slip/skid and turn rate |
+| Old snapshots | Attitude-only snapshots show attitude with unavailable IAS, GS, altitude, pressure, slip/skid and turn rate |
 
 > Real iOS Safari and Android Chrome acceptance requires [device evidence](docs/testing.md#attitude-display-real-device-phone-acceptance).
 > Issue #4 owns the original attitude acceptance, [#20](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/20) owns the attitude/turn extension, and [#37](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/37) owns layers and background opacity.
@@ -95,7 +98,9 @@ Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
 [#22](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/22) owns range, reference, and trend acceptance.
 The speed profile is fictional: VS0/VS1 40/50, VFE/VNO/VNE 85/110/140, and VR/VX/VY/VG 55/65/75/90 kt.
 These values are not verified performance of a real aircraft. See the [speed contract](docs/telemetry-contract.md#optional-airspeed-ranges-and-trend).
-The planned G5-inspired PFD adds altitude, vertical speed, and heading/track indications.
+[#23](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/23) owns altitude and pressure acceptance.
+Its synthetic sweeps exercise negative values, climbing, descending, and digit carries; transitions are not a physical flight model.
+The planned G5-inspired PFD adds selected-altitude alerts, vertical speed, and heading/track indications.
 See the [project brief](docs/project-brief.md) for coverage and exclusions, and the [roadmap](docs/roadmap.md) for delivery order.
 
 ## Options and troubleshooting

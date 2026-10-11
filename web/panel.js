@@ -3,6 +3,7 @@ import { createFixedSymbols } from './fixed-symbols/index.js';
 import { createSlipSkid } from './slip-skid.js';
 import { createTurnRate } from './turn-rate.js';
 import { createAirspeed } from './airspeed/index.js';
+import { createAltitude } from './altitude/index.js';
 import { setAttributes } from './helpers.js';
 
 // Delegation never selects instrument fields or computes instrument geometry.
@@ -34,6 +35,7 @@ export function createPanel(instrument, status) {
   return composePanel(instrument.querySelector('svg'), [
     createHorizon(instrument, layers), createFixedSymbols(instrument, layers.symbols),
     createAirspeed(instrument, layers),
+    createAltitude(instrument, layers),
     createSlipSkid(instrument, layers), createTurnRate(instrument, layers),
   ], status);
 }

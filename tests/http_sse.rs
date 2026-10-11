@@ -59,6 +59,8 @@ async fn extended_samples_reach_two_clients_with_shared_values_and_delivery_time
     assert_eq!(a["slip_skid"], -1.0);
     assert_eq!(a["turn_rate_dps"], -3.0);
     assert_eq!(a["ias_kt"], 100.0);
+    assert_eq!(a["altitude_ft"], 1020.0);
+    assert_eq!(a["baro_inhg"], 29.72);
     assert_eq!(a["ias_acceleration_ktps"], -25.0);
     assert_eq!(
         a["airspeed_profile"],
@@ -74,6 +76,8 @@ async fn extended_samples_reach_two_clients_with_shared_values_and_delivery_time
         assert!(unavailable.get("turn_rate_dps").is_none());
         assert!(unavailable.get("ias_kt").is_none());
         assert!(unavailable.get("gs_kt").is_none());
+        assert!(unavailable.get("altitude_ft").is_none());
+        assert!(unavailable.get("baro_inhg").is_none());
         assert!(unavailable.get("airspeed_profile").is_none());
         assert!(unavailable.get("ias_acceleration_ktps").is_none());
     }

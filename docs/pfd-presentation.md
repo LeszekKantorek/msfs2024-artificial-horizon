@@ -6,7 +6,7 @@ Delivery order: [roadmap](roadmap.md). Validation: [testing](testing.md#modular-
 
 ## Current implementation and planned changes
 
-The panel implements attitude, slip/skid, and turn rate from #20, plus IAS and GS from #21 and ranges/trend from #22.
+The panel implements attitude, slip/skid, and turn rate from #20, IAS and GS from #21, ranges/trend from #22, and altitude/pressure from #23.
 #36 separates rendering from scheduling. #37 implements layers and full-panel background coverage.
 Maintenance [#54](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/54) introduced internal calculation and validation seams.
 [#56](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/56) composes visual objects and places object-specific calculations with their implementing modules:
@@ -22,6 +22,7 @@ Maintenance [#54](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/
 | `fixed-symbols/` | Compose fixed bank scale and aircraft reference with outline |
 | `slip-skid.js`, `turn-rate.js` | Local geometry, readings, and indication availability |
 | `airspeed/` | Compose IAS and independent GS, with SVG operations and calculations in each visual object |
+| `altitude/` | Compose altitude tape, rolling readout, and independent pressure setting with local calculations |
 | `status.js` | Accessible status, and global unavailability |
 | `helpers.js` | Named clamp, SVG creation, and attribute updates without import-time DOM access |
 
@@ -44,6 +45,7 @@ Panel
 |   |   |-- Readout (window, digits, unit, warning)
 |   |   `-- References (markers, leaders, fallback values)
 |   `-- Ground speed
+|-- Altitude (tape, rolling readout, pressure setting)
 |-- Slip/skid
 |-- Turn rate
 |-- Fixed symbols (bank scale, aircraft and outline)
@@ -52,7 +54,7 @@ Panel
 
 * A module does not require one file per graphic element.
 * Add future instruments in their feature issues, without empty implementations or production placeholder readings.
-* Altitude/selected-altitude alerts, vertical speed, and heading/track remain planned in #23–#26.
+* Selected-altitude alerts, vertical speed, and heading/track remain planned in #24–#26.
 
 | Owner | Responsibility |
 | --- | --- |
@@ -231,8 +233,8 @@ Lifecycle state stays with the client and scheduler:
 
 Further generalization remains deferred:
 
-* A general IAS/altitude tape remains deferred until actual altitude implementation.
-* Compare concrete scale, sign, digit, selection, and alert rules before sharing an operation.
+* Altitude uses its own tape and drums because its scale, signed values, and 20-ft digit steps differ from IAS.
+* No general tape abstraction is introduced; selected-altitude and alert rules remain in #24.
 * The current implementation adds no instrument base class, general tape renderer, or shared lower-indication controller.
 
 ### Callback reentrancy limit
@@ -271,6 +273,7 @@ panel.invalidate(reason);
 | `attitude`, `slip_skid`, `turn_rate_dps` | Values from one accepted sample |
 | `ias_kt`, `gs_kt` | Independently normalized speeds from the same accepted sample, or `null` |
 | `airspeed_profile`, `ias_acceleration_ktps` | Independently normalized configuration and source acceleration, or `null` |
+| `altitude_ft`, `baro_inhg` | Independently normalized signed altitude and positive pressure setting, or `null` |
 | `expiresAt` | Original monotonic expiry deadline |
 | `status` | Copied `source`, `transport`, and `state` values |
 
@@ -440,6 +443,44 @@ State updates preserve availability and accessible meanings:
 * Reference labels retain exact configured values despite compact visible text.
 * Status announcements change only when their text changes, as defined in [unavailable status](#unavailable-status).
 
+## Altitude and barometric setting
+
+The altitude module uses the existing right-side allocation and layer 2:
+
+* `altitude/index.js` composes the tape, readout, and independent pressure setting with `resize(layout)` and `render(frame)`.
+* The composition owns the shared tape clip, background, unit label, geometry, and local altitude state.
+* `tape.js` owns a retained pool of ticks and labels covering the visible range plus edge clearance.
+* The pool grows only when resize needs more rows and hides surplus rows on smaller panels.
+* Rendering reuses existing nodes without creating or replacing them.
+* `readout.js` owns its digit clip, fixed opaque pointer window, sign, rolling columns, and layer-4 X/OVR mark.
+* `baro.js` owns its background, value, unit, formatting, and independent state.
+* Pure calculations remain in the visual objects that implement them; no generic IAS/altitude tape is introduced.
+
+The tape and readouts use these presentation rules:
+
+* The tape remains centered on the current altitude, with 20-ft minor ticks and 100-ft major ticks and labels.
+* Minor ticks are always 8 CSS px apart and major ticks are 40 CSS px apart.
+* This matches the former 400-ft scale at a 160 CSS px tape height in minimum-height landscape.
+* Taller tapes show a wider range and more labels without stretching the spacing or text.
+* A 160 CSS px tape spans 400 ft and a 400 CSS px tape spans 1000 ft.
+* Higher values appear above the pointer.
+* The tape includes negative values and crosses zero without a direction change.
+* The readout supports -9999 through 99999 ft; valid values beyond that range show `OVR` and hide the scale and digits.
+* The lower two digits roll together through 00/20/40/60/80, using the full fractional magnitude.
+* Higher columns carry during the final 20 ft before their decimal boundary, with leading zeros hidden.
+* Negative values have a separate minus sign and magnitude drums; zero, including negative zero, has no minus.
+* An adjacent drum row outside the display range is blank instead of wrapping to zero.
+* Missing altitude shows `X` and hides the scale and digits without hiding valid pressure or other instruments.
+* The pressure readout stays at the bottom of the right column, with a 32-pixel background and a two-pixel panel inset.
+* Pressure uses two decimal places and a separate `inHg` unit; positive values above 99.99 show `OVR`.
+* A small positive pressure can round to 0.00; zero telemetry itself is invalid and shows `X`.
+* Pressure failure affects only its readout; source/transport loss covers the entire panel.
+* Backgrounds use the existing opacity token; text, ticks, and the pointer window remain opaque.
+* Accessible labels preserve the full received values or the unavailable/overflow state without per-sample live announcements.
+
+Node and browser tests cover calculations, clips, stable nodes, painted glyph bounds, and state transitions.
+Real-phone acceptance remains separate in [#23](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/23).
+
 ## Airspeed and ground speed
 
 Composition and geometry preserve the existing panel allocation:
@@ -551,6 +592,6 @@ Delivery preserves production scope and asset integration:
 
 * Each implementation issue updates its tests, documentation, and mobile evidence.
 * Update embedded Rust asset routes and the fixture server when imports change.
-* The full development fixture uses the implemented IAS/GS module.
+* The full development fixture uses the implemented IAS/GS and altitude/pressure modules.
 * Remaining instrument illustrations stay development-only until their feature slices arrive.
 * No new telemetry fields, framework, build pipeline, Solid.js, three.js, or custom signals are required for #36 or #37.

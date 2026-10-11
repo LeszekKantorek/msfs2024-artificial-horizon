@@ -1,0 +1,17 @@
+[
+  {"sample": 0, "altitude_ft": -120, "baro_inhg": 29.92},
+  {"sample": 29, "altitude_ft": -2.033898305084747, "baro_inhg": 29.92},
+  {"sample": 30, "altitude_ft": 2.033898305084747, "baro_inhg": 29.92},
+  {"sample": 59, "altitude_ft": 120, "baro_inhg": 29.92},
+  {"sample": 60, "altitude_ft": 980, "baro_inhg": 29.92},
+  {"sample": 119, "altitude_ft": 1020, "baro_inhg": 29.92},
+  {"sample": 120, "altitude_ft": 9980, "baro_inhg": 30.12},
+  {"sample": 179, "altitude_ft": 10020, "baro_inhg": 30.12},
+  {"sample": 180, "altitude_ft": 10020, "baro_inhg": 30.12},
+  {"sample": 239, "altitude_ft": 9980, "baro_inhg": 30.12},
+  {"sample": 240, "altitude_ft": 1020, "baro_inhg": 29.72},
+  {"sample": 299, "altitude_ft": 980, "baro_inhg": 29.72},
+  {"sample": 300, "altitude_ft": 120, "baro_inhg": 29.72},
+  {"sample": 359, "altitude_ft": -120, "baro_inhg": 29.72},
+  {"sample": 360, "altitude_ft": -120, "baro_inhg": 29.92}
+]
