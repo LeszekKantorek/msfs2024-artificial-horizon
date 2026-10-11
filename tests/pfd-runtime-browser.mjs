@@ -92,10 +92,14 @@ try {
   verifyAltitude(await altitudeReading());
   assert.deepEqual([...loadedModules].sort(), [
     '/airspeed/ground-speed.js', '/airspeed/helpers.js', '/airspeed/ias.js', '/airspeed/index.js',
-    '/airspeed/readout.js', '/airspeed/references.js', '/airspeed/tape.js', '/altitude/baro.js', '/altitude/index.js', '/altitude/readout.js', '/altitude/selected.js', '/altitude/tape.js', '/app.js', '/fixed-symbols/aircraft.js', '/fixed-symbols/bank-scale.js', '/fixed-symbols/index.js', '/frame-scheduler.js', '/helpers.js', '/horizon/bank-pointer.js', '/horizon/index.js', '/horizon/pitch-scale.js', '/horizon/world.js', '/layout.js',
-    '/panel.js', '/slip-skid.js', '/status.js', '/telemetry/client.js', '/telemetry/validation.js', '/turn-rate.js', '/vertical-speed.js',
+    '/airspeed/readout.js', '/airspeed/references.js', '/airspeed/tape.js', '/altitude/baro.js', '/altitude/index.js', '/altitude/readout.js', '/altitude/selected.js', '/altitude/tape.js', '/altitude/vsi.js', '/app.js', '/fixed-symbols/aircraft.js', '/fixed-symbols/bank-scale.js', '/fixed-symbols/index.js', '/frame-scheduler.js', '/helpers.js', '/horizon/bank-pointer.js', '/horizon/index.js', '/horizon/pitch-scale.js', '/horizon/world.js', '/layout.js',
+    '/panel.js', '/slip-skid.js', '/status.js', '/telemetry/client.js', '/telemetry/validation.js', '/turn-rate.js',
   ]);
-  for (const path of ['/math.js', '/svg.js', '/telemetry-client.js', '/airspeed.js', '/horizon.js', '/fixed-symbols.js', '/airspeed/calculations.js', '/horizon/calculations.js']) {
+  const vsiHead = await fetch(`${address}/altitude/vsi.js`, { method: 'HEAD' });
+  assert.equal(vsiHead.status, 200);
+  assert.equal(vsiHead.headers.get('content-type'), 'text/javascript; charset=utf-8');
+  assert.equal(await vsiHead.text(), '');
+  for (const path of ['/math.js', '/svg.js', '/telemetry-client.js', '/airspeed.js', '/horizon.js', '/fixed-symbols.js', '/airspeed/calculations.js', '/horizon/calculations.js', '/vertical-speed.js']) {
     assert.equal((await fetch(address + path)).status, 404);
   }
   // The first synthetic-jump sample intentionally omits VSI for one tick.
@@ -111,7 +115,7 @@ try {
   assert.ok(Number.isFinite(snapshot.altitude_ft));
   assert.ok(snapshot.baro_inhg > 0);
   assert.ok(Number.isFinite(snapshot.vertical_speed_fpm));
-  await page.waitForFunction(() => document.querySelector('#vertical-speed').dataset.offScale === 'true');
+  await page.waitForFunction(() => document.querySelector('#vertical-speed-value').textContent === '+4881');
   assert.equal(await page.locator('#vertical-speed-value').textContent(), '+4881');
   assert.ok(Number.isFinite(snapshot.ias_acceleration_ktps));
   assert.equal(snapshot.airspeed_profile.vne_kt, 140);
@@ -152,7 +156,6 @@ try {
   assert.ok(climbing.altitude_ft >= 8500 && climbing.altitude_ft < 8600);
   assert.equal(climbing.vertical_speed_fpm, 1500);
   assert.equal(await page.locator('#vertical-speed-value').textContent(), '+1500');
-  assert.equal(await page.locator('#vertical-speed').getAttribute('data-off-scale'), 'false');
   await page.screenshot({ path: '.local/pfd-runtime-vertical-speed.png' });
   await stop();
   await page.locator('.instrument[data-available="false"]').waitFor();

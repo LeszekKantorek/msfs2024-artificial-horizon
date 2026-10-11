@@ -113,7 +113,7 @@ web/
     readout.js              # pointer window, sign, 20-ft drums and display limits
     baro.js                 # independent pressure setting and inHg formatting
     selected.js             # source target, tape bug, and alert history
-  vertical-speed.js         # independent ft/min scale, arrow, readout, and local calculations
+    vsi.js                  # compact ft/min window, formatting, geometry and independent availability
   helpers.js                # clamp, SVG creation, and attribute updates
   layout.js                 # responsive instrument regions in CSS pixels
 tests/

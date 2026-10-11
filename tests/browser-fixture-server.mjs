@@ -16,7 +16,7 @@ input.on('line', line => {
   catch { console.error('Expected a JSON object'); }
 });
 const types = {
-  '/vertical-speed.js': 'text/javascript',
+  '/altitude/vsi.js': 'text/javascript',
   '/altitude/selected.js': 'text/javascript',
   '/altitude/index.js': 'text/javascript', '/altitude/tape.js': 'text/javascript',
   '/altitude/readout.js': 'text/javascript', '/altitude/baro.js': 'text/javascript', '/': 'text/html', '/styles.css': 'text/css', '/app.js': 'text/javascript',

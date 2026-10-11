@@ -82,7 +82,7 @@ Use original graphics. Do not embed PDF screenshots or copy the bezel.
 
 | Area | Layout rule |
 | --- | --- |
-| Portrait | Attitude center, IAS left, altitude/VSI right, heading/track above, supplemental values near related instruments |
+| Portrait | Attitude center, IAS left, altitude right with compact VSI below its current readout, heading/track above |
 | Landscape | Use extra width and reduced height. Retain familiar instrument positions |
 | Instrument sizing | Size digits, symbols, tapes, and horizon independently. Preserve undistorted symbols and readable central attitude |
 | Page chrome | Minimize bezel, headings, and margins |

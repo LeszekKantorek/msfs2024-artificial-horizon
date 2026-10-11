@@ -48,7 +48,7 @@ function instrumentNodesUnchanged() {
     added.every(node => node.parentElement.id === 'altitude-scale');
 }
 try {
-  for (const path of ['/vertical-speed.js', '/helpers.js', '/telemetry/client.js', '/airspeed/index.js', '/airspeed/ias.js',
+  for (const path of ['/altitude/vsi.js', '/helpers.js', '/telemetry/client.js', '/airspeed/index.js', '/airspeed/ias.js',
     '/airspeed/ground-speed.js', '/airspeed/tape.js', '/airspeed/readout.js', '/airspeed/references.js',
     '/airspeed/helpers.js', '/altitude/index.js', '/altitude/tape.js', '/altitude/readout.js', '/altitude/baro.js', '/altitude/selected.js',
     '/horizon/index.js', '/horizon/world.js', '/horizon/pitch-scale.js', '/horizon/bank-pointer.js', '/fixed-symbols/index.js', '/fixed-symbols/bank-scale.js', '/fixed-symbols/aircraft.js']) {
@@ -56,7 +56,11 @@ try {
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('content-type'), 'text/javascript; charset=utf-8');
   }
-  for (const path of ['/math.js', '/svg.js', '/telemetry-client.js', '/airspeed.js', '/horizon.js', '/fixed-symbols.js', '/airspeed/calculations.js', '/horizon/calculations.js']) {
+  const vsiHead = await fetch(`${url}/altitude/vsi.js`, { method: 'HEAD' });
+  assert.equal(vsiHead.status, 200);
+  assert.equal(vsiHead.headers.get('content-type'), 'text/javascript; charset=utf-8');
+  assert.equal(await vsiHead.text(), '');
+  for (const path of ['/math.js', '/svg.js', '/telemetry-client.js', '/airspeed.js', '/horizon.js', '/fixed-symbols.js', '/airspeed/calculations.js', '/horizon/calculations.js', '/vertical-speed.js']) {
     assert.equal((await fetch(url + path)).status, 404);
   }
   browser = await chromium.launch({ headless: true, channel: process.env.BROWSER_CHANNEL || undefined });

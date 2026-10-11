@@ -7,9 +7,9 @@ const JAVASCRIPT: &str = "text/javascript; charset=utf-8";
 // Each entry defines an exact route, response MIME type and embedded body.
 const ASSETS: &[(&str, &str, &str)] = &[
     (
-        "/vertical-speed.js",
+        "/altitude/vsi.js",
         JAVASCRIPT,
-        include_str!("../../web/vertical-speed.js"),
+        include_str!("../../web/altitude/vsi.js"),
     ),
     (
         "/altitude/selected.js",

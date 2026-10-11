@@ -85,7 +85,7 @@ Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
 | Selected altitude | Read-only scenario target above altitude, with a tape bug pinned at either edge. `X` means unavailable. `OVR` means outside -9999 to 99999 ft |
 | Altitude alerts | Five-second flashing on entry within 1000 and 200 ft. Entry within +/-200 ft arms deviation. Leaving it flashes yellow for five seconds, then stays yellow until return or reset |
 | Altitude/pressure unavailable | Independent `X` marks; `OVR` beyond each display limit |
-| Vertical speed | Stationary +/-2000 ft/min scale, white arrow, and signed whole-number readout. Off-scale rates pin the arrow with a white chevron |
+| Vertical speed | Compact rectangular readout below current altitude, with matching font, background and border. Signed whole ft/min: `+` for climb, `-` for descent and `0` for level flight |
 | VSI limits | Red `X` means unavailable. `+OVR` or `-OVR` means beyond +/-9999 ft/min. Valid VSI remains available without altitude or pressure |
 | Data | Synthetic samples at 20 Hz, without a source badge |
 | Presentation | Sky/ground across the full panel, centrally clipped pitch scale, no top status bar |

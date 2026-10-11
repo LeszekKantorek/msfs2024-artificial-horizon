@@ -23,14 +23,26 @@ export function altitudeTicks(altitude, height) {
   });
 }
 
+export function tapeMarkPresentation(row, window) {
+  const tickEnd = row.major ? 12 : 7;
+  if (!window) return { tickEnd, labelVisible: row.major };
+  const top = window.y - 0.5, bottom = window.y + window.height + 0.5;
+  // Eleven-pixel labels fit inside this envelope, with two pixels of clearance.
+  const labelVisible = row.major && (row.y + 7 < top - 2 || row.y - 7 > bottom + 2);
+  const intersects = row.y + 0.5 >= top && row.y - 0.5 <= bottom;
+  return { tickEnd: intersects ? Math.min(tickEnd, window.x - 2) : tickEnd, labelVisible };
+}
+
 export function createTape(parent) {
   const scale = svgElement('g', { id: 'altitude-scale' });
   const rows = [];
   parent.append(scale);
   let geometry;
+  let obstruction;
   return {
-    resize(tape) {
+    resize(tape, window) {
       geometry = tape;
+      obstruction = window;
       const count = tickCount(tape.height);
       // Grow only on resize and retain existing nodes through rotation and recovery.
       while (rows.length < count) {
@@ -47,9 +59,11 @@ export function createTape(parent) {
       if (value === null) return;
       altitudeTicks(value, geometry.height).forEach((row, index) => {
         const { tick, label } = rows[index];
-        setAttributes(tick, { d: `M 1 ${row.y} H ${row.major ? 12 : 7}`, 'data-altitude-ft': row.value });
+        const presentation = tapeMarkPresentation(row, obstruction);
+        setAttributes(tick, { d: `M 1 ${row.y} H ${presentation.tickEnd}`, 'data-altitude-ft': row.value });
         setAttributes(label, { x: geometry.width - 3, y: row.y });
         label.textContent = row.major ? String(row.value) : '';
+        label.style.visibility = presentation.labelVisible ? '' : 'hidden';
       });
     },
   };

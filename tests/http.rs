@@ -36,9 +36,9 @@ async fn embedded_page_assets_and_liveness_match_the_contract() {
         ),
         ("/", "text/html; charset=utf-8", "telemetry-status"),
         (
-            "/vertical-speed.js",
+            "/altitude/vsi.js",
             "text/javascript; charset=utf-8",
-            "createVerticalSpeed",
+            "createVsi",
         ),
         ("/styles.css", "text/css; charset=utf-8", "font-family"),
         ("/health", "application/json", "{\"status\":\"ok\"}"),
@@ -177,6 +177,43 @@ async fn embedded_page_assets_and_liveness_match_the_contract() {
             );
         }
     }
+}
+
+#[tokio::test]
+async fn compact_vsi_asset_supports_get_and_head() {
+    for method in ["GET", "HEAD"] {
+        let response = router()
+            .oneshot(
+                Request::builder()
+                    .method(method)
+                    .uri("/altitude/vsi.js")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response.headers()["content-type"],
+            "text/javascript; charset=utf-8"
+        );
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        if method == "HEAD" {
+            assert!(body.is_empty());
+        } else {
+            assert!(std::str::from_utf8(&body).unwrap().contains("createVsi"));
+        }
+    }
+    let old_route = router()
+        .oneshot(
+            Request::builder()
+                .uri("/vertical-speed.js")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(old_route.status(), StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]

@@ -23,8 +23,8 @@ Maintenance [#54](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/
 | `fixed-symbols/` | Compose fixed bank scale and aircraft reference with outline |
 | `slip-skid.js`, `turn-rate.js` | Local geometry, readings, and indication availability |
 | `airspeed/` | Compose IAS and independent GS, with SVG operations and calculations in each visual object |
-| `altitude/` | Compose altitude tape, rolling readout, and independent pressure setting with local calculations |
-| `vertical-speed.js` | Stationary scale, pointer, numeric readout, pure geometry, and independent availability |
+| `altitude/` | Compose the tape, rolling readout, selected target/alerts, pressure setting and compact VSI |
+| `altitude/vsi.js` | Compact numeric readout, local window geometry, and independent availability |
 | `status.js` | Accessible status, and global unavailability |
 | `helpers.js` | Named clamp, SVG creation, and attribute updates without import-time DOM access |
 
@@ -47,8 +47,11 @@ Panel
 |   |   |-- Readout (window, digits, unit, warning)
 |   |   `-- References (markers, leaders, fallback values)
 |   `-- Ground speed
-|-- Altitude (tape, rolling readout, pressure setting, selected altitude and alerts)
-|-- Vertical speed
+|-- Altitude
+|   |-- Tape and rolling readout
+|   |-- Pressure setting
+|   |-- Selected altitude and alerts
+|   `-- Vertical speed
 |-- Slip/skid
 |-- Turn rate
 |-- Fixed symbols (bank scale, aircraft and outline)
@@ -410,40 +413,40 @@ Keep indications readable across the full panel:
 
 ## Vertical speed
 
-`vertical-speed.js` composes a stateless visual object in the altitude layer:
+`altitude/index.js` composes the stateless `vsi.js` object inside the altitude group:
 
-* The right-side column uses `clamp(width * 0.09, 42, 54)` CSS px, preserving altitude width and reducing the central horizon allocation.
-* `FT/MIN` occupies the top strip. A black numeric window sits beside pressure in the bottom strip.
-* Fixed text sizes are 12 CSS px for the readout, 10 for scale labels, and 9 for the unit.
-* The scale shares the altitude tape center and spans -2000 to +2000 ft/min linearly at every height.
-* Ticks occur every 500 ft/min, with labels 0, 1000, and 2000 in both directions.
-* The white arrow moves upward for climb and downward for descent, remaining centered at zero.
+* A 52-by-28 CSS px rectangle sits below the current-altitude window, with aligned right borders and three pixels between painted strokes.
+* The window shares altitude's 14 CSS px monospace font, text color, background and one-pixel border.
+* The centered value uses feet per minute without a visible unit label or arrow.
+* Altitude keeps its existing width and moves to the right edge, returning the former VSI column's width to the horizon.
+* VSI owns its formatting, window geometry and availability, with altitude delegating resize, rendering and invalidation.
+* The tape uses VSI's local window bounds to hide whole intersecting labels and shorten intersecting ticks with two pixels of clearance.
+* The selected-altitude bug paints after VSI and remains visible beside the window.
 
-The local pointer position preserves an eight-pixel end margin for the whole symbol and its stroke:
+The local window position uses altitude tape width `W` and height `H`:
 
 ```text
-y = H/2 - clamp(fpm, -2000, 2000)/2000 * (H/2 - 8)
+x = W - 1 - 52
+y = H/2 + 14 + 1 + 3
 ```
 
 Reading and availability follow these rules:
 
 | Input | Presentation |
 | --- | --- |
-| Finite value within +/-2000 ft/min | Arrow at its scale position |
-| Finite value beyond +/-2000 ft/min | Arrow pinned to the corresponding edge, with a white overflow chevron |
 | Raw value within -9999 to +9999 ft/min | Rounded whole ft/min, with `+` for positive and `-` for negative readings |
 | Rounded positive or negative zero | `0` |
-| Raw value beyond the numeric limit | `+OVR` or `-OVR`, with the pinned arrow retained |
-| Missing or invalid value | Red `X`, hidden arrow and overflow chevron |
+| Raw value beyond the numeric limit | White `+OVR` or `-OVR` in the same window |
+| Missing or invalid value | Red `X` in the same window |
 | Missing altitude or pressure | Valid VSI remains available |
 
 Bounds and availability use raw values before rounding.
-The accessible description includes the raw value, feet per minute, and any scale overflow.
+The accessible label includes the raw value and feet per minute.
 VSI uses the common frame and expiry deadline without a timer, interpolation, filtering, or sample history.
 The full layout fixture uses the same module as production.
 
-Garmin G5 Guide 190-01112-12 Rev. 2, section 3.3.9, provides the stationary scale and white-arrow reference.
-The linear +/-2000 range, numeric limits, and overflow symbol are accepted project decisions.
+Garmin G5 Guide 190-01112-12 Rev. 2, section 3.3.9, provides the vertical-speed reference.
+The compact numeric window and its numeric limits are application design decisions.
 
 ## Selected altitude and alerts
 

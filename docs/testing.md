@@ -165,24 +165,24 @@ Automated acceptance covers these boundaries:
 | --- | --- |
 | Rust model and SSE | Finite signed rates, zero, no telemetry limit, omission, state clearing, shared age, stale suppression, old snapshots, and matching clients |
 | Scenario | Independent 3960-sample checkpoints, every jump and phase, analytic altitude/rate agreement, 25 ft/s producing +1500 ft/min, and unchanged other cycles |
-| Node calculations | Up/down direction, signed zero, rounding, exact +/-2000 and +/-9999 boundaries, raw overflow before rounding, and invalid values |
+| Node calculations | Signed zero, rounding, raw +/-9999 boundaries, invalid values, window geometry, recovered horizon width, and label/tick obstruction |
 | Shared lifecycle | Latest coherent frame, resize without renewed freshness, expiry before drawing, pause/disconnect, reconnect and background/resume without duplicate subscriptions |
-| SVG | Stationary ticks, painted arrow visibility, numeric/unit/scale bounds, overflow stroke clearance, node identity, partial loss, and both compositions |
-| Release runtime | Embedded module with GET/HEAD and JavaScript MIME, actual Rust ft/min in SSE/SVG, hold, climb, off-scale sweep, and restart recovery |
+| SVG | Matching altitude/VSI styles, 52-by-28 window, three-pixel painted gap, signed text bounds, visible target bug, label/tick clearance, node identity and partial loss |
+| Release runtime | Embedded altitude/VSI module with GET/HEAD and JavaScript MIME, actual Rust ft/min in SSE/SVG, hold, climb, signed sweep and restart recovery |
 
 Use these checks and artifacts:
 
 * Run the [automated Rust and Node commands](#automated-checks) and both [desktop browser scripts](#responsive-pfd-layout-and-desktop-checks).
 * Retain the selected-altitude alert regressions, including expiry while flashing and delayed callback cancellation.
-* Inspect `.local/pfd-browser/vsi-*` for the minimum viewport, narrow portrait, short landscape, both scale ends, and long signed values.
+* Inspect `.local/pfd-browser/vsi-*` for the minimum viewport, narrow portrait, short landscape, negative-altitude capture and long signed values.
 * Inspect `.local/pfd-runtime-vertical-speed.png` for the compiled demo's +1500 ft/min climb beside altitude and its selected target.
 
 Real-device acceptance requires separate iOS Safari and Android Chrome results:
 
 1. Record device, OS, browser/version, tested commit, viewport, date, and observations in #25 or its PR.
 2. Start the demo through the [phone procedure](../README.md#use-your-phone) and watch the 198-second altitude/VSI cycle.
-3. Check zero during holds, arrow direction during climb/descent, and pinned off-scale pointers during the initial sweeps.
-4. Inspect the scale, `FT/MIN`, numeric readout, altitude, selected target, and pressure against sky and ground.
+3. Check `0` during holds, positive climb and negative descent in the window directly below altitude.
+4. Inspect matching readout styles, the narrower rectangle, selected target/bug and pressure against sky and ground.
 5. Rotate, expand/collapse browser bars, and check safe areas, readability, undistorted symbols, and no scrolling or collisions.
 6. Use the [development fixture](#real-phone-checks) with the inputs below to inspect signed limits, partial failures, and missing data.
 7. Check Wi-Fi/server loss, lock/unlock, and background/resume. Require fresh readings without reload or duplicate subscriptions.
@@ -198,6 +198,7 @@ Enter these JSON lines into the fixture terminal:
 {"vertical_speed_fpm":-2000.01}
 {"vertical_speed_fpm":9999}
 {"vertical_speed_fpm":-9999}
+{"vertical_speed_fpm":-9999,"altitude_ft":-60,"selected_altitude_ft":-100}
 {"vertical_speed_fpm":9999.01}
 {"vertical_speed_fpm":-9999.01}
 {"vertical_speed_fpm":null}
