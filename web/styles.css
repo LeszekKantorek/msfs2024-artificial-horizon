@@ -105,3 +105,12 @@ noscript { position: absolute; inset: 12px 12px auto; color: var(--warning); tex
 .selected-altitude-bug { stroke: #000; stroke-width: 1; paint-order: stroke; }
 #selected-altitude[data-alert="deviation"] .selected-altitude-value { fill: var(--speed-yellow); }
 #selected-altitude:not([data-state="available"]) .selected-altitude-value { fill: var(--danger); }
+.vertical-speed-label, .vertical-speed-value, .vertical-speed-unit { fill: var(--text); font-family: monospace; dominant-baseline: central; }
+.vertical-speed-label { font-size: 10px; text-anchor: end; }
+.vertical-speed-value { font-size: 12px; text-anchor: middle; }
+.vertical-speed-unit { font-size: 9px; text-anchor: middle; }
+.vertical-speed-tick { fill: none; stroke: var(--text); stroke-width: 1; }
+.vertical-speed-arrow { fill: var(--text); stroke: #000; stroke-width: 1; paint-order: stroke; }
+.vertical-speed-off-scale { fill: none; stroke: var(--text); stroke-width: 1; stroke-linejoin: round; }
+.vertical-speed-window { fill: var(--value-window); stroke: var(--text); stroke-width: 1; }
+#vertical-speed[data-state="unavailable"] .vertical-speed-value { fill: var(--danger); }

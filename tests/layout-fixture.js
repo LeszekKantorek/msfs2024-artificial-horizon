@@ -25,7 +25,7 @@ const marker = svgElement('g', { id: 'layout-fixtures' });
 layers.symbols.append(marker);
 const groups = {};
 for (const [name, parent] of [['airspeed', layers.airspeed], ['altitude', layers.altitude],
-  ['vsi', layers.altitude], ['heading', layers.symbols], ['supplemental', layers.symbols]]) {
+  ['heading', layers.symbols], ['supplemental', layers.symbols]]) {
   const group = svgElement('g', { id: `fixture-${name}` });
   parent.append(group); groups[name] = group;
 }
@@ -41,15 +41,9 @@ function render() {
   badge.setAttribute('transform', `translate(6 ${height - 36})`);
   for (const group of Object.values(groups)) group.replaceChildren();
   const layer = groups.supplemental;
-  for (const name of ['vsi', 'heading']) {
-    groups[name].append(svgElement('rect', { ...layout[name], class: 'instrument-background' }));
-  }
-  const { airspeed: a, altitude: b, vsi: v, heading: h } = layout;
+  groups.heading.append(svgElement('rect', { ...layout.heading, class: 'instrument-background' }));
+  const { airspeed: a, heading: h } = layout;
   layer.append(svgElement('rect', { x: a.x, y: 0, width: a.width, height: 32, class: 'instrument-background' }));
-  text(groups.vsi, v.x + v.width / 2, v.y + 16, '2', 12);
-  text(groups.vsi, v.x + v.width / 2, layout.cy, '0', 12);
-  text(groups.vsi, v.x + v.width / 2, v.y + v.height - 16, '2', 12);
-  groups.vsi.append(svgElement('path', { d: `M ${v.x + 2} ${layout.cy - 30} l 10 -5 v 10 Z`, fill: '#fff' }));
   text(groups.heading, h.x + 24, 16, '270', 12);
   text(groups.heading, layout.cx, 16, '280°', 19);
   text(groups.heading, h.x + h.width - 24, 16, '290', 12);

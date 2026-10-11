@@ -5,8 +5,8 @@ then open its address in a browser on the same network.
 
 **Windows x64** · **Read-only browser display** · **No phone app or account**
 
-> **Try the demo today.** The current executable displays synthetic attitude, IAS, GS, altitude, selected altitude with alerts, pressure setting, slip/skid, and turn rate.
-> Vertical speed, heading/track, and MSFS2024 integration remain planned. This is not a real-flight instrument.
+> **Try the demo today.** The executable displays synthetic attitude, IAS, GS, altitude, selected-altitude alerts, vertical speed, pressure, slip/skid, and turn rate.
+> Heading/track and MSFS2024 integration remain planned. This is not a real-flight instrument.
 
 [Start the demo](#start-the-demo) · [Use your phone](#use-your-phone) · [Development](CONTRIBUTING.md)
 
@@ -85,13 +85,15 @@ Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
 | Selected altitude | Read-only scenario target above altitude, with a tape bug pinned at either edge. `X` means unavailable. `OVR` means outside -9999 to 99999 ft |
 | Altitude alerts | Five-second flashing on entry within 1000 and 200 ft. Entry within +/-200 ft arms deviation. Leaving it flashes yellow for five seconds, then stays yellow until return or reset |
 | Altitude/pressure unavailable | Independent `X` marks; `OVR` beyond each display limit |
+| Vertical speed | Stationary +/-2000 ft/min scale, white arrow, and signed whole-number readout. Off-scale rates pin the arrow with a white chevron |
+| VSI limits | Red `X` means unavailable. `+OVR` or `-OVR` means beyond +/-9999 ft/min. Valid VSI remains available without altitude or pressure |
 | Data | Synthetic samples at 20 Hz, without a source badge |
 | Presentation | Sky/ground across the full panel, centrally clipped pitch scale, no top status bar |
 | Connection loss | Opaque full-panel cover with the reason and automatic retry after two seconds |
 | Stale or unavailable data | Explicit status, no fabricated level-flight reading |
 | Background/resume | A fresh snapshot is required before live attitude returns |
 | Sizing | No fixed aspect ratio; minimum 320 CSS px width and 240 CSS px usable height after browser bars and safe areas |
-| Old snapshots | Attitude-only snapshots display attitude with unavailable IAS, GS, altitude, selected altitude, pressure, slip/skid and turn rate |
+| Old snapshots | Attitude-only snapshots display attitude with unavailable IAS, GS, altitude, selected altitude, VSI, pressure, slip/skid and turn rate |
 
 > Real iOS Safari and Android Chrome acceptance requires [device evidence](docs/testing.md#attitude-display-real-device-phone-acceptance).
 > Issue #4 owns the original attitude acceptance, [#20](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/20) owns the attitude/turn extension, and [#37](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/37) owns layers and background opacity.
@@ -101,12 +103,14 @@ Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
 The speed profile is fictional: VS0/VS1 40/50, VFE/VNO/VNE 85/110/140, and VR/VX/VY/VG 55/65/75/90 kt.
 These values are not verified performance of a real aircraft. See the [speed contract](docs/telemetry-contract.md#optional-airspeed-ranges-and-trend).
 [#23](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/23) owns altitude and pressure acceptance.
-The altitude demo repeats every 90 seconds. It starts with 18 seconds of signed digit sweeps.
-Two 36-second approaches and departures follow, at selected targets of 10000 and 1000 ft.
+The altitude demo repeats every 198 seconds. It starts with 18 seconds of signed digit sweeps.
+Two 90-second approaches and departures follow, at selected targets of 10000 and 1000 ft.
 The other indications keep their existing 18-second cycles. Transitions are not a physical flight model.
 [#24](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/24) owns selected-altitude and alert acceptance on real phones.
 First samples after target changes or recovery establish the alert state without flashing.
-The planned G5-inspired PFD adds vertical speed and heading/track indications.
+[#25](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/25) owns VSI acceptance.
+VSI matches each altitude segment's slope. Artificial jumps omit VSI for one sample instead of inventing a rate.
+The planned G5-inspired PFD adds heading/track indications.
 See the [project brief](docs/project-brief.md) for coverage and exclusions, and the [roadmap](docs/roadmap.md) for delivery order.
 
 ## Options and troubleshooting

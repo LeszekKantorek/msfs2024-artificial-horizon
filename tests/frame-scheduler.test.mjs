@@ -54,6 +54,19 @@ test('altitude and pressure coalesce together and expire before a resize draw', 
   assert.deepEqual(h.obscured, ['stale']);
 });
 
+test('VSI coalesces with altitude and target, retaining the shared deadline through resize', () => {
+  const h = harness();
+  h.renderer.accept({ ...sample(0, 0, 500), altitude_ft: 8500, selected_altitude_ft: 10000, vertical_speed_fpm: 0 });
+  const latest = { ...sample(0, 0, 500), altitude_ft: 8525, selected_altitude_ft: 10000, vertical_speed_fpm: 1500 };
+  h.renderer.accept(latest); h.flush();
+  assert.deepEqual(h.drawn, [latest]);
+  h.advance(499); h.renderer.resize(pfdLayout(568, 240)); h.flush();
+  assert.deepEqual(h.drawn.at(-1), latest);
+  h.advance(1); h.renderer.resize(pfdLayout(320, 480)); h.flush();
+  assert.equal(h.drawn.length, 2);
+  assert.deepEqual(h.obscured, ['stale']);
+});
+
 test('a burst draws only its newest sample in one frame, without continuous animation', () => {
   const h = harness();
   h.renderer.accept(sample(15)); h.renderer.accept(sample(-15)); h.renderer.accept(sample(10, 25));

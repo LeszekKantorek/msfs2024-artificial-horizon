@@ -105,6 +105,7 @@ fn pfd_demo_matches_independent_fixtures_through_every_segment_and_repeat() {
                 actual.as_object_mut().unwrap().remove("ias_kt");
                 actual.as_object_mut().unwrap().remove("gs_kt");
                 actual.as_object_mut().unwrap().remove("altitude_ft");
+                actual.as_object_mut().unwrap().remove("vertical_speed_fpm");
                 actual
                     .as_object_mut()
                     .unwrap()
@@ -144,7 +145,9 @@ async fn extended_publication_shares_age_and_clears_absent_or_unavailable_indica
     let (mut publisher, subscription) = telemetry::channel(Source::Demo);
     let attitude = Attitude::new(10.0, 25.0).unwrap();
     publisher.publish_sample(demo::sample(200)).unwrap();
-    let full = value(subscription.snapshot());
+    let mut full = value(subscription.snapshot());
+    assert!((full["vertical_speed_fpm"].as_f64().unwrap() + 813.5593220338983).abs() < 1e-10);
+    full.as_object_mut().unwrap().remove("vertical_speed_fpm");
     assert_eq!(
         full,
         json!({"schema_version":1,"sequence":1,"source":"demo","state":"live",

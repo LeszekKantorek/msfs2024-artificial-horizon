@@ -35,6 +35,11 @@ async fn embedded_page_assets_and_liveness_match_the_contract() {
             "createBaro",
         ),
         ("/", "text/html; charset=utf-8", "telemetry-status"),
+        (
+            "/vertical-speed.js",
+            "text/javascript; charset=utf-8",
+            "createVerticalSpeed",
+        ),
         ("/styles.css", "text/css; charset=utf-8", "font-family"),
         ("/health", "application/json", "{\"status\":\"ok\"}"),
         (

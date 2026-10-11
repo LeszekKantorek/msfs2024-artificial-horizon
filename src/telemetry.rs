@@ -111,6 +111,21 @@ impl BarometricAltitude {
         self.0
     }
 }
+/// Source-supplied vertical speed in feet per minute, without a display limit.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[serde(transparent)]
+pub struct VerticalSpeed(f64);
+impl VerticalSpeed {
+    pub fn new(feet_per_minute: f64) -> Result<Self, TelemetryError> {
+        if !feet_per_minute.is_finite() {
+            return Err(TelemetryError::InvalidVerticalSpeed);
+        }
+        Ok(Self(feet_per_minute))
+    }
+    pub fn feet_per_minute(self) -> f64 {
+        self.0
+    }
+}
 /// Source-selected altitude in feet, including negatives, without a display limit.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 #[serde(transparent)]
@@ -244,6 +259,8 @@ pub struct FlightSample {
     #[serde(skip_serializing_if = "Option::is_none")]
     selected_altitude_ft: Option<SelectedAltitude>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    vertical_speed_fpm: Option<VerticalSpeed>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     baro_inhg: Option<BarometricSetting>,
 }
 impl FlightSample {
@@ -262,6 +279,7 @@ impl FlightSample {
             ias_acceleration_ktps: None,
             altitude_ft: None,
             selected_altitude_ft: None,
+            vertical_speed_fpm: None,
             baro_inhg: None,
         }
     }
@@ -279,6 +297,10 @@ impl FlightSample {
     }
     pub fn with_selected_altitude(mut self, altitude: Option<SelectedAltitude>) -> Self {
         self.selected_altitude_ft = altitude;
+        self
+    }
+    pub fn with_vertical_speed(mut self, speed: Option<VerticalSpeed>) -> Self {
+        self.vertical_speed_fpm = speed;
         self
     }
     pub fn with_speeds(mut self, ias: Option<IndicatedAirspeed>, gs: Option<GroundSpeed>) -> Self {
@@ -332,6 +354,8 @@ pub struct Snapshot {
     #[serde(skip_serializing_if = "Option::is_none")]
     selected_altitude_ft: Option<SelectedAltitude>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    vertical_speed_fpm: Option<VerticalSpeed>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     baro_inhg: Option<BarometricSetting>,
 }
 #[derive(Clone, Debug)]
@@ -348,6 +372,7 @@ struct Current {
     ias_acceleration: Option<IasAcceleration>,
     altitude: Option<BarometricAltitude>,
     selected_altitude: Option<SelectedAltitude>,
+    vertical_speed: Option<VerticalSpeed>,
     baro: Option<BarometricSetting>,
 }
 impl Current {
@@ -384,6 +409,7 @@ impl Current {
             ias_acceleration_ktps: attitude.and(self.ias_acceleration),
             altitude_ft: attitude.and(self.altitude),
             selected_altitude_ft: attitude.and(self.selected_altitude),
+            vertical_speed_fpm: attitude.and(self.vertical_speed),
             baro_inhg: attitude.and(self.baro),
         }
     }
@@ -411,6 +437,7 @@ pub fn channel(source: Source) -> (Publisher, Subscription) {
         ias_acceleration: None,
         altitude: None,
         selected_altitude: None,
+        vertical_speed: None,
         baro: None,
     };
     let (sender, receiver) = watch::channel(current.clone());
@@ -446,6 +473,7 @@ impl Publisher {
         self.current.ias_acceleration = sample.and_then(|s| s.ias_acceleration_ktps);
         self.current.altitude = sample.and_then(|s| s.altitude_ft);
         self.current.selected_altitude = sample.and_then(|s| s.selected_altitude_ft);
+        self.current.vertical_speed = sample.and_then(|s| s.vertical_speed_fpm);
         self.current.baro = sample.and_then(|s| s.baro_inhg);
         self.sender.send_replace(self.current.clone());
         Ok(())
@@ -481,6 +509,8 @@ impl Subscription {
 }
 #[derive(Debug, thiserror::Error)]
 pub enum TelemetryError {
+    #[error("vertical speed must be finite feet per minute")]
+    InvalidVerticalSpeed,
     #[error("selected altitude must be finite feet")]
     InvalidSelectedAltitude,
     #[error("barometric altitude must be finite feet")]

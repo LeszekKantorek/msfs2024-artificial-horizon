@@ -112,6 +112,8 @@ web/
     tape.js                 # fixed pixel spacing and a retained tick pool that grows on resize
     readout.js              # pointer window, sign, 20-ft drums and display limits
     baro.js                 # independent pressure setting and inHg formatting
+    selected.js             # source target, tape bug, and alert history
+  vertical-speed.js         # independent ft/min scale, arrow, readout, and local calculations
   helpers.js                # clamp, SVG creation, and attribute updates
   layout.js                 # responsive instrument regions in CSS pixels
 tests/
@@ -210,11 +212,13 @@ The server owns validated samples and deterministic demo scenarios:
 * `IndicatedAirspeed` and `GroundSpeed` validate optional nonnegative knots. `FlightSample::with_speeds` adds them without changing its existing constructor.
 * `AirspeedProfile` validates speed thresholds and named `VSpeedReferences`. `IasAcceleration` validates source-supplied kt/s independently.
 * `FlightSample::with_airspeed_indications` adds optional configuration and acceleration. Demo configuration is fictional and shared by all clients.
-* `BarometricAltitude` validates finite signed feet; `BarometricSetting` validates positive finite inHg.
+* `BarometricAltitude` validates finite signed feet. `BarometricSetting` validates positive finite inHg.
 * `FlightSample::with_altitude` adds the independently optional values without changing the constructor or attitude-only path.
 * `SelectedAltitude` validates finite signed feet.
 * `FlightSample::with_selected_altitude` adds the independently optional source target.
-* The shared altitude/target demo repeats after 90 seconds while the other indications retain 18-second cycles.
+* `VerticalSpeed` validates finite signed ft/min. `FlightSample::with_vertical_speed` adds the independently optional source rate.
+* The shared altitude/target/VSI demo repeats after 198 seconds while other indications retain 18-second cycles.
+* Altitude and VSI use shared analytic segments. Artificial jumps omit VSI for one sample.
 * `Publisher::publish_sample` uses the existing latest-value channel, sequence, and monotonic age.
 * `Publisher::publish(State)` keeps the attitude-only path and clears all optional indications.
 * `demo::sample` defines nine deterministic two-second segments.

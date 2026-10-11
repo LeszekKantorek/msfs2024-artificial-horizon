@@ -4,7 +4,7 @@ import { clamp } from './helpers.js';
 export function pfdLayout(width, height) {
   const airspeedWidth = clamp(width * 0.16, 50, 84);
   const altitudeWidth = clamp(width * 0.19, 60, 92);
-  const verticalSpeedWidth = clamp(width * 0.065, 22, 34);
+  const verticalSpeedWidth = clamp(width * 0.09, 42, 54);
   const top = 32;
   const bottom = 48;
   const attitude = { x: airspeedWidth, y: top, width: width - airspeedWidth - altitudeWidth - verticalSpeedWidth,

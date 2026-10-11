@@ -93,7 +93,7 @@ try {
   assert.deepEqual([...loadedModules].sort(), [
     '/airspeed/ground-speed.js', '/airspeed/helpers.js', '/airspeed/ias.js', '/airspeed/index.js',
     '/airspeed/readout.js', '/airspeed/references.js', '/airspeed/tape.js', '/altitude/baro.js', '/altitude/index.js', '/altitude/readout.js', '/altitude/selected.js', '/altitude/tape.js', '/app.js', '/fixed-symbols/aircraft.js', '/fixed-symbols/bank-scale.js', '/fixed-symbols/index.js', '/frame-scheduler.js', '/helpers.js', '/horizon/bank-pointer.js', '/horizon/index.js', '/horizon/pitch-scale.js', '/horizon/world.js', '/layout.js',
-    '/panel.js', '/slip-skid.js', '/status.js', '/telemetry/client.js', '/telemetry/validation.js', '/turn-rate.js',
+    '/panel.js', '/slip-skid.js', '/status.js', '/telemetry/client.js', '/telemetry/validation.js', '/turn-rate.js', '/vertical-speed.js',
   ]);
   for (const path of ['/math.js', '/svg.js', '/telemetry-client.js', '/airspeed.js', '/horizon.js', '/fixed-symbols.js', '/airspeed/calculations.js', '/horizon/calculations.js']) {
     assert.equal((await fetch(address + path)).status, 404);
@@ -108,6 +108,9 @@ try {
   assert.ok(Number.isFinite(snapshot.gs_kt));
   assert.ok(Number.isFinite(snapshot.altitude_ft));
   assert.ok(snapshot.baro_inhg > 0);
+  assert.ok(Number.isFinite(snapshot.vertical_speed_fpm));
+  await page.waitForFunction(() => document.querySelector('#vertical-speed').dataset.offScale === 'true');
+  assert.equal(await page.locator('#vertical-speed-value').textContent(), '+4881');
   assert.ok(Number.isFinite(snapshot.ias_acceleration_ktps));
   assert.equal(snapshot.airspeed_profile.vne_kt, 140);
   // Observe source-supplied acceleration and the corresponding six-second warning.
@@ -139,8 +142,19 @@ try {
   assert.equal(await page.locator('#selected-altitude').getAttribute('data-alert'), 'none');
   assert.equal(await page.locator('#selected-altitude-bug').evaluate(n => n.transform.baseVal.consolidate().matrix.f), 6.5);
   await page.screenshot({ path: '.local/pfd-runtime-selected-altitude.png' });
+  await page.waitForFunction(() => document.querySelector('#vertical-speed').getAttribute('aria-label') === 'Vertical speed 0 feet per minute');
+  const held = await currentSnapshot();
+  assert.equal(held.altitude_ft, 8500); assert.ok(held.vertical_speed_fpm === 0);
+  await page.waitForFunction(() => document.querySelector('#vertical-speed').getAttribute('aria-label') === 'Vertical speed 1500 feet per minute', null, { timeout: 10000 });
+  const climbing = await currentSnapshot();
+  assert.ok(climbing.altitude_ft >= 8500 && climbing.altitude_ft < 8600);
+  assert.equal(climbing.vertical_speed_fpm, 1500);
+  assert.equal(await page.locator('#vertical-speed-value').textContent(), '+1500');
+  assert.equal(await page.locator('#vertical-speed').getAttribute('data-off-scale'), 'false');
+  await page.screenshot({ path: '.local/pfd-runtime-vertical-speed.png' });
   await stop();
   await page.locator('.instrument[data-available="false"]').waitFor();
+  assert.equal(await page.locator('#vertical-speed').getAttribute('data-state'), 'unavailable');
   await start();
   await page.locator('.instrument[data-available="true"]').waitFor();
   assert.equal(await page.locator('#turn-rate').getAttribute('aria-label'), 'Turn rate 0 degrees per second');
@@ -155,8 +169,10 @@ try {
   assert.equal(recovered.digits, String(Math.floor(recovered.ias)));
   verifyAltitude(await altitudeReading());
   assert.equal(await page.locator('#selected-altitude').getAttribute('data-state'), 'unavailable');
+  await page.locator('#vertical-speed[data-state="available"]').waitFor();
+  assert.equal(await page.locator('#vertical-speed-value').textContent(), '+4881');
   assert.deepEqual(errors, []);
-  console.log(`Rust-to-browser PFD checks passed on ${await browser.version()}: embedded assets, selected-altitude SSE/SVG, standard-rate turn, source loss and restart without page reload.`);
+  console.log(`Rust-to-browser PFD checks passed on ${await browser.version()}: embedded assets, selected-altitude and VSI SSE/SVG, standard-rate turn, source loss and restart without page reload.`);
 } finally {
   if (browser) await browser.close();
   await stop();

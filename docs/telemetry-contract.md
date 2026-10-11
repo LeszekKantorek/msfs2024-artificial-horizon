@@ -11,6 +11,8 @@
 | `IndicatedAirspeed`, `GroundSpeed` | Independently validated finite nonnegative knots, with `new` and `knots` methods |
 | `BarometricAltitude` | Finite signed feet, with `new` and `feet` methods; no telemetry display limit |
 | `BarometricSetting` | Positive finite inHg, with `new` and `inches_of_mercury` methods |
+| `VerticalSpeed` | Finite signed ft/min, with `new` and `feet_per_minute` methods. No telemetry display limit |
+| `FlightSample::with_vertical_speed(speed)` | Add independently optional source-supplied vertical speed |
 | `FlightSample::with_altitude(altitude, setting)` | Add independently optional altitude and pressure setting |
 | `FlightSample` | One acquisition with attitude and independently optional indications |
 | `FlightSample::with_speeds(ias, gs)` | Add independently optional speeds. The existing `new` constructor remains attitude/turn-only |
@@ -95,6 +97,7 @@ These durations are initial tuning values.
 | `altitude_ft` | Optional finite signed barometric altitude in feet for the source pressure setting |
 | `baro_inhg` | Optional finite positive pressure setting in inches of mercury |
 | `selected_altitude_ft` | Optional finite signed selected altitude in feet, supplied by the source and read-only |
+| `vertical_speed_fpm` | Optional finite signed feet per minute. Positive means climb, negative means descent, zero means level |
 
 * Providers convert SDK values to these conventions.
 * Check conversion in the SimConnect spike. Do not infer SimVar units from names alone.
@@ -168,7 +171,7 @@ Example additions to a live v1 snapshot:
 {"altitude_ft": -120.0, "baro_inhg": 29.92}
 ```
 
-The first 18 seconds of the shared 90-second Rust altitude demo contain six three-second sweeps.
+The first 18 seconds of the shared 198-second Rust altitude demo contain six three-second sweeps.
 Their endpoints are -120/120, 980/1020, 9980/10020, 10020/9980, 1020/980, and 120/-120 ft.
 Each sweep includes both endpoints over 60 samples.
 Pressure changes every six seconds through 29.92, 30.12, and 29.72 inHg.
@@ -197,28 +200,58 @@ Example addition to a live v1 snapshot:
 {"selected_altitude_ft": 10000.0}
 ```
 
-The altitude demo repeats after 1800 samples at 20 Hz:
+The shared altitude, target, and vertical-speed demo repeats after 3960 samples at 20 Hz:
 
 | Time | Altitude / target |
 | --- | --- |
 | 0-18 seconds | Existing six signed sweeps, without selected altitude |
-| 18-54 seconds | Approach 10000 ft from 8500 ft, hold, then depart to 10300 ft |
-| 54-90 seconds | Approach 1000 ft from 2500 ft, hold, then depart to 700 ft |
+| 18-108 seconds | Approach 10000 ft from 8500 ft, hold, then depart to 10300 ft |
+| 108-198 seconds | Approach 1000 ft from 2500 ft, hold, then depart to 700 ft |
 
-Each 36-second approach uses this schedule:
+Each 90-second approach uses this schedule:
 
 | Duration | Altitude relative to target |
 | --- | --- |
 | 6 seconds | Hold 1500 ft away |
-| 8 seconds | Move to 500 ft away |
-| 8 seconds | Reach target |
+| 40 seconds | Move to 500 ft away |
+| 20 seconds | Reach target |
 | 6 seconds | Hold target |
-| 2 seconds | Depart by 300 ft |
+| 12 seconds | Depart by 300 ft |
 | 6 seconds | Hold deviation |
 
 Attitude, speeds, coordinated-turn values, and pressure retain their existing 18-second cycles.
 `tests/fixtures/selected-altitude-samples.json` contains independent checkpoints.
 See [selected-altitude presentation](pfd-presentation.md#selected-altitude-and-alerts) for alert rules and display validity.
+
+### Optional vertical speed
+
+Vertical speed follows the optional-field lifecycle:
+
+* `vertical_speed_fpm` shares the sample sequence, age, and expiry deadline.
+* Rust omits absent values and the field outside `live`. Attitude-only publication clears the previous value.
+* Missing, null, nonnumeric, or non-finite browser values normalize to `null` independently of altitude and pressure.
+* Finite signed values beyond presentation limits remain valid telemetry, including negative and zero values.
+* Each snapshot replaces the previous indication. Missing values never become zero or retain the previous reading.
+* The browser uses source-supplied ft/min without calculating differences between received altitudes.
+
+Example addition to a live v1 snapshot:
+
+```json
+{"vertical_speed_fpm": 1500.0}
+```
+
+The demo derives altitude and VSI from shared segment definitions:
+
+| Segment | VSI |
+| --- | --- |
+| First six altitude sweeps | Analytic slope, approximately +/-4881.36 or +/-813.56 ft/min |
+| Target approach and departure | +1500 ft/min upward, -1500 ft/min downward |
+| Holds | Zero |
+| First sample after artificial jumps | Omitted at cycle indices 0, 60, 120, 240, 300, 360, and 2160 |
+| Continuous phase boundary | Rate of the phase beginning at that sample |
+
+`tests/fixtures/vertical-speed-samples.json` supplies independent segment and jump checkpoints.
+See [VSI presentation](pfd-presentation.md#vertical-speed) for display limits and [VSI acceptance](testing.md#vertical-speed-acceptance) for checks.
 
 ### Optional airspeed ranges and trend
 

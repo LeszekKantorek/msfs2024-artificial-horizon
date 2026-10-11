@@ -7,7 +7,7 @@ Delivery order: [roadmap](roadmap.md). Validation: [testing](testing.md#modular-
 ## Current implementation and planned changes
 
 The panel implements attitude, slip/skid, and turn rate from #20, IAS and GS from #21, and ranges/trend from #22.
-It also implements altitude/pressure from #23 and selected-altitude alerts from #24.
+It also implements altitude/pressure from #23, selected-altitude alerts from #24, and vertical speed from #25.
 #36 separates rendering from scheduling. #37 implements layers and full-panel background coverage.
 Maintenance [#54](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/54) introduced internal calculation and validation seams.
 [#56](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/56) composes visual objects and places object-specific calculations with their implementing modules:
@@ -24,6 +24,7 @@ Maintenance [#54](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/
 | `slip-skid.js`, `turn-rate.js` | Local geometry, readings, and indication availability |
 | `airspeed/` | Compose IAS and independent GS, with SVG operations and calculations in each visual object |
 | `altitude/` | Compose altitude tape, rolling readout, and independent pressure setting with local calculations |
+| `vertical-speed.js` | Stationary scale, pointer, numeric readout, pure geometry, and independent availability |
 | `status.js` | Accessible status, and global unavailability |
 | `helpers.js` | Named clamp, SVG creation, and attribute updates without import-time DOM access |
 
@@ -46,7 +47,8 @@ Panel
 |   |   |-- Readout (window, digits, unit, warning)
 |   |   `-- References (markers, leaders, fallback values)
 |   `-- Ground speed
-|-- Altitude (tape, rolling readout, pressure setting)
+|-- Altitude (tape, rolling readout, pressure setting, selected altitude and alerts)
+|-- Vertical speed
 |-- Slip/skid
 |-- Turn rate
 |-- Fixed symbols (bank scale, aircraft and outline)
@@ -55,7 +57,7 @@ Panel
 
 * A module does not require one file per graphic element.
 * Add future instruments in their feature issues, without empty implementations or production placeholder readings.
-* Vertical speed and heading/track remain planned in #25-#26.
+* Heading/track remains planned in #26.
 
 | Owner | Responsibility |
 | --- | --- |
@@ -280,6 +282,7 @@ panel.invalidate(reason);
 | `airspeed_profile`, `ias_acceleration_ktps` | Independently normalized configuration and source acceleration, or `null` |
 | `altitude_ft`, `baro_inhg` | Independently normalized signed altitude and positive pressure setting, or `null` |
 | `selected_altitude_ft` | Independently normalized signed selected altitude, or `null` |
+| `vertical_speed_fpm` | Independently normalized signed ft/min, or `null` |
 | `expiresAt` | Original monotonic expiry deadline |
 | `status` | Copied `source`, `transport`, and `state` values |
 
@@ -404,6 +407,43 @@ Keep indications readable across the full panel:
 * Check painted extents, including stroke clearance, rather than only allocated rectangles.
 * Use the full 18-element development fixture before later instruments reduce usable space.
 * Preserve responsive sizing, safe areas, and the minima in the [brief](project-brief.md#mobile-presentation).
+
+## Vertical speed
+
+`vertical-speed.js` composes a stateless visual object in the altitude layer:
+
+* The right-side column uses `clamp(width * 0.09, 42, 54)` CSS px, preserving altitude width and reducing the central horizon allocation.
+* `FT/MIN` occupies the top strip. A black numeric window sits beside pressure in the bottom strip.
+* Fixed text sizes are 12 CSS px for the readout, 10 for scale labels, and 9 for the unit.
+* The scale shares the altitude tape center and spans -2000 to +2000 ft/min linearly at every height.
+* Ticks occur every 500 ft/min, with labels 0, 1000, and 2000 in both directions.
+* The white arrow moves upward for climb and downward for descent, remaining centered at zero.
+
+The local pointer position preserves an eight-pixel end margin for the whole symbol and its stroke:
+
+```text
+y = H/2 - clamp(fpm, -2000, 2000)/2000 * (H/2 - 8)
+```
+
+Reading and availability follow these rules:
+
+| Input | Presentation |
+| --- | --- |
+| Finite value within +/-2000 ft/min | Arrow at its scale position |
+| Finite value beyond +/-2000 ft/min | Arrow pinned to the corresponding edge, with a white overflow chevron |
+| Raw value within -9999 to +9999 ft/min | Rounded whole ft/min, with `+` for positive and `-` for negative readings |
+| Rounded positive or negative zero | `0` |
+| Raw value beyond the numeric limit | `+OVR` or `-OVR`, with the pinned arrow retained |
+| Missing or invalid value | Red `X`, hidden arrow and overflow chevron |
+| Missing altitude or pressure | Valid VSI remains available |
+
+Bounds and availability use raw values before rounding.
+The accessible description includes the raw value, feet per minute, and any scale overflow.
+VSI uses the common frame and expiry deadline without a timer, interpolation, filtering, or sample history.
+The full layout fixture uses the same module as production.
+
+Garmin G5 Guide 190-01112-12 Rev. 2, section 3.3.9, provides the stationary scale and white-arrow reference.
+The linear +/-2000 range, numeric limits, and overflow symbol are accepted project decisions.
 
 ## Selected altitude and alerts
 

@@ -17,12 +17,12 @@ fn selected_altitude_validates_signed_finite_feet_without_a_display_limit() {
 }
 
 #[test]
-fn demo_matches_independent_90_second_checkpoints_and_keeps_other_cycles() {
+fn demo_matches_independent_198_second_checkpoints_and_keeps_other_cycles() {
     let fixtures: Vec<Value> =
         serde_json::from_str(include_str!("fixtures/selected-altitude-samples.json")).unwrap();
     for row in fixtures {
         let index = row["sample"].as_u64().unwrap();
-        for repeat in [0, 1800, 3600] {
+        for repeat in [0, 3960, 7920] {
             let sample = serde_json::to_value(demo::sample(index + repeat)).unwrap();
             assert_eq!(sample["altitude_ft"].as_f64(), row["altitude_ft"].as_f64());
             assert_eq!(
@@ -31,11 +31,12 @@ fn demo_matches_independent_90_second_checkpoints_and_keeps_other_cycles() {
             );
         }
     }
-    for index in 0..1800 {
+    for index in 0..3960 {
         let mut current = serde_json::to_value(demo::sample(index)).unwrap();
         let mut original = serde_json::to_value(demo::sample(index % 360)).unwrap();
         for sample in [&mut current, &mut original] {
             sample.as_object_mut().unwrap().remove("altitude_ft");
+            sample.as_object_mut().unwrap().remove("vertical_speed_fpm");
             sample
                 .as_object_mut()
                 .unwrap()

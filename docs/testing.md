@@ -129,7 +129,7 @@ Automated coverage exercises these boundaries:
 
 | Boundary | Checks |
 | --- | --- |
-| Rust model and demo | Finite signed targets, independent omission, shared freshness, old publications, two SSE clients, 90-second checkpoints and unchanged 18-second cycles |
+| Rust model and demo | Finite signed targets, independent omission, shared freshness, old publications, two SSE clients, 198-second checkpoints and unchanged 18-second cycles |
 | Alert transitions | Both approach directions, exact thresholds, unrounded values, skipped bands, sustained values, target changes, capture, departure, return and repeat departure |
 | Controlled time | 250-ms flash phases, completion at 5000 ms, delayed/early callbacks, identical fresh samples, resize, coalesced samples and expiry before draw |
 | Invalidation | Local missing/overflow values, paused/stale/disconnected/waiting/invalid states, suspension, stale callbacks and silent recovery |
@@ -147,12 +147,64 @@ Use these checks and artifacts for automated acceptance:
 Real-device acceptance uses this procedure on iOS Safari and Android Chrome separately:
 
 1. Record device, OS, browser/version, tested commit, date, viewport, and observations in #24 or its PR.
-2. Watch the 90-second demo for both approach directions, full flash intervals, target changes, and yellow deviation.
+2. Watch the 198-second demo for both approach directions, full flash intervals, target changes, and yellow deviation.
 3. Check the pinned bug and selected value against sky and ground in portrait and short landscape, including 320 CSS px width.
 4. Rotate and change browser-bar visibility. Check safe areas, readable text, undistorted symbols, and no scrolling or collisions.
 5. Use the development fixture to check target loss, malformed target, both overflow boundaries, current-altitude loss, pressure-only loss, and return into the captured band.
 6. Check Wi-Fi/server loss, lock/unlock, and background/resume during an alert. Recovery requires fresh data and silent initialization.
 7. Leave device acceptance unchecked until both device results identify the tested build and satisfy these checks.
+
+## Vertical-speed acceptance
+
+Issue [#25](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/25) owns VSI evidence.
+Use the [contract](telemetry-contract.md#optional-vertical-speed) and [presentation rules](pfd-presentation.md#vertical-speed) for units, ranges, and availability.
+
+Automated acceptance covers these boundaries:
+
+| Boundary | Checks |
+| --- | --- |
+| Rust model and SSE | Finite signed rates, zero, no telemetry limit, omission, state clearing, shared age, stale suppression, old snapshots, and matching clients |
+| Scenario | Independent 3960-sample checkpoints, every jump and phase, analytic altitude/rate agreement, 25 ft/s producing +1500 ft/min, and unchanged other cycles |
+| Node calculations | Up/down direction, signed zero, rounding, exact +/-2000 and +/-9999 boundaries, raw overflow before rounding, and invalid values |
+| Shared lifecycle | Latest coherent frame, resize without renewed freshness, expiry before drawing, pause/disconnect, reconnect and background/resume without duplicate subscriptions |
+| SVG | Stationary ticks, painted arrow visibility, numeric/unit/scale bounds, overflow stroke clearance, node identity, partial loss, and both compositions |
+| Release runtime | Embedded module with GET/HEAD and JavaScript MIME, actual Rust ft/min in SSE/SVG, hold, climb, off-scale sweep, and restart recovery |
+
+Use these checks and artifacts:
+
+* Run the [automated Rust and Node commands](#automated-checks) and both [desktop browser scripts](#responsive-pfd-layout-and-desktop-checks).
+* Retain the selected-altitude alert regressions, including expiry while flashing and delayed callback cancellation.
+* Inspect `.local/pfd-browser/vsi-*` for the minimum viewport, narrow portrait, short landscape, both scale ends, and long signed values.
+* Inspect `.local/pfd-runtime-vertical-speed.png` for the compiled demo's +1500 ft/min climb beside altitude and its selected target.
+
+Real-device acceptance requires separate iOS Safari and Android Chrome results:
+
+1. Record device, OS, browser/version, tested commit, viewport, date, and observations in #25 or its PR.
+2. Start the demo through the [phone procedure](../README.md#use-your-phone) and watch the 198-second altitude/VSI cycle.
+3. Check zero during holds, arrow direction during climb/descent, and pinned off-scale pointers during the initial sweeps.
+4. Inspect the scale, `FT/MIN`, numeric readout, altitude, selected target, and pressure against sky and ground.
+5. Rotate, expand/collapse browser bars, and check safe areas, readability, undistorted symbols, and no scrolling or collisions.
+6. Use the [development fixture](#real-phone-checks) with the inputs below to inspect signed limits, partial failures, and missing data.
+7. Check Wi-Fi/server loss, lock/unlock, and background/resume. Require fresh readings without reload or duplicate subscriptions.
+8. Leave each device unchecked until its passing record exists. Desktop emulation does not establish phone acceptance.
+
+Enter these JSON lines into the fixture terminal:
+
+```json
+{"vertical_speed_fpm":1500}
+{"vertical_speed_fpm":-1500}
+{"vertical_speed_fpm":0}
+{"vertical_speed_fpm":2000.01}
+{"vertical_speed_fpm":-2000.01}
+{"vertical_speed_fpm":9999}
+{"vertical_speed_fpm":-9999}
+{"vertical_speed_fpm":9999.01}
+{"vertical_speed_fpm":-9999.01}
+{"vertical_speed_fpm":null}
+{"vertical_speed_fpm":1500,"altitude_ft":null,"baro_inhg":null}
+{"vertical_speed_fpm":1500,"altitude_ft":8500,"baro_inhg":29.92,"hold":true}
+{"hold":false}
+```
 
 ## Automated checks
 
