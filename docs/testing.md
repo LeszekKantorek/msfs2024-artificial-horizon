@@ -136,11 +136,13 @@ Automated coverage exercises these boundaries:
 | SVG | Readout and bug bounds, stroke clearance at tape edges, colors, availability, stable nodes and the full layout fixture |
 | Release runtime | Embedded selected module, actual Rust target in SSE/SVG, pinned bug and recovery after restart |
 
-The existing Rust and Node commands include these tests.
-Both desktop browser scripts are required for this feature.
-The selected SVG checks use real panel modules with injected monotonic time.
-They check bug paint visibility and minus-sign clearance at positive and negative capture without waiting five wall-clock seconds.
-Screenshots use `.local/pfd-browser/selected-altitude-*` and `.local/pfd-runtime-selected-altitude.png`.
+Use these checks and artifacts for automated acceptance:
+
+* The [automated Rust and Node commands](#automated-checks) include these tests.
+* Both [desktop browser scripts](#responsive-pfd-layout-and-desktop-checks) are required for this feature.
+* The selected SVG checks use real panel modules with injected monotonic time.
+* They check bug paint visibility and minus-sign clearance at positive and negative capture without five-second wall-clock waits.
+* Inspect screenshots at `.local/pfd-browser/selected-altitude-*` and `.local/pfd-runtime-selected-altitude.png`.
 
 Real-device acceptance uses this procedure on iOS Safari and Android Chrome separately:
 
