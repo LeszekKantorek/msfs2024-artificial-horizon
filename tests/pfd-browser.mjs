@@ -11,6 +11,7 @@ import { checkSelectedAltitude } from './selected-altitude-browser-checks.mjs';
 import { checkVerticalSpeed } from './vertical-speed-browser-checks.mjs';
 import { checkAltitudeTrend } from './altitude-trend-browser-checks.mjs';
 import { checkHeading } from './heading-browser-checks.mjs';
+import { checkTapeFooters } from './tape-footer-browser-checks.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
@@ -129,8 +130,8 @@ try {
       assert.ok(Math.abs(dimensions.speedGap) < 0.01, 'GS must touch the IAS tape in production and the fixture');
       assert.ok(Math.abs(dimensions.speedLeftDifference) < 0.01);
       assert.ok(Math.abs(dimensions.speedWidthDifference) < 0.01);
-      assert.ok(Math.abs(dimensions.gsBottomInset - 2) < 0.01, 'GS must stay at the bottom of the panel');
-      assert.ok(dimensions.blankSpeedArea > 20, 'The extended tape background below KT must stay empty');
+      assert.ok(Math.abs(dimensions.gsBottomInset) < 0.01, 'GS must meet the bottom of the panel');
+      assert.ok(dimensions.blankSpeedArea >= 0, 'Unit text must stay above GS');
       assert.equal(dimensions.tapeEndsAboveUnit, true, 'Ticks and labels must stop above KT');
       if (path === '/layout.html') {
         const collisions = await page.evaluate(() => {
@@ -214,7 +215,7 @@ try {
     tape: ['airspeed-scale', 'airspeed-ranges', 'airspeed-trend', 'airspeed-references'],
     references: [['path', 'R'], ['path', 'X'], ['path', 'Y'], ['path', 'G'],
       ['text', 'R'], ['text', 'X'], ['text', 'Y'], ['text', 'G']],
-    bottom: ['speed-unit', 'airspeed-reference-value', 'airspeed-reference-value', 'airspeed-reference-value', 'airspeed-reference-value'],
+    bottom: ['airspeed-reference-value', 'airspeed-reference-value', 'airspeed-reference-value', 'airspeed-reference-value'],
     instruments: ['airspeed', 'ground-speed'],
     warnings: ['airspeed-warning', 'ground-speed-warning'],
   });
@@ -234,7 +235,7 @@ try {
     const doc = new DOMParser().parseFromString(await (await fetch('/')).text(), 'text/html');
     const panel = createPanel(doc.querySelector('.instrument'), createStatusView(doc));
     const frame = Object.freeze({ attitude: Object.freeze({ pitch_deg: 10, roll_deg: 25 }),
-      slip_skid: 0.5, turn_rate_dps: 3, ias_kt: 99.5, gs_kt: 137.6, altitude_ft: -90, baro_inhg: 29.92, expiresAt: 1000,
+      slip_skid: 0.5, turn_rate_dps: 3, ias_kt: 99.5, gs_kt: 137.6, altitude_ft: -90, baro_text: '29.92 inHg', expiresAt: 1000,
       ias_acceleration_ktps: 5, airspeed_profile: Object.freeze({ vs0_kt: 40, vs1_kt: 50,
         vfe_kt: 85, vno_kt: 110, vne_kt: 140,
         references: Object.freeze({ vr_kt: 55, vx_kt: 65, vy_kt: 75, vg_kt: 90 }) }),
@@ -265,6 +266,7 @@ try {
   await checkVerticalSpeed(page, setFixture, url);
   await checkAltitudeTrend(page, setFixture, url);
   await checkHeading(page, setFixture, url);
+  await checkTapeFooters(page, setFixture, url);
   // Verify actual SVG columns and tape positions against independent expected values.
   for (const [width, height] of [[326, 246], [320, 480], [568, 240]]) {
     await page.setViewportSize({ width, height });

@@ -52,13 +52,15 @@ async fn selected_altitude_is_optional_and_clears_with_the_shared_deadline() {
     let attitude = Attitude::new(0.0, 0.0).unwrap();
     let empty = FlightSample::new(attitude, None, None);
     for feet in [-120.0, 0.0, 100000.0] {
-        let full = empty.with_selected_altitude(Some(SelectedAltitude::new(feet).unwrap()));
-        publisher.publish_sample(full).unwrap();
+        let full = empty
+            .clone()
+            .with_selected_altitude(Some(SelectedAltitude::new(feet).unwrap()));
+        publisher.publish_sample(full.clone()).unwrap();
         advance(Duration::from_millis(999)).await;
         let snapshot = serde_json::to_value(subscription.snapshot()).unwrap();
         assert_eq!(snapshot["selected_altitude_ft"], feet);
         assert_eq!(snapshot["sample_age_ms"], 999);
-        publisher.publish_sample(full).unwrap();
+        publisher.publish_sample(full.clone()).unwrap();
         assert_eq!(
             serde_json::to_value(subscription.snapshot()).unwrap()["sample_age_ms"],
             0
@@ -75,7 +77,7 @@ async fn selected_altitude_is_optional_and_clears_with_the_shared_deadline() {
             State::Disconnected,
             State::Invalid,
         ] {
-            publisher.publish_sample(full).unwrap();
+            publisher.publish_sample(full.clone()).unwrap();
             publisher.publish(state).unwrap();
             assert!(
                 serde_json::to_value(subscription.snapshot())
@@ -84,8 +86,8 @@ async fn selected_altitude_is_optional_and_clears_with_the_shared_deadline() {
                     .is_none()
             );
         }
-        publisher.publish_sample(full).unwrap();
-        publisher.publish_sample(empty).unwrap();
+        publisher.publish_sample(full.clone()).unwrap();
+        publisher.publish_sample(empty.clone()).unwrap();
         let old = serde_json::to_value(subscription.snapshot()).unwrap();
         assert!(old.get("selected_altitude_ft").is_none());
         assert_eq!(old["attitude"]["pitch_deg"], 0.0);

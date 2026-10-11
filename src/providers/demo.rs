@@ -1,7 +1,7 @@
 //! Repeatable degree fixtures; no simulator SDK conventions are assumed.
 use crate::telemetry::{
-    AirspeedProfile, Attitude, BarometricAltitude, BarometricSetting, FlightSample, GroundSpeed,
-    Heading, IasAcceleration, IndicatedAirspeed, Publisher, SAMPLE_PERIOD, SelectedAltitude,
+    AirspeedProfile, Attitude, BarometricAltitude, FlightSample, GroundSpeed, Heading,
+    IasAcceleration, IndicatedAirspeed, Publisher, SAMPLE_PERIOD, SelectedAltitude,
     SelectedHeading, SlipSkid, TelemetryError, TurnRate, VSpeedReferences, VerticalSpeed,
 };
 use std::future::Future;
@@ -64,7 +64,7 @@ pub fn sample(index: u64) -> FlightSample {
     )
     .with_altitude(
         Some(BarometricAltitude::new(altitude).expect("built-in altitude is valid")),
-        Some(BarometricSetting::new(baro).expect("built-in pressure setting is valid")),
+        Some(format!("{baro:.2} inHg")),
     )
     .with_selected_altitude(
         selected.map(|feet| SelectedAltitude::new(feet).expect("built-in target is valid")),

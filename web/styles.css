@@ -70,12 +70,12 @@ noscript { position: absolute; inset: 12px 12px auto; color: var(--warning); tex
 .airspeed-label { fill: var(--text); font-size: 12px; text-anchor: end; dominant-baseline: middle; }
 .airspeed-window { fill: var(--value-window); stroke: var(--text); stroke-width: 1; }
 .airspeed-digit { fill: var(--text); font-size: 17px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
-.speed-unit, .ground-speed-label { fill: var(--text); font-size: 10px; text-anchor: middle; dominant-baseline: middle; }
-.ground-speed-label { font-size: 8px; text-anchor: start; dominant-baseline: central; }
-.ground-speed-unit { fill: var(--text); font-size: 8px; text-anchor: end; dominant-baseline: central; }
-.ground-speed-value { fill: var(--text); font-size: 13px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+.speed-unit, .altitude-unit { fill: var(--text); font-size: 10px; text-anchor: middle; dominant-baseline: central; }
+.ground-speed-label, .ground-speed-value { fill: var(--text); font-size: 13px; font-weight: 600; dominant-baseline: central; }
+.ground-speed-label { text-anchor: start; }
+.ground-speed-value { text-anchor: end; }
 .speed-warning { fill: var(--danger); font-size: 15px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
-#ground-speed-warning { font-size: 12px; }
+#ground-speed-warning { font-size: 13px; text-anchor: end; }
 #airspeed:not([data-state="available"]) :is(.airspeed-tape, #airspeed-digits) { visibility: hidden; }
 .airspeed-range-low, .airspeed-range-red { fill: var(--speed-red); }
 .airspeed-range-flaps, .airspeed-range-white { fill: var(--text); }
@@ -94,9 +94,9 @@ noscript { position: absolute; inset: 12px 12px auto; color: var(--warning); tex
 .altitude-window, .vertical-speed-window { fill: var(--value-window); stroke: var(--text); stroke-width: 1; }
 .altitude-digit, .vertical-speed-value { fill: var(--text); font-family: monospace; font-size: 14px; text-anchor: middle; dominant-baseline: central; }
 .vertical-speed-value { text-anchor: end; font-size: 13px; }
-.altitude-unit { fill: var(--text); font-size: 9px; text-anchor: middle; dominant-baseline: central; }
-.barometric-value { fill: var(--speed-reference); font-size: 13px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
-.barometric-unit { fill: var(--text); font-size: 8px; text-anchor: middle; dominant-baseline: central; }
+.barometric-background { fill: var(--value-window); }
+.barometric-border { fill: none; stroke: var(--speed-reference); stroke-width: 1; }
+.barometric-value { fill: var(--speed-reference); font-size: 11px; font-weight: 600; text-anchor: middle; dominant-baseline: central; white-space: pre; }
 .altitude-warning { fill: var(--danger); font-size: 15px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
 #altitude:not([data-state="available"]) :is(.altitude-tape, #altitude-digits) { visibility: hidden; }
 #barometric-setting:not([data-state="available"]) .barometric-value { fill: var(--danger); }

@@ -21,9 +21,12 @@ Keep these pitfalls in scope when extending the instrument:
 * Preserve the resulting 16 px fallback rows and 8 px marker clearance when changing reference geometry.
 * Preserve exact accessible values and speed anchors when compacting or displacing fractional, tiny, large, coincident, or nearby references.
 * Exercise the real IAS/GS module in the full fixture, including fallback references that occupy the development badge area.
+* Measure fallback reference glyphs against both the IAS warning and persistent `[KT]` when changing footer positions.
 
 Source: accepted implementation plan for [#21](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/21), 2026-10-10, including the explicit 0–999 kt choice.
 
 Source: accepted layout clarification, 2026-10-10, to keep GS at the bottom and replace the IAS/GS background gap with empty tape background.
 
 Source: accepted #22 implementation plan and measured SVG bounds on desktop Edge 155.0.4283.45, 2026-10-10. Real iOS Safari and Android Chrome acceptance remains separate.
+
+Source: accepted #65 plan and Edge glyph measurements, 2026-10-11, preserving 16 px fallback row spacing while clearing `[KT]`.

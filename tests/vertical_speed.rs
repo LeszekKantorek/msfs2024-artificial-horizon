@@ -71,14 +71,16 @@ async fn vertical_speed_shares_freshness_and_clears_on_old_samples_and_states() 
     let attitude = Attitude::new(0.0, 0.0).unwrap();
     let empty = FlightSample::new(attitude, None, None);
     for fpm in [-1500.0, 0.0, 10000.0] {
-        let full = empty.with_vertical_speed(Some(VerticalSpeed::new(fpm).unwrap()));
-        publisher.publish_sample(full).unwrap();
+        let full = empty
+            .clone()
+            .with_vertical_speed(Some(VerticalSpeed::new(fpm).unwrap()));
+        publisher.publish_sample(full.clone()).unwrap();
         advance(Duration::from_millis(999)).await;
         let current = serde_json::to_value(subscription.snapshot()).unwrap();
         assert_eq!(current["vertical_speed_fpm"], fpm);
         assert_eq!(current["sample_age_ms"], 999);
         assert!(current.get("altitude_ft").is_none());
-        assert!(current.get("baro_inhg").is_none());
+        assert!(current.get("baro_text").is_none());
         advance(Duration::from_millis(1)).await;
         let stale = serde_json::to_value(subscription.snapshot()).unwrap();
         assert_eq!(stale["state"], "stale");
@@ -91,7 +93,7 @@ async fn vertical_speed_shares_freshness_and_clears_on_old_samples_and_states() 
             State::Disconnected,
             State::Invalid,
         ] {
-            publisher.publish_sample(full).unwrap();
+            publisher.publish_sample(full.clone()).unwrap();
             publisher.publish(state).unwrap();
             assert!(
                 serde_json::to_value(subscription.snapshot())
@@ -100,8 +102,8 @@ async fn vertical_speed_shares_freshness_and_clears_on_old_samples_and_states() 
                     .is_none()
             );
         }
-        publisher.publish_sample(full).unwrap();
-        publisher.publish_sample(empty).unwrap();
+        publisher.publish_sample(full.clone()).unwrap();
+        publisher.publish_sample(empty.clone()).unwrap();
         assert!(
             serde_json::to_value(subscription.snapshot())
                 .unwrap()

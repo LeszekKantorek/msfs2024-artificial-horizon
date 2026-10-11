@@ -286,7 +286,8 @@ panel.invalidate(reason);
 | `attitude`, `slip_skid`, `turn_rate_dps` | Values from one accepted sample |
 | `ias_kt`, `gs_kt` | Independently normalized speeds from the same accepted sample, or `null` |
 | `airspeed_profile`, `ias_acceleration_ktps` | Independently normalized configuration and source acceleration, or `null` |
-| `altitude_ft`, `baro_inhg` | Independently normalized signed altitude and positive pressure setting, or `null` |
+| `altitude_ft` | Independently normalized signed altitude, or `null` |
+| `baro_text` | Verbatim source-formatted display string, or `null` for missing/non-string data |
 | `selected_altitude_ft` | Independently normalized signed selected altitude, or `null` |
 | `vertical_speed_fpm` | Independently normalized signed ft/min, or `null` |
 | `heading_deg`, `selected_heading_deg` | Independently normalized magnetic degrees in `[0, 360)`, or `null` |
@@ -621,7 +622,7 @@ State updates preserve availability and accessible meanings:
 
 * IAS root state updates run before its child indication updates on every frame.
 * GS updates its state independently.
-* IAS and GS reset warning colors, availability, local X/OVR marks, profile visibility, fallback flags, and unit visibility.
+* IAS and GS reset warning colors, availability, local X/OVR marks, profile visibility, and fallback flags.
 * Trend updates clear the path and prediction attribute when no prediction exists.
 * Accessible speed labels retain current values or unavailable/overflow states.
 * Reference labels retain exact configured values despite compact visible text.
@@ -637,7 +638,7 @@ The altitude module uses the existing right-side allocation and layer 2:
 * The pool grows only when resize needs more rows and hides surplus rows on smaller panels.
 * Rendering reuses existing nodes without creating or replacing them.
 * `readout.js` owns its digit clip, fixed opaque pointer window, sign, rolling columns, and layer-4 X/OVR mark.
-* `baro.js` owns its background, value, unit, formatting, and independent state.
+* `baro.js` owns its opaque background, cyan border, centered text, and independent state.
 * Pure calculations remain in the visual objects that implement them; no generic IAS/altitude tape is introduced.
 
 The tape and readouts use these presentation rules:
@@ -655,11 +656,14 @@ The tape and readouts use these presentation rules:
 * Negative values have a separate minus sign and magnitude drums; zero, including negative zero, has no minus.
 * An adjacent drum row outside the display range is blank instead of wrapping to zero.
 * Missing altitude shows `X` and hides the scale and digits without hiding valid pressure or other instruments.
-* The pressure readout stays at the bottom of the right column, with a 32-pixel background and a two-pixel panel inset.
-* Pressure uses two decimal places and a separate `inHg` unit; positive values above 99.99 show `OVR`.
-* A small positive pressure can round to 0.00; zero telemetry itself is invalid and shows `X`.
+* BARO occupies the bottom 32 CSS px of the right column, reaching the panel edge.
+* A one-pixel cyan border is inset by half a pixel over an opaque value-window background.
+* One centered, 11 CSS px, weight-600 cyan text node displays the entire source string, including units when supplied.
+* `23.83 inHg`, `1026 hPa`, and `BARO` share the same style; the browser does not parse, round, convert, or append units.
+* Missing or non-string BARO data shows a red `X`; an empty string remains empty.
+* Accessible BARO text preserves the received string; no numeric overflow state is generated.
 * Pressure failure affects only its readout; source/transport loss covers the entire panel.
-* Backgrounds use the existing opacity token; text, ticks, and the pointer window remain opaque.
+* Tape backgrounds use the existing opacity token; BARO, text, ticks, and pointer windows remain opaque.
 * Accessible labels preserve the full received values or the unavailable/overflow state without per-sample live announcements.
 
 Node and browser tests cover calculations, clips, stable nodes, painted glyph bounds, and state transitions.
@@ -676,7 +680,11 @@ Composition and geometry preserve the existing panel allocation:
 * The central attitude allocation remains unchanged.
 * GS stays at the bottom of the panel, with the same left edge and width as IAS.
 * The IAS background extends to GS without a gap.
-* When IAS is available, the area below `KT` contains no readings or scale markings.
+* IAS and altitude scales use clips of equal height over their complete existing allocations.
+* `[KT]` and `[FT]` are centered in their tape widths at panel height minus 39 CSS px, with the same 10 CSS px font and baseline.
+* `[KT]` remains visible during IAS loss; the fallback reference list has no additional unit heading.
+* GS and BARO occupy aligned 32 CSS px footers. Both tape backgrounds meet their footer without a gap and both footers meet the bottom panel edge.
+* The exterior three-pixel margins and safe-area handling remain unchanged.
 
 The tape and readouts use these display rules:
 
@@ -687,7 +695,9 @@ The tape and readouts use these display rules:
 * Leading zeros are blank.
 * Units roll from fractional IAS.
 * Higher columns roll during the final knot before a decimal carry.
-* GS uses a separate labelled readout in kt, rounded to the nearest integer with halves rounded up.
+* GS uses a separate labelled readout, rounded to the nearest knot with halves rounded up.
+* GS has no visible unit suffix; its accessible label retains knots.
+* GS label and value share 13 CSS px, weight-600 text, with a common vertical center and three-pixel left/right padding.
 
 Availability and lifecycle remain independent:
 
@@ -741,7 +751,7 @@ Tape references preserve their anchors and readable labels:
 
 Fallback references preserve configured values when IAS is unavailable:
 
-* Missing or invalid IAS shows a local `X` and the configured references in four rows above GS, with a `KT` heading.
+* Missing or invalid IAS shows a local `X` and the configured references in four rows above GS, with the persistent `[KT]` footer label.
 * Bottom reference values round to 0.1 kt.
 * Positive values below 0.1 show `<0.1`.
 * Values above 999 show `OVR`.

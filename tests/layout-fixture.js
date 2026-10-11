@@ -24,7 +24,7 @@ layers.symbols.append(marker);
 function render() {
   const { width, height } = svg.getBoundingClientRect();
   if (width <= 0 || height <= 0) return;
-  badge.setAttribute('transform', `translate(6 ${height - 36})`);
+  badge.setAttribute('transform', `translate(6 ${height - 68})`);
   marker.dataset.items = '1,2,3,4,5,7,8,9,10,11,12,13,15,16,18,20,21';
 }
 new ResizeObserver(render).observe(svg);

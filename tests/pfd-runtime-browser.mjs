@@ -78,16 +78,17 @@ try {
     sign: document.querySelector('#altitude-sign').textContent,
     drums: Number([...document.querySelectorAll('#altitude-digits > g')].map(n => n.firstElementChild.textContent).join('')),
     baroState: document.querySelector('#barometric-setting').dataset.state,
-    pressure: Number(document.querySelector('#barometric-setting').getAttribute('aria-label').split(' ')[2]),
+    pressureLabel: document.querySelector('#barometric-setting').getAttribute('aria-label'),
     pressureText: document.querySelector('#barometric-value').textContent,
   }));
   function verifyAltitude(reading) {
     assert.equal(reading.state, 'available');
     assert.equal(reading.baroState, 'available');
-    assert.ok(Number.isFinite(reading.feet) && reading.pressure > 0);
+    assert.ok(Number.isFinite(reading.feet));
     assert.equal(reading.drums, Math.floor(Math.abs(reading.feet) / 20) * 20);
     assert.equal(reading.sign, reading.feet < 0 ? '−' : '');
-    assert.equal(reading.pressureText, reading.pressure.toFixed(2));
+    assert.match(reading.pressureText, /^\d+\.\d{2} inHg$/);
+    assert.equal(reading.pressureLabel, `Barometric setting ${reading.pressureText}`);
   }
   verifyAltitude(await altitudeReading());
   assert.deepEqual([...loadedModules].sort(), [
@@ -115,7 +116,7 @@ try {
   assert.ok(Number.isFinite(snapshot.ias_kt));
   assert.ok(Number.isFinite(snapshot.gs_kt));
   assert.ok(Number.isFinite(snapshot.altitude_ft));
-  assert.ok(snapshot.baro_inhg > 0);
+  assert.match(snapshot.baro_text, /^\d+\.\d{2} inHg$/);
   assert.ok(Number.isFinite(snapshot.vertical_speed_fpm));
   assert.equal(snapshot.heading_deg, 354);
   assert.ok(Number.isFinite(snapshot.selected_heading_deg));

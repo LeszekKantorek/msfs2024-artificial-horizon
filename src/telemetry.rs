@@ -171,21 +171,6 @@ impl SelectedAltitude {
         self.0
     }
 }
-/// Independently available positive barometric pressure setting in inches of mercury.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
-#[serde(transparent)]
-pub struct BarometricSetting(f64);
-impl BarometricSetting {
-    pub fn new(inhg: f64) -> Result<Self, TelemetryError> {
-        if !inhg.is_finite() || inhg <= 0.0 {
-            return Err(TelemetryError::InvalidBarometricSetting);
-        }
-        Ok(Self(inhg))
-    }
-    pub fn inches_of_mercury(self) -> f64 {
-        self.0
-    }
-}
 /// Source-supplied IAS acceleration in knots per second, including deceleration.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 #[serde(transparent)]
@@ -269,7 +254,7 @@ impl AirspeedProfile {
 }
 
 /// One fresh acquisition with independently available optional indications.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct FlightSample {
     attitude: Attitude,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -295,7 +280,7 @@ pub struct FlightSample {
     #[serde(skip_serializing_if = "Option::is_none")]
     vertical_speed_fpm: Option<VerticalSpeed>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    baro_inhg: Option<BarometricSetting>,
+    baro_text: Option<String>,
 }
 impl FlightSample {
     pub fn new(
@@ -316,10 +301,10 @@ impl FlightSample {
             altitude_ft: None,
             selected_altitude_ft: None,
             vertical_speed_fpm: None,
-            baro_inhg: None,
+            baro_text: None,
         }
     }
-    pub fn attitude(self) -> Attitude {
+    pub fn attitude(&self) -> Attitude {
         self.attitude
     }
     pub fn with_heading(
@@ -334,10 +319,10 @@ impl FlightSample {
     pub fn with_altitude(
         mut self,
         altitude: Option<BarometricAltitude>,
-        setting: Option<BarometricSetting>,
+        baro_text: Option<String>,
     ) -> Self {
         self.altitude_ft = altitude;
-        self.baro_inhg = setting;
+        self.baro_text = baro_text;
         self
     }
     pub fn with_selected_altitude(mut self, altitude: Option<SelectedAltitude>) -> Self {
@@ -405,7 +390,7 @@ pub struct Snapshot {
     #[serde(skip_serializing_if = "Option::is_none")]
     vertical_speed_fpm: Option<VerticalSpeed>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    baro_inhg: Option<BarometricSetting>,
+    baro_text: Option<String>,
 }
 #[derive(Clone, Debug)]
 struct Current {
@@ -424,7 +409,7 @@ struct Current {
     altitude: Option<BarometricAltitude>,
     selected_altitude: Option<SelectedAltitude>,
     vertical_speed: Option<VerticalSpeed>,
-    baro: Option<BarometricSetting>,
+    baro: Option<String>,
 }
 impl Current {
     fn snapshot(&self) -> Snapshot {
@@ -463,7 +448,7 @@ impl Current {
             altitude_ft: attitude.and(self.altitude),
             selected_altitude_ft: attitude.and(self.selected_altitude),
             vertical_speed_fpm: attitude.and(self.vertical_speed),
-            baro_inhg: attitude.and(self.baro),
+            baro_text: attitude.and(self.baro.clone()),
         }
     }
 }
@@ -520,18 +505,18 @@ impl Publisher {
             self.current.accepted_at = Some(Instant::now());
         }
         self.current.state = state;
-        self.current.heading = sample.and_then(|s| s.heading_deg);
-        self.current.selected_heading = sample.and_then(|s| s.selected_heading_deg);
-        self.current.slip_skid = sample.and_then(|s| s.slip_skid);
-        self.current.turn_rate = sample.and_then(|s| s.turn_rate_dps);
-        self.current.ias = sample.and_then(|s| s.ias_kt);
-        self.current.gs = sample.and_then(|s| s.gs_kt);
-        self.current.airspeed_profile = sample.and_then(|s| s.airspeed_profile);
-        self.current.ias_acceleration = sample.and_then(|s| s.ias_acceleration_ktps);
-        self.current.altitude = sample.and_then(|s| s.altitude_ft);
-        self.current.selected_altitude = sample.and_then(|s| s.selected_altitude_ft);
-        self.current.vertical_speed = sample.and_then(|s| s.vertical_speed_fpm);
-        self.current.baro = sample.and_then(|s| s.baro_inhg);
+        self.current.heading = sample.as_ref().and_then(|s| s.heading_deg);
+        self.current.selected_heading = sample.as_ref().and_then(|s| s.selected_heading_deg);
+        self.current.slip_skid = sample.as_ref().and_then(|s| s.slip_skid);
+        self.current.turn_rate = sample.as_ref().and_then(|s| s.turn_rate_dps);
+        self.current.ias = sample.as_ref().and_then(|s| s.ias_kt);
+        self.current.gs = sample.as_ref().and_then(|s| s.gs_kt);
+        self.current.airspeed_profile = sample.as_ref().and_then(|s| s.airspeed_profile);
+        self.current.ias_acceleration = sample.as_ref().and_then(|s| s.ias_acceleration_ktps);
+        self.current.altitude = sample.as_ref().and_then(|s| s.altitude_ft);
+        self.current.selected_altitude = sample.as_ref().and_then(|s| s.selected_altitude_ft);
+        self.current.vertical_speed = sample.as_ref().and_then(|s| s.vertical_speed_fpm);
+        self.current.baro = sample.and_then(|s| s.baro_text);
         self.sender.send_replace(self.current.clone());
         Ok(())
     }
@@ -576,8 +561,6 @@ pub enum TelemetryError {
     InvalidSelectedAltitude,
     #[error("barometric altitude must be finite feet")]
     InvalidBarometricAltitude,
-    #[error("barometric setting must be positive finite inches of mercury")]
-    InvalidBarometricSetting,
     #[error("IAS acceleration must be finite knots per second")]
     InvalidIasAcceleration,
     #[error(

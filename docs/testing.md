@@ -50,30 +50,50 @@ Automated coverage includes these scenarios:
 
 | Check | Expected behavior |
 | --- | --- |
-| Rust types and publication | Finite signed feet, positive finite inHg, independent omission, shared age, attitude-only clearing, and stale suppression |
+| Rust types and publication | Finite signed feet, verbatim BARO strings, independent omission, shared age, attitude-only clearing, and stale suppression |
 | Independent demo fixture | Six altitude sweeps, all segment endpoints, pressure changes, zero crossing, and repeated cycles |
 | HTTP/SSE | Both clients receive the same altitude/pressure and sample age; unavailable snapshots omit extensions |
 | Node tape geometry | Fixed pixel spacing, known tick positions, wider spans and more labels on taller tapes, signed ticks, and direction |
 | Node readouts | 20-ft drums, carries, fractions, signs, and range boundaries |
 | Node client and scheduler | Independent field normalization, old snapshots, unchanged callback shape, reconnect/resume, coalescing, and expiry before resize draw |
 | Browser fixture | Both compositions, fixed pixel spacing through resize, retained nodes, wider portrait coverage, painted clearance, local failures/overflow, and global recovery |
-| Release runtime | Embedded altitude modules with correct MIME, real Rust SSE values in SVG/ARIA, pressure formatting, and recovery after restart |
+| Release runtime | Embedded altitude modules with correct MIME, real Rust SSE values in SVG/ARIA, producer-formatted BARO text, and recovery after restart |
 
 The existing [automated commands](#automated-checks) include the altitude Rust and Node tests.
 Both [desktop browser scripts](#responsive-pfd-layout-and-desktop-checks) are required.
 Altitude screenshots appear under `.local/pfd-browser/altitude-*`.
 Inspect narrow portrait and short landscape captures, including long signed readouts over sky and ground.
 
+### Tape footers and source-formatted BARO
+
+Issue [#65](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/65) owns the revised footer and BARO acceptance.
+The desktop layout script runs `tests/tape-footer-browser-checks.mjs` against both compositions.
+
+| Check | Expected behavior |
+| --- | --- |
+| Rust, SSE, normalization, and SVG | `23.83 inHg`, `1026 hPa`, and `BARO` reach the readout unchanged |
+| Availability and recovery | Missing, null, and non-string data show red `X`; empty and whitespace strings remain available; expiry and recovery follow the common sample deadline |
+| Unit labels and scales | Literal `[KT]` and `[FT]` have the same font and visual height; both clips fill their allocated height |
+| GS | Label and value share a 13 px font without a suffix; one-, two-, and three-digit values fit without overlap |
+| BARO | Required examples fit at minimum width, centered in one cyan 11 px text node over opaque dark background with an inset cyan border |
+| Background edges | Both 32 px footers meet their tape backgrounds and SVG edges at whole and fractional bounds, including simulated safe-area padding |
+| IAS fallback | Four reference values fit between the warning and persistent `[KT]`, without a second unit heading |
+
+Inspect `.local/pfd-browser/footer-*` screenshots at 320×480, 326×246, and 568×240 over both sky and ground.
+Run the release-runtime script after building the final embedded Web assets.
+On actual iOS Safari and Android Chrome, rotate the device, expand and collapse browser bars, and inspect safe areas, readability, and edge seams.
+Record each device and browser version separately; desktop padding simulation does not establish device acceptance.
+
 Real-device acceptance requires both iOS Safari and Android Chrome:
 
 1. Record the device, OS, browser/version, tested commit, viewport, date, and pass/fail observations in #23 or its PR.
 2. Start the Rust demo through the [phone procedure](../README.md#use-your-phone).
 3. Watch a complete cycle for climbing, descending, negative altitude, zero crossing, digit carries, and pressure changes.
-4. Check the 100/20-ft markings, fixed pointer, rolling digits, FT, and two-decimal inHg readout.
+4. Check the 100/20-ft markings, fixed pointer, rolling digits, aligned `[KT]`/`[FT]`, and source-formatted BARO text.
 5. Compare portrait and landscape at the same browser zoom and check the same tick spacing with more values on the taller tape.
 6. Rotate the phone and expand/collapse browser bars. Check safe areas, readable labels, undistorted symbols, and no scrolling or collisions.
 7. Stop/restart the server and lock/unlock the phone. Require a fresh sample before indications return without reload.
-8. Use the [development fixture procedure](#real-phone-checks) for independent missing/invalid altitude and pressure, both overflow boundaries, and long signed digits against sky and ground.
+8. Use the [development fixture procedure](#real-phone-checks) for independent missing/invalid altitude and pressure, both altitude overflow boundaries, and long signed digits against sky and ground.
 9. Leave unavailable device results unchecked. Desktop emulation does not establish phone acceptance.
 
 ## HTTP startup checks
@@ -150,7 +170,7 @@ Real-device acceptance uses this procedure on iOS Safari and Android Chrome sepa
 2. Watch the 198-second demo for both approach directions, full flash intervals, target changes, and yellow deviation.
 3. Check the pinned bug and selected value against sky and ground in portrait and short landscape, including 320 CSS px width.
 4. Rotate and change browser-bar visibility. Check safe areas, readable text, undistorted symbols, and no scrolling or collisions.
-5. Use the development fixture to check target loss, malformed target, both overflow boundaries, current-altitude loss, pressure-only loss, and return into the captured band.
+5. Use the development fixture to check target loss, malformed target, both altitude overflow boundaries, current-altitude loss, pressure-only loss, and return into the captured band.
 6. Check Wi-Fi/server loss, lock/unlock, and background/resume during an alert. Recovery requires fresh data and silent initialization.
 7. Leave device acceptance unchecked until both device results identify the tested build and satisfy these checks.
 
@@ -244,8 +264,8 @@ Enter these JSON lines into the fixture terminal:
 {"vertical_speed_fpm":9999.01}
 {"vertical_speed_fpm":-9999.01}
 {"vertical_speed_fpm":null}
-{"vertical_speed_fpm":1500,"altitude_ft":null,"baro_inhg":null}
-{"vertical_speed_fpm":1500,"altitude_ft":8500,"baro_inhg":29.92,"hold":true}
+{"vertical_speed_fpm":1500,"altitude_ft":null,"baro_text":null}
+{"vertical_speed_fpm":1500,"altitude_ft":8500,"baro_text":"29.92 inHg","hold":true}
 {"hold":false}
 ```
 

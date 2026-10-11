@@ -12,7 +12,7 @@
 | [PFD demo scope](pfd-demo-scope.md) | Planning or implementing PFD demo features. |
 | [PFD composition](pfd-module-plan.md) | Finding implemented object, frame, layer, and calculation contracts before extending the PFD. |
 | [Airspeed and ground speed](airspeed-ground-speed.md) | Extending or validating speed telemetry, ranges, references, trend, rolling digits, or the demo profile. |
-| [Altitude and pressure](altitude-baro.md) | Extending or validating altitude, pressure settings, signed drums, or the right-side PFD layout. |
+| [Altitude and pressure](altitude-baro.md) | Extending or validating altitude, source-formatted BARO text, signed drums, or the right-side PFD layout. |
 | [Altitude trend](altitude-trend.md) | Extending or validating six-second altitude prediction, its separate lane, or notched-bug geometry. |
 | [Selected altitude](selected-altitude.md) | Extending or validating targets, alert history, timed panel updates, or the longer altitude demo. |
 | [Vertical speed](vertical-speed.md) | Extending or validating source-supplied VSI, the compact altitude/VSI composition, or the shared altitude scenario. |

@@ -6,7 +6,7 @@ export function createAirspeed(instrument, layers) {
   const groundSpeed = createGroundSpeed(layers.airspeed, layers.warnings);
   return {
     resize(layout) {
-      const groundSpeedPanelY = layout.height - 24;
+      const groundSpeedPanelY = layout.height - 32;
       ias.resize(layout.airspeed, groundSpeedPanelY);
       groundSpeed.resize({ x: layout.airspeed.x, width: layout.airspeed.width, y: groundSpeedPanelY });
     },

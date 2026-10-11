@@ -41,14 +41,12 @@ export function createReferences(tapeHost, bottomHost) {
   group.append(...records.map(reference => reference.leader), ...records.map(reference => reference.marker));
   tapeHost.append(group);
   const bottomGroup = svgElement('g', { id: 'airspeed-references-bottom', 'data-visible': 'false' });
-  const bottomUnit = svgElement('text', { class: 'speed-unit' }, 'KT');
-  bottomGroup.append(bottomUnit, ...records.map(reference => reference.fallbackLabel));
+  bottomGroup.append(...records.map(reference => reference.fallbackLabel));
   bottomHost.append(bottomGroup);
   let geometry;
   return {
     resize(tape) {
       geometry = tape;
-      setAttributes(bottomUnit, { x: tape.width / 2, y: tape.fallbackUnitY });
       records.forEach((reference, index) => {
         reference.marker.setAttribute('x', tape.width - 4);
         setAttributes(reference.fallbackLabel, { x: tape.width / 2, y: tape.fallbackFirstLabelY + index * 16 });

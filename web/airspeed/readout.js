@@ -28,7 +28,7 @@ export function createReadout(defs, parent, warnings) {
     column.append(current, next); digits.append(column);
     return { column, current, next };
   });
-  const unit = svgElement('text', { class: 'speed-unit' }, 'KT');
+  const unit = svgElement('text', { class: 'speed-unit' }, '[KT]');
   parent.append(window, digits, unit);
   const warning = svgElement('text', { id: 'airspeed-warning', class: 'speed-warning' }, 'X');
   warnings.append(warning);
@@ -42,8 +42,7 @@ export function createReadout(defs, parent, warnings) {
       setAttributes(unit, { x: unitPosition.unitX, y: unitPosition.unitY });
       setAttributes(warning, { x: readout.warningPanelX, y: readout.warningPanelY });
     },
-    render(ias, showBottomReferences) {
-      unit.style.display = showBottomReferences ? 'none' : '';
+    render(ias) {
       warning.style.display = ias.state === 'available' ? 'none' : '';
       warning.textContent = ias.state === 'overflow' ? 'OVR' : 'X';
       if (ias.state !== 'available') return;

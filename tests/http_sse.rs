@@ -45,6 +45,50 @@ fn snapshot(frame: &str) -> Value {
 }
 
 #[tokio::test(start_paused = true)]
+async fn baro_display_text_reaches_two_clients_unchanged_and_clears_with_the_source() {
+    use msfs2024_artificial_horizon::telemetry::FlightSample;
+    let (mut publisher, subscription) = telemetry::channel(Source::Demo);
+    let mut first = subscribe(subscription.clone(), None).await.into_body();
+    let mut second = subscribe(subscription.clone(), None).await.into_body();
+    for body in [&mut first, &mut second] {
+        assert_eq!(snapshot(&frame(body).await)["state"], "waiting");
+    }
+    let attitude = Attitude::new(0.0, 0.0).unwrap();
+    for text in ["23.83 inHg", "1026 hPa", "BARO", "", "  BARO  "] {
+        publisher
+            .publish_sample(
+                FlightSample::new(attitude, None, None).with_altitude(None, Some(text.to_owned())),
+            )
+            .unwrap();
+        advance(Duration::from_millis(50)).await;
+        let a = snapshot(&frame(&mut first).await);
+        let b = snapshot(&frame(&mut second).await);
+        assert_eq!(a, b);
+        assert_eq!(a["baro_text"], text);
+        assert_eq!(a["sample_age_ms"], 50);
+        assert!(a.get("altitude_ft").is_none());
+    }
+    publisher
+        .publish_sample(FlightSample::new(attitude, None, None))
+        .unwrap();
+    for body in [&mut first, &mut second] {
+        assert!(snapshot(&frame(body).await).get("baro_text").is_none());
+    }
+    publisher
+        .publish_sample(
+            FlightSample::new(attitude, None, None).with_altitude(None, Some(String::from("BARO"))),
+        )
+        .unwrap();
+    for body in [&mut first, &mut second] {
+        assert_eq!(snapshot(&frame(body).await)["baro_text"], "BARO");
+    }
+    publisher.publish(State::Paused).unwrap();
+    for body in [&mut first, &mut second] {
+        assert!(snapshot(&frame(body).await).get("baro_text").is_none());
+    }
+}
+
+#[tokio::test(start_paused = true)]
 async fn extended_samples_reach_two_clients_with_shared_values_and_delivery_time_age() {
     let (mut publisher, subscription) = telemetry::channel(Source::Demo);
     publisher
@@ -62,7 +106,7 @@ async fn extended_samples_reach_two_clients_with_shared_values_and_delivery_time
     assert_eq!(a["selected_heading_deg"], 0.0);
     assert_eq!(a["ias_kt"], 100.0);
     assert_eq!(a["altitude_ft"], 1020.0);
-    assert_eq!(a["baro_inhg"], 29.72);
+    assert_eq!(a["baro_text"], "29.72 inHg");
     assert_eq!(a["ias_acceleration_ktps"], -25.0);
     assert_eq!(
         a["airspeed_profile"],
@@ -94,7 +138,7 @@ async fn extended_samples_reach_two_clients_with_shared_values_and_delivery_time
         assert!(unavailable.get("altitude_ft").is_none());
         assert!(unavailable.get("selected_altitude_ft").is_none());
         assert!(unavailable.get("vertical_speed_fpm").is_none());
-        assert!(unavailable.get("baro_inhg").is_none());
+        assert!(unavailable.get("baro_text").is_none());
         assert!(unavailable.get("heading_deg").is_none());
         assert!(unavailable.get("selected_heading_deg").is_none());
         assert!(unavailable.get("airspeed_profile").is_none());

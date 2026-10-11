@@ -72,8 +72,8 @@ async fn headings_share_freshness_and_clear_independently_on_old_publications_an
     let empty = FlightSample::new(attitude, None, None);
     let heading = Heading::new(359.0).unwrap();
     let selected = SelectedHeading::new(1.0).unwrap();
-    let full = empty.with_heading(Some(heading), Some(selected));
-    publisher.publish_sample(full).unwrap();
+    let full = empty.clone().with_heading(Some(heading), Some(selected));
+    publisher.publish_sample(full.clone()).unwrap();
     advance(Duration::from_millis(999)).await;
     let current = serde_json::to_value(subscription.snapshot()).unwrap();
     assert_eq!(current["heading_deg"], 359.0);
@@ -84,7 +84,9 @@ async fn headings_share_freshness_and_clear_independently_on_old_publications_an
     assert_eq!(stale["state"], "stale");
     assert!(stale.get("heading_deg").is_none() && stale.get("selected_heading_deg").is_none());
     for (h, s) in [(Some(heading), None), (None, Some(selected)), (None, None)] {
-        publisher.publish_sample(empty.with_heading(h, s)).unwrap();
+        publisher
+            .publish_sample(empty.clone().with_heading(h, s))
+            .unwrap();
         let snapshot = serde_json::to_value(subscription.snapshot()).unwrap();
         assert_eq!(snapshot.get("heading_deg").is_some(), h.is_some());
         assert_eq!(snapshot.get("selected_heading_deg").is_some(), s.is_some());
@@ -98,22 +100,22 @@ async fn headings_share_freshness_and_clear_independently_on_old_publications_an
         State::Disconnected,
         State::Invalid,
     ] {
-        publisher.publish_sample(full).unwrap();
+        publisher.publish_sample(full.clone()).unwrap();
         publisher.publish(state).unwrap();
         let snapshot = serde_json::to_value(subscription.snapshot()).unwrap();
         assert!(
             snapshot.get("heading_deg").is_none() && snapshot.get("selected_heading_deg").is_none()
         );
     }
-    publisher.publish_sample(full).unwrap();
-    publisher.publish_sample(empty).unwrap();
+    publisher.publish_sample(full.clone()).unwrap();
+    publisher.publish_sample(empty.clone()).unwrap();
     assert!(
         serde_json::to_value(subscription.snapshot())
             .unwrap()
             .get("heading_deg")
             .is_none()
     );
-    publisher.publish_sample(full).unwrap();
+    publisher.publish_sample(full.clone()).unwrap();
     advance(STALE_AFTER).await;
     publisher.expire().unwrap();
     assert!(
