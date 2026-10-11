@@ -15,7 +15,7 @@ status: active
 ## Repository rules
 
 * Use English for code, comments, documentation, knowledge entries, commit messages, and GitHub issues and PRs; follow the [writing style](writing-style.md) for project text, including GitHub comments.
-* Preserve supplied accepted plans verbatim in their original language, as required by [accepted plans and handoffs](iterative-development.md#accepted-plans-and-handoffs).
+* Preserve supplied accepted plans locally and verbatim in their original language, as required by [accepted plans and handoffs](iterative-development.md#accepted-plans-and-handoffs).
 * Commit `Cargo.lock`.
 * Preserve the MIT license.
 * Record material architecture changes in `docs/adr/`.

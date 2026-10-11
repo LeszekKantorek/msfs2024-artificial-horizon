@@ -115,6 +115,10 @@ See [agent maintenance](.context/agent-maintenance.md) for reinstalls and integr
 > Include `Closes #N` in a PR that implements the issue, including a draft PR.
 > Record pending acceptance checks explicitly in the PR checklist; the closing keyword does not claim that those checks have passed.
 
+> Keep implementation plans and handoff records in Git-ignored `.local/plans/<issue>-<topic>/`.
+> Publish acceptance evidence in the issue or PR and keep full plans local unless explicitly requested.
+> Follow the [local plan and handoff rules](.context/iterative-development.md#accepted-plans-and-handoffs).
+
 ### Acceptance criteria and additional verification
 
 1. Mark an issue acceptance criterion as checked when passing unit tests or automated validation confirm it.
