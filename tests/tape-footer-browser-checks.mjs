@@ -27,6 +27,13 @@ export async function checkTapeFooters(page, setFixture, url) {
           const gs = bounds('#ground-speed > .instrument-background');
           const baro = bounds('.barometric-background');
           const kt = bounds('#airspeed > .speed-unit'), ft = bounds('.altitude-unit');
+          const iasClipHeight = document.querySelector('#airspeed-tape-clip rect').getBBox().height;
+          const altitudeClipHeight = document.querySelector('#altitude-tape-clip rect').getBBox().height;
+          const gsBorder = bounds('.ground-speed-border'), baroBorder = bounds('.barometric-border');
+          const gsBackgroundStyle = getComputedStyle(document.querySelector('.ground-speed-background'));
+          const baroBackgroundStyle = getComputedStyle(document.querySelector('.barometric-background'));
+          const gsBorderStyle = getComputedStyle(document.querySelector('.ground-speed-border'));
+          const baroBorderStyle = getComputedStyle(document.querySelector('.barometric-border'));
           const altitudeWidth = document.querySelector('#altitude-tape-clip rect').getBBox().width;
           const edgesCovered = [panel.left + 0.1, panel.right - 0.1].every(x =>
             [ias.top + 0.1, gs.top - 0.1, panel.bottom - 0.1].every(y =>
@@ -34,6 +41,16 @@ export async function checkTapeFooters(page, setFixture, url) {
           return {
             unitTexts: [...document.querySelectorAll('.speed-unit, .altitude-unit')].map(n => n.textContent),
             ktStyle: style('.speed-unit'), ftStyle: style('.altitude-unit'),
+            unitMargins: [kt.top - ias.top - iasClipHeight, gs.top - kt.bottom,
+              ft.top - altitude.top - altitudeClipHeight, baro.top - ft.bottom],
+            backgrounds: [gsBackgroundStyle.fill, gsBackgroundStyle.fillOpacity,
+              baroBackgroundStyle.fill, baroBackgroundStyle.fillOpacity],
+            frameWidths: [gsBorderStyle.strokeWidth, baroBorderStyle.strokeWidth],
+            gsFrameColor: gsBorderStyle.stroke,
+            trendColor: getComputedStyle(document.querySelector('.airspeed-trend')).stroke,
+            frameInsets: [gsBorder.left - gs.left, gsBorder.top - gs.top, gs.right - gsBorder.right,
+              gs.bottom - gsBorder.bottom, baroBorder.left - baro.left, baroBorder.top - baro.top,
+              baro.right - baroBorder.right, baro.bottom - baroBorder.bottom],
             labelDelta: (kt.top + kt.bottom - ft.top - ft.bottom) / 2,
             ktCenterDelta: (kt.left + kt.right - ias.left - ias.right) / 2,
             ftCenterDelta: (ft.left + ft.right) / 2 - altitude.left - altitudeWidth / 2,
@@ -50,6 +67,11 @@ export async function checkTapeFooters(page, setFixture, url) {
         });
         assert.deepEqual(geometry.unitTexts, ['[KT]', '[FT]']);
         assert.deepEqual(geometry.ktStyle, geometry.ftStyle);
+        assert.ok(geometry.unitMargins.every(g => Math.abs(g - 1) < 0.01), JSON.stringify(geometry));
+        assert.deepEqual(geometry.backgrounds, ['rgb(8, 13, 18)', '1', 'rgb(8, 13, 18)', '1']);
+        assert.deepEqual(geometry.frameWidths, ['1px', '1px']);
+        assert.equal(geometry.gsFrameColor, geometry.trendColor);
+        assert.ok(geometry.frameInsets.every(g => Math.abs(g - 0.5) < 0.01));
         for (const key of ['labelDelta', 'ktCenterDelta', 'ftCenterDelta', 'scaleHeightDelta',
           'backgroundHeightDelta', 'footerHeightDelta']) assert.ok(Math.abs(geometry[key]) < 0.1, `${key}: ${JSON.stringify(geometry)}`);
         assert.ok(geometry.gaps.every(g => Math.abs(g) < 0.01));
@@ -58,6 +80,7 @@ export async function checkTapeFooters(page, setFixture, url) {
         assert.equal(geometry.edgesCovered, true);
       }
       await page.locator('main').evaluate(n => { n.style.padding = '3px'; });
+      setFixture({ gs_kt: 157 });
       await page.waitForFunction(() => {
         const svg = document.querySelector('svg'), b = svg.getBoundingClientRect();
         return Math.abs(Number(svg.getAttribute('viewBox').split(' ')[2]) - b.width) < 0.01;

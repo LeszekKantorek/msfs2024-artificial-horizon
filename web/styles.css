@@ -94,8 +94,10 @@ noscript { position: absolute; inset: 12px 12px auto; color: var(--warning); tex
 .altitude-window, .vertical-speed-window { fill: var(--value-window); stroke: var(--text); stroke-width: 1; }
 .altitude-digit, .vertical-speed-value { fill: var(--text); font-family: monospace; font-size: 14px; text-anchor: middle; dominant-baseline: central; }
 .vertical-speed-value { text-anchor: end; font-size: 13px; }
-.barometric-background { fill: var(--value-window); }
-.barometric-border { fill: none; stroke: var(--speed-reference); stroke-width: 1; }
+.barometric-background, .ground-speed-background { fill: var(--value-window); fill-opacity: 1; }
+.barometric-border, .ground-speed-border { fill: none; stroke-width: 1; }
+.barometric-border { stroke: var(--speed-reference); }
+.ground-speed-border { stroke: var(--turn); }
 .barometric-value { fill: var(--speed-reference); font-size: 11px; font-weight: 600; text-anchor: middle; dominant-baseline: central; white-space: pre; }
 .altitude-warning { fill: var(--danger); font-size: 15px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
 #altitude:not([data-state="available"]) :is(.altitude-tape, #altitude-digits) { visibility: hidden; }

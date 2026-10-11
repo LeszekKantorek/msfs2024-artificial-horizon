@@ -77,7 +77,7 @@ Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
 | Instrument | Responsive attitude, 2.5-degree pitch ladder, extreme-pitch chevrons, bank scale, fixed aircraft reference, slip/skid and turn rate |
 | Motion | Repeating 18-second cycle: seven original attitudes, then +70/-50-degree pitch. Centered and both-direction slip/skid; +/-3 deg/s turns |
 | Speed | IAS accelerates from 0 to 150 kt, holds, then decelerates. GS follows a different profile up to 170 kt |
-| Speed display | Rolling IAS digits, tape labels every 10 kt, colored speed ranges, R/X/Y/G references, and a magenta six-second trend. Separate rounded GS without a visible unit suffix |
+| Speed display | Rolling IAS digits, tape labels every 10 kt, colored speed ranges, R/X/Y/G references, and a magenta six-second trend. Separate rounded GS without a visible unit suffix, in a matching magenta frame over opaque dark background |
 | Speed warnings | Red current-speed pointer at or above 140 kt. Yellow IAS digits when the rising trend predicts reaching 140 kt |
 | Speed unavailable | `X` means unavailable, `OVR` means above 999 kt. Configured references appear above GS when IAS is unavailable |
 | Altitude | Aligned `[KT]`/`[FT]` labels and equal-height side scales. Fixed 8 CSS px spacing per 20 ft. Labels every 100 ft. Taller panels show more altitude. Signed readout: -9999 to 99999 ft. |

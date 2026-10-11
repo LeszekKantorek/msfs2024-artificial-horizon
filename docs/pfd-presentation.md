@@ -681,8 +681,10 @@ Composition and geometry preserve the existing panel allocation:
 * GS stays at the bottom of the panel, with the same left edge and width as IAS.
 * The IAS background extends to GS without a gap.
 * IAS and altitude scales use clips of equal height over their complete existing allocations.
-* `[KT]` and `[FT]` are centered in their tape widths at panel height minus 39 CSS px, with the same 10 CSS px font and baseline.
+* `[KT]` and `[FT]` are centered in their tape widths at panel height minus 40 CSS px, with the same 10 CSS px font and baseline.
+* The labels occupy the 16 CSS px band between each scale and footer, with 1 CSS px above and below their desktop glyph bounds.
 * `[KT]` remains visible during IAS loss; the fallback reference list has no additional unit heading.
+* GS uses the same opaque dark background and inset 1 CSS px frame as BARO, with the speed-trend magenta token `--turn` for its border.
 * GS and BARO occupy aligned 32 CSS px footers. Both tape backgrounds meet their footer without a gap and both footers meet the bottom panel edge.
 * The exterior three-pixel margins and safe-area handling remain unchanged.
 

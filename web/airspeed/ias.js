@@ -41,7 +41,7 @@ export function createIas(defs, parent, warnings) {
       const centerY = height / 2;
       const digitCenterX = (width - 14) / 2;
       const tapeGeometry = { originX: x, originY: y, width, centerY, clipTopY: 0, clipBottomY: height,
-        backgroundHeight: groundSpeedPanelY - y, unitY: height + 9,
+        backgroundHeight: groundSpeedPanelY - y, unitY: height + 8,
         fallbackFirstLabelY: groundSpeedPanelY - y - 72 };
       const readoutGeometry = { width, centerY, digitCenterX,
         warningPanelX: x + digitCenterX, warningPanelY: y + centerY };

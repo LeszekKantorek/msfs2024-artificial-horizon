@@ -73,8 +73,8 @@ The desktop layout script runs `tests/tape-footer-browser-checks.mjs` against bo
 | --- | --- |
 | Rust, SSE, normalization, and SVG | `23.83 inHg`, `1026 hPa`, and `BARO` reach the readout unchanged |
 | Availability and recovery | Missing, null, and non-string data show red `X`; empty and whitespace strings remain available; expiry and recovery follow the common sample deadline |
-| Unit labels and scales | Literal `[KT]` and `[FT]` have the same font and visual height; both clips fill their allocated height |
-| GS | Label and value share a 13 px font without a suffix; one-, two-, and three-digit values fit without overlap |
+| Unit labels and scales | Literal `[KT]` and `[FT]` have the same font and visual height, with 1 px above and below desktop glyph bounds; both clips fill their allocated height |
+| GS | Label and value share a 13 px font without a suffix; one-, two-, and three-digit values fit without overlap; opaque background matches BARO and the inset frame matches speed-trend magenta |
 | BARO | Required examples fit at minimum width, centered in one cyan 11 px text node over opaque dark background with an inset cyan border |
 | Background edges | Both 32 px footers meet their tape backgrounds and SVG edges at whole and fractional bounds, including simulated safe-area padding |
 | IAS fallback | Four reference values fit between the warning and persistent `[KT]`, without a second unit heading |

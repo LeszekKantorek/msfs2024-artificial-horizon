@@ -32,7 +32,7 @@ export function createAltitude(instrument, layers) {
       group.setAttribute('transform', `translate(${allocation.x} ${allocation.y})`);
       setAttributes(background, { width, height: layout.height - 32 - allocation.y });
       setAttributes(rect, { x: 0, y: 0, width: allocation.width, height: allocation.height });
-      setAttributes(unit, { x: allocation.width / 2, y: allocation.height + 9 });
+      setAttributes(unit, { x: allocation.width / 2, y: allocation.height + 8 });
       tape.resize(allocation, vsiWindow(allocation));
       const textRight = readout.resize(allocation);
       vsi.resize(allocation, textRight);
