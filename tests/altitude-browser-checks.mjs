@@ -4,8 +4,24 @@ import assert from 'node:assert/strict';
 export async function checkAltitude(page, setFixture, url) {
   for (const path of ['/', '/layout.html']) {
     setFixture({ altitude_ft: 1000, baro_inhg: 29.92, hold: false, attitude_only: false, state: 'live', pitch_deg: 0, roll_deg: 0 });
+    await page.setViewportSize({ width: 568, height: 240 });
     await page.goto(url + path);
     await page.locator('#altitude[data-state="available"]').waitFor();
+    const coverage = async () => page.evaluate(() => {
+      const height = document.querySelector('#altitude-tape-clip rect').getBBox().height;
+      const labels = [...document.querySelectorAll('#altitude-scale text')].filter(n =>
+        n.textContent && getComputedStyle(n).display !== 'none' && Number(n.getAttribute('y')) >= 0 && Number(n.getAttribute('y')) <= height);
+      return { height, labels: labels.length, values: labels.map(n => Number(n.textContent)) };
+    });
+    const landscape = await coverage();
+    await page.evaluate(() => { window.originalAltitudeNodes = [...document.querySelectorAll('#altitude-scale *')]; });
+    await page.setViewportSize({ width: 320, height: 1200 });
+    await page.waitForFunction(() => document.querySelector('#altitude-tape-clip rect').getBBox().height > 1000);
+    const portrait = await coverage();
+    assert.ok(portrait.labels > landscape.labels);
+    assert.ok(Math.max(...portrait.values) > Math.max(...landscape.values));
+    assert.ok(Math.min(...portrait.values) < Math.min(...landscape.values));
+    assert.ok(await page.evaluate(() => window.originalAltitudeNodes.every(n => n.isConnected)), 'Resize replaced existing altitude nodes');
     await page.evaluate(() => {
       window.altitudeNodes = [...document.querySelectorAll('#altitude *, #barometric-setting *, #altitude-warning, #altitude-tape-clip *, #altitude-digits-clip *')];
     });
@@ -31,14 +47,15 @@ export async function checkAltitude(page, setFixture, url) {
           const baroTexts = [...document.querySelectorAll('#barometric-setting text')].map(n => n.getBoundingClientRect());
           const panel = document.querySelector('svg').getBoundingClientRect();
           const background = group.querySelector('.instrument-background').getBoundingClientRect();
-          const painted = [...document.querySelectorAll('#altitude-scale text')].filter(n => n.textContent);
+          const painted = [...document.querySelectorAll('#altitude-scale text')].filter(n => n.textContent && getComputedStyle(n).display !== 'none');
           const labelsClearOfTicks = painted.every(n => n.getBBox().x > 13);
           const initial = window.altitudeNodes;
           const nodes = [...document.querySelectorAll('#altitude *, #barometric-setting *, #altitude-warning, #altitude-tape-clip *, #altitude-digits-clip *')];
           return { sign: sign.textContent, current: columns.map(n => n.firstElementChild.textContent),
             offsets: columns.map(n => n.transform.baseVal.consolidate().matrix.f - center),
-            height: clip.height, ticks: [...document.querySelectorAll('.altitude-tick')].map(n => ({
-              value: Number(n.dataset.altitudeFt), y: Number(n.getAttribute('d').split(' ')[2]) })),
+            height: clip.height, ticks: [...document.querySelectorAll('.altitude-tick')]
+              .filter(n => getComputedStyle(n).display !== 'none').map(n => ({
+                value: Number(n.dataset.altitudeFt), y: Number(n.getAttribute('d').split(' ')[2]), cssY: n.getBoundingClientRect().top })),
             digitsInside: digitBoxes.every(b => b.left >= digitsClip.x && b.right <= digitsClip.x + digitsClip.width),
             digitOverlap: digitBoxes.slice(1).some((b, i) => b.left < digitBoxes[i].right),
             baroContained: baroTexts.every(b => b.left >= baro.left && b.right <= baro.right && b.top >= baro.top && b.bottom <= baro.bottom),
@@ -57,9 +74,13 @@ export async function checkAltitude(page, setFixture, url) {
         assert.ok(actual.baroTouchesBackground && actual.labelsClearOfTicks && actual.unchanged);
         assert.equal(actual.opacity, '0.65'); assert.equal(actual.digitsOpacity, '1');
         for (const tick of actual.ticks) {
-          const expected = actual.height / 2 + (value - tick.value) * actual.height / 400;
+          const expected = actual.height / 2 + (value - tick.value) * 0.4;
           assert.ok(Math.abs(tick.y - expected) < 1e-8);
         }
+        for (let i = 1; i < actual.ticks.length; i++) {
+          assert.ok(Math.abs(actual.ticks[i - 1].cssY - actual.ticks[i].cssY - 8) < 0.01, 'Tick spacing changed in CSS pixels');
+        }
+        assert.ok(actual.ticks[0].y > actual.height && actual.ticks.at(-1).y < 0, 'Tape edges lack ticks');
         if (value === 90) {
           assert.deepEqual(actual.current, ['', '', '', '80']);
           assert.deepEqual(actual.offsets, [0, 0, 10, 10]);

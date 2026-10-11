@@ -30,18 +30,37 @@ test('signed altitude and positive pressure remain independently valid beyond di
   }
 });
 
-test('altitude tape spans 400 feet with independent tick positions and signed labels', () => {
+test('altitude tape keeps fixed pixel spacing with independent tick positions and signed labels', () => {
   for (const [tick, expected] of [[1200, 0], [1100, 40], [1000, 80], [900, 120], [800, 160]])
     assert.equal(tickPosition(1000, tick, 160), expected);
   assert.equal(tickPosition(1010, 1000, 160), 84);
   assert.equal(tickPosition(990, 1000, 160), 76);
   assert.equal(tickPosition(-100, -200, 160), 120);
-  assert.equal(tickPosition(1000, 1100, 320), 80);
+  assert.equal(tickPosition(1000, 1100, 320), 120);
   const ticks = altitudeTicks(-100, 160);
   assert.equal(ticks.length, 23);
   assert.equal(ticks[0].value, -320);
   assert.deepEqual(ticks.filter(t => t.major).map(t => t.value), [-300, -200, -100, 0, 100]);
   assert.equal(ticks.find(t => t.value === 0).y, 40);
+});
+
+test('taller altitude tapes show more ticks and labels without stretching their spacing', () => {
+  for (const [height, low, high, visibleCount, majorCount] of [
+    [160, 800, 1200, 21, 5], [400, 500, 1500, 51, 11], [1200, -500, 2500, 151, 31],
+  ]) {
+    const ticks = altitudeTicks(1000, height);
+    const visible = ticks.filter(t => t.y >= 0 && t.y <= height);
+    assert.equal(visible.length, visibleCount);
+    assert.equal(visible.filter(t => t.major).length, majorCount);
+    assert.equal(visible[0].value, low);
+    assert.equal(visible.at(-1).value, high);
+    assert.equal(visible[0].y, height);
+    assert.equal(visible.at(-1).y, 0);
+    for (let i = 1; i < ticks.length; i++) assert.equal(ticks[i - 1].y - ticks[i].y, 8);
+  }
+  const fractional = altitudeTicks(-0.5, 401);
+  assert.ok(fractional[0].y > 401 && fractional.at(-1).y < 0);
+  assert.equal(fractional.find(t => t.value === 0).y, 200.3);
 });
 
 test('20-foot drums carry higher columns, suppress leading zeros and reverse without state', () => {

@@ -100,6 +100,9 @@ export async function checkAirspeedAvailabilityTransitions(page, setFixture, pro
           const allocation = ias.querySelector('.instrument-background').getBoundingClientRect();
           const rowBoxes = rows.map(node => node.getBoundingClientRect());
           const nodes = [...document.querySelectorAll('svg *')].filter(node => !node.closest('[id^="fixture-"]'));
+          const original = window.availabilityNodes;
+          const retained = nodes.filter(node => original.includes(node));
+          const added = nodes.filter(node => !original.includes(node));
           return { state: ias.dataset.state, overspeed: ias.dataset.overspeed, approaching: ias.dataset.approaching,
             iasLabel: ias.getAttribute('aria-label'), windowFill: getComputedStyle(ias.querySelector('.airspeed-window')).fill,
             digitFills: [...ias.querySelectorAll('.airspeed-digit')].map(node => getComputedStyle(node).fill),
@@ -120,7 +123,8 @@ export async function checkAirspeedAvailabilityTransitions(page, setFixture, pro
             panelAvailable: document.querySelector('.instrument').dataset.available,
             fallbackFits: rowBoxes.every(box => box.left - 0.25 >= allocation.left && box.right + 0.25 <= allocation.right &&
               box.top > warningBox.bottom && box.bottom < gsBox.top) && rowBoxes.slice(1).every((box, i) => box.top > rowBoxes[i].bottom),
-            nodesUnchanged: nodes.length === window.availabilityNodes.length && nodes.every((node, i) => node === window.availabilityNodes[i]) };
+            nodesUnchanged: retained.length === original.length && retained.every((node, i) => node === original[i]) &&
+              added.every(node => node.parentElement.id === 'altitude-scale') };
         });
         const label = `${scenario.name}, seed ${seed.ias}, step ${index}`;
         assert.equal(actual.state, state, label);

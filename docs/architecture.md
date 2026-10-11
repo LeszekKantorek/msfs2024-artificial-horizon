@@ -109,7 +109,7 @@ web/
   status.js                 # accessible status and unavailability
   altitude/
     index.js                # composition, shared tape clip, state and geometry
-    tape.js                 # responsive signed 400-ft scale and fixed tick pool
+    tape.js                 # fixed pixel spacing and a retained tick pool that grows on resize
     readout.js              # pointer window, sign, 20-ft drums and display limits
     baro.js                 # independent pressure setting and inHg formatting
   helpers.js                # clamp, SVG creation, and attribute updates

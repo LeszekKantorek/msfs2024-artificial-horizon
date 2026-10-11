@@ -39,8 +39,11 @@ function backgroundCovered() {
 }
 function instrumentNodesUnchanged() {
   const nodes = [...document.querySelectorAll('svg *')];
-  return nodes.length === window.initialInstrumentNodes.length &&
-    nodes.every((node, index) => node === window.initialInstrumentNodes[index]);
+  const original = window.initialInstrumentNodes;
+  const retained = nodes.filter(node => original.includes(node));
+  const added = nodes.filter(node => !original.includes(node));
+  return retained.length === original.length && retained.every((node, index) => node === original[index]) &&
+    added.every(node => node.parentElement.id === 'altitude-scale');
 }
 try {
   for (const path of ['/helpers.js', '/telemetry/client.js', '/airspeed/index.js', '/airspeed/ias.js',
@@ -247,6 +250,8 @@ try {
   // Verify actual SVG columns and tape positions against independent expected values.
   for (const [width, height] of [[326, 246], [320, 480], [568, 240]]) {
     await page.setViewportSize({ width, height });
+    // A repeated value can already match its ARIA label before resize commits.
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     for (const [speed, text, offsets] of [
       [0, ['', '', '0'], [0, 0, 0]], [9.5, ['', '', '9'], [0, 11, 11]],
       [10, ['', '1', '0'], [0, 0, 0]], [99.5, ['', '9', '9'], [11, 11, 11]],

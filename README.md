@@ -80,7 +80,7 @@ Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
 | Speed display | Rolling IAS digits, tape labels every 10 kt, colored speed ranges, R/X/Y/G references, and a magenta six-second trend. Separate rounded GS in kt |
 | Speed warnings | Red current-speed pointer at or above 140 kt. Yellow IAS digits when the rising trend predicts reaching 140 kt |
 | Speed unavailable | `X` means unavailable, `OVR` means above 999 kt. Configured references appear above GS when IAS is unavailable |
-| Altitude | 400-ft moving tape with 100-ft labels and 20-ft ticks; signed rolling readout from -9999 to 99999 ft |
+| Altitude | Fixed 8 CSS px spacing per 20 ft. Labels every 100 ft. Taller panels show more altitude. Signed readout: -9999 to 99999 ft. |
 | Pressure | Read-only scenario setting below altitude, with two decimal places in inHg |
 | Altitude/pressure unavailable | Independent `X` marks; `OVR` beyond each display limit |
 | Data | Synthetic samples at 20 Hz, without a source badge |

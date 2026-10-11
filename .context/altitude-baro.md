@@ -15,6 +15,9 @@ Read the canonical contract for the affected behavior:
 * Keep finite out-of-display-range values valid in telemetry.
 * Keep altitude and pressure availability independent and preserve their shared sample deadline.
 * Keep the separate altitude tape because its responsive span, signs, and drums differ from IAS.
+* Keep altitude minor ticks 8 CSS px apart and major ticks 40 CSS px apart through resize and rotation.
+* Show more altitude and labels on taller tapes instead of stretching a fixed 400-ft range.
+* Grow the retained tick pool only on resize and reuse existing nodes during sample rendering.
 * Validate actual glyph bounds when changing the pressure readout because a 24-pixel background caused a 2-pixel text collision in Edge.
 * Keep the corrected pressure background 32 pixels high.
 * Retain the gap between the pressure value and its unit.
@@ -22,4 +25,5 @@ Read the canonical contract for the affected behavior:
 
 Source: accepted #23 implementation plan and selected range/drums, 2026-10-11.
 Source: Edge 155.0.4283.45 geometry validation on 2026-10-11.
+Source: accepted portrait/landscape correction for #23, 2026-10-11, to keep landscape pixel spacing and show more altitude on taller tapes.
 Evidence limit: real iOS Safari and Android Chrome acceptance remains separate.

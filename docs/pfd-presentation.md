@@ -233,7 +233,7 @@ Lifecycle state stays with the client and scheduler:
 
 Further generalization remains deferred:
 
-* Altitude uses its own tape and drums: a responsive 400-ft span, signed values, and 20-ft digit steps differ from IAS.
+* Altitude uses its own tape and drums because its scale, signed values, and 20-ft digit steps differ from IAS.
 * No general tape abstraction is introduced; selected-altitude and alert rules remain in #24.
 * The current implementation adds no instrument base class, general tape renderer, or shared lower-indication controller.
 
@@ -449,15 +449,21 @@ The altitude module uses the existing right-side allocation and layer 2:
 
 * `altitude/index.js` composes the tape, readout, and independent pressure setting with `resize(layout)` and `render(frame)`.
 * The composition owns the shared tape clip, background, unit label, geometry, and local altitude state.
-* `tape.js` owns a fixed pool of 23 ticks and labels, covering the visible range plus edge clearance.
+* `tape.js` owns a retained pool of ticks and labels covering the visible range plus edge clearance.
+* The pool grows only when resize needs more rows and hides surplus rows on smaller panels.
+* Rendering reuses existing nodes without creating or replacing them.
 * `readout.js` owns its digit clip, fixed opaque pointer window, sign, rolling columns, and layer-4 X/OVR mark.
 * `baro.js` owns its background, value, unit, formatting, and independent state.
 * Pure calculations remain in the visual objects that implement them; no generic IAS/altitude tape is introduced.
 
 The tape and readouts use these presentation rules:
 
-* The tape shows 400 ft, centered on the current altitude, with 20-ft minor ticks and 100-ft major ticks and labels.
-* Its scale is the visible tape height divided by 400; higher values appear above the pointer.
+* The tape remains centered on the current altitude, with 20-ft minor ticks and 100-ft major ticks and labels.
+* Minor ticks are always 8 CSS px apart and major ticks are 40 CSS px apart.
+* This matches the former 400-ft scale at a 160 CSS px tape height in minimum-height landscape.
+* Taller tapes show a wider range and more labels without stretching the spacing or text.
+* A 160 CSS px tape spans 400 ft and a 400 CSS px tape spans 1000 ft.
+* Higher values appear above the pointer.
 * The tape includes negative values and crosses zero without a direction change.
 * The readout supports -9999 through 99999 ft; valid values beyond that range show `OVR` and hide the scale and digits.
 * The lower two digits roll together through 00/20/40/60/80, using the full fractional magnitude.
