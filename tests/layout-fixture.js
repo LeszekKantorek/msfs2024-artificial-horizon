@@ -5,7 +5,6 @@ import { svgElement } from '/helpers.js';
 const svg = document.querySelector('svg');
 const instrument = document.querySelector('.instrument');
 instrument.dataset.fixture = 'true';
-document.querySelector('#instrument-title').textContent = 'Development layout fixture';
 const candidate = Number(new URLSearchParams(location.search).get('opacity'));
 if ([0.50, 0.65, 0.80].includes(candidate)) {
   instrument.style.setProperty('--instrument-background-opacity', candidate);
