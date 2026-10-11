@@ -34,9 +34,9 @@ export function createReadout(defs, parent, warnings) {
   const digits = svgElement('g', { id: 'altitude-digits', 'clip-path': 'url(#altitude-digits-clip)' });
   const sign = svgElement('text', { id: 'altitude-sign', class: 'altitude-digit' });
   digits.append(sign);
-  const columns = Array.from({ length: 4 }, () => {
+  const columns = Array.from({ length: 4 }, (_, index) => {
     const group = svgElement('g', {});
-    const current = svgElement('text', { class: 'altitude-digit', y: 0 });
+    const current = svgElement('text', { class: 'altitude-digit', y: 0 }, index === 3 ? '00' : '');
     const next = svgElement('text', { class: 'altitude-digit', y: -DIGIT_HEIGHT });
     group.append(current, next); digits.append(group);
     return { group, current, next };
@@ -54,6 +54,8 @@ export function createReadout(defs, parent, warnings) {
       setAttributes(rect, { x: 7, y: center - DIGIT_HEIGHT / 2, width: width - 9, height: DIGIT_HEIGHT });
       setAttributes(sign, { x: 11, y: center });
       setAttributes(warning, { x: x + width / 2, y: y + center });
+      // Two monospace digits keep the same width during rolling and unavailable states.
+      return width - 10.5 + columns[3].current.getComputedTextLength() / 2;
     },
     render(value, state) {
       warning.style.display = state === 'available' ? 'none' : '';

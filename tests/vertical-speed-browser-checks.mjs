@@ -26,6 +26,8 @@ export async function checkVerticalSpeed(page, setFixture, url) {
           const altitudeNode = document.querySelector('.altitude-window');
           const box = boxNode.getBoundingClientRect(), altitude = altitudeNode.getBoundingClientRect();
           const valueBox = value.getBoundingClientRect();
+          const altitudeDigits = document.querySelector('#altitude-digits > g:last-child > text');
+          const textRightDifference = valueBox.right - altitudeDigits.getBoundingClientRect().right;
           const view = document.querySelector('svg').getBoundingClientRect();
           const boxStyle = getComputedStyle(boxNode), altitudeStyle = getComputedStyle(altitudeNode);
           const textStyle = getComputedStyle(value), digitStyle = getComputedStyle(document.querySelector('.altitude-digit'));
@@ -43,7 +45,7 @@ export async function checkVerticalSpeed(page, setFixture, url) {
           return { state: group.dataset.state, nested: group.parentElement.id === 'altitude',
             textContained: valueBox.left > box.left + 1 && valueBox.right < box.right - 1 && valueBox.top > box.top + 1 && valueBox.bottom < box.bottom - 1,
             windowContained: box.left >= view.left && box.right <= view.right && box.top >= view.top && box.bottom <= view.bottom,
-            width: box.width, height: box.height, rightDifference: box.right - altitude.right,
+            width: box.width, height: box.height, rightDifference: box.right - altitude.right, textRightDifference,
             paintedGap: box.top - 0.5 - (altitude.bottom + 0.5),
             sameWindow: ['fill', 'stroke', 'strokeWidth'].every(key => boxStyle[key] === altitudeStyle[key]),
             sameText: ['fontFamily', 'fontSize', 'fontWeight', 'fill'].every(key => textStyle[key] === digitStyle[key]),
@@ -52,6 +54,7 @@ export async function checkVerticalSpeed(page, setFixture, url) {
             obsolete: document.querySelectorAll('#vertical-speed-scale, #vertical-speed-pointer, #vertical-speed-clip, #vertical-speed-off-scale, .vertical-speed-unit').length };
         });
         assert.equal(painted.state, state);
+        assert.ok(Math.abs(painted.textRightDifference) < 0.02, `Text right edges: ${JSON.stringify({ width, height, fpm, painted })}`);
         assert.ok(painted.nested && painted.textContained && painted.windowContained && painted.sameWindow && painted.sameText &&
           painted.bugPainted && painted.labelsClear && painted.ticksClear && painted.stable, JSON.stringify({ width, height, fpm, painted }));
         assert.ok(Math.abs(painted.rightDifference) < 1e-4 && Math.abs(painted.paintedGap - 3) < 1e-4);

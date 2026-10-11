@@ -26,11 +26,11 @@ export function createVsi(parent) {
   }
   invalidate();
   return {
-    resize(allocation) {
+    resize(allocation, textRight) {
       const geometry = vsiWindow(allocation);
       group.setAttribute('transform', `translate(${geometry.x} ${geometry.y})`);
       setAttributes(window, { width: geometry.width, height: geometry.height });
-      setAttributes(value, { x: geometry.width / 2, y: geometry.height / 2 });
+      setAttributes(value, { x: textRight - geometry.x, y: geometry.height / 2 });
     },
     invalidate,
     render(fpm) {

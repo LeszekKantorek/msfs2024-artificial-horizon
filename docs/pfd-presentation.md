@@ -417,7 +417,8 @@ Keep indications readable across the full panel:
 
 * A 52-by-28 CSS px rectangle sits below the current-altitude window, with aligned right borders and three pixels between painted strokes.
 * The window shares altitude's 14 CSS px monospace font, text color, background and one-pixel border.
-* The centered value uses feet per minute without a visible unit label or arrow.
+* The value aligns with the right edge of altitude's digits, using feet per minute without a visible unit label or arrow.
+* The altitude readout supplies that edge from the measured width of its two-digit monospace drum during resize.
 * Altitude keeps its existing width and moves to the right edge, returning the former VSI column's width to the horizon.
 * VSI owns its formatting, window geometry and availability, with altitude delegating resize, rendering and invalidation.
 * The tape uses VSI's local window bounds to hide whole intersecting labels and shorten intersecting ticks with two pixels of clearance.

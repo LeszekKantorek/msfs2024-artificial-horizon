@@ -21,9 +21,11 @@ Apply these constraints when extending the feature:
 * Compose the compact VSI through altitude while keeping rate availability independent of altitude and pressure.
 * Keep VSI geometry and formatting with its visual object, and pass its window bounds to the tape for obstruction handling.
 * Share font, text color, window fill and border with the main altitude readout.
+* Align VSI text to the altitude drum's measured right edge during resize, rather than centering it in the window.
 * Preserve altitude's fixed pixel spacing and selected-bug paint order when changing the VSI window.
 * Wait for raw accessible values in browser checks when successive samples have identical rounded text.
 
 Source: accepted #25 plan and implementation, 2026-10-11.
 Source: accepted compact-window and altitude composition amendment, 2026-10-11, replacing the scale and arrow presentation.
+Source: accepted right-alignment correction, 2026-10-11.
 Evidence limit: desktop checks do not establish real iOS Safari or Android Chrome acceptance.
