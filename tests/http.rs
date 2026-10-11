@@ -10,6 +10,11 @@ use tower::ServiceExt;
 async fn embedded_page_assets_and_liveness_match_the_contract() {
     for (path, content_type, expected) in [
         (
+            "/altitude/trend.js",
+            "text/javascript; charset=utf-8",
+            "createAltitudeTrend",
+        ),
+        (
             "/altitude/selected.js",
             "text/javascript; charset=utf-8",
             "createSelectedAltitude",
@@ -180,28 +185,33 @@ async fn embedded_page_assets_and_liveness_match_the_contract() {
 }
 
 #[tokio::test]
-async fn compact_vsi_asset_supports_get_and_head() {
-    for method in ["GET", "HEAD"] {
-        let response = router()
-            .oneshot(
-                Request::builder()
-                    .method(method)
-                    .uri("/altitude/vsi.js")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(response.status(), StatusCode::OK);
-        assert_eq!(
-            response.headers()["content-type"],
-            "text/javascript; charset=utf-8"
-        );
-        let body = response.into_body().collect().await.unwrap().to_bytes();
-        if method == "HEAD" {
-            assert!(body.is_empty());
-        } else {
-            assert!(std::str::from_utf8(&body).unwrap().contains("createVsi"));
+async fn compact_vsi_and_altitude_trend_assets_support_get_and_head() {
+    for (path, export) in [
+        ("/altitude/vsi.js", "createVsi"),
+        ("/altitude/trend.js", "createAltitudeTrend"),
+    ] {
+        for method in ["GET", "HEAD"] {
+            let response = router()
+                .oneshot(
+                    Request::builder()
+                        .method(method)
+                        .uri(path)
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(
+                response.headers()["content-type"],
+                "text/javascript; charset=utf-8"
+            );
+            let body = response.into_body().collect().await.unwrap().to_bytes();
+            if method == "HEAD" {
+                assert!(body.is_empty());
+            } else {
+                assert!(std::str::from_utf8(&body).unwrap().contains(export));
+            }
         }
     }
     let old_route = router()

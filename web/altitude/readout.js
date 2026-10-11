@@ -3,6 +3,7 @@ import { svgElement, setAttributes } from '../helpers.js';
 const DIGIT_HEIGHT = 20;
 const MIN_ALTITUDE = -9999;
 const MAX_ALTITUDE = 99999;
+export const ALTITUDE_POINTER = Object.freeze({ tip: 3, shoulder: 7, halfHeight: 14 });
 
 export function altitudeState(value) {
   if (!Number.isFinite(value)) return 'unavailable';
@@ -50,7 +51,8 @@ export function createReadout(defs, parent, warnings) {
       geometry = readout;
       const { width, height, x, y } = readout;
       const center = height / 2;
-      window.setAttribute('d', `M 1 ${center} L 7 ${center - 14} H ${width - 1} V ${center + 14} H 7 Z`);
+      const { tip, shoulder, halfHeight } = ALTITUDE_POINTER;
+      window.setAttribute('d', `M ${tip} ${center} L ${shoulder} ${center - halfHeight} H ${width - 1} V ${center + halfHeight} H ${shoulder} Z`);
       setAttributes(rect, { x: 7, y: center - DIGIT_HEIGHT / 2, width: width - 9, height: DIGIT_HEIGHT });
       setAttributes(sign, { x: 11, y: center });
       setAttributes(warning, { x: x + width / 2, y: y + center });

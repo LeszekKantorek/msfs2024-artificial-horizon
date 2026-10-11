@@ -82,7 +82,7 @@ noscript { position: absolute; inset: 12px 12px auto; color: var(--warning); tex
 .airspeed-range-normal { fill: var(--speed-green); }
 .airspeed-range-caution { fill: var(--speed-yellow); }
 .airspeed-range-overspeed { fill: url(#airspeed-barber-pole); }
-.airspeed-trend { fill: none; stroke: var(--turn); stroke-width: 2; }
+.airspeed-trend, .altitude-trend { fill: none; stroke: var(--turn); stroke-width: 2; }
 .airspeed-reference, .airspeed-reference-value { fill: var(--speed-reference); font-size: 10px; font-weight: 700; text-anchor: middle; dominant-baseline: central; paint-order: stroke; stroke: var(--value-window); stroke-width: 1px; }
 .airspeed-reference-value { font-weight: 600; stroke-width: 0.5px; }
 .airspeed-reference-leader { fill: none; stroke: var(--speed-reference); stroke-width: 1; }

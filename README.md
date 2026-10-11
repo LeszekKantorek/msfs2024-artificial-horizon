@@ -81,8 +81,9 @@ Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
 | Speed warnings | Red current-speed pointer at or above 140 kt. Yellow IAS digits when the rising trend predicts reaching 140 kt |
 | Speed unavailable | `X` means unavailable, `OVR` means above 999 kt. Configured references appear above GS when IAS is unavailable |
 | Altitude | Fixed 8 CSS px spacing per 20 ft. Labels every 100 ft. Taller panels show more altitude. Signed readout: -9999 to 99999 ft. |
+| Altitude trend | Magenta line beside the right tape edge predicts altitude in six seconds from VSI. Climb extends up, descent down. Zero or missing required data hides it |
 | Pressure | Read-only scenario setting below altitude, with two decimal places in inHg |
-| Selected altitude | Read-only scenario target above altitude, with a tape bug pinned at either edge. `X` means unavailable. `OVR` means outside -9999 to 99999 ft |
+| Selected altitude | Read-only target above altitude, with a notched turquoise tape block pinned at either edge. The black pointer fits its notch at capture. `X` means unavailable. `OVR` means outside -9999 to 99999 ft |
 | Altitude alerts | Five-second flashing on entry within 1000 and 200 ft. Entry within +/-200 ft arms deviation. Leaving it flashes yellow for five seconds, then stays yellow until return or reset |
 | Altitude/pressure unavailable | Independent `X` marks; `OVR` beyond each display limit |
 | Vertical speed | Compact rectangular readout below current altitude, with the same font family, background and border. Signed whole ft/min: `+` for climb, `-` for descent and `0` for level flight |

@@ -421,10 +421,10 @@ Keep indications readable across the full panel:
 * The value aligns with the right edge of altitude's digits, using feet per minute without a visible unit label or arrow.
 * The altitude readout supplies that edge from the measured bounds of its two-digit monospace drum during resize.
 * VSI accounts for glyph bounds when positioning text, including the wider unavailable `X`.
-* Altitude keeps its existing width and moves to the right edge, returning the former VSI column's width to the horizon.
+* Altitude keeps its existing tape width beside a four-pixel trend lane at the right edge.
 * VSI owns its formatting, window geometry and availability, with altitude delegating resize, rendering and invalidation.
 * The tape uses VSI's local window bounds to hide whole intersecting labels and shorten intersecting ticks with two pixels of clearance.
-* The selected-altitude bug paints after VSI and remains visible beside the window.
+* The selected-altitude bug paints below both opaque windows and remains visible to their left.
 
 The local window position uses altitude tape width `W` and height `H`:
 
@@ -451,6 +451,32 @@ The full layout fixture uses the same module as production.
 Garmin G5 Guide 190-01112-12 Rev. 2, section 3.3.9, provides the vertical-speed reference.
 The compact numeric window and its numeric limits are application design decisions.
 
+## Altitude trend
+
+`altitude/index.js` composes the stateless `trend.js` object beside the tape:
+
+* A four CSS px lane follows the tape's right edge without reducing tape or readout width.
+* The magenta line shares the airspeed trend's two-pixel stroke and color.
+* It extends from the current-altitude center toward the altitude predicted in six seconds.
+* Source VSI supplies the rate without estimating browser altitude differences.
+* Climb extends upward and descent downward at the tape's fixed 0.4 CSS px/ft spacing.
+* The line stops one pixel inside either vertical edge when its prediction exceeds the visible tape.
+* The altitude and VSI windows end before this lane, retaining aligned right text edges.
+
+The prediction uses feet and feet per minute:
+
+```text
+predicted_altitude_ft = altitude_ft + vertical_speed_fpm / 10
+```
+
+At 10060 ft and +1500 ft/min, the endpoint represents 10210 ft, 60 CSS px above the center.
+Finite rates beyond VSI's numeric display limit still produce a clipped trend.
+Zero rate, missing or invalid rate, and unavailable or overflowing current altitude hide the line.
+Pressure and selected-target availability do not affect it.
+The common frame and original sample deadline control rendering and invalidation, with no additional timer or interpolation.
+
+This six-second altitude trend is an application design decision.
+
 ## Selected altitude and alerts
 
 The altitude composition adds `selected.js` in layer 2:
@@ -459,9 +485,12 @@ The altitude composition adds `selected.js` in layer 2:
 * The readout occupies the existing 32 CSS px strip above the altitude allocation.
 * The bug shares altitude's tape host and clip, using the existing 0.4 CSS px/ft scale.
 * The bug stays fully inside either tape edge, including its stroke.
+* The turquoise symbol is a seven-pixel vertical block with a right-side notch matching the altitude window's pointer.
+* Its 28-pixel height matches that window, and the header uses the same path.
 * Ordinary selected values use turquoise text.
 * Deviation uses yellow text on black.
-* The bug paints after the current-altitude window and remains clear of the minus sign at capture.
+* The bug paints below the opaque current-altitude window, its border and digits.
+* At capture, the black pointer fits its notch while the turquoise strip remains visible on the left.
 * The readout rounds finite targets to whole feet without rounding the alert inputs.
 * Available selected values span -9999 through 99999 ft, with `X` for unavailable and `OVR` beyond these limits.
 * Missing or overflowing targets hide the bug and reset alert history.

@@ -78,7 +78,7 @@ test('invalid or overflowing inputs reset history, with silent recovery includin
 test('bug uses the fixed tape spacing and pins the entire painted symbol at either edge', () => {
   assert.equal(selectedBugPosition(1000, 1100, 160), 40);
   assert.equal(selectedBugPosition(1000, 900, 160), 120);
-  assert.equal(selectedBugPosition(1000, 5000, 160), 6.5);
-  assert.equal(selectedBugPosition(1000, -120, 160), 153.5);
+  assert.equal(selectedBugPosition(1000, 5000, 160), 14.5);
+  assert.equal(selectedBugPosition(1000, -120, 160), 145.5);
   assert.equal(selectedBugPosition(1000, 1100, 400), 160);
 });

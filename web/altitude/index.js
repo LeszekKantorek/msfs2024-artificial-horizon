@@ -4,6 +4,7 @@ import { createReadout, altitudeState } from './readout.js';
 import { createBaro } from './baro.js';
 import { createSelectedAltitude } from './selected.js';
 import { createVsi, vsiWindow } from './vsi.js';
+import { createAltitudeTrend } from './trend.js';
 
 export function createAltitude(instrument, layers) {
   const defs = instrument.querySelector('defs');
@@ -15,29 +16,32 @@ export function createAltitude(instrument, layers) {
   const tapeHost = svgElement('g', { class: 'altitude-tape', 'clip-path': 'url(#altitude-tape-clip)' });
   group.append(background, tapeHost); layers.altitude.append(group);
   const tape = createTape(tapeHost);
-  const readout = createReadout(defs, group, layers.warnings);
-  const vsi = createVsi(group);
-  const unit = svgElement('text', { class: 'altitude-unit' }, 'FT');
-  group.append(unit);
   const bugHost = svgElement('g', { class: 'selected-altitude-tape', 'clip-path': 'url(#altitude-tape-clip)' });
   group.append(bugHost);
+  const readout = createReadout(defs, group, layers.warnings);
+  const vsi = createVsi(group);
+  const trend = createAltitudeTrend(defs, group);
+  const unit = svgElement('text', { class: 'altitude-unit' }, 'FT');
+  group.append(unit);
   const baro = createBaro(layers.altitude);
   const selected = createSelectedAltitude(layers.altitude, bugHost);
   return {
     resize(layout) {
       const allocation = layout.altitude;
+      const width = allocation.width + layout.altitudeTrend.width;
       group.setAttribute('transform', `translate(${allocation.x} ${allocation.y})`);
-      setAttributes(background, { width: allocation.width, height: layout.height - 34 - allocation.y });
+      setAttributes(background, { width, height: layout.height - 34 - allocation.y });
       setAttributes(rect, { x: 0, y: 0, width: allocation.width, height: allocation.height });
       setAttributes(unit, { x: allocation.width / 2, y: allocation.height + 9 });
       tape.resize(allocation, vsiWindow(allocation));
       const textRight = readout.resize(allocation);
       vsi.resize(allocation, textRight);
-      selected.resize(allocation);
-      baro.resize({ x: allocation.x, y: layout.height - 34, width: allocation.width });
+      trend.resize({ ...layout.altitudeTrend, x: layout.altitudeTrend.x - allocation.x });
+      selected.resize({ ...allocation, width });
+      baro.resize({ x: allocation.x, y: layout.height - 34, width });
     },
     accept(frame, now) { selected.accept(frame.altitude_ft, frame.selected_altitude_ft, now); },
-    invalidate() { selected.invalidate(); vsi.invalidate(); },
+    invalidate() { selected.invalidate(); vsi.invalidate(); trend.invalidate(); },
     render(frame, now) {
       const state = altitudeState(frame.altitude_ft);
       group.dataset.state = state;
@@ -46,6 +50,7 @@ export function createAltitude(instrument, layers) {
       readout.render(frame.altitude_ft, state);
       baro.render(frame.baro_inhg);
       vsi.render(frame.vertical_speed_fpm);
+      trend.render(frame.altitude_ft, frame.vertical_speed_fpm);
       return selected.render(frame.altitude_ft, frame.selected_altitude_ft, now);
     },
   };

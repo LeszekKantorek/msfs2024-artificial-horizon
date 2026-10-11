@@ -114,6 +114,7 @@ web/
     baro.js                 # independent pressure setting and inHg formatting
     selected.js             # source target, tape bug, and alert history
     vsi.js                  # compact ft/min window, formatting, geometry and independent availability
+    trend.js                # six-second altitude prediction and clipped magenta line
   helpers.js                # clamp, SVG creation, and attribute updates
   layout.js                 # responsive instrument regions in CSS pixels
 tests/

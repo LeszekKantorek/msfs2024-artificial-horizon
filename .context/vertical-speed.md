@@ -22,7 +22,8 @@ Apply these constraints when extending the feature:
 * Keep VSI geometry and formatting with its visual object, and pass its window bounds to the tape for obstruction handling.
 * Share font family, text color, window fill and border with the main altitude readout, with VSI text one pixel smaller.
 * Align VSI text to the altitude drum's measured right edge during resize, rather than centering it in the window.
-* Preserve altitude's fixed pixel spacing and selected-bug paint order when changing the VSI window.
+* Preserve altitude's fixed pixel spacing and keep both opaque windows above the selected bug.
+* Apply [altitude trend](altitude-trend.md) when using VSI for the six-second magenta prediction.
 * Wait for raw accessible values in browser checks when successive samples have identical rounded text.
 
 Source: accepted #25 plan and implementation, 2026-10-11.
