@@ -472,7 +472,7 @@ Fixed spacing, edge pinning, dimensions, and independent availability are applic
 * The value aligns with the right edge of altitude's digits, using feet per minute without a visible unit label or arrow.
 * The altitude readout supplies that edge from the measured bounds of its two-digit monospace drum during resize.
 * VSI accounts for glyph bounds when positioning text, including the wider unavailable `X`.
-* Altitude keeps its existing tape width beside a four-pixel trend lane at the right edge.
+* Altitude keeps its existing tape width and places the trend inside its left-side tick lane.
 * VSI owns its formatting, window geometry and availability, with altitude delegating resize, rendering and invalidation.
 * The tape uses VSI's local window bounds to hide whole intersecting labels and shorten intersecting ticks with two pixels of clearance.
 * The selected-altitude bug paints below both opaque windows and remains visible to their left.
@@ -504,15 +504,27 @@ The compact numeric window and its numeric limits are application design decisio
 
 ## Altitude trend
 
-`altitude/index.js` composes the stateless `trend.js` object beside the tape:
+`altitude/index.js` composes the stateless `trend.js` object over the tape's left-side ticks:
 
-* A four CSS px lane follows the tape's right edge without reducing tape or readout width.
+* The trend uses local `x = 2` inside a four CSS px clip at the tape's left edge.
 * The magenta line shares the airspeed trend's two-pixel stroke and color.
 * It extends from the current-altitude center toward the altitude predicted in six seconds.
 * Source VSI supplies the rate without estimating browser altitude differences.
 * Climb extends upward and descent downward at the tape's fixed 0.4 CSS px/ft spacing.
 * The line stops one pixel inside either vertical edge when its prediction exceeds the visible tape.
-* The altitude and VSI windows end before this lane, retaining aligned right text edges.
+
+The altitude composition sets the paint order:
+
+1. Paint the tape ticks and labels.
+2. Paint the magenta trend over intersecting ticks.
+3. Paint the turquoise selected-altitude bug over the trend, including capture and either pinned edge.
+4. Paint the opaque current-altitude window, border and digits, then the opaque VSI window and text.
+
+Removing the outside four-pixel reservation returns that width to the horizon and heading strip.
+The unchanged altitude tape width reaches the panel's right edge.
+The selected header, column background and BARO use that width without an additional trend allocation.
+The trend object owns its clip and receives local geometry from the altitude composition.
+This placement replaces the outside-lane requirement under [#63](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/63).
 
 The prediction uses feet and feet per minute:
 
@@ -540,7 +552,7 @@ The altitude composition adds `selected.js` in layer 2:
 * Its 28-pixel height matches that window, and the header uses the same path.
 * Ordinary selected values use turquoise text.
 * Deviation uses yellow text on black.
-* The bug paints below the opaque current-altitude window, its border and digits.
+* The bug paints above the altitude trend and below both opaque altitude/VSI windows, their borders and text.
 * At capture, the black pointer fits its notch while the turquoise strip remains visible on the left.
 * The readout rounds finite targets to whole feet without rounding the alert inputs.
 * Available selected values span -9999 through 99999 ft, with `X` for unavailable and `OVR` beyond these limits.

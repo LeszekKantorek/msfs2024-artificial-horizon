@@ -16,11 +16,11 @@ export function createAltitude(instrument, layers) {
   const tapeHost = svgElement('g', { class: 'altitude-tape', 'clip-path': 'url(#altitude-tape-clip)' });
   group.append(background, tapeHost); layers.altitude.append(group);
   const tape = createTape(tapeHost);
+  const trend = createAltitudeTrend(defs, group);
   const bugHost = svgElement('g', { class: 'selected-altitude-tape', 'clip-path': 'url(#altitude-tape-clip)' });
   group.append(bugHost);
   const readout = createReadout(defs, group, layers.warnings);
   const vsi = createVsi(group);
-  const trend = createAltitudeTrend(defs, group);
   const unit = svgElement('text', { class: 'altitude-unit' }, '[FT]');
   group.append(unit);
   const baro = createBaro(layers.altitude);
@@ -28,7 +28,7 @@ export function createAltitude(instrument, layers) {
   return {
     resize(layout) {
       const allocation = layout.altitude;
-      const width = allocation.width + layout.altitudeTrend.width;
+      const width = allocation.width;
       group.setAttribute('transform', `translate(${allocation.x} ${allocation.y})`);
       setAttributes(background, { width, height: layout.height - 32 - allocation.y });
       setAttributes(rect, { x: 0, y: 0, width: allocation.width, height: allocation.height });
@@ -36,8 +36,8 @@ export function createAltitude(instrument, layers) {
       tape.resize(allocation, vsiWindow(allocation));
       const textRight = readout.resize(allocation);
       vsi.resize(allocation, textRight);
-      trend.resize({ ...layout.altitudeTrend, x: layout.altitudeTrend.x - allocation.x });
-      selected.resize({ ...allocation, width });
+      trend.resize({ x: 0, width: 4, height: allocation.height });
+      selected.resize(allocation);
       baro.resize({ x: allocation.x, y: layout.height - 32, width });
     },
     accept(frame, now) { selected.accept(frame.altitude_ft, frame.selected_altitude_ft, now); },

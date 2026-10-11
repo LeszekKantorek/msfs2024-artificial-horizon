@@ -234,7 +234,7 @@ Use these checks and artifacts:
 * Run the [automated Rust and Node commands](#automated-checks) and both [desktop browser scripts](#responsive-pfd-layout-and-desktop-checks).
 * Retain the selected-altitude alert regressions, including expiry while flashing and delayed callback cancellation.
 * Inspect `.local/pfd-browser/vsi-*` for the minimum viewport, narrow portrait, short landscape, negative-altitude capture and long signed values.
-* Inspect `.local/pfd-browser/altitude-trend-*` for upward/downward paint in the separate four-pixel lane, clear of both windows and the cyan block.
+* Inspect `.local/pfd-browser/altitude-trend-*` for upward/downward paint over the left ticks and below the turquoise bug.
 * Inspect `.local/pfd-runtime-vertical-speed.png` for the compiled demo's +1500 ft/min climb beside altitude and its selected target.
 
 Real-device acceptance requires separate iOS Safari and Android Chrome results:
@@ -244,7 +244,7 @@ Real-device acceptance requires separate iOS Safari and Android Chrome results:
 3. Check `0` during holds, positive climb and negative descent in the window directly below altitude.
 4. Inspect matching readout styles, the narrower rectangle, selected target/bug and pressure against sky and ground.
    Check that the magenta trend extends up for climb, down for descent, and disappears during holds.
-   Check that its lane remains separate from both readouts and the notched turquoise bug.
+   Check that the trend covers intersecting ticks and that the notched turquoise bug covers the trend.
 5. Rotate, expand/collapse browser bars, and check safe areas, readability, undistorted symbols, and no scrolling or collisions.
 6. Use the [development fixture](#real-phone-checks) with the inputs below to inspect signed limits, partial failures, and missing data.
 7. Check Wi-Fi/server loss, lock/unlock, and background/resume. Require fresh readings without reload or duplicate subscriptions.
@@ -268,6 +268,41 @@ Enter these JSON lines into the fixture terminal:
 {"vertical_speed_fpm":1500,"altitude_ft":8500,"baro_text":"29.92 inHg","hold":true}
 {"hold":false}
 ```
+
+### Altitude trend placement acceptance
+
+[#63](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/63) owns the corrected placement and paint order.
+Use both [desktop browser scripts](#responsive-pfd-layout-and-desktop-checks) and inspect the production page and full layout fixture.
+
+The automated checks cover these visible results:
+
+| Scenario | Expected result |
+| --- | --- |
+| 10060 ft, +1500 / -1500 ft/min | Six-second prediction at 10210 / 9910 ft, with endpoints 60 CSS px above / below center |
+| Tick crossing | The magenta two-pixel stroke at local `x = 2` covers the tick stroke |
+| Positive and negative capture, either rate sign | The turquoise strip covers the trend and the black pointer fits the notch |
+| Selected target above / below the scale, +10000 / -10000 ft/min | The clipped trend stays below the whole pinned bug at either edge |
+| Readout overlap | The opaque altitude window and its border cover the trend and bug |
+| VSI readout | Aligned text edges, contained glyphs, unchanged window dimensions and three-pixel painted gap |
+| Invalid inputs and recovery | Zero or missing required data hides the trend. BARO/target loss does not hide it |
+| Resize | Tape width and pixel spacing remain unchanged. The outside four pixels return to the horizon and heading |
+
+Paint checks use transformed points that belong to both strokes or fills, including ancestor clips.
+Negative checks temporarily reverse the relevant SVG order and require the same point to reveal the wrong object.
+Restore the original order before the next check.
+Wait for the SVG `viewBox` to match its CSS bounds before measuring resized geometry.
+
+Screenshot and device acceptance use this procedure:
+
+1. Capture matching before/after scenes at 320x480 portrait, 568x240 short landscape and the 320x240 minimum.
+2. Include climb, descent, capture in both directions, negative-altitude capture and both pinned edges on production and fixture pages.
+3. Record the input values, viewport, tested commit and browser version with the screenshots.
+4. Repeat on actual iOS Safari and Android Chrome, including rotation, browser bars and safe areas.
+5. Confirm readable digits and strokes, correct layering and recovery after source or connection loss.
+6. Record device, OS/browser versions, commit, observations and screenshots in #63 or its PR.
+
+Keep the device criterion unchecked until both real-device records exist.
+Desktop viewport checks do not establish phone acceptance.
 
 ## Automated checks
 

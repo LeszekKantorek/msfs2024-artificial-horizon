@@ -17,6 +17,7 @@ status: active
 
 ## Accepted plans and handoffs
 
+* Use numbered implementation steps with substeps and completion conditions when preparing a detailed plan.
 * Preserve the complete accepted plan verbatim, including supplied language, requirements, and invariants.
 * Store implementation plans, amendments, and handoff indexes under Git-ignored `.local/plans/<issue>-<topic>/`.
 * Do not commit implementation plans or publish them in GitHub issues or PRs unless explicitly requested.
@@ -36,5 +37,7 @@ Source: accepted full-plan preservation correction, 2026-10-10, and the separate
 Source: approved context cleanup, 2026-10-11, after a later asset-registration amendment was missing from the earlier handoff navigation.
 
 Source: accepted correction for #23, 2026-10-11, to remove `docs/plans/23-altitude-baro` from the repository and PR and keep future implementation plans local.
+
+Source: accepted detailed-plan correction for #63, 2026-10-11.
 
 Evidence limit: no verified causal link connects plan abbreviation with earlier defects.

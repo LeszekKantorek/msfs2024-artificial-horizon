@@ -179,9 +179,11 @@ try {
   const altitudeTrend = await page.locator('#altitude-trend').evaluate(node => {
     const start = node.getPointAtLength(0), end = node.getPointAtLength(node.getTotalLength());
     const altitude = Number(document.querySelector('#altitude').getAttribute('aria-label').split(' ')[2]);
-    return { dy: end.y - start.y, predictionChange: Number(node.dataset.predictionFt) - altitude };
+    const point = new DOMPoint(start.x, (start.y + end.y) / 2).matrixTransform(node.getScreenCTM());
+    return { x: start.x, dy: end.y - start.y, predictionChange: Number(node.dataset.predictionFt) - altitude,
+      painted: document.elementFromPoint(point.x, point.y) === node };
   });
-  assert.deepEqual(altitudeTrend, { dy: -60, predictionChange: 150 });
+  assert.deepEqual(altitudeTrend, { x: 2, dy: -60, predictionChange: 150, painted: true });
   await page.screenshot({ path: '.local/pfd-runtime-vertical-speed.png' });
   await stop();
   await page.locator('.instrument[data-available="false"]').waitFor();

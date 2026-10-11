@@ -14,7 +14,7 @@
 | [Airspeed and ground speed](airspeed-ground-speed.md) | Extending or validating speed telemetry, tape-unit margins, GS frame, ranges, references, trend, rolling digits, or the demo profile. |
 | [True airspeed](true-airspeed.md) | Extending or validating TAS telemetry, its top-left white frame, or TAS acceptance. |
 | [Altitude and pressure](altitude-baro.md) | Extending or validating altitude, source-formatted BARO text, signed drums, or the right-side PFD layout. |
-| [Altitude trend](altitude-trend.md) | Extending or validating six-second altitude prediction, its separate lane, or notched-bug geometry. |
+| [Altitude trend](altitude-trend.md) | Extending or validating six-second altitude prediction, left-side tick overlap, or notched-bug geometry. |
 | [Selected altitude](selected-altitude.md) | Extending or validating targets, alert history, timed panel updates, or the longer altitude demo. |
 | [Vertical speed](vertical-speed.md) | Extending or validating source-supplied VSI, the compact altitude/VSI composition, or the shared altitude scenario. |
 | [Heading](heading.md) | Extending or validating magnetic headings, numeric readout formatting, north wrapping, selected-bug capture, or top-strip geometry. |

@@ -16,7 +16,7 @@ Read the canonical rules for the affected boundary:
 * Keep alert history with the selected visual object and timers with the common scheduler.
 * Reset retained alert history before accepting recovery data if the previous sample expired, even when its expiry callback has not run.
 * Use the same notched turquoise block in the selected header and on the tape.
-* Paint the selected bug below the opaque current-altitude window, its border and digits.
+* Paint the selected bug above the altitude trend and below both opaque altitude/VSI windows, their borders and text.
 * Fit the black pointer into the notch at capture and retain the visible turquoise strip on the left.
 * Use raw feet for alert thresholds and rounded feet only for display.
 * Treat entry into +/-200 ft, silent initialization, 2 Hz flashing, and persistent yellow as project decisions, not fully specified Garmin behavior.
@@ -26,4 +26,5 @@ Read the canonical rules for the affected boundary:
 Source: accepted #24 plan and implementation, 2026-10-11.
 Source: accepted #25 plan, 2026-10-11, extending the altitude cycle from 90 to 198 seconds for coherent VSI.
 Source: accepted notched-bug and separate trend-lane amendment, 2026-10-11, replacing the earlier bug paint order.
+Source: accepted [#63](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/63) plan, 2026-10-11, replacing the outside trend lane with tick overlap below the bug.
 Evidence limit: desktop and automated results do not establish real iOS Safari or Android Chrome acceptance.
