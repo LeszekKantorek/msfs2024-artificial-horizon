@@ -158,7 +158,7 @@ export async function checkSelectedAltitude(page, setFixture, url) {
         assert.deepEqual(await page.evaluate(() => window.alertHarness.pending()), { timers: 0, frames: 0 });
         await page.evaluate(() => window.alertHarness.accept(10201, 10000));
         assert.equal((await reading(page)).alert, 'none'); assert.equal((await reading(page)).available, 'true');
-        assert.equal(await page.locator('#heading-value').textContent(), '359°');
+        assert.equal(await page.locator('#heading-value').textContent(), '359');
         assert.equal(await page.locator('#altitude-trend').evaluate(n => getComputedStyle(n).display), 'inline');
       }
     }

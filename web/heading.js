@@ -88,7 +88,7 @@ export function createHeading(instrument, layers) {
       group.dataset.selectedAvailable = String(validHeading(selected));
       group.setAttribute('aria-label', `Magnetic heading ${heading} degrees${validHeading(selected) ? `, selected heading ${selected} degrees` : ', selected heading unavailable'}`);
       tape.style.display = '';
-      value.textContent = `${headingText(heading)}°`;
+      value.textContent = headingText(heading);
       headingTicks(heading, geometry.width).forEach((row, index) => {
         const { tick, label } = rows[index];
         setAttributes(tick, { d: `M ${row.x} ${row.major ? 23 : 27} V 31`, 'data-heading-deg': row.value });

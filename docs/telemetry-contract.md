@@ -234,7 +234,7 @@ See [selected-altitude presentation](pfd-presentation.md#selected-altitude-and-a
 Current and selected headings follow the shared optional-field lifecycle:
 
 * Rust validates each finite value in `[0, 360)`. Negative values and 360 are invalid.
-* Zero is valid north. The browser formats north as `360°` without changing telemetry.
+* Zero is valid north. The browser formats north as `360` without changing telemetry.
 * Missing, null, nonnumeric, non-finite, or out-of-range browser values normalize independently to `null`.
 * Each field shares the sample sequence, age, and expiry deadline.
 * Rust omits absent fields and both fields outside `live`.

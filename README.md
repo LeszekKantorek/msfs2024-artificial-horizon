@@ -88,7 +88,7 @@ Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
 | Altitude/pressure unavailable | Independent `X` marks. Altitude beyond its display limit shows `OVR`; BARO text is displayed verbatim |
 | Vertical speed | Compact rectangular readout below current altitude, with the same font family, background and border. Signed whole ft/min: `+` for climb, `-` for descent and `0` for level flight |
 | VSI limits | Red `X` means unavailable. `+OVR` or `-OVR` means beyond +/-9999 ft/min. Valid VSI remains available without altitude or pressure |
-| Heading | Magnetic heading above the horizon. Three digits and a degree symbol. North is `360°`. Fixed 4 CSS px/degree scale with labels every 10 degrees |
+| Heading | Magnetic heading above the horizon. Three digits without a unit suffix. North is `360`. Fixed 4 CSS px/degree scale with labels every 10 degrees |
 | Selected heading | Read-only cyan bug, with a notch matching the current-heading pointer. Pins at either edge and wraps across north |
 | Heading unavailable | Missing current heading shows red `X` and hides the scale and bug. Missing selected heading hides only the bug |
 | Data | Synthetic samples at 20 Hz, without a source badge |

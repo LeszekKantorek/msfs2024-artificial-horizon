@@ -432,7 +432,7 @@ The scale and current readout use these dimensions:
 | --- | --- |
 | Scale | Fixed 4 CSS px per degree. Minor ticks every degree, major ticks every 5 degrees |
 | Labels | Every 10 degrees, three digits, monospace 11 px. North is `360` |
-| Current value | Three digits and degree symbol, rounded to whole degrees, monospace 14 px. North is `360°` |
+| Current value | Three digits without a unit suffix, rounded to whole degrees, monospace 14 px. North is `360` |
 | Window | Centered 44 by 22 px rectangle, with a lower pointer 16 px wide and 8 px high |
 | Colors | Existing text and value-window tokens, with a white 1 px border |
 | Selected bug | Cyan 16 by 7 px block at the tape's bottom, with a complementary upper notch |

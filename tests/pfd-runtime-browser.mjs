@@ -120,7 +120,7 @@ try {
   assert.ok(Number.isFinite(snapshot.vertical_speed_fpm));
   assert.equal(snapshot.heading_deg, 354);
   assert.ok(Number.isFinite(snapshot.selected_heading_deg));
-  assert.equal(await page.locator('#heading-value').textContent(), '354°');
+  assert.equal(await page.locator('#heading-value').textContent(), '354');
   await page.waitForFunction(() => document.querySelector('#vertical-speed-value').textContent === '+4881');
   assert.equal(await page.locator('#vertical-speed-value').textContent(), '+4881');
   assert.ok(Number.isFinite(snapshot.ias_acceleration_ktps));
@@ -153,7 +153,7 @@ try {
     center: document.querySelector('#heading-tape-clip rect').getBBox().width / 2,
     bug: document.querySelector('#selected-heading-bug').transform.baseVal.consolidate().matrix.e,
   }));
-  assert.equal(north.value, '360°'); assert.ok(Math.abs(north.center - north.bug) < 1e-4);
+  assert.equal(north.value, '360'); assert.ok(Math.abs(north.center - north.bug) < 1e-4);
   await page.screenshot({ path: '.local/pfd-runtime-heading-north.png' });
   await page.locator('#selected-altitude[data-state="available"]').waitFor({ timeout: 20000 });
   const target = await currentSnapshot();
@@ -199,7 +199,7 @@ try {
   assert.equal(recovered.gsState, 'available');
   assert.equal(recovered.digits, String(Math.floor(recovered.ias)));
   verifyAltitude(await altitudeReading());
-  assert.equal(await page.locator('#heading-value').textContent(), '354°');
+  assert.equal(await page.locator('#heading-value').textContent(), '354');
   assert.equal(await page.locator('#selected-altitude').getAttribute('data-state'), 'unavailable');
   await page.locator('#vertical-speed[data-state="available"]').waitFor();
   assert.equal(await page.locator('#vertical-speed-value').textContent(), '+4881');
