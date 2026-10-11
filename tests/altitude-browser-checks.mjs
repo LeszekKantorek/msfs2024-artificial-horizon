@@ -27,6 +27,13 @@ export async function checkAltitude(page, setFixture, url) {
     });
     for (const [width, height] of [[326, 246], [320, 480], [568, 240], [844, 320]]) {
       await page.setViewportSize({ width, height });
+      // Wait for ResizeObserver and the shared frame to adopt the new SVG viewport.
+      await page.waitForFunction(() => {
+        const svg = document.querySelector('svg'), bounds = svg.getBoundingClientRect();
+        const [, , width, height] = svg.getAttribute('viewBox').split(' ').map(Number);
+        return Math.abs(width - bounds.width) < 0.01 && Math.abs(height - bounds.height) < 0.01;
+      });
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       for (const value of [-9999, -1000, -90, -20, -0.1, 0, 0.1, 20, 90, 100, 990, 1000, 9990, 10000, 99999]) {
         setFixture({ altitude_ft: value });
         await page.waitForFunction(value => document.querySelector('#altitude').getAttribute('aria-label') === `Barometric altitude ${value} feet`, value);
@@ -56,6 +63,7 @@ export async function checkAltitude(page, setFixture, url) {
             height: clip.height, ticks: [...document.querySelectorAll('.altitude-tick')]
               .filter(n => getComputedStyle(n).display !== 'none').map(n => ({
                 value: Number(n.dataset.altitudeFt), y: Number(n.getAttribute('d').split(' ')[2]), cssY: n.getBoundingClientRect().top })),
+            digitBoxes, digitsClip: { x: digitsClip.x, width: digitsClip.width },
             digitsInside: digitBoxes.every(b => b.left >= digitsClip.x && b.right <= digitsClip.x + digitsClip.width),
             digitOverlap: digitBoxes.slice(1).some((b, i) => b.left < digitBoxes[i].right),
             baroContained: baroTexts.every(b => b.left >= baro.left && b.right <= baro.right && b.top >= baro.top && b.bottom <= baro.bottom),
@@ -67,7 +75,7 @@ export async function checkAltitude(page, setFixture, url) {
             digitsOpacity: getComputedStyle(document.querySelector('.altitude-digit')).fillOpacity };
         });
         assert.equal(actual.sign, value < 0 ? '−' : '');
-        assert.ok(actual.digitsInside, `Digits clipped at ${value}, ${width}x${height}`);
+        assert.ok(actual.digitsInside, `Digits clipped at ${value}, ${width}x${height}: ${JSON.stringify({ boxes: actual.digitBoxes, clip: actual.digitsClip })}`);
         assert.equal(actual.digitOverlap, false, `Digits overlap at ${value}, ${width}x${height}`);
         assert.ok(actual.baroContained && actual.panelContained && actual.baroGap >= 0,
           JSON.stringify({ value, width, height, baroContained: actual.baroContained, panelContained: actual.panelContained, baroGap: actual.baroGap }));

@@ -5,8 +5,8 @@ then open its address in a browser on the same network.
 
 **Windows x64** · **Read-only browser display** · **No phone app or account**
 
-> **Try the demo today.** The executable displays synthetic attitude, IAS, GS, altitude, selected-altitude alerts, vertical speed, pressure, slip/skid, and turn rate.
-> Heading/track and MSFS2024 integration remain planned. This is not a real-flight instrument.
+> **Try the demo today.** The executable displays synthetic attitude, IAS, GS, altitude, selected-altitude alerts, vertical speed, pressure, magnetic heading, slip/skid, and turn rate.
+> MSFS2024 integration remains planned. This is not a real-flight instrument.
 
 [Start the demo](#start-the-demo) · [Use your phone](#use-your-phone) · [Development](CONTRIBUTING.md)
 
@@ -88,13 +88,16 @@ Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
 | Altitude/pressure unavailable | Independent `X` marks; `OVR` beyond each display limit |
 | Vertical speed | Compact rectangular readout below current altitude, with the same font family, background and border. Signed whole ft/min: `+` for climb, `-` for descent and `0` for level flight |
 | VSI limits | Red `X` means unavailable. `+OVR` or `-OVR` means beyond +/-9999 ft/min. Valid VSI remains available without altitude or pressure |
+| Heading | Magnetic heading above the horizon. Three digits and a degree symbol. North is `360°`. Fixed 4 CSS px/degree scale with labels every 10 degrees |
+| Selected heading | Read-only cyan bug, with a notch matching the current-heading pointer. Pins at either edge and wraps across north |
+| Heading unavailable | Missing current heading shows red `X` and hides the scale and bug. Missing selected heading hides only the bug |
 | Data | Synthetic samples at 20 Hz, without a source badge |
 | Presentation | Sky/ground across the full panel, centrally clipped pitch scale, no top status bar |
 | Connection loss | Opaque full-panel cover with the reason and automatic retry after two seconds |
 | Stale or unavailable data | Explicit status, no fabricated level-flight reading |
 | Background/resume | A fresh snapshot is required before live attitude returns |
 | Sizing | No fixed aspect ratio; minimum 320 CSS px width and 240 CSS px usable height after browser bars and safe areas |
-| Old snapshots | Attitude-only snapshots display attitude with unavailable IAS, GS, altitude, selected altitude, VSI, pressure, slip/skid and turn rate |
+| Old snapshots | Attitude-only snapshots display attitude with unavailable IAS, GS, altitude, selected altitude, VSI, pressure, heading, slip/skid and turn rate |
 
 > Real iOS Safari and Android Chrome acceptance requires [device evidence](docs/testing.md#attitude-display-real-device-phone-acceptance).
 > Issue #4 owns the original attitude acceptance, [#20](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/20) owns the attitude/turn extension, and [#37](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/37) owns layers and background opacity.
@@ -111,7 +114,9 @@ The other indications keep their existing 18-second cycles. Transitions are not 
 First samples after target changes or recovery establish the alert state without flashing.
 [#25](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/25) owns VSI acceptance.
 VSI matches each altitude segment's slope. Artificial jumps omit VSI for one sample instead of inventing a rate.
-The planned G5-inspired PFD adds heading/track indications.
+[#26](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/26) owns heading and full-panel acceptance.
+Heading follows the demo's turn rate across north in both directions, repeating every 18 seconds.
+Ground track, a separate numeric selected heading, and heading controls are outside this demo's scope.
 See the [project brief](docs/project-brief.md) for coverage and exclusions, and the [roadmap](docs/roadmap.md) for delivery order.
 
 ## Options and troubleshooting

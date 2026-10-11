@@ -10,6 +10,7 @@ import { checkAltitude } from './altitude-browser-checks.mjs';
 import { checkSelectedAltitude } from './selected-altitude-browser-checks.mjs';
 import { checkVerticalSpeed } from './vertical-speed-browser-checks.mjs';
 import { checkAltitudeTrend } from './altitude-trend-browser-checks.mjs';
+import { checkHeading } from './heading-browser-checks.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
@@ -46,10 +47,10 @@ function instrumentNodesUnchanged() {
   const retained = nodes.filter(node => original.includes(node));
   const added = nodes.filter(node => !original.includes(node));
   return retained.length === original.length && retained.every((node, index) => node === original[index]) &&
-    added.every(node => node.parentElement.id === 'altitude-scale');
+    added.every(node => ['altitude-scale', 'heading-scale'].includes(node.parentElement.id));
 }
 try {
-  for (const path of ['/altitude/trend.js', '/altitude/vsi.js', '/helpers.js', '/telemetry/client.js', '/airspeed/index.js', '/airspeed/ias.js',
+  for (const path of ['/heading.js', '/altitude/trend.js', '/altitude/vsi.js', '/helpers.js', '/telemetry/client.js', '/airspeed/index.js', '/airspeed/ias.js',
     '/airspeed/ground-speed.js', '/airspeed/tape.js', '/airspeed/readout.js', '/airspeed/references.js',
     '/airspeed/helpers.js', '/altitude/index.js', '/altitude/tape.js', '/altitude/readout.js', '/altitude/baro.js', '/altitude/selected.js',
     '/horizon/index.js', '/horizon/world.js', '/horizon/pitch-scale.js', '/horizon/bank-pointer.js', '/fixed-symbols/index.js', '/fixed-symbols/bank-scale.js', '/fixed-symbols/aircraft.js']) {
@@ -57,7 +58,7 @@ try {
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('content-type'), 'text/javascript; charset=utf-8');
   }
-  for (const path of ['/altitude/vsi.js', '/altitude/trend.js']) {
+  for (const path of ['/altitude/vsi.js', '/altitude/trend.js', '/heading.js']) {
     const response = await fetch(url + path, { method: 'HEAD' });
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('content-type'), 'text/javascript; charset=utf-8');
@@ -90,6 +91,10 @@ try {
       await page.goto(url + path);
       await page.locator('.instrument[data-available="true"]').waitFor();
       if (path === '/layout.html') await page.locator('#layout-fixtures[data-items]').waitFor({ state: 'attached' });
+      if (path === '/layout.html') {
+        assert.equal(await page.locator('#layout-fixtures').getAttribute('data-items'), '1,2,3,4,5,7,8,9,10,11,12,13,15,16,18,20,21');
+        assert.equal(await page.locator('[id^="fixture-heading"], #fixture-supplemental').count(), 0);
+      }
       // Flush ResizeObserver geometry and the scheduled sample before capturing paint.
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       assert.equal(await page.locator('header, #data-status, #transport, #source-badge').count(), 0);
@@ -183,7 +188,7 @@ try {
     world: ['world-rotation', null],
     worldPaths: ['sky', 'ground', 'horizon-line'],
     fixed: ['bank-scale', 'aircraft-outline', 'aircraft'],
-    symbols: ['bank-pointer-clip', 'fixed-symbols-clip', 'slip-skid', 'turn-rate'],
+    symbols: ['bank-pointer-clip', 'fixed-symbols-clip', 'heading', 'slip-skid', 'turn-rate'],
     warnings: ['warning-origin', 'airspeed-warning', 'ground-speed-warning', 'altitude-warning', 'slip-warning', 'turn-warning'],
     pitchParent: 'scale-rotation', warningParent: 'warning-rotation',
     sharedAttitudeClip: ['url(#attitude-clip)', 'url(#attitude-clip)'],
@@ -259,6 +264,7 @@ try {
   await checkSelectedAltitude(page, setFixture, url);
   await checkVerticalSpeed(page, setFixture, url);
   await checkAltitudeTrend(page, setFixture, url);
+  await checkHeading(page, setFixture, url);
   // Verify actual SVG columns and tape positions against independent expected values.
   for (const [width, height] of [[326, 246], [320, 480], [568, 240]]) {
     await page.setViewportSize({ width, height });

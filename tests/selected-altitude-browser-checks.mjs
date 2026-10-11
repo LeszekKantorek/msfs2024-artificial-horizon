@@ -25,7 +25,7 @@ window.alertHarness = {
   accept(altitude, target, pressure = 29.92) {
     const sourceStatus = { source: 'demo', transport: 'connected', state: 'live' };
     status.update(sourceStatus);
-    scheduler.accept({ ...normalizeOptionalIndications({ altitude_ft: altitude, selected_altitude_ft: target, baro_inhg: pressure, vertical_speed_fpm: 1500 }),
+    scheduler.accept({ ...normalizeOptionalIndications({ altitude_ft: altitude, selected_altitude_ft: target, baro_inhg: pressure, vertical_speed_fpm: 1500, heading_deg: 359, selected_heading_deg: 1 }),
       attitude: { pitch_deg: 0, roll_deg: 0 }, expiresAt: time + 1000, status: sourceStatus }); flush();
   },
   tick(value) { time = value; for (const [key, timer] of [...timers]) if (timer.at <= time) { timers.delete(key); timer.fn(); } flush(); },
@@ -149,12 +149,16 @@ export async function checkSelectedAltitude(page, setFixture, url) {
         }
         await page.evaluate(() => { window.alertHarness.reset(); window.alertHarness.accept(10000, 10000); window.alertHarness.accept(10201, 10000); window.alertHarness.tick(1000); });
         assert.equal((await reading(page)).available, 'false'); assert.equal((await reading(page)).alert, 'none');
+        assert.equal(await page.locator('#heading-value').textContent(), 'X');
+        assert.equal(await page.locator('#selected-heading-bug').getAttribute('transform'), null);
         assert.equal(await page.locator('#altitude-trend').getAttribute('d'), null);
         await page.evaluate(() => window.alertHarness.tick(1500));
+        assert.equal(await page.locator('#heading-value').textContent(), 'X');
         assert.equal(await page.locator('#altitude-trend').getAttribute('d'), null);
         assert.deepEqual(await page.evaluate(() => window.alertHarness.pending()), { timers: 0, frames: 0 });
         await page.evaluate(() => window.alertHarness.accept(10201, 10000));
         assert.equal((await reading(page)).alert, 'none'); assert.equal((await reading(page)).available, 'true');
+        assert.equal(await page.locator('#heading-value').textContent(), '359°');
         assert.equal(await page.locator('#altitude-trend').evaluate(n => getComputedStyle(n).display), 'inline');
       }
     }

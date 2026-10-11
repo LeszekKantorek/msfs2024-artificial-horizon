@@ -15,6 +15,9 @@ status: active
 * Treat scope as planned until source and implementation evidence establish that it exists.
 * Describe implemented behavior separately from device acceptance, which requires its own recorded evidence.
 * Scope approval does not establish hardware acceptance.
+* Apply the #26 amendment: current magnetic heading and selected-heading bug only, excluding ground-track item 19 and a separate numeric selected-heading readout.
 
 Sources: approved scope, 2026-10-08, recorded in [#19](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/19).
 The locally supplied `190-01112-12_02.pdf`, section 3.3, was visually inspected during scope review: printed page 8/25 is PDF page 13.
+
+Source: accepted #26 implementation plan, 2026-10-11, and amended [#26](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/26).

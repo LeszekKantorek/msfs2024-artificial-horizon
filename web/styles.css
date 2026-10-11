@@ -107,3 +107,10 @@ noscript { position: absolute; inset: 12px 12px auto; color: var(--warning); tex
 #selected-altitude[data-alert="deviation"] .selected-altitude-value { fill: var(--speed-yellow); }
 #selected-altitude:not([data-state="available"]) .selected-altitude-value { fill: var(--danger); }
 #vertical-speed[data-state="unavailable"] .vertical-speed-value { fill: var(--danger); }
+.heading-window { fill: var(--value-window); stroke: var(--text); stroke-width: 1; }
+.heading-value, .heading-label { fill: var(--text); font-family: monospace; text-anchor: middle; dominant-baseline: central; }
+.heading-value { font-size: 14px; }
+.heading-label { font-size: 11px; }
+.heading-tick { fill: none; stroke: var(--text); stroke-width: 1; }
+.selected-heading-bug { fill: var(--speed-reference); stroke: var(--value-window); stroke-width: 1; paint-order: stroke; }
+#heading[data-state="unavailable"] .heading-value { fill: var(--danger); }

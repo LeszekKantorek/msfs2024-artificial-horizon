@@ -71,6 +71,37 @@ function harness() {
   };
 }
 
+test('magnetic headings validate independently without coercion or a ground-track fallback', () => {
+  for (const invalid of [undefined, null, false, '0', {}, [], NaN, Infinity, -Infinity, -0.001, 360, 720]) {
+    const frame = normalizeOptionalIndications({ heading_deg: invalid, selected_heading_deg: 1, ground_track_deg: 90, altitude_ft: 10000 });
+    assert.equal(frame.heading_deg, null); assert.equal(frame.selected_heading_deg, 1); assert.equal(frame.altitude_ft, 10000);
+    const reverse = normalizeOptionalIndications({ heading_deg: 0, selected_heading_deg: invalid });
+    assert.equal(reverse.heading_deg, 0); assert.equal(reverse.selected_heading_deg, null);
+  }
+  for (const value of [-0, 0, 0.001, 90, 359.999]) {
+    assert.equal(normalizeOptionalIndications({ heading_deg: value }).heading_deg, value);
+    assert.equal(normalizeOptionalIndications({ selected_heading_deg: value }).selected_heading_deg, value);
+  }
+});
+
+test('headings retain shared freshness and clear on old snapshots, reconnect and resume', () => {
+  const h = harness(); h.client.start();
+  h.connections[0].send({ ...live(1, 400), heading_deg: 359, selected_heading_deg: 1 });
+  assert.equal(h.samples.at(-1).heading_deg, 359); assert.equal(h.samples.at(-1).selected_heading_deg, 1);
+  assert.equal(h.samples.at(-1).expiresAt, 600);
+  h.connections[0].send({ ...live(2), heading_deg: 0, selected_heading_deg: 360 });
+  assert.equal(h.samples.at(-1).heading_deg, 0); assert.equal(h.samples.at(-1).selected_heading_deg, null);
+  h.advance(1000); assert.equal(h.status.state, 'stale');
+  h.connections[0].onerror(); h.advance(2000); assert.equal(h.connections.length, 2);
+  h.connections[1].send({ ...live(0), heading_deg: 0, selected_heading_deg: 0 });
+  assert.equal(h.samples.at(-1).heading_deg, 0); assert.equal(h.samples.at(-1).selected_heading_deg, 0);
+  h.connections[1].send(live(1));
+  assert.equal(h.samples.at(-1).heading_deg, null); assert.equal(h.samples.at(-1).selected_heading_deg, null);
+  h.client.stop(); h.client.start(); h.client.start(); assert.equal(h.connections.length, 3);
+  h.connections[2].send({ ...live(0), selected_heading_deg: 90 });
+  assert.equal(h.samples.at(-1).heading_deg, null); assert.equal(h.samples.at(-1).selected_heading_deg, 90);
+});
+
 test('validator accepts independent fixtures and rejects malformed/unsupported telemetry', () => {
   const fixtures = JSON.parse(readFileSync(new URL('./fixtures/snapshots.json', import.meta.url)));
   for (const fixture of fixtures) assert.ok(isValidSnapshot(fixture));
@@ -85,16 +116,16 @@ test('validator accepts independent fixtures and rejects malformed/unsupported t
 });
 
 test('optional values fail independently and never coerce missing values to zero', () => {
-  assert.deepEqual(normalizeOptionalIndications(live()), { slip_skid: null, turn_rate_dps: null, ias_kt: null, gs_kt: null, altitude_ft: null, selected_altitude_ft: null, vertical_speed_fpm: null, baro_inhg: null, airspeed_profile: null, ias_acceleration_ktps: null });
+  assert.deepEqual(normalizeOptionalIndications(live()), { slip_skid: null, turn_rate_dps: null, ias_kt: null, gs_kt: null, altitude_ft: null, selected_altitude_ft: null, vertical_speed_fpm: null, heading_deg: null, selected_heading_deg: null, baro_inhg: null, airspeed_profile: null, ias_acceleration_ktps: null });
   for (const invalid of [undefined, null, false, '0', {}, [], NaN, Infinity, -Infinity]) {
     assert.deepEqual(normalizeOptionalIndications({ slip_skid: invalid, turn_rate_dps: 3 }),
-      { slip_skid: null, turn_rate_dps: 3, ias_kt: null, gs_kt: null, altitude_ft: null, selected_altitude_ft: null, vertical_speed_fpm: null, baro_inhg: null, airspeed_profile: null, ias_acceleration_ktps: null });
+      { slip_skid: null, turn_rate_dps: 3, ias_kt: null, gs_kt: null, altitude_ft: null, selected_altitude_ft: null, vertical_speed_fpm: null, heading_deg: null, selected_heading_deg: null, baro_inhg: null, airspeed_profile: null, ias_acceleration_ktps: null });
     assert.deepEqual(normalizeOptionalIndications({ slip_skid: -1, turn_rate_dps: invalid }),
-      { slip_skid: -1, turn_rate_dps: null, ias_kt: null, gs_kt: null, altitude_ft: null, selected_altitude_ft: null, vertical_speed_fpm: null, baro_inhg: null, airspeed_profile: null, ias_acceleration_ktps: null });
+      { slip_skid: -1, turn_rate_dps: null, ias_kt: null, gs_kt: null, altitude_ft: null, selected_altitude_ft: null, vertical_speed_fpm: null, heading_deg: null, selected_heading_deg: null, baro_inhg: null, airspeed_profile: null, ias_acceleration_ktps: null });
   }
   for (const invalid of [-1.001, 1.001]) assert.equal(normalizeOptionalIndications({ slip_skid: invalid }).slip_skid, null);
   for (const row of JSON.parse(readFileSync(new URL('./fixtures/pfd-samples.json', import.meta.url)))) {
-    assert.deepEqual(normalizeOptionalIndications(row), { slip_skid: row.slip_skid, turn_rate_dps: row.turn_rate_dps, ias_kt: null, gs_kt: null, altitude_ft: null, selected_altitude_ft: null, vertical_speed_fpm: null, baro_inhg: null, airspeed_profile: null, ias_acceleration_ktps: null });
+    assert.deepEqual(normalizeOptionalIndications(row), { slip_skid: row.slip_skid, turn_rate_dps: row.turn_rate_dps, ias_kt: null, gs_kt: null, altitude_ft: null, selected_altitude_ft: null, vertical_speed_fpm: null, heading_deg: null, selected_heading_deg: null, baro_inhg: null, airspeed_profile: null, ias_acceleration_ktps: null });
   }
   assert.equal(normalizeOptionalIndications({ turn_rate_dps: 12 }).turn_rate_dps, 12);
 });
@@ -103,13 +134,13 @@ test('new sample callback supports old snapshots and clears previously valid opt
   const h = harness(); h.client.start();
   const connection = h.connections[0]; connection.onopen();
   connection.send({ ...live(1, 400), slip_skid: 1, turn_rate_dps: 3 });
-  assert.deepEqual(h.samples.at(-1), { attitude: live().attitude, slip_skid: 1, turn_rate_dps: 3, ias_kt: null, gs_kt: null, altitude_ft: null, selected_altitude_ft: null, vertical_speed_fpm: null, baro_inhg: null, airspeed_profile: null, ias_acceleration_ktps: null, expiresAt: 600 });
+  assert.deepEqual(h.samples.at(-1), { attitude: live().attitude, slip_skid: 1, turn_rate_dps: 3, ias_kt: null, gs_kt: null, altitude_ft: null, selected_altitude_ft: null, vertical_speed_fpm: null, heading_deg: null, selected_heading_deg: null, baro_inhg: null, airspeed_profile: null, ias_acceleration_ktps: null, expiresAt: 600 });
   connection.send({ ...live(2), slip_skid: 'bad', turn_rate_dps: -3 });
   assert.equal(h.status.state, 'live');
   assert.equal(h.samples.at(-1).slip_skid, null);
   assert.equal(h.samples.at(-1).turn_rate_dps, -3);
   connection.send(live(3));
-  assert.deepEqual(h.samples.at(-1), { attitude: live().attitude, slip_skid: null, turn_rate_dps: null, ias_kt: null, gs_kt: null, altitude_ft: null, selected_altitude_ft: null, vertical_speed_fpm: null, baro_inhg: null, airspeed_profile: null, ias_acceleration_ktps: null, expiresAt: 1000 });
+  assert.deepEqual(h.samples.at(-1), { attitude: live().attitude, slip_skid: null, turn_rate_dps: null, ias_kt: null, gs_kt: null, altitude_ft: null, selected_altitude_ft: null, vertical_speed_fpm: null, heading_deg: null, selected_heading_deg: null, baro_inhg: null, airspeed_profile: null, ias_acceleration_ktps: null, expiresAt: 1000 });
   connection.send({ ...live(4), schema_version: 2, turn_rate_dps: 3 });
   assert.equal(h.status.state, 'invalid');
   assert.equal(h.samples.length, 3);
@@ -192,7 +223,7 @@ test('accepted samples report current status before attitude and sample callback
   assert.deepEqual(h.events[1].value, { attitude: { pitch_deg: 5, roll_deg: 15 }, expiresAt: 725 });
   assert.deepEqual(h.events[2].value, { attitude: { pitch_deg: 5, roll_deg: 15 },
     slip_skid: null, turn_rate_dps: null, ias_kt: 1000, gs_kt: null,
-    altitude_ft: null, selected_altitude_ft: null, vertical_speed_fpm: null, baro_inhg: null, airspeed_profile: profile, ias_acceleration_ktps: -5, expiresAt: 725 });
+    altitude_ft: null, selected_altitude_ft: null, vertical_speed_fpm: null, heading_deg: null, selected_heading_deg: null, baro_inhg: null, airspeed_profile: profile, ias_acceleration_ktps: -5, expiresAt: 725 });
   assert.notStrictEqual(h.events[1].value.attitude, h.events[2].value.attitude);
   h.events[1].value.attitude.pitch_deg = 90;
   assert.deepEqual(h.events[2].value.attitude, { pitch_deg: 5, roll_deg: 15 });

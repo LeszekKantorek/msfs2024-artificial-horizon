@@ -7,6 +7,7 @@ import { createInterface } from 'node:readline';
 
 const profile = JSON.parse(readFileSync(new URL('./fixtures/airspeed-profile.json', import.meta.url)));
 let fixture = { state: 'live', pitch_deg: 0, roll_deg: 0, slip_skid: 0, turn_rate_dps: 0,
+  heading_deg: 359, selected_heading_deg: 1,
   altitude_ft: 10000, selected_altitude_ft: 12000, vertical_speed_fpm: 0, baro_inhg: 29.92, ias_kt: 123, gs_kt: 137, airspeed_profile: profile, ias_acceleration_ktps: 5, hold: false };
 let sequence = 0;
 let clients = 0;
@@ -16,6 +17,7 @@ input.on('line', line => {
   catch { console.error('Expected a JSON object'); }
 });
 const types = {
+  '/heading.js': 'text/javascript',
   '/altitude/trend.js': 'text/javascript',
   '/altitude/vsi.js': 'text/javascript',
   '/altitude/selected.js': 'text/javascript',
@@ -45,6 +47,8 @@ const server = createServer((request, response) => {
         state: fixture.state, sample_age_ms: fixture.sample_age_ms ?? 0,
         attitude: fixture.state === 'live' ? { pitch_deg: fixture.pitch_deg, roll_deg: fixture.roll_deg } : null };
       if (fixture.state === 'live' && !fixture.attitude_only) {
+        snapshot.heading_deg = fixture.heading_deg;
+        snapshot.selected_heading_deg = fixture.selected_heading_deg;
         snapshot.slip_skid = fixture.slip_skid;
         snapshot.turn_rate_dps = fixture.turn_rate_dps;
         snapshot.altitude_ft = fixture.altitude_ft;

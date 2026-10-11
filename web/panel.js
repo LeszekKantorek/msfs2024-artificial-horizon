@@ -4,6 +4,7 @@ import { createSlipSkid } from './slip-skid.js';
 import { createTurnRate } from './turn-rate.js';
 import { createAirspeed } from './airspeed/index.js';
 import { createAltitude } from './altitude/index.js';
+import { createHeading } from './heading.js';
 import { setAttributes } from './helpers.js';
 
 // Delegation never selects instrument fields or computes instrument geometry.
@@ -47,6 +48,7 @@ export function createPanel(instrument, status) {
     createHorizon(instrument, layers), createFixedSymbols(instrument, layers.symbols),
     createAirspeed(instrument, layers),
     createAltitude(instrument, layers),
+    createHeading(instrument, layers),
     createSlipSkid(instrument, layers), createTurnRate(instrument, layers),
   ], status);
 }

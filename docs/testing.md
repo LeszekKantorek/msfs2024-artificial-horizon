@@ -154,6 +154,44 @@ Real-device acceptance uses this procedure on iOS Safari and Android Chrome sepa
 6. Check Wi-Fi/server loss, lock/unlock, and background/resume during an alert. Recovery requires fresh data and silent initialization.
 7. Leave device acceptance unchecked until both device results identify the tested build and satisfy these checks.
 
+## Heading acceptance
+
+Use the [magnetic-heading contract](telemetry-contract.md#optional-magnetic-headings) and [presentation rules](pfd-presentation.md#current-and-selected-heading).
+Run the existing Rust and Node commands, then both desktop browser scripts listed below.
+
+| Check | Required evidence |
+| --- | --- |
+| Rust/SSE | Canonical `[0, 360)` values, valid zero, independent absence, shared sequence/age/expiry, clearing on state publications, and identical samples for two clients |
+| Scenario | Independent phase checkpoints, both north crossings, +/-3 deg/s agreement, 360-sample heading repeat and unchanged 3960-sample altitude cycle |
+| Node | Three digits, degree formatting, rounding near north, shortest angular distance, 180-degree left tie, whole bug edge pinning, and whole-label hiding |
+| SVG | Real glyph and stroke bounds, fixed 4 CSS px/degree spacing, cyan notch capture, both edges, stable nodes and independent unavailable states |
+| Lifecycle | Latest shared sample, expiry before drawing, resize without refreshed age, pause, disconnect, reconnect and background/resume without another subscription |
+| Full panel | All 17 included elements, altitude trend, target alerts, and both orientations from 320 by 240 CSS px |
+
+Inspect the browser evidence:
+
+1. Inspect `.local/pfd-browser/heading-production-*` and `heading-layout-*` for north, capture, and both pinned edges.
+2. Confirm the current 359-degree / selected 1-degree bug is exactly 8 CSS px right of center.
+3. Confirm cyan remains around the black pointer at capture, without covering its text or border.
+4. Inspect `.local/pfd-runtime-heading-north.png` for the compiled Rust demo's north crossing.
+5. Record the tested commit, Windows/MSVC and browser versions, command results, and screenshot paths in #26 or its PR.
+
+The fixture accepts these independent heading inputs:
+
+```json
+{"heading_deg":359,"selected_heading_deg":1}
+{"heading_deg":1,"selected_heading_deg":359}
+{"heading_deg":0,"selected_heading_deg":0}
+{"heading_deg":354,"selected_heading_deg":90}
+{"heading_deg":354,"selected_heading_deg":180}
+{"heading_deg":354,"selected_heading_deg":null}
+{"heading_deg":null,"selected_heading_deg":1}
+{"heading_deg":360,"selected_heading_deg":1}
+```
+
+> Real iOS Safari and Android Chrome require separate full-panel results, including rotation, browser bars, safe areas, readability, and data recovery.
+> Desktop emulation does not confirm either device check.
+
 ## Vertical-speed acceptance
 
 Issue [#25](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/25) owns VSI evidence.
@@ -396,10 +434,10 @@ Evidence template for the issue or PR:
 
 ### Responsive PFD layout and desktop checks
 
-Open `http://127.0.0.1:8082/layout.html` for the development-only arrangement of all 18 intended illustration items.
-The `LAYOUT FIXTURE` badge distinguishes future illustrative values from telemetry.
+Open `http://127.0.0.1:8082/layout.html` for the development-only arrangement of all 17 intended illustration items.
+The `LAYOUT FIXTURE` badge distinguishes the development fixture from the compiled demo.
 Use this page before changing layout geometry or adding the next PFD instrument.
-No fixture page, script, or future instrument values enter the Rust binary.
+No fixture page or fixture control script enters the Rust binary.
 
 | Check | Expected result |
 | --- | --- |
@@ -409,7 +447,7 @@ No fixture page, script, or future instrument values enter the Rust binary.
 | Pitch scale / warnings | 2.5-degree intervals, with red chevrons starting at +60/-40 scale positions and pointing toward the horizon |
 | Slip/skid | Center and both directions, with a local unavailable mark for missing or invalid data |
 | Turn rate | +/-3 deg/s reaches the standard-rate marks, with an edge arrow beyond +/-6 deg/s |
-| Reserved future regions | No fake readings or unfinished instrument scales on the production page |
+| Heading strip | Production heading module, without ground-track or separate numeric selected-heading illustrations |
 
 The scripted desktop checks use Playwright with an installed browser.
 They are required for the PFD changes in the [validation matrix](#validation-by-change-scope) and optional for unrelated exploration.
@@ -598,7 +636,7 @@ Check these speed-specific behaviors:
 | GS | 137.6 kt shows 138. Digits, the GS label, and the kt unit remain separate within the readout |
 | Lifecycle | Equal fresh speeds renew validity. Resize preserves the accepted deadline. Reconnect/resume require a new fresh sample without duplicate subscriptions |
 | Integration | Two SSE clients receive matching IAS/GS. The compiled Rust demo supplies 150/170 kt during its hold segment |
-| Fixture | Items 1/4/8 use the real module. Future illustrations remain development-only without duplicate speed readouts |
+| Fixture | Items 1/4/8 use the real speed module, without duplicate speed readouts. All other included items also use production modules |
 
 ### Real-phone checks
 
@@ -615,7 +653,7 @@ $env:PFD_FIXTURE_HOST = '<PC LAN IP>'
 node tests/browser-fixture-server.mjs
 ```
 
-Open the printed address on the phone. Use `/layout.html` for all 18 elements. Enter JSON lines in the server terminal:
+Open the printed address on the phone. Use `/layout.html` for all 17 elements. Enter JSON lines in the server terminal:
 
 ```json
 {"ias_kt":99.5,"gs_kt":137.6}
@@ -668,7 +706,7 @@ Transition assertions preserve independent availability and state resets:
 * Check computed colors/visibility, state resets, exact replacement-profile ARIA, fresh fractional digits/tape offsets, and fallback/unit/badge behavior.
 * GS remains independently available with nonzero painted bounds inside the panel and viewport.
 * Production SVG node identity remains stable.
-* The development fixture's recreated future illustrations are excluded from that identity check.
+* The development fixture reuses the same production nodes and geometry operations.
 
 ### Real-phone checks for #22
 
@@ -705,7 +743,7 @@ Real-phone acceptance requires passing records from both devices. Desktop checks
 > Apply these procedures as #20-#26 introduce features. They do not describe existing functionality or establish live PFD compatibility.
 
 * Each feature issue owns its automated and real-phone evidence.
-* #26 links earlier evidence and records a full-panel run for all 18 elements.
+* #26 links earlier evidence and records a full-panel run for all 17 elements.
 * Use the device/build/network evidence fields above.
 * Preserve original simulator acceptance scope.
 
@@ -770,7 +808,7 @@ Record refactor validation against the final revision:
 
 Use the development fixture to assess layout and compare opacity on real phones:
 
-1. Open the full 18-element development fixture.
+1. Open the full 17-element development fixture.
 2. Compare `/layout.html?opacity=0.50`, `0.65`, and `0.80` against sky and ground.
 3. Record the selected value and real-device evidence in #37.
 4. Check 320 CSS px page width and 240 CSS px usable height after browser bars and safe areas, as defined in the brief.

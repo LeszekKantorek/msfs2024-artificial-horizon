@@ -58,6 +58,8 @@ async fn extended_samples_reach_two_clients_with_shared_values_and_delivery_time
     assert_eq!(a, b);
     assert_eq!(a["slip_skid"], -1.0);
     assert_eq!(a["turn_rate_dps"], -3.0);
+    assert_eq!(a["heading_deg"], 0.0);
+    assert_eq!(a["selected_heading_deg"], 0.0);
     assert_eq!(a["ias_kt"], 100.0);
     assert_eq!(a["altitude_ft"], 1020.0);
     assert_eq!(a["baro_inhg"], 29.72);
@@ -79,6 +81,8 @@ async fn extended_samples_reach_two_clients_with_shared_values_and_delivery_time
     assert_eq!(selected_a["altitude_ft"], 9000.0);
     assert_eq!(selected_a["sample_age_ms"], 0);
     assert_eq!(selected_a["vertical_speed_fpm"], 1500.0);
+    assert_eq!(selected_a["heading_deg"], 348.0);
+    assert_eq!(selected_a["selected_heading_deg"], 350.0);
     publisher.publish(State::Paused).unwrap();
     for body in [&mut first, &mut second] {
         let unavailable = snapshot(&frame(body).await);
@@ -91,6 +95,8 @@ async fn extended_samples_reach_two_clients_with_shared_values_and_delivery_time
         assert!(unavailable.get("selected_altitude_ft").is_none());
         assert!(unavailable.get("vertical_speed_fpm").is_none());
         assert!(unavailable.get("baro_inhg").is_none());
+        assert!(unavailable.get("heading_deg").is_none());
+        assert!(unavailable.get("selected_heading_deg").is_none());
         assert!(unavailable.get("airspeed_profile").is_none());
         assert!(unavailable.get("ias_acceleration_ktps").is_none());
     }
@@ -223,13 +229,15 @@ async fn unavailable_states_age_stale_and_heartbeat_are_independent() {
 async fn age_is_computed_when_body_is_read_and_pending_final_state_precedes_eof() {
     let (mut publisher, subscription) = telemetry::channel(Source::Demo);
     publisher
-        .publish(State::Live(Attitude::new(0.0, 0.0).unwrap()))
+        .publish_sample(msfs2024_artificial_horizon::providers::demo::sample(240))
         .unwrap();
     let mut body = subscribe(subscription, None).await.into_body();
     advance(STALE_AFTER).await;
     let initial = snapshot(&frame(&mut body).await);
     assert_eq!(initial["state"], "stale");
     assert_eq!(initial["sample_age_ms"], 1000);
+    assert!(initial.get("heading_deg").is_none());
+    assert!(initial.get("selected_heading_deg").is_none());
     publisher.publish(State::Invalid).unwrap();
     drop(publisher);
     assert_eq!(snapshot(&frame(&mut body).await)["state"], "invalid");

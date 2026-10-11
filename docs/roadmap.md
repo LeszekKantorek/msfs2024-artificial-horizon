@@ -55,7 +55,7 @@ flowchart LR
 | 6 | [#23 Altitude and barometric setting](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/23) | #37 | Altitude tape/readout and baro |
 | 7 | [#24 Selected altitude and alerts](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/24) | #23 | Target bug/readout and approach/deviation alerts |
 | 8 | [#25 Vertical speed](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/25) | #23 | Compact VSI readout below current altitude and source-rate altitude trend |
-| 9 | [#26 Heading, track and selected direction](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/26) | #37 | PFD direction tape and accumulated full-panel demo acceptance |
+| 9 | [#26 Current heading and selected-heading bug](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/26) | #37 | Magnetic-heading tape, selected bug and accumulated full-panel demo acceptance |
 
 * Deliver in steps 1-9 order.
 * [#35](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/35) owns planning and is not a delivery step.
@@ -71,7 +71,7 @@ flowchart LR
 
 | Exit criterion | Evidence owner |
 | --- | --- |
-| All 18 elements meet their criteria on real iOS Safari and Android Chrome | Each slice, accumulated in #26 |
+| All 17 elements meet their criteria on real iOS Safari and Android Chrome | Each slice, accumulated in #26 |
 | Readable portrait/landscape from 320 CSS px | Each slice |
 | Explicit unavailable indications and recovery without reload | Each slice |
 | Full-panel acceptance | #26 |

@@ -1,8 +1,8 @@
 //! Repeatable degree fixtures; no simulator SDK conventions are assumed.
 use crate::telemetry::{
     AirspeedProfile, Attitude, BarometricAltitude, BarometricSetting, FlightSample, GroundSpeed,
-    IasAcceleration, IndicatedAirspeed, Publisher, SAMPLE_PERIOD, SelectedAltitude, SlipSkid,
-    TelemetryError, TurnRate, VSpeedReferences, VerticalSpeed,
+    Heading, IasAcceleration, IndicatedAirspeed, Publisher, SAMPLE_PERIOD, SelectedAltitude,
+    SelectedHeading, SlipSkid, TelemetryError, TurnRate, VSpeedReferences, VerticalSpeed,
 };
 use std::future::Future;
 use tokio::time::{MissedTickBehavior, interval};
@@ -50,6 +50,18 @@ pub fn sample(index: u64) -> FlightSample {
         Some(SlipSkid::new(slip).expect("built-in ball positions are valid")),
         Some(TurnRate::new(turn).expect("built-in turn rates are valid")),
     )
+    .with_heading(
+        Some(Heading::new(heading_scenario(step)).expect("built-in heading is valid")),
+        match phase {
+            0 | 3 | 4 => Some(350.0),
+            1 => Some(90.0),
+            2 => Some(180.0),
+            5 | 6 => Some(0.0),
+            7 => None,
+            _ => Some(354.0),
+        }
+        .map(|degrees| SelectedHeading::new(degrees).expect("built-in selected heading is valid")),
+    )
     .with_altitude(
         Some(BarometricAltitude::new(altitude).expect("built-in altitude is valid")),
         Some(BarometricSetting::new(baro).expect("built-in pressure setting is valid")),
@@ -76,6 +88,17 @@ pub fn sample(index: u64) -> FlightSample {
             .expect("built-in IAS acceleration is valid"),
         ),
     )
+}
+// Continuous heading follows the existing signed turn-rate phases.
+fn heading_scenario(step: u64) -> f64 {
+    let elapsed = (step % 40) as f64 * SAMPLE_PERIOD.as_secs_f64();
+    match step / 40 {
+        3 => 354.0 - 3.0 * elapsed,
+        4 => 348.0 + 3.0 * elapsed,
+        5 => (354.0 + 3.0 * elapsed).rem_euclid(360.0),
+        6 => (-3.0 * elapsed).rem_euclid(360.0),
+        _ => 354.0,
+    }
 }
 // Heights and their analytical slopes share the same segment definition.
 fn altitude_scenario(index: u64) -> (f64, Option<f64>, Option<f64>) {

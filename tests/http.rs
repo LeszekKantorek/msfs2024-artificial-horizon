@@ -10,6 +10,11 @@ use tower::ServiceExt;
 async fn embedded_page_assets_and_liveness_match_the_contract() {
     for (path, content_type, expected) in [
         (
+            "/heading.js",
+            "text/javascript; charset=utf-8",
+            "createHeading",
+        ),
+        (
             "/altitude/trend.js",
             "text/javascript; charset=utf-8",
             "createAltitudeTrend",
@@ -185,10 +190,11 @@ async fn embedded_page_assets_and_liveness_match_the_contract() {
 }
 
 #[tokio::test]
-async fn compact_vsi_and_altitude_trend_assets_support_get_and_head() {
+async fn compact_vsi_altitude_trend_and_heading_assets_support_get_and_head() {
     for (path, export) in [
         ("/altitude/vsi.js", "createVsi"),
         ("/altitude/trend.js", "createAltitudeTrend"),
+        ("/heading.js", "createHeading"),
     ] {
         for method in ["GET", "HEAD"] {
             let response = router()

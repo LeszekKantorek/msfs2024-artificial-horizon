@@ -9,6 +9,36 @@ pub const SAMPLE_PERIOD: Duration = Duration::from_millis(50);
 pub const STALE_AFTER: Duration = Duration::from_millis(1_000);
 const MAX_SEQUENCE: u64 = (1 << 53) - 1;
 
+/// Magnetic heading in degrees clockwise from north, within [0, 360).
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[serde(transparent)]
+pub struct Heading(f64);
+impl Heading {
+    pub fn new(degrees: f64) -> Result<Self, TelemetryError> {
+        if !degrees.is_finite() || !(0.0..360.0).contains(&degrees) {
+            return Err(TelemetryError::InvalidHeading);
+        }
+        Ok(Self(degrees))
+    }
+    pub fn degrees(self) -> f64 {
+        self.0
+    }
+}
+/// Source-selected magnetic heading with the same range as current heading.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[serde(transparent)]
+pub struct SelectedHeading(Heading);
+impl SelectedHeading {
+    pub fn new(degrees: f64) -> Result<Self, TelemetryError> {
+        Heading::new(degrees)
+            .map(Self)
+            .map_err(|_| TelemetryError::InvalidSelectedHeading)
+    }
+    pub fn degrees(self) -> f64 {
+        self.0.degrees()
+    }
+}
+
 /// Normalized degrees: positive nose up and positive right wing down.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 pub struct Attitude {
@@ -243,6 +273,10 @@ impl AirspeedProfile {
 pub struct FlightSample {
     attitude: Attitude,
     #[serde(skip_serializing_if = "Option::is_none")]
+    heading_deg: Option<Heading>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    selected_heading_deg: Option<SelectedHeading>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     slip_skid: Option<SlipSkid>,
     #[serde(skip_serializing_if = "Option::is_none")]
     turn_rate_dps: Option<TurnRate>,
@@ -271,6 +305,8 @@ impl FlightSample {
     ) -> Self {
         Self {
             attitude,
+            heading_deg: None,
+            selected_heading_deg: None,
             slip_skid,
             turn_rate_dps: turn_rate,
             ias_kt: None,
@@ -285,6 +321,15 @@ impl FlightSample {
     }
     pub fn attitude(self) -> Attitude {
         self.attitude
+    }
+    pub fn with_heading(
+        mut self,
+        heading: Option<Heading>,
+        selected: Option<SelectedHeading>,
+    ) -> Self {
+        self.heading_deg = heading;
+        self.selected_heading_deg = selected;
+        self
     }
     pub fn with_altitude(
         mut self,
@@ -338,6 +383,10 @@ pub struct Snapshot {
     sample_age_ms: Option<u64>,
     attitude: Option<Attitude>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    heading_deg: Option<Heading>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    selected_heading_deg: Option<SelectedHeading>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     slip_skid: Option<SlipSkid>,
     #[serde(skip_serializing_if = "Option::is_none")]
     turn_rate_dps: Option<TurnRate>,
@@ -364,6 +413,8 @@ struct Current {
     sequence: u64,
     state: State,
     accepted_at: Option<Instant>,
+    heading: Option<Heading>,
+    selected_heading: Option<SelectedHeading>,
     slip_skid: Option<SlipSkid>,
     turn_rate: Option<TurnRate>,
     ias: Option<IndicatedAirspeed>,
@@ -401,6 +452,8 @@ impl Current {
             state,
             sample_age_ms: age.map(|age| u64::try_from(age.as_millis()).unwrap_or(u64::MAX)),
             attitude,
+            heading_deg: attitude.and(self.heading),
+            selected_heading_deg: attitude.and(self.selected_heading),
             slip_skid: attitude.and(self.slip_skid),
             turn_rate_dps: attitude.and(self.turn_rate),
             ias_kt: attitude.and(self.ias),
@@ -429,6 +482,8 @@ pub fn channel(source: Source) -> (Publisher, Subscription) {
         sequence: 0,
         state: State::Waiting,
         accepted_at: None,
+        heading: None,
+        selected_heading: None,
         slip_skid: None,
         turn_rate: None,
         ias: None,
@@ -465,6 +520,8 @@ impl Publisher {
             self.current.accepted_at = Some(Instant::now());
         }
         self.current.state = state;
+        self.current.heading = sample.and_then(|s| s.heading_deg);
+        self.current.selected_heading = sample.and_then(|s| s.selected_heading_deg);
         self.current.slip_skid = sample.and_then(|s| s.slip_skid);
         self.current.turn_rate = sample.and_then(|s| s.turn_rate_dps);
         self.current.ias = sample.and_then(|s| s.ias_kt);
@@ -509,6 +566,10 @@ impl Subscription {
 }
 #[derive(Debug, thiserror::Error)]
 pub enum TelemetryError {
+    #[error("heading must be finite magnetic degrees within [0, 360)")]
+    InvalidHeading,
+    #[error("selected heading must be finite magnetic degrees within [0, 360)")]
+    InvalidSelectedHeading,
     #[error("vertical speed must be finite feet per minute")]
     InvalidVerticalSpeed,
     #[error("selected altitude must be finite feet")]

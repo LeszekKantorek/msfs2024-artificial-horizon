@@ -87,6 +87,7 @@ web/
     validation.js           # pure snapshot validation and optional-value normalization
   frame-scheduler.js        # latest-frame scheduling and expiry checks
   panel.js                  # composition, shared attitude clip, and delegation
+  heading.js                # magnetic-heading scale, current pointer and selected bug
   horizon/
     index.js                # composition, shared origins/clips, pure attitude transforms
     world.js                # sky, ground, and horizon line
@@ -218,6 +219,9 @@ The server owns validated samples and deterministic demo scenarios:
 * `SelectedAltitude` validates finite signed feet.
 * `FlightSample::with_selected_altitude` adds the independently optional source target.
 * `VerticalSpeed` validates finite signed ft/min. `FlightSample::with_vertical_speed` adds the independently optional source rate.
+* `Heading` and `SelectedHeading` validate finite magnetic degrees in `[0, 360)`.
+* `FlightSample::with_heading` adds both independently optional headings without changing the constructor.
+* The 18-second heading demo follows source turn rate and crosses north in both directions.
 * The shared altitude/target/VSI demo repeats after 198 seconds while other indications retain 18-second cycles.
 * Altitude and VSI use shared analytic segments. Artificial jumps omit VSI for one sample.
 * `Publisher::publish_sample` uses the existing latest-value channel, sequence, and monotonic age.
@@ -233,6 +237,8 @@ The browser validates those samples and presents them within the available panel
 * `airspeed/index.js` composes IAS and GS visual objects. Each object owns its readings, geometry, and pure calculations.
 * `altitude/index.js` composes its signed tape, rolling readout, independent pressure setting, and selected-altitude object in the existing right-side allocation.
 * `altitude/selected.js` owns the selected readout, bug, and alert history, with DOM-free transition and phase calculations.
+* `heading.js` owns the heading scale, pointer window, selected bug, pure calculations, and local availability.
+* Heading occupies the existing top strip in the symbols layer and owns its clip, without reducing horizon space.
 * Panel acceptance processes every fresh sample before coalescing draws.
 * Timed alert updates use the same frame scheduler and its monotonic clock.
 * The existing `onAttitude` callback retains its attitude-only shape.
@@ -242,7 +248,7 @@ The browser validates those samples and presents them within the available panel
 * Resize preserves the latest accepted sample and its original deadline.
 * Sky/ground and pitch markings use separate transformed groups with separate screen-space clipping.
 * Future instrument regions contain no readings or scales in the production page.
-* `tests/layout-fixture.js` adds the complete intended arrangement only through the development fixture server.
+* `tests/layout-fixture.js` identifies the full 17-element arrangement built from production modules through the development fixture server.
 
 ### Panel boundary
 

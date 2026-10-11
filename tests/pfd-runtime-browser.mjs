@@ -92,10 +92,10 @@ try {
   verifyAltitude(await altitudeReading());
   assert.deepEqual([...loadedModules].sort(), [
     '/airspeed/ground-speed.js', '/airspeed/helpers.js', '/airspeed/ias.js', '/airspeed/index.js',
-    '/airspeed/readout.js', '/airspeed/references.js', '/airspeed/tape.js', '/altitude/baro.js', '/altitude/index.js', '/altitude/readout.js', '/altitude/selected.js', '/altitude/tape.js', '/altitude/trend.js', '/altitude/vsi.js', '/app.js', '/fixed-symbols/aircraft.js', '/fixed-symbols/bank-scale.js', '/fixed-symbols/index.js', '/frame-scheduler.js', '/helpers.js', '/horizon/bank-pointer.js', '/horizon/index.js', '/horizon/pitch-scale.js', '/horizon/world.js', '/layout.js',
+    '/airspeed/readout.js', '/airspeed/references.js', '/airspeed/tape.js', '/altitude/baro.js', '/altitude/index.js', '/altitude/readout.js', '/altitude/selected.js', '/altitude/tape.js', '/altitude/trend.js', '/altitude/vsi.js', '/app.js', '/fixed-symbols/aircraft.js', '/fixed-symbols/bank-scale.js', '/fixed-symbols/index.js', '/frame-scheduler.js', '/heading.js', '/helpers.js', '/horizon/bank-pointer.js', '/horizon/index.js', '/horizon/pitch-scale.js', '/horizon/world.js', '/layout.js',
     '/panel.js', '/slip-skid.js', '/status.js', '/telemetry/client.js', '/telemetry/validation.js', '/turn-rate.js',
   ]);
-  for (const path of ['/altitude/vsi.js', '/altitude/trend.js']) {
+  for (const path of ['/altitude/vsi.js', '/altitude/trend.js', '/heading.js']) {
     const response = await fetch(address + path, { method: 'HEAD' });
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('content-type'), 'text/javascript; charset=utf-8');
@@ -117,6 +117,9 @@ try {
   assert.ok(Number.isFinite(snapshot.altitude_ft));
   assert.ok(snapshot.baro_inhg > 0);
   assert.ok(Number.isFinite(snapshot.vertical_speed_fpm));
+  assert.equal(snapshot.heading_deg, 354);
+  assert.ok(Number.isFinite(snapshot.selected_heading_deg));
+  assert.equal(await page.locator('#heading-value').textContent(), '354°');
   await page.waitForFunction(() => document.querySelector('#vertical-speed-value').textContent === '+4881');
   assert.equal(await page.locator('#vertical-speed-value').textContent(), '+4881');
   assert.ok(Number.isFinite(snapshot.ias_acceleration_ktps));
@@ -141,6 +144,16 @@ try {
   assert.equal(await page.locator('#airspeed').getAttribute('data-overspeed'), 'true');
   assert.equal(await page.locator('#airspeed-trend').evaluate(n => getComputedStyle(n).display), 'none');
   await page.screenshot({ path: '.local/pfd-runtime-landscape.png' });
+  // The source crosses north after the +3 degrees/second segment.
+  await page.waitForFunction(() => document.querySelector('#heading').getAttribute('aria-label') ===
+    'Magnetic heading 0 degrees, selected heading 0 degrees', null, { timeout: 20000 });
+  const north = await page.evaluate(() => ({
+    value: document.querySelector('#heading-value').textContent,
+    center: document.querySelector('#heading-tape-clip rect').getBBox().width / 2,
+    bug: document.querySelector('#selected-heading-bug').transform.baseVal.consolidate().matrix.e,
+  }));
+  assert.equal(north.value, '360°'); assert.ok(Math.abs(north.center - north.bug) < 1e-4);
+  await page.screenshot({ path: '.local/pfd-runtime-heading-north.png' });
   await page.locator('#selected-altitude[data-state="available"]').waitFor({ timeout: 20000 });
   const target = await currentSnapshot();
   assert.equal(target.selected_altitude_ft, 10000);
@@ -168,6 +181,8 @@ try {
   await page.screenshot({ path: '.local/pfd-runtime-vertical-speed.png' });
   await stop();
   await page.locator('.instrument[data-available="false"]').waitFor();
+  assert.equal(await page.locator('#heading-value').textContent(), 'X');
+  assert.equal(await page.locator('#selected-heading-bug').getAttribute('transform'), null);
   assert.equal(await page.locator('#vertical-speed').getAttribute('data-state'), 'unavailable');
   assert.equal(await page.locator('#altitude-trend').evaluate(n => getComputedStyle(n).display), 'none');
   await start();
@@ -183,11 +198,12 @@ try {
   assert.equal(recovered.gsState, 'available');
   assert.equal(recovered.digits, String(Math.floor(recovered.ias)));
   verifyAltitude(await altitudeReading());
+  assert.equal(await page.locator('#heading-value').textContent(), '354°');
   assert.equal(await page.locator('#selected-altitude').getAttribute('data-state'), 'unavailable');
   await page.locator('#vertical-speed[data-state="available"]').waitFor();
   assert.equal(await page.locator('#vertical-speed-value').textContent(), '+4881');
   assert.deepEqual(errors, []);
-  console.log(`Rust-to-browser PFD checks passed on ${await browser.version()}: embedded assets, selected-altitude and VSI SSE/SVG, standard-rate turn, source loss and restart without page reload.`);
+  console.log(`Rust-to-browser PFD checks passed on ${await browser.version()}: embedded assets, heading/north capture, selected-altitude and VSI SSE/SVG, standard-rate turn, source loss and restart without page reload.`);
 } finally {
   if (browser) await browser.close();
   await stop();
