@@ -48,7 +48,8 @@ export async function checkVerticalSpeed(page, setFixture, url) {
             width: box.width, height: box.height, rightDifference: box.right - altitude.right, textRightDifference,
             paintedGap: box.top - 0.5 - (altitude.bottom + 0.5),
             sameWindow: ['fill', 'stroke', 'strokeWidth'].every(key => boxStyle[key] === altitudeStyle[key]),
-            sameText: ['fontFamily', 'fontSize', 'fontWeight', 'fill'].every(key => textStyle[key] === digitStyle[key]),
+            sameText: ['fontFamily', 'fontWeight', 'fill'].every(key => textStyle[key] === digitStyle[key]),
+            fontSize: parseFloat(textStyle.fontSize), fontSizeDifference: parseFloat(digitStyle.fontSize) - parseFloat(textStyle.fontSize),
             bugPainted: document.elementFromPoint(bugPoint.x, bugPoint.y) === bug,
             labelsClear, ticksClear, stable: window.vsiNodes.every(node => node.isConnected),
             obsolete: document.querySelectorAll('#vertical-speed-scale, #vertical-speed-pointer, #vertical-speed-clip, #vertical-speed-off-scale, .vertical-speed-unit').length };
@@ -58,7 +59,7 @@ export async function checkVerticalSpeed(page, setFixture, url) {
         assert.ok(painted.nested && painted.textContained && painted.windowContained && painted.sameWindow && painted.sameText &&
           painted.bugPainted && painted.labelsClear && painted.ticksClear && painted.stable, JSON.stringify({ width, height, fpm, painted }));
         assert.ok(Math.abs(painted.rightDifference) < 1e-4 && Math.abs(painted.paintedGap - 3) < 1e-4);
-        assert.deepEqual([painted.width, painted.height, painted.obsolete], [52, 28, 0]);
+        assert.deepEqual([painted.width, painted.height, painted.obsolete, painted.fontSize, painted.fontSizeDifference], [51, 27, 0, 13, 1]);
       }
       setFixture({ vertical_speed_fpm: -9999, altitude_ft: -60, selected_altitude_ft: -100 });
       await page.waitForFunction(() => document.querySelector('#vertical-speed-value').textContent === '-9999' &&
@@ -82,6 +83,13 @@ export async function checkVerticalSpeed(page, setFixture, url) {
         await page.locator('#vertical-speed[data-state="unavailable"]').waitFor();
         assert.equal(await page.locator('#vertical-speed-value').textContent(), 'X');
         assert.equal(await page.locator('#vertical-speed-value').evaluate(node => getComputedStyle(node).fill), 'rgb(255, 150, 144)');
+        const invalidText = await page.evaluate(() => {
+          const value = document.querySelector('#vertical-speed-value').getBoundingClientRect();
+          const box = document.querySelector('.vertical-speed-window').getBoundingClientRect();
+          const digits = document.querySelector('#altitude-digits > g:last-child > text').getBoundingClientRect();
+          return { rightDifference: value.right - digits.right, contained: value.left > box.left + 1 && value.right < box.right - 1 };
+        });
+        assert.ok(invalidText.contained && Math.abs(invalidText.rightDifference) < 0.02, JSON.stringify(invalidText));
         assert.equal(await page.locator('.instrument').getAttribute('data-available'), 'true');
       }
       setFixture({ vertical_speed_fpm: -1500 });

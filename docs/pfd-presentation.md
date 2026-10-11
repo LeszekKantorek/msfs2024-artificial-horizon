@@ -415,10 +415,12 @@ Keep indications readable across the full panel:
 
 `altitude/index.js` composes the stateless `vsi.js` object inside the altitude group:
 
-* A 52-by-28 CSS px rectangle sits below the current-altitude window, with aligned right borders and three pixels between painted strokes.
-* The window shares altitude's 14 CSS px monospace font, text color, background and one-pixel border.
+* A 51-by-27 CSS px rectangle sits below the current-altitude window, with aligned right borders and three pixels between painted strokes.
+* The window shares altitude's monospace font family, text color, background and one-pixel border.
+* VSI uses 13 CSS px text, one pixel smaller than altitude's 14 CSS px text.
 * The value aligns with the right edge of altitude's digits, using feet per minute without a visible unit label or arrow.
-* The altitude readout supplies that edge from the measured width of its two-digit monospace drum during resize.
+* The altitude readout supplies that edge from the measured bounds of its two-digit monospace drum during resize.
+* VSI accounts for glyph bounds when positioning text, including the wider unavailable `X`.
 * Altitude keeps its existing width and moves to the right edge, returning the former VSI column's width to the horizon.
 * VSI owns its formatting, window geometry and availability, with altitude delegating resize, rendering and invalidation.
 * The tape uses VSI's local window bounds to hide whole intersecting labels and shorten intersecting ticks with two pixels of clearance.
@@ -427,7 +429,7 @@ Keep indications readable across the full panel:
 The local window position uses altitude tape width `W` and height `H`:
 
 ```text
-x = W - 1 - 52
+x = W - 1 - 51
 y = H/2 + 14 + 1 + 3
 ```
 

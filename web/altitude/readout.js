@@ -55,7 +55,8 @@ export function createReadout(defs, parent, warnings) {
       setAttributes(sign, { x: 11, y: center });
       setAttributes(warning, { x: x + width / 2, y: y + center });
       // Two monospace digits keep the same width during rolling and unavailable states.
-      return width - 10.5 + columns[3].current.getComputedTextLength() / 2;
+      const bounds = columns[3].current.getBBox();
+      return width - 10.5 + bounds.x + bounds.width;
     },
     render(value, state) {
       warning.style.display = state === 'available' ? 'none' : '';

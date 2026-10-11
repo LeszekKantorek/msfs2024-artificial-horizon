@@ -167,7 +167,7 @@ Automated acceptance covers these boundaries:
 | Scenario | Independent 3960-sample checkpoints, every jump and phase, analytic altitude/rate agreement, 25 ft/s producing +1500 ft/min, and unchanged other cycles |
 | Node calculations | Signed zero, rounding, raw +/-9999 boundaries, invalid values, window geometry, recovered horizon width, and label/tick obstruction |
 | Shared lifecycle | Latest coherent frame, resize without renewed freshness, expiry before drawing, pause/disconnect, reconnect and background/resume without duplicate subscriptions |
-| SVG | Matching styles/right text edges, 52-by-28 window, three-pixel painted gap and signed text bounds. Target bug visibility, label/tick clearance, node identity and partial loss |
+| SVG | Shared font family/color, 13-pixel VSI text, matching right text edges and 51-by-27 window. Three-pixel painted gap, text bounds, target bug, label/tick clearance, nodes and partial loss |
 | Release runtime | Embedded altitude/VSI module with GET/HEAD and JavaScript MIME, actual Rust ft/min in SSE/SVG, hold, climb, signed sweep and restart recovery |
 
 Use these checks and artifacts:

@@ -25,7 +25,7 @@ test('VSI stays narrower than altitude with aligned right borders and a three-pi
     const layout = pfdLayout(width, height);
     const altitude = layout.altitude;
     const window = vsiWindow(altitude);
-    assert.deepEqual([window.width, window.height], [52, 28]);
+    assert.deepEqual([window.width, window.height], [51, 27]);
     assert.ok(window.width < altitude.width);
     assert.equal(window.x + window.width, altitude.width - 1);
     assert.equal(window.y - 0.5 - (altitude.height / 2 + 14 + 0.5), 3);
@@ -41,7 +41,7 @@ test('VSI stays narrower than altitude with aligned right borders and a three-pi
 test('whole labels disappear only around VSI and reappear as altitude moves; ticks keep left-side clearance', () => {
   const window = vsiWindow({ width: 60, height: 160 });
   const captured = altitudeTicks(10060, 160).find(row => row.value === 10000);
-  assert.deepEqual(tapeMarkPresentation(captured, window), { tickEnd: 5, labelVisible: false });
+  assert.deepEqual(tapeMarkPresentation(captured, window), { tickEnd: 6, labelVisible: false });
   const departed = altitudeTicks(10160, 160).find(row => row.value === 10000);
   assert.deepEqual(tapeMarkPresentation(departed, window), { tickEnd: 12, labelVisible: true });
   for (const y of [window.y - 9, window.y + window.height + 9]) {
@@ -50,6 +50,6 @@ test('whole labels disappear only around VSI and reappear as altitude moves; tic
   for (const y of [window.y - 10, window.y + window.height + 10]) {
     assert.equal(tapeMarkPresentation({ major: true, y }, window).labelVisible, true);
   }
-  assert.deepEqual(tapeMarkPresentation({ major: false, y: 104 }, window), { tickEnd: 5, labelVisible: false });
+  assert.deepEqual(tapeMarkPresentation({ major: false, y: 104 }, window), { tickEnd: 6, labelVisible: false });
   assert.deepEqual(tapeMarkPresentation(captured, vsiWindow({ width: 92, height: 160 })), { tickEnd: 12, labelVisible: false });
 });

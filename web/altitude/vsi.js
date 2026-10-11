@@ -11,7 +11,7 @@ export function verticalSpeedReading(fpm) {
 
 // Local altitude coordinates; include both strokes in the three-pixel gap.
 export function vsiWindow({ width, height }) {
-  return { x: width - 53, y: height / 2 + 18, width: 52, height: 28 };
+  return { x: width - 52, y: height / 2 + 18, width: 51, height: 27 };
 }
 
 export function createVsi(parent) {
@@ -19,25 +19,40 @@ export function createVsi(parent) {
   const window = svgElement('rect', { class: 'vertical-speed-window' });
   const value = svgElement('text', { id: 'vertical-speed-value', class: 'vertical-speed-value' }, 'X');
   group.append(window, value); parent.append(group);
+  let textRight;
+  function alignValue() {
+    if (textRight === undefined) return;
+    value.setAttribute('x', textRight);
+    // Glyph bounds can extend beyond the end anchor.
+    const bounds = value.getBBox();
+    value.setAttribute('x', textRight - (bounds.x + bounds.width - textRight));
+  }
+  function setValue(text) {
+    if (value.textContent === text) return;
+    value.textContent = text;
+    alignValue();
+  }
   function invalidate() {
     group.dataset.state = 'unavailable';
     group.setAttribute('aria-label', 'Vertical speed unavailable');
-    value.textContent = 'X';
+    setValue('X');
   }
   invalidate();
   return {
-    resize(allocation, textRight) {
+    resize(allocation, altitudeTextRight) {
       const geometry = vsiWindow(allocation);
       group.setAttribute('transform', `translate(${geometry.x} ${geometry.y})`);
       setAttributes(window, { width: geometry.width, height: geometry.height });
-      setAttributes(value, { x: textRight - geometry.x, y: geometry.height / 2 });
+      textRight = altitudeTextRight - geometry.x;
+      setAttributes(value, { y: geometry.height / 2 });
+      alignValue();
     },
     invalidate,
     render(fpm) {
       const reading = verticalSpeedReading(fpm);
       if (reading.state === 'unavailable') { invalidate(); return; }
       group.dataset.state = reading.state;
-      value.textContent = reading.text;
+      setValue(reading.text);
       group.setAttribute('aria-label', `Vertical speed ${fpm} feet per minute`);
     },
   };
