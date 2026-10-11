@@ -31,11 +31,11 @@ test('VSI stays narrower than altitude with aligned right borders and a three-pi
     assert.equal(window.y - 0.5 - (altitude.height / 2 + 14 + 0.5), 3);
     assert.ok(window.y + window.height + 0.5 < altitude.height);
     assert.ok(window.x - 0.5 >= 7.5, 'VSI starts outside the painted seven-pixel target bug');
-    assert.equal(altitude.x + altitude.width, layout.altitudeTrend.x);
-    assert.equal(layout.altitudeTrend.x + layout.altitudeTrend.width, width);
-    assert.equal(layout.attitude.width, width - layout.airspeed.width - altitude.width - layout.altitudeTrend.width);
+    assert.equal(altitude.x + altitude.width, width);
+    assert.equal(layout.attitude.x + layout.attitude.width, altitude.x);
+    assert.equal(layout.attitude.width, width - layout.airspeed.width - altitude.width);
     const oldHorizonWidth = width - layout.airspeed.width - altitude.width - Math.max(42, Math.min(54, width * 0.09));
-    assert.ok(layout.attitude.width - oldHorizonWidth >= 38);
+    assert.ok(layout.attitude.width - oldHorizonWidth >= 42);
   }
 });
 

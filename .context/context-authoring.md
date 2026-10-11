@@ -11,6 +11,8 @@ status: active
 * Use tables or diagrams only when they reduce reading effort.
 * Give each entry a specific retrieval condition in the table-only index.
 * Keep independent topics separate so agents can read only relevant entries.
+* Keep task navigation in [task guidance](task-guidance.md) and procedural rules in their subject entries or canonical documents.
+* Retain historical source pointers and scoped evidence limits when consolidating duplicate guidance.
 * Follow the context skills for metadata, retrieval, and review procedures instead of duplicating their instructions.
 
 Source: accepted requirement, 2026-10-09, to reduce recurring context cost without losing actionable knowledge.

@@ -82,7 +82,7 @@ Use original graphics. Do not embed PDF screenshots or copy the bezel.
 
 | Area | Layout rule |
 | --- | --- |
-| Portrait | Attitude center, IAS left, altitude right. Compact VSI below altitude and a narrow trend lane beside the tape. Heading above |
+| Portrait | Attitude center, IAS left, altitude right. Compact VSI below altitude. Altitude trend over the left ticks and below the selected-altitude bug. Heading above |
 | Landscape | Use extra width and reduced height. Retain familiar instrument positions |
 | Instrument sizing | Size digits, symbols, tapes, and horizon independently. Preserve undistorted symbols and readable central attitude |
 | Page chrome | Minimize bezel, headings, and margins |

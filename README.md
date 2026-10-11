@@ -82,7 +82,7 @@ Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
 | Speed warnings | Red current-speed pointer at or above 140 kt. Yellow IAS digits when the rising trend predicts reaching 140 kt |
 | Speed unavailable | `X` means unavailable, `OVR` means above 999 kt. Configured references appear above GS when IAS is unavailable |
 | Altitude | Aligned `[KT]`/`[FT]` labels and equal-height side scales. Fixed 8 CSS px spacing per 20 ft. Labels every 100 ft. Taller panels show more altitude. Signed readout: -9999 to 99999 ft. |
-| Altitude trend | Magenta line beside the right tape edge predicts altitude in six seconds from VSI. Climb extends up, descent down. Zero or missing required data hides it |
+| Altitude trend | Magenta line over the left-side altitude ticks predicts altitude in six seconds from VSI. The turquoise selected-altitude bug covers it. Climb extends up, descent down. Zero or missing required data hides it |
 | Pressure | Centered source-formatted BARO text in a cyan frame. Demo supplies text such as `29.92 inHg`; text may also contain hPa or `BARO` |
 | Selected altitude | Read-only target above altitude, with a notched turquoise tape block pinned at either edge. The black pointer fits its notch at capture. `X` means unavailable. `OVR` means outside -9999 to 99999 ft |
 | Altitude alerts | Five-second flashing on entry within 1000 and 200 ft. Entry within +/-200 ft arms deviation. Leaving it flashes yellow for five seconds, then stays yellow until return or reset |
@@ -115,6 +115,7 @@ The other indications keep their existing 18-second cycles. Transitions are not 
 First samples after target changes or recovery establish the alert state without flashing.
 [#25](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/25) owns VSI acceptance.
 VSI matches each altitude segment's slope. Artificial jumps omit VSI for one sample instead of inventing a rate.
+[#63](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/63) owns acceptance of the altitude trend's tick-lane placement and paint order.
 [#26](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/26) owns heading and full-panel acceptance.
 Heading follows the demo's turn rate across north in both directions, repeating every 18 seconds.
 Ground track, a separate numeric selected heading, and heading controls are outside this demo's scope.

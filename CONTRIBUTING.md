@@ -53,6 +53,7 @@ npx --yes skills add LeszekKantorek/context-skills --agent codex --skill context
 ```
 
 Follow [AGENTS.md](AGENTS.md) when starting agent work.
+Use [task guidance](.context/task-guidance.md) to select procedures from project context and existing Markdown documentation.
 
 #### Session hooks
 

@@ -13,8 +13,26 @@ status: active
 * For #37 and later, distinguish overlapping background coverage from non-overlapping indication content using the [module plan](pfd-module-plan.md).
 * Keep desktop Edge evidence separate from required real iOS Safari and Android Chrome acceptance.
 
+## Paint order checks
+
+Apply these checks when changing SVG layers.
+
+* Check points inside intersecting painted strokes or fills, including transforms and clipping.
+* Use visible hit order at those points to check which object covers the other.
+* Do not infer painted overlap solely from bounding boxes or render-call order.
+* Temporarily reverse the relevant SVG node order to check whether the test detects the wrong layer.
+* Apply [test sensitivity and cleanup rules](validation-and-review.md#select-evidence-by-failure-risk) when using temporary mutations.
+* Preserve controlled inputs and baseline provenance under the [screenshot comparison procedure](../docs/testing.md#screenshot-comparisons).
+* Include capture, pinned edges, both directions, signed values, missing data, expiry, and recovery when applicable.
+
+The [altitude trend acceptance procedure](../docs/testing.md#altitude-trend-placement-acceptance) gives the concrete #63 scenarios.
+
+## Sources
+
 Sources: accepted #20 implementation plan, 2026-10-09; bank-zero clipping reproduced in 568x240 desktop viewport and covered by `tests/layout.test.mjs`.
 
 Source: #66 browser check correction, 2026-10-11; retained hidden heading labels had nonzero bounds outside their painted clip.
 
 Source: accepted #26 scope amendment, 2026-10-11. Scope excludes ground-track item 19. The full fixture contains 17 elements and uses production heading SVG.
+
+Source: #63 painted-overlap and reversed-layer checks consolidated from validation guidance, 2026-10-11.
