@@ -1,54 +1,47 @@
 ---
-description: Maintain the three context skills, their installation records, and session hooks.
+description: Maintain the six context skills, procedural-skill-creator, installation records, and session hooks.
 status: active
 ---
 
 ## Reinstall context skills
 
-Use this procedure when maintaining the context tools named in [AGENTS](../AGENTS.md).
+Use [setup and skill sources](../CONTRIBUTING.md#3-prepare-agent-skills-and-hooks) for the tested revision and installation commands.
 
-1. Read [setup and skill sources](../CONTRIBUTING.md#3-prepare-agent-skills-and-hooks).
-2. Inspect the repository diff and preserve intentional local adaptations before replacing installed files.
-3. Remove existing copies for a clean reinstall:
+1. Inspect the repository diff and preserve intentional local changes before replacing installed files.
+2. Install the six context skills from the pinned revision in setup.
+3. Update `skills-lock.json` and `.agents/skills/` together.
+4. Compare the installed files and hooks with the selected upstream revision.
 
-   ```powershell
-   npx --yes skills remove context-apply context-gather context-import-sessions -y
-   ```
+* Keep installer-generated `computedHash` values as source provenance; do not substitute local hash calculations.
+* Keep the six context skills byte-identical to the tested upstream revision while evaluating their behavior.
+* Keep `procedural-skill-creator` installed from `LeszekKantorek/agent-skills`.
+* Preserve the [exclusions](../.gitignore) that include the six context skills and `procedural-skill-creator` while excluding unrelated local skills.
+* Keep `.context/index.md` as this project's table-only navigation map; the upstream skills impose no index format.
 
-4. Run the installation command from setup.
-5. Compare the installed files with the project adaptations below before accepting the reinstall.
+## Test revision and compatibility
 
-* Update `skills-lock.json` and `.agents/skills/` together when changing their upstream installation.
-* Keep upstream `computedHash` values as source provenance without replacing them with undocumented local hash calculations.
-* Review intentional repository adaptations separately from the upstream lock record.
-* Keep `.context/index.md` as the table-only index.
-* Preserve the [exclusions](../.gitignore) that include only the three context skill directories by default.
-
-## Project adaptations
-
-Use [task guidance](task-guidance.md#working-approach) for the project workflow and its policy on retired expert skills.
-
-* The versioned session importer lists the queue without writing and distinguishes missing paths from missing files.
-* Both queue writers retry transient Windows replacement failures for up to one second while preserving the queue lock.
-* Keep the five-second hook timeout sufficient for Git discovery, lock acquisition, replacement retries, and process startup.
-* Compare importer behavior after reinstalling because installation can replace the adaptation.
-* Keep session-tooling tests in `context-skills`; the proposed changes and test source are recorded in [context-skills #4](https://github.com/LeszekKantorek/context-skills/issues/4).
-
-The upstream lock records the installed source, not a claim that adapted copies remain byte-identical to it.
+* The test installation uses [context-skills PR #7](https://github.com/LeszekKantorek/context-skills/pull/7), branch `codex/context-skills-refresh`, commit `2598a6246b8649f7eaea68720201d9dbff1ddd84`.
+* The six skills replace the retired Apply, Gather, and Import Sessions skills; do not reinstall the retired set for testing.
+* The session registry is UTF-8 CSV at `.context/sessions.log`, with an OS-backed `.context/.sessions.lock`.
+* The new tools do not migrate or read the legacy `.context/sessions/` registry.
+* Retain legacy session metadata separately; absence from the new registry does not establish completed review.
+* Previous local importer adaptations apply to the retired implementation; do not copy them into the new workflow without evidence of a current defect.
+* Keep session-tooling tests upstream in `context-skills`.
 
 ## Hook maintenance
 
-* Read [hook setup](../CONTRIBUTING.md#session-hooks) for sources, files, events, dependencies, and trust steps.
-* Follow `context-import-sessions` for checkpoint selection, reading, and completion bookkeeping.
-* Repeat the unlocked read-only queue snapshot if concurrent hook updates make the result incomplete.
+* Read [hook setup](../CONTRIBUTING.md#session-hooks) for sources, events, dependencies, and trust steps.
+* Preserve unrelated hooks when updating the integration.
+* The startup reminder describes the six context skills without prescribing a sequence.
+* Use `context-review-sessions` with `context-preserve` for pending-session review and completion bookkeeping.
+* Exclude the CSV registry, its lock, and legacy session metadata from knowledge retrieval and commits.
+* Stop and PreCompact allow five seconds; Interrupt and SessionEnd retain the host's three-second maximum.
 * An unavailable transcript prevents content review but does not prove that the session performed no work.
-* Preserve unrelated hooks.
-* Align the startup reminder with `.context/index.md`.
 
-> Setup documentation does not prove that local hooks executed successfully.
+> Setup documentation and helper tests do not prove that local Codex hook events executed successfully.
 
-Sources: [AGENTS](../AGENTS.md) defines roles, each skill defines its procedure, and moving maintenance rules here was approved on 2026-10-09.
+## Sources
 
-Source: accepted project-maintenance review, 2026-10-11, covering local skill adaptations and read-only session inspection.
-
-Source: explicit migration to project context and existing Markdown guidance, 2026-10-11.
+* Source: requested replacement with PR #7 and installation of `procedural-skill-creator`, 2026-10-17.
+* Source: installation instructions and Codex integration at the pinned upstream revision.
+* Source: earlier project maintenance rules, 2026-10-09 through 2026-10-11; retired implementation details are superseded by the test revision above.

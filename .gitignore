@@ -19,15 +19,21 @@ rustc-ice-*.txt
 
 # Local context session metadata and Python hook caches
 .context/sessions/
+.context/sessions.log
+.context/.sessions.lock
 __pycache__/
 *.pyc
 
 # Local work and additional skills
 /.local/
 /.agents/skills/*/
-!/.agents/skills/context-apply/
-!/.agents/skills/context-gather/
-!/.agents/skills/context-import-sessions/
+!/.agents/skills/context-preserve/
+!/.agents/skills/context-review-sessions/
+!/.agents/skills/context-map/
+!/.agents/skills/context-maintain/
+!/.agents/skills/context-diagnose/
+!/.agents/skills/context-compile/
+!/.agents/skills/procedural-skill-creator/
 
 # RustRover
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can

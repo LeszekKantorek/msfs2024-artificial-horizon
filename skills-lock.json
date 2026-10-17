@@ -1,23 +1,53 @@
 {
   "version": 1,
   "skills": {
-    "context-apply": {
+    "context-compile": {
       "source": "LeszekKantorek/context-skills",
+      "ref": "2598a6246b8649f7eaea68720201d9dbff1ddd84",
       "sourceType": "github",
-      "skillPath": "skills/context-apply/SKILL.md",
-      "computedHash": "4f9de0ad8d340569a119f940c20ed201504e77508e19cc156fa41737754624b8"
+      "skillPath": "skills/context-compile/SKILL.md",
+      "computedHash": "61591ae51ec74796357af984339c0a7aa15593811a975dddaf332f8863dfb75f"
     },
-    "context-gather": {
+    "context-diagnose": {
       "source": "LeszekKantorek/context-skills",
+      "ref": "2598a6246b8649f7eaea68720201d9dbff1ddd84",
       "sourceType": "github",
-      "skillPath": "skills/context-gather/SKILL.md",
-      "computedHash": "7f2bb1e23d479b850dbb580d30589172d47851794d795422aa15bba551a596d5"
+      "skillPath": "skills/context-diagnose/SKILL.md",
+      "computedHash": "fa87622c6575cd5a9c55db227290d3f90d3101fce17b6a74c17371c366ca5086"
     },
-    "context-import-sessions": {
+    "context-maintain": {
       "source": "LeszekKantorek/context-skills",
+      "ref": "2598a6246b8649f7eaea68720201d9dbff1ddd84",
       "sourceType": "github",
-      "skillPath": "skills/context-import-sessions/SKILL.md",
-      "computedHash": "f7c93a96e5d77edb47f31a71d1b102b03729308499c4a2db706a62001b0781ce"
+      "skillPath": "skills/context-maintain/SKILL.md",
+      "computedHash": "2776605df583669cb563bc154b94f564627e770f54f527f4e6193a8f1a547111"
+    },
+    "context-map": {
+      "source": "LeszekKantorek/context-skills",
+      "ref": "2598a6246b8649f7eaea68720201d9dbff1ddd84",
+      "sourceType": "github",
+      "skillPath": "skills/context-map/SKILL.md",
+      "computedHash": "f0af64e4210148f5988066cd4addf1b3a10e21dcabdeab5e635ba09f56d00426"
+    },
+    "context-preserve": {
+      "source": "LeszekKantorek/context-skills",
+      "ref": "2598a6246b8649f7eaea68720201d9dbff1ddd84",
+      "sourceType": "github",
+      "skillPath": "skills/context-preserve/SKILL.md",
+      "computedHash": "d25b8856d53c979fdee97fbb77dd1909607fc930352023d145b6ed11cb2bf98a"
+    },
+    "context-review-sessions": {
+      "source": "LeszekKantorek/context-skills",
+      "ref": "2598a6246b8649f7eaea68720201d9dbff1ddd84",
+      "sourceType": "github",
+      "skillPath": "skills/context-review-sessions/SKILL.md",
+      "computedHash": "92d8a547d8151cc15a24f09ca57d1c7a2e89928691acc9483c8c7bc8477d8eea"
+    },
+    "procedural-skill-creator": {
+      "source": "LeszekKantorek/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/procedural-skill-creator/SKILL.md",
+      "computedHash": "2c552756848d42d4ef5b6c705af24220cc4b748974197443adce86a1354c2935"
     }
   }
 }

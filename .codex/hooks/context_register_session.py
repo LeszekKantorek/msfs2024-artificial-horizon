@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Register a session checkpoint without opening its transcript."""
 
+import csv
 import datetime
 import json
 import os
@@ -11,13 +12,13 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 
-FIELDS = {"session_id", "updated_at", "transcript_path", "reviewed_at"}
+FIELDS = ("session_date", "session_id", "path", "reviewed_date")
 
 
 @contextmanager
 def queue_lock(directory):
     """Shared protocol for the independently installed hook and queue reader."""
-    with (directory / ".queue.lock").open("a+b") as handle:
+    with (directory / ".sessions.lock").open("a+b") as handle:
         deadline = time.monotonic() + 1
         while True:
             try:
@@ -43,41 +44,68 @@ def queue_lock(directory):
                 fcntl.flock(handle, fcntl.LOCK_UN)
 
 
+def validate_row(row, source):
+    if (set(row) != set(FIELDS)
+            or any(not isinstance(value, str) for value in row.values())
+            or not row["session_id"].strip() or not row["path"].strip()):
+        raise ValueError("invalid session record: " + str(source))
+    for field in ("session_date", "reviewed_date"):
+        value = row[field]
+        if field == "reviewed_date" and not value:
+            continue
+        try:
+            if datetime.date.fromisoformat(value).isoformat() != value:
+                raise ValueError()
+        except ValueError:
+            raise ValueError("invalid session date in " + str(source)) from None
+
+
 def read_sessions(directory):
+    """Read one snapshot of the current CSV log."""
     sessions = {}
-    for path in sorted(directory.glob("*.json")):
-        row = json.loads(path.read_text(encoding="utf-8"))
-        if (not isinstance(row, dict) or set(row) != FIELDS
-                or not isinstance(row["session_id"], str) or not row["session_id"]
-                or not isinstance(row["updated_at"], str)
-                or not isinstance(row["transcript_path"], (str, type(None)))
-                or not isinstance(row["reviewed_at"], (str, type(None)))):
-            raise ValueError("invalid session record: " + str(path))
-        if row["session_id"] in sessions:
-            raise ValueError("duplicate session_id in queue: " + str(path))
-        sessions[row["session_id"]] = (path, row)
+    path = directory / "sessions.log"
+    if not path.exists():
+        return sessions
+    with path.open(encoding="utf-8", newline="") as handle:
+        reader = csv.reader(handle, strict=True)
+        if next(reader, None) != list(FIELDS):
+            raise ValueError("invalid session log header: " + str(path))
+        for values in reader:
+            if len(values) != len(FIELDS):
+                raise ValueError("invalid session record: " + str(path))
+            row = dict(zip(FIELDS, values))
+            validate_row(row, path)
+            if row["session_id"] in sessions:
+                raise ValueError("duplicate session_id in session log: " + row["session_id"])
+            sessions[row["session_id"]] = row
     return sessions
 
 
-def write_record(path, row):
+def write_sessions(path, sessions):
+    """Write the log atomically, retrying one failed write under the caller's lock."""
+    for row in sessions.values():
+        validate_row(row, path)
+    for attempt in range(2):
+        try:
+            write_sessions_once(path, sessions)
+            return
+        except OSError:
+            if attempt == 1:
+                raise
+            time.sleep(0.05)
+
+
+def write_sessions_once(path, sessions):
     temporary = None
     try:
-        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", newline="", dir=path.parent,
                                          suffix=".tmp", delete=False) as handle:
             temporary = Path(handle.name)
-            json.dump(row, handle, ensure_ascii=False, indent=2)
-            handle.write("\n")
-        # Unlocked readers can briefly prevent replacement on Windows.
-        deadline = time.monotonic() + 1
-        while True:
-            try:
-                os.replace(temporary, path)
-                break
-            except OSError as error:
-                if (os.name != "nt" or getattr(error, "winerror", None) not in (5, 32, 33)
-                        or time.monotonic() >= deadline):
-                    raise
-                time.sleep(0.02)
+            writer = csv.writer(handle, lineterminator="\n")
+            writer.writerow(FIELDS)
+            for row in sessions.values():
+                writer.writerow([row[field] for field in FIELDS])
+        os.replace(temporary, path)
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
@@ -87,28 +115,19 @@ REGISTER_EVENTS = {"Stop", "Interrupt", "PreCompact", "SessionEnd"}
 
 
 def register(directory, session_id, transcript_path):
+    if not isinstance(transcript_path, str) or not transcript_path.strip():
+        return
     directory.mkdir(parents=True, exist_ok=True)
     with queue_lock(directory):
         sessions = read_sessions(directory)
         previous = sessions.get(session_id)
-        now = datetime.datetime.now(datetime.timezone.utc)
-        if previous:
-            path, row = previous
-            # Keep distinct checkpoints if the clock repeats or moves back.
-            last = datetime.datetime.fromisoformat(row["updated_at"].replace("Z", "+00:00"))
-            now = max(now, last + datetime.timedelta(microseconds=1))
-        else:
-            number = len(sessions) + 1
-            path = directory / ("session-%06d.json" % number)
-            while path.exists():
-                number += 1
-                path = directory / ("session-%06d.json" % number)
-        write_record(path, {
+        sessions[session_id] = {
+            "session_date": previous["session_date"] if previous else datetime.date.today().isoformat(),
             "session_id": session_id,
-            "updated_at": now.isoformat(),
-            "transcript_path": transcript_path,
-            "reviewed_at": None,
-        })
+            "path": transcript_path,
+            "reviewed_date": previous["reviewed_date"] if previous else "",
+        }
+        write_sessions(directory / "sessions.log", sessions)
 
 
 def main():
@@ -129,13 +148,13 @@ def main():
     except (OSError, subprocess.SubprocessError):
         return 0
     transcript = event.get("transcript_path")
-    if isinstance(transcript, str) and transcript:
+    if isinstance(transcript, str) and transcript.strip():
         transcript = str((Path(cwd) / transcript).resolve())
     else:
         transcript = None
     try:
-        register(Path(result.stdout.strip()) / ".context" / "sessions", session_id, transcript)
-    except (OSError, ValueError, TypeError) as exc:
+        register(Path(result.stdout.strip()) / ".context", session_id, transcript)
+    except (OSError, ValueError, TypeError, csv.Error) as exc:
         print("context-skills: could not register session: %s" % exc, file=sys.stderr)
         return 1
     if event["hook_event_name"] in {"Stop", "PreCompact"}:

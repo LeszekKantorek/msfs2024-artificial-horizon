@@ -2,7 +2,7 @@
 
 ## Before work
 
-1. Use `context-apply` with [.context/index.md](.context/index.md) to select entries by the task's affected behavior.
+1. Use [.context/index.md](.context/index.md) to select entries by the task's affected behavior.
 2. Read the selected entries and only the source sections needed for the current change.
 3. Use [task guidance](.context/task-guidance.md) when the route is unclear or the task crosses several areas.
 4. Stop discovery when the expected result, applicable constraints, and validation method are clear.
@@ -26,10 +26,15 @@
 
 | Skill | Use |
 | --- | --- |
-| `context-apply` | Retrieve and apply project knowledge |
-| `context-gather` | Save session learning, review entries, and maintain the table-only index |
-| `context-import-sessions` | Process selected saved sessions and invoke gathering |
+| `context-preserve` | Preserve decisions and findings with rationale and evidence |
+| `context-review-sessions` | Review pending sessions through `context-preserve` |
+| `context-map` | Connect tasks and questions to relevant sources |
+| `context-maintain` | Improve knowledge coherence and organization |
+| `context-diagnose` | Investigate agent mistakes and check corrections |
+| `context-compile` | Turn established project procedures into skills |
+| `procedural-skill-creator` | Create or revise executable skill procedures |
 
 * Follow each skill's instructions.
-* Exclude `.context/sessions/` from knowledge retrieval.
-* Use `context-import-sessions` to read selected session records.
+* Choose the skill that fits the task; no skill sequence is required.
+* Exclude `.context/sessions.log`, `.context/.sessions.lock`, and legacy `.context/sessions/` from knowledge retrieval.
+* Use `context-review-sessions` to review registered sessions.
