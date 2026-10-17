@@ -1,30 +1,24 @@
 ---
-description: Extend or validate altitude, barometric pressure, signed rolling drums, or the right-side PFD layout.
+description: Locate altitude and BARO contracts, and preserve lessons from tape and glyph validation.
 status: active
 ---
 
-Read the canonical contract for the affected behavior:
+Select the source for the affected boundary:
 
-| Contract | Source |
+| Boundary | Source |
 | --- | --- |
 | Fields, independent validity, pressure meaning, and demo sweeps | [Altitude telemetry](../docs/telemetry-contract.md#optional-altitude-and-pressure-setting) |
-| Tape, drums, display limits, opacity, and unavailable states | [Altitude presentation](../docs/pfd-presentation.md#altitude-and-barometric-setting) |
-| Task scope and public acceptance evidence | [Issue #23](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/23), [PR #59](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/pull/59), [footer revision #65](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/65) |
+| Tape spacing, drums, display limits, BARO formatting, and availability | [Altitude presentation](../docs/pfd-presentation.md#altitude-and-barometric-setting) |
+| Automated and device checks | [Altitude acceptance](../docs/testing.md#altitude-and-pressure-acceptance), [footer and BARO checks](../docs/testing.md#tape-footers-and-source-formatted-baro) |
+| Public evidence and accepted scope | [Issue #23](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/23), [PR #59](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/pull/59), [footer revision #65](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/65) |
 
-* Use the accepted -9999 to 99999 ft display range and 20-ft lower drum when extending altitude.
-* Keep finite out-of-display-range values valid in telemetry.
-* Keep altitude and pressure availability independent and preserve their shared sample deadline.
-* Keep the separate altitude tape because its responsive span, signs, and drums differ from IAS.
-* Keep altitude minor ticks 8 CSS px apart and major ticks 40 CSS px apart through resize and rotation.
-* Show more altitude and labels on taller tapes instead of stretching a fixed 400-ft range.
-* Grow the retained tick pool only on resize and reuse existing nodes during sample rendering.
-* Validate actual glyph bounds when changing the pressure readout because a 24-pixel background caused a 2-pixel text collision in Edge.
-* Keep the corrected pressure background 32 pixels high.
-* Keep BARO as one source-formatted string because #65 replaced the separate numeric value and unit.
-* Treat server and embedded Web as one delivery for this field replacement without legacy compatibility.
-* Preserve every BARO string, including empty text and whitespace, and keep numeric formatting in the producer.
-* Check the centered text anchor separately from glyph bounds because font side bearings can produce a subpixel visual offset.
-* Replace future illustrations with real modules in the full layout fixture as each instrument arrives.
+Retain these reasons and validation lessons when changing the presentation:
+
+* Altitude has a separate tape because its responsive span, signed values, and 20-ft drums differ from IAS.
+* The accepted resize correction keeps landscape pixel spacing and reveals more altitude on taller tapes. Do not restore a fixed 400-ft span.
+* A 24-pixel pressure background caused a 2-pixel text collision in Edge. The corrected height is 32 pixels.
+* Check actual pressure glyph bounds and the centered text anchor separately. Font side bearings can produce a subpixel visual offset.
+* The #65 BARO replacement deliberately ships server and embedded Web together. Its [versioning exception](../docs/telemetry-contract.md#compatibility) is limited to that replacement.
 
 Source: accepted #23 implementation plan and selected range/drums, 2026-10-11.
 Source: Edge 155.0.4283.45 geometry validation on 2026-10-11.

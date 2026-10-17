@@ -361,6 +361,11 @@ Unavailable state example:
 | Unknown field | Client ignores it |
 | Malformed message, unknown state, non-finite/out-of-range attitude | Client rejects it |
 
+The BARO replacement in [#65](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/65) is an accepted exception to the versioning rule.
+It replaced the numeric pressure representation with `baro_text` within v1 because the server and embedded browser ship together.
+That change provides no adapter for the former BARO representation; consumers must update with the delivered server and browser.
+The exception applies only to that replacement. Future removals or meaning changes follow the versioning rule above.
+
 ## Freshness and status
 
 | Source state | Meaning |

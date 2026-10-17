@@ -2,6 +2,24 @@
 
 > Procedures and criteria belong here. Record results and acceptance progress in the related GitHub issue or PR.
 
+## Find the required procedure
+
+Start with the change scope, then select the affected procedure:
+
+| Task | Source | Use condition |
+| --- | --- | --- |
+| Select checks | [Validation scope](#validation-by-change-scope) | Every change |
+| Reuse previous results | [Evidence reuse](#evidence-reuse) | Relevant validation already exists |
+| Run application checks | [Automated checks](#automated-checks) | Application code, dependencies, or build changes |
+| Validate presentation | [Desktop scripts](#responsive-pfd-layout-and-desktop-checks) | Rendering, geometry, lifecycle, or asset integration changes |
+| Validate speed indications | [IAS/GS](#airspeed-and-ground-speed-acceptance), [TAS](#true-airspeed-acceptance), [ranges and trend](#airspeed-ranges-references-and-trend-acceptance) | Select the changed speed indication |
+| Validate altitude indications | [Altitude/BARO](#altitude-and-pressure-acceptance), [alerts](#selected-altitude-and-alert-acceptance), [VSI](#vertical-speed-acceptance), [trend placement](#altitude-trend-placement-acceptance) | Select the changed right-side indication |
+| Validate heading | [Heading acceptance](#heading-acceptance) | Heading changes or full-panel acceptance |
+| Validate phones | [Real-phone procedure](#real-phone-acceptance-procedure) | Device behavior or feature acceptance |
+| Supply controlled phone inputs | [Phone fixture setup](#phone-fixture-setup) | Limits, partial failures, or repeatable visual scenarios |
+| Record binary or visual evidence | [Build provenance](#build-provenance), [screenshot comparisons](#screenshot-comparisons) | Results depend on the tested executable or captures |
+| Change acceptance CI | [Validator checks](pr-acceptance.md#validate-changes-to-the-control) | Acceptance parser or workflow changes |
+
 ## Validation by change scope
 
 Use the changed behavior and acceptance criteria to select local checks:
@@ -81,20 +99,14 @@ The desktop layout script runs `tests/tape-footer-browser-checks.mjs` against bo
 
 Inspect `.local/pfd-browser/footer-*` screenshots at 320×480, 326×246, and 568×240 over both sky and ground.
 Run the release-runtime script after building the final embedded Web assets.
-On actual iOS Safari and Android Chrome, rotate the device, expand and collapse browser bars, and inspect safe areas, readability, and edge seams.
-Record each device and browser version separately; desktop padding simulation does not establish device acceptance.
+For #65, apply the [shared phone procedure](#real-phone-acceptance-procedure) and inspect footer readability and edge seams throughout the layout scenarios.
 
-Real-device acceptance requires both iOS Safari and Android Chrome:
+Apply the [shared phone procedure](#real-phone-acceptance-procedure) for #23, with these altitude-specific checks:
 
-1. Record the device, OS, browser/version, tested commit, viewport, date, and pass/fail observations in #23 or its PR.
-2. Start the Rust demo through the [phone procedure](../README.md#use-your-phone).
-3. Watch a complete cycle for climbing, descending, negative altitude, zero crossing, digit carries, and pressure changes.
-4. Check the 100/20-ft markings, fixed pointer, rolling digits, aligned `[KT]`/`[FT]`, and source-formatted BARO text.
-5. Compare portrait and landscape at the same browser zoom and check the same tick spacing with more values on the taller tape.
-6. Rotate the phone and expand/collapse browser bars. Check safe areas, readable labels, undistorted symbols, and no scrolling or collisions.
-7. Stop/restart the server and lock/unlock the phone. Require a fresh sample before indications return without reload.
-8. Use the [development fixture procedure](#real-phone-checks) for independent missing/invalid altitude and pressure, both altitude overflow boundaries, and long signed digits against sky and ground.
-9. Leave unavailable device results unchecked. Desktop emulation does not establish phone acceptance.
+1. Watch a complete cycle for climbing, descending, negative altitude, zero crossing, digit carries, and pressure changes.
+2. Check the 100/20-ft markings, fixed pointer, rolling digits, aligned `[KT]`/`[FT]`, and source-formatted BARO text.
+3. Compare orientations at the same zoom: tick spacing stays fixed and the taller tape shows more values.
+4. Use [phone fixtures](#phone-fixture-setup) for independent missing/invalid altitude and pressure, both overflow boundaries, and long signed digits.
 
 ## HTTP startup checks
 
@@ -164,15 +176,12 @@ Use these checks and artifacts for automated acceptance:
 * They check bug paint visibility and minus-sign clearance at positive and negative capture without five-second wall-clock waits.
 * Inspect screenshots at `.local/pfd-browser/selected-altitude-*` and `.local/pfd-runtime-selected-altitude.png`.
 
-Real-device acceptance uses this procedure on iOS Safari and Android Chrome separately:
+Apply the [shared phone procedure](#real-phone-acceptance-procedure) for #24, with these alert-specific checks:
 
-1. Record device, OS, browser/version, tested commit, date, viewport, and observations in #24 or its PR.
-2. Watch the 198-second demo for both approach directions, full flash intervals, target changes, and yellow deviation.
-3. Check the pinned bug and selected value against sky and ground in portrait and short landscape, including 320 CSS px width.
-4. Rotate and change browser-bar visibility. Check safe areas, readable text, undistorted symbols, and no scrolling or collisions.
-5. Use the development fixture to check target loss, malformed target, both altitude overflow boundaries, current-altitude loss, pressure-only loss, and return into the captured band.
-6. Check Wi-Fi/server loss, lock/unlock, and background/resume during an alert. Recovery requires fresh data and silent initialization.
-7. Leave device acceptance unchecked until both device results identify the tested build and satisfy these checks.
+1. Watch the 198-second demo for both approach directions, full flash intervals, target changes, and yellow deviation.
+2. Check the pinned bug and selected value against sky and ground in portrait and short landscape, including 320 CSS px width.
+3. Use [phone fixtures](#phone-fixture-setup) for target loss, malformed targets, both overflow boundaries, current-altitude loss, pressure-only loss, and return into capture.
+4. Perform the shared loss and resume scenarios during an alert. Recovery requires fresh data and silent initialization.
 
 ## Heading acceptance
 
@@ -209,8 +218,7 @@ The fixture accepts these independent heading inputs:
 {"heading_deg":360,"selected_heading_deg":1}
 ```
 
-> Real iOS Safari and Android Chrome require separate full-panel results, including rotation, browser bars, safe areas, readability, and data recovery.
-> Desktop emulation does not confirm either device check.
+Apply the [shared phone procedure](#real-phone-acceptance-procedure) for #26, including full-panel results and the controlled heading scenarios above.
 
 ## Vertical-speed acceptance
 
@@ -237,18 +245,13 @@ Use these checks and artifacts:
 * Inspect `.local/pfd-browser/altitude-trend-*` for upward/downward paint over the left ticks and below the turquoise bug.
 * Inspect `.local/pfd-runtime-vertical-speed.png` for the compiled demo's +1500 ft/min climb beside altitude and its selected target.
 
-Real-device acceptance requires separate iOS Safari and Android Chrome results:
+Apply the [shared phone procedure](#real-phone-acceptance-procedure) for #25, with these VSI-specific checks:
 
-1. Record device, OS, browser/version, tested commit, viewport, date, and observations in #25 or its PR.
-2. Start the demo through the [phone procedure](../README.md#use-your-phone) and watch the 198-second altitude/VSI cycle.
-3. Check `0` during holds, positive climb and negative descent in the window directly below altitude.
-4. Inspect matching readout styles, the narrower rectangle, selected target/bug and pressure against sky and ground.
-   Check that the magenta trend extends up for climb, down for descent, and disappears during holds.
-   Check that the trend covers intersecting ticks and that the notched turquoise bug covers the trend.
-5. Rotate, expand/collapse browser bars, and check safe areas, readability, undistorted symbols, and no scrolling or collisions.
-6. Use the [development fixture](#real-phone-checks) with the inputs below to inspect signed limits, partial failures, and missing data.
-7. Check Wi-Fi/server loss, lock/unlock, and background/resume. Require fresh readings without reload or duplicate subscriptions.
-8. Leave each device unchecked until its passing record exists. Desktop emulation does not establish phone acceptance.
+1. Watch the 198-second altitude/VSI cycle for `0` during holds, positive climb, and negative descent directly below altitude.
+2. Inspect matching readout styles, the narrower rectangle, selected target/bug, and pressure against sky and ground.
+3. Check that the magenta trend extends up for climb, down for descent, and disappears during holds.
+4. Check that the trend covers intersecting ticks and that the notched turquoise bug covers the trend.
+5. Use [phone fixtures](#phone-fixture-setup) with the inputs below for signed limits, partial failures, and missing data.
 
 Enter these JSON lines into the fixture terminal:
 
@@ -411,40 +414,67 @@ Desktop emulation does not establish mobile lifecycle compatibility.
 | Source stops, SSE remains open | Stale within one second on active page. Heartbeats cannot mask it |
 | Invalid values | Visible invalid state, no level-flight fallback |
 
-## Attitude display: real-device phone acceptance
+## Real-phone acceptance procedure
 
-Use this checklist for each phone. Store completed results in issue #4.
-Issue closure requires both real-device results.
-Label desktop findings and automated tests separately.
+Use this procedure with the affected feature's scenarios and evidence owner.
+Run it separately on actual iOS Safari and Android Chrome.
+Desktop emulation does not establish device acceptance.
 
-* [ ] Start demo on the PC's private LAN address with the [README command](../README.md#use-your-phone).
-* [ ] Open the printed URL on each phone.
-* [ ] Check that no DEMO label or top status bar appears.
-* [ ] Observe the full current cycle and indications listed in [Demo behavior](#demo-behavior).
-* [ ] Check that nose up lowers the horizon and right bank rotates it counterclockwise.
-* [ ] Rotate between portrait and landscape.
-* [ ] Check readable scales/status, no horizontal scrolling, and no overlap with browser bars or safe areas.
-* [ ] Exercise lock/unlock, app switching, and browser hide/restore.
-* [ ] Check that live attitude requires a fresh snapshot, without restoring a frozen valid-looking indication.
-* [ ] Disable and restore Wi-Fi.
-* [ ] Check obscured attitude and retry status during loss, then automatic recovery without reload.
-* [ ] Stop and restart the server on the same port.
-* [ ] Check connection loss and automatic recovery despite sequence restart.
+1. Identify the feature issue, tested build, and applicable scenarios before the run.
+2. Start the compiled demo on the private LAN using the [phone setup](../README.md#use-your-phone). Open its printed URL on each phone.
+3. Exercise the feature's cycle and controlled inputs, inspecting values, symbols, and local failure marks against both sky and ground.
+4. Check portrait, short landscape, rotation, browser-bar changes, safe areas, and undistorted, readable indications without scrolling or collisions.
+5. Use the [minimum usable dimensions](project-brief.md#mobile-presentation) and the feature's painted-bounds criteria when checking layout.
+6. Exercise lock/unlock, app switching, and browser hide/restore. Require a fresh sample before valid indications return.
+7. Disable and restore Wi-Fi. Check the unavailable cover and retry status, followed by fresh-data recovery without reload.
+8. Stop and restart the server on the same port. Require recovery despite sequence restart and no duplicate subscriptions.
+9. Record each device separately using the template below. Put the feature's observations and screenshots in its issue or PR.
+10. Leave missing or failing device criteria unchecked. Keep the owning issue open until both required device results support acceptance.
+
+Check uninterrupted freshness as well as recovery: no frozen valid-looking indication may survive loss or resume.
+For simulator-specific checks, also apply the [manual acceptance matrix](#manual-acceptance-matrix).
 
 Evidence template for the issue or PR:
 
 | Field | Value |
 | --- | --- |
 | Build commit / local changes | |
+| Date / viewport / zoom | |
 | Phone model | |
 | OS version | |
 | Safari / Chrome version | |
 | Network and server address | |
+| Feature / controlled inputs / screenshots | Pass/fail, observations |
 | Demo poses and directions | Pass/fail, observations |
 | Portrait / landscape / safe areas | Pass/fail, observations |
 | Lock / background / resume | Pass/fail, observations |
 | Wi-Fi loss / recovery | Pass/fail, observations |
 | Server restart / recovery | Pass/fail, observations |
+
+### Phone fixture setup
+
+Use controlled inputs for repeatable bounds, partial failures, or visual scenarios.
+Start the development fixture on the PC's specific private LAN IP:
+
+```powershell
+$env:PFD_FIXTURE_HOST = '<PC LAN IP>'
+node tests/browser-fixture-server.mjs
+```
+
+Open the printed address on the phone. Use `/` for production composition and `/layout.html` for all 17 illustration elements.
+Enter the feature's JSON lines in the fixture server terminal.
+The host defaults to loopback and accepts IP addresses only.
+HTTP has no fixture-control route, and fixture assets are absent from the Rust binary.
+Restrict firewall access to the trusted private subnet. Remove `PFD_FIXTURE_HOST` from the environment after the phone run.
+
+## Attitude display: real-device phone acceptance
+
+Apply the [shared phone procedure](#real-phone-acceptance-procedure) and record results in #4.
+Add these attitude checks for each phone:
+
+* [ ] Check that no DEMO label or top status bar appears.
+* [ ] Observe the full current cycle and indications listed in [Demo behavior](#demo-behavior).
+* [ ] Check that nose up lowers the horizon and right bank rotates it counterclockwise.
 
 ### Controlled browser fixtures
 
@@ -688,27 +718,16 @@ Check these speed-specific behaviors:
 | Presentation | IAS major labels every 10 kt, minor ticks every 2 kt, fixed pointer, rolling digits, no negative scale labels |
 | Rollover | Check 9.5 → 10, 99.5 → 100, and reverse transitions. Leading zeros stay blank |
 | Display limits | 999 kt is readable. 999.01 and 1000 kt show `OVR`. Missing or invalid values show `X`, never zero |
-| GS | 137.6 kt shows 138. Digits, the GS label, and the kt unit remain separate within the readout |
+| GS | 137.6 kt shows 138 beside the GS label, without a visible unit suffix. The accessible description retains knots |
 | Lifecycle | Equal fresh speeds renew validity. Resize preserves the accepted deadline. Reconnect/resume require a new fresh sample without duplicate subscriptions |
 | Integration | Two SSE clients receive matching IAS/GS. The compiled Rust demo supplies 150/170 kt during its hold segment |
 | Fixture | Items 1/4/8 use the real speed module, without duplicate speed readouts. All other included items also use production modules |
 
 ### Real-phone checks
 
-1. Run the compiled demo on the private LAN with the [phone procedure](../README.md#use-your-phone).
-2. Check IAS acceleration, hold, deceleration, distinct GS, and recovery after Wi-Fi loss, server restart, and lock/resume.
-3. Check portrait, short landscape, orientation changes, safe areas, and browser bars on iOS Safari and Android Chrome.
-4. Inspect digits, ticks, and local failure marks against sky and ground. Use the existing viewport and painted-bounds criteria.
-5. Record build commit, device, OS/browser versions, network, observations, and screenshots in #21.
-
-For controlled rollover, limits, and failure checks on phones, start the development fixture on the PC's specific LAN IP:
-
-```powershell
-$env:PFD_FIXTURE_HOST = '<PC LAN IP>'
-node tests/browser-fixture-server.mjs
-```
-
-Open the printed address on the phone. Use `/layout.html` for all 17 elements. Enter JSON lines in the server terminal:
+Apply the [shared phone procedure](#real-phone-acceptance-procedure) for #21.
+Check IAS acceleration, hold, deceleration, and distinct GS, including digits, ticks, and local failure marks against sky and ground.
+Use [phone fixtures](#phone-fixture-setup) for controlled rollover, limits, and failures with these inputs:
 
 ```json
 {"ias_kt":99.5,"gs_kt":137.6}
@@ -719,9 +738,6 @@ Open the printed address on the phone. Use `/layout.html` for all 17 elements. E
 {"ias_kt":123,"gs_kt":137,"hold":true}
 {"hold":false}
 ```
-
-The host defaults to loopback and accepts IP addresses only. HTTP has no fixture-control route, and fixture assets are absent from the Rust binary.
-Restrict firewall access to the trusted private subnet. Remove `PFD_FIXTURE_HOST` from the environment after the phone run.
 
 ## True airspeed acceptance
 
@@ -741,7 +757,7 @@ Run the [automated checks](#automated-checks) and both [desktop scripts](#respon
 `true-airspeed-browser-checks.mjs` covers 320×480, 326×246, and 568×240 at whole/fractional bounds and simulated safe-area padding.
 Inspect `.local/pfd-browser/tas-*` screenshots over sky and ground.
 
-For actual iOS Safari and Android Chrome, use the [phone fixture procedure](#real-phone-checks) and both compositions.
+Apply the [shared phone procedure](#real-phone-acceptance-procedure) for #66, using [phone fixtures](#phone-fixture-setup) in both compositions.
 Enter these controlled samples:
 
 ```json
@@ -759,10 +775,7 @@ Enter these controlled samples:
 {"hold":false}
 ```
 
-Rotate each device and expand/collapse browser bars. Check safe areas, readable labels, continuous backgrounds, and no content collisions.
-Check Wi-Fi loss, restart, and lock/background/resume with fresh-data recovery.
-Record the commit, device, OS/browser versions, viewport, date, and observations in #66 or its PR.
-Leave missing phone results unchecked; desktop tests do not establish device acceptance.
+Check continuous backgrounds and readable TAS labels throughout the shared rotation, layout, and recovery scenarios.
 
 ## Airspeed ranges, references, and trend acceptance
 
@@ -806,12 +819,9 @@ Transition assertions preserve independent availability and state resets:
 
 ### Real-phone checks for #22
 
-1. Run the compiled demo on the private LAN with the [phone procedure](../README.md#use-your-phone).
-2. Inspect ranges, references, acceleration/deceleration, yellow predictive digits, red overspeed pointer, and constant-speed trend removal.
-3. Inspect portrait and short landscape, rotation, safe areas, and browser bars. Check sky/ground contrast, undistorted symbols, and no scrolling or collisions.
-4. Use the [development fixture procedure](#real-phone-checks) for the controlled cases below. Check `/` and `/layout.html`.
-5. Test Wi-Fi loss/recovery, server restart, lock/background/resume, and fresh readings after the unavailable cover.
-6. Record device models, OS/browser versions, network, commit, observations, and screenshots in #22 for real iOS Safari and Android Chrome separately.
+Apply the [shared phone procedure](#real-phone-acceptance-procedure) for #22.
+Inspect ranges, references, acceleration/deceleration, yellow predictive digits, red overspeed pointer, and constant-speed trend removal.
+Use [phone fixtures](#phone-fixture-setup) for the controlled cases below in both `/` and `/layout.html`.
 
 Enter these JSON lines into the fixture terminal. The fixture initially supplies the configured profile.
 
@@ -902,14 +912,13 @@ Record refactor validation against the final revision:
 5. Keep actual iOS Safari and Android Chrome acceptance unchecked until passing device evidence exists.
 6. Record remaining checks under the issue and PR `Additional verification`.
 
-Use the development fixture to assess layout and compare opacity on real phones:
+Apply the [shared phone procedure](#real-phone-acceptance-procedure) for #37 and compare opacity with [phone fixtures](#phone-fixture-setup):
 
 1. Open the full 17-element development fixture.
 2. Compare `/layout.html?opacity=0.50`, `0.65`, and `0.80` against sky and ground.
 3. Record the selected value and real-device evidence in #37.
-4. Check 320 CSS px page width and 240 CSS px usable height after browser bars and safe areas, as defined in the brief.
-5. Check portrait, short landscape, orientation changes, extreme poses, and no scrolling.
-6. Repeat lifecycle checks after geometry changes without renewing the sample deadline.
+4. Include extreme poses in the shared layout scenarios.
+5. Repeat lifecycle checks after geometry changes without renewing the sample deadline.
 
 Later feature slices extend these checks:
 

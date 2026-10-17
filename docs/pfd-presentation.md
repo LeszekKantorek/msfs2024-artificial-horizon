@@ -4,6 +4,22 @@ Instrument modules, panel composition, rendering lifecycle, and SVG layers.
 System context: [architecture](architecture.md). Decisions: [instrument composition](adr/0004-modular-pfd-presentation.md) and [visual-object composition](adr/0005-visual-object-composition.md).
 Delivery order: [roadmap](roadmap.md). Validation: [testing](testing.md#modular-and-layered-pfd-acceptance).
 
+## Find the affected boundary
+
+Select the boundary that the change affects:
+
+| Situation | Presentation source | Additional source |
+| --- | --- | --- |
+| Change object ownership or shared helpers | [Internal seams](#internal-module-seams) | [Composition rationale and regression lessons](../.context/pfd-module-plan.md) |
+| Change sample acceptance, timers, or resize | [Panel lifecycle](#panel-interface-and-frame-lifecycle) | [Freshness contract](telemetry-contract.md#freshness-and-status) |
+| Change layers, clips, or status | [Layers](#layers-and-clipping), [unavailable status](#unavailable-status) | [Paint-order validation](../.context/pfd-layout-validation.md#paint-order-checks) |
+| Change IAS, GS, ranges, or references | [Speed presentation](#airspeed-and-ground-speed), [ranges and trend](#ranges-references-and-trend) | [Speed decisions and pitfalls](../.context/airspeed-ground-speed.md) |
+| Change TAS | [TAS presentation](#true-airspeed) | [TAS checks and pitfalls](../.context/true-airspeed.md) |
+| Change altitude or BARO | [Altitude presentation](#altitude-and-barometric-setting) | [Altitude decisions and pitfalls](../.context/altitude-baro.md) |
+| Change selected altitude or alerts | [Selected altitude](#selected-altitude-and-alerts) | [Alert lifecycle lessons](../.context/selected-altitude.md) |
+| Change VSI or altitude trend | [VSI](#vertical-speed), [altitude trend](#altitude-trend) | [VSI lessons](../.context/vertical-speed.md), [trend rationale](../.context/altitude-trend.md) |
+| Change heading | [Heading presentation](#current-and-selected-heading) | [Heading decisions and pitfalls](../.context/heading.md) |
+
 ## Current implementation and planned changes
 
 The panel implements attitude, slip/skid, and turn rate from #20, IAS and GS from #21, and ranges/trend from #22.
@@ -117,7 +133,7 @@ Internal objects use these ownership rules:
 
 * Compute the shared GS panel position once per resize.
 * Pass `layout.airspeed` and the shared position to IAS.
-* Pass `{ x, y, width }` to GS and the unused top-left `{ x, y, width, height }` allocation to TAS.
+* Pass `{ x, y, width }` to GS and the top-left `{ x, y, width, height }` allocation to TAS.
 * Select IAS/profile/acceleration and TAS/GS from the complete frame during render.
 * Keep coherent IAS readings and child geometry in IAS.
 * Keep GS state, rounding, and geometry in GS.
@@ -310,21 +326,11 @@ Instruments share the frame under these rules:
 
 > The frame is an internal presentation value, not a new SSE schema.
 
-The planned full composition has this shape.
-Only implemented instruments participate at each delivery step:
-
-```js
-function renderPanel(frame) {
-  horizon.render(frame);
-  airspeedTape.render(frame);
-  altitudeTape.render(frame);
-  verticalSpeed.render(frame);
-  direction.render(frame);
-  slipSkid.render(frame);
-  turnRate.render(frame);
-  status.render(frame);
-}
-```
+The [module composition](#module-composition) shows the implemented instrument hierarchy.
+`composePanel` delegates optional acceptance and invalidation operations to those instruments.
+During rendering, it delegates instrument updates before rendering status.
+Altitude composes VSI and its trend; heading is a separate instrument.
+Panel rendering returns the earliest visual deadline from its instruments.
 
 | Component | Initialization | Resize | Render |
 | --- | --- | --- | --- |
@@ -791,7 +797,6 @@ Fallback references preserve configured values when IAS is unavailable:
 * Bottom reference values round to 0.1 kt.
 * Positive values below 0.1 show `<0.1`.
 * Values above 999 show `OVR`.
-* The fallback replaces the usual IAS unit label.
 * The development badge hides while fallback references occupy its area.
 
 Trend uses source-supplied acceleration:

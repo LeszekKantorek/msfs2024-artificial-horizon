@@ -29,8 +29,8 @@ Apply these existing constraints rather than assuming broader protection.
 | Displayed input | Preserve input validation and safe text rendering without changing the declared telemetry contract | [Browser responsibilities](../docs/architecture.md#boundaries), [telemetry contract](../docs/telemetry-contract.md) |
 | Privileged acceptance CI | Execute trusted main code only, with limited permissions and no persisted checkout credentials | [CI trust boundary](../docs/pr-acceptance.md#trust-boundary) |
 | Issue and PR content | Treat metadata as data and never interpolate it into shell commands | [CI trust boundary](../docs/pr-acceptance.md#trust-boundary) |
-| Dependencies | Preserve locked dependencies and the acceptance tooling's installation without lifecycle scripts | [Repository rules](repository-instructions.md#repository-rules), [CI trust boundary](../docs/pr-acceptance.md#trust-boundary) |
-| Secrets and distribution | Exclude credentials, local SDK paths, SDK binaries, and dependencies without distribution rights from commits | [Repository rules](repository-instructions.md#repository-rules) |
+| Dependencies | Preserve locked dependencies and the acceptance tooling's installation without lifecycle scripts | [Repository rules](../CONTRIBUTING.md#change-requirements), [CI trust boundary](../docs/pr-acceptance.md#trust-boundary) |
+| Secrets and distribution | Exclude credentials, local SDK paths, SDK binaries, and dependencies without distribution rights from commits | [Repository rules](../CONTRIBUTING.md#change-requirements) |
 
 ## Focused checks
 

@@ -1,12 +1,20 @@
 | Entry | Use when |
 | --- | --- |
-| [Repository rules](repository-instructions.md) | Changing runtime behavior, dependencies, platform or delivery boundaries, or preparing a branch or PR. |
-| [PR acceptance](pr-acceptance.md) | Preparing PR checklists, changing the acceptance control, or activating its required status. |
+| [Start the demo](../README.md#start-the-demo) | Building and running the demo for the first time. |
+| [Phone access](../README.md#use-your-phone) | Connecting a phone to the demo over the private LAN. |
+| [Product scope](../docs/project-brief.md#scope-and-acceptance) | Determining included behavior, exclusions, or acceptance ownership. |
+| [Architecture boundaries](../docs/architecture.md#boundaries) | Locating component responsibilities before changing a runtime boundary. |
+| [Validation scope](../docs/testing.md#validation-by-change-scope) | Selecting required checks for a change. |
+| [Contribution workflow](../CONTRIBUTING.md#workflow) | Preparing an issue, branch, or PR. |
+| [Acceptance tracking](../CONTRIBUTING.md#acceptance-criteria-and-additional-verification) | Recording verified criteria, evidence, and pending checks. |
+| [Repository rule history](repository-instructions.md) | Tracing the origins of contribution constraints, completion criteria, or follow-up rules. |
+| [PR acceptance control](pr-acceptance.md) | Diagnosing acceptance status, changing the validator, or activating its required check. |
 | [Task guidance selection](task-guidance.md) | The direct route is unclear, a task crosses several areas, or routing guidance itself needs maintenance. |
 | [Implementation planning](implementation-planning.md) | Building a detailed issue plan with substeps, completion conditions, invariants, and acceptance evidence. |
 | [Validation and review](validation-and-review.md) | Designing tests, resolving evidence limits, or preparing independent review; use the testing scope matrix for routine check selection. |
 | [Error diagnosis](error-diagnosis.md) | Reproducing failures, testing possible causes, isolating faulty boundaries, or verifying a fix. |
 | [Security review](security-review.md) | Reviewing changes to network exposure, input handling, dependencies, secrets, permissions, or CI trust boundaries. |
+| [Changes across components](component-changes.md) | Selecting contracts and checks for behavior changes across providers, telemetry, HTTP, and the browser. |
 | [Architecture decisions](architecture-decisions.md) | Comparing structural options, changing ownership or protocols, or recording a material decision in an ADR. |
 | [Iterative development](iterative-development.md) | Choosing module boundaries or preserving accepted plans, handoffs, and amendments locally without publishing them. |
 | [Windows validation](windows-validation.md) | Diagnosing SAC blocking, error 4551, or Rust E0463. |
@@ -25,4 +33,4 @@
 | [Heading](heading.md) | Extending or validating magnetic headings, numeric readout formatting, north wrapping, selected-bug capture, or top-strip geometry. |
 | [Writing style](writing-style.md) | Editing project prose or Markdown structure, or choosing which document owns a requirement. |
 | [Context tooling maintenance](agent-maintenance.md) | Maintaining the six context skills, procedural-skill-creator, their installation records, or CSV session hooks. |
-| [Context authoring](context-authoring.md) | Editing knowledge entries or their index. |
+| [Context authoring](context-authoring.md) | Preserving findings, reviewing knowledge, or changing entry metadata and navigation. |
