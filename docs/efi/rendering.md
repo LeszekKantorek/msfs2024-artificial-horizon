@@ -16,7 +16,7 @@ Instrument backgrounds use these opacity rules:
 
 * Apply opacity to background shapes, not whole instrument groups.
 * `--instrument-background-opacity` defaults to `0.65` pending real-phone acceptance in #37.
-* Follow the [opacity comparison procedure](../testing/pfd.md#modular-and-layered-pfd-acceptance) on real iOS Safari and Android Chrome.
+* Follow the [opacity comparison procedure](../testing/pfd.md#modular-and-layered-efi-acceptance) on real iOS Safari and Android Chrome.
 
 > This architecture does not prescribe a final numeric opacity value.
 

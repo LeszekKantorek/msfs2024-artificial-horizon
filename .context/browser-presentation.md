@@ -23,6 +23,6 @@ Procedures: [testing](../docs/testing/index.md). Freshness/status: [contract](..
 * Keep the top status bar removed; show no DEMO label and keep unavailable reasons on the full-panel cover.
 * Use the development fixture to compare background opacity candidates; `0.65` is provisional until real-phone acceptance selects a value.
 
-Source: approved #37 implementation plan and explicit full-panel/background and source-badge choices, 2026-10-10; implementation details belong in [panel presentation](../docs/pfd/index.md).
+Source: approved #37 implementation plan and explicit full-panel/background and source-badge choices, 2026-10-10; implementation details belong in [panel presentation](../docs/efi/index.md).
 
 Source: explicit #37 correction removing all DEMO labels and announcements, 2026-10-10; the development-only LAYOUT FIXTURE marker remains.

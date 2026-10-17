@@ -107,7 +107,7 @@ Fixed symbols
 ## Testing
 
 `tests/horizon.test.mjs` checks independent pose signs and combined/extreme transforms without a DOM.
-Run both [desktop browser scripts](../testing/pfd.md#responsive-pfd-layout-and-desktop-checks) for presentation changes.
+Run both [desktop browser scripts](../testing/pfd.md#responsive-efi-layout-and-desktop-checks) for presentation changes.
 Use [controlled fixtures](../testing/pfd.md#controlled-browser-fixtures) for local turn failures, extreme poses, expiry, and recovery.
 
 ### Attitude display: real-device phone acceptance

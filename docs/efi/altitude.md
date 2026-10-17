@@ -97,7 +97,7 @@ Automated coverage includes these scenarios:
 | Release runtime | Embedded altitude modules with correct MIME, real Rust SSE values in SVG/ARIA, producer-formatted BARO text, and recovery after restart |
 
 The existing [automated commands](../testing/automated.md#automated-checks) include the altitude Rust and Node tests.
-Both [desktop browser scripts](../testing/pfd.md#responsive-pfd-layout-and-desktop-checks) are required.
+Both [desktop browser scripts](../testing/pfd.md#responsive-efi-layout-and-desktop-checks) are required.
 Altitude screenshots appear under `.local/pfd-browser/altitude-*`.
 Inspect narrow portrait and short landscape captures, including long signed readouts over sky and ground.
 

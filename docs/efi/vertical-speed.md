@@ -78,7 +78,7 @@ Automated acceptance covers these boundaries:
 
 Use these checks and artifacts:
 
-* Run the [automated Rust and Node commands](../testing/automated.md#automated-checks) and both [desktop browser scripts](../testing/pfd.md#responsive-pfd-layout-and-desktop-checks).
+* Run the [automated Rust and Node commands](../testing/automated.md#automated-checks) and both [desktop browser scripts](../testing/pfd.md#responsive-efi-layout-and-desktop-checks).
 * Retain the selected-altitude alert regressions, including expiry while flashing and delayed callback cancellation.
 * Inspect `.local/pfd-browser/vsi-*` for the minimum viewport, narrow portrait, short landscape, negative-altitude capture and long signed values.
 * Inspect `.local/pfd-runtime-vertical-speed.png` for the compiled demo's +1500 ft/min climb beside altitude and its selected target.

@@ -19,7 +19,7 @@ Desktop emulation does not establish mobile lifecycle compatibility.
 | Source stops, SSE remains open | Stale within one second on active page. Heartbeats cannot mask it |
 | Invalid values | Visible invalid state, no level-flight fallback |
 
-Apply the [attitude comparison](../pfd/attitude.md#simulator-comparison-scope) and other affected feature scenarios in addition to this shared matrix.
+Apply the [attitude comparison](../efi/attitude.md#simulator-comparison-scope) and other affected feature scenarios in addition to this shared matrix.
 
 ## Real-phone acceptance procedure
 

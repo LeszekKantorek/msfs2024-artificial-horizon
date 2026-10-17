@@ -80,7 +80,7 @@ Shared browser commands, phone setup, and evidence rules are linked from those c
 ### Heading acceptance
 
 Use the [magnetic-heading contract](../telemetry-contract.md#optional-magnetic-headings) and [presentation rules](#presentation).
-Run the existing Rust and Node commands, then both desktop browser scripts in the [shared PFD checks](../testing/pfd.md#responsive-pfd-layout-and-desktop-checks).
+Run the existing Rust and Node commands, then both desktop browser scripts in the [shared EFI checks](../testing/pfd.md#responsive-efi-layout-and-desktop-checks).
 
 | Check | Required evidence |
 | --- | --- |

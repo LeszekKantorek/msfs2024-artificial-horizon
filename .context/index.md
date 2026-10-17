@@ -4,8 +4,8 @@
 | [Phone access](../README.md#use-your-phone) | Connecting a phone to the demo over the private LAN. |
 | [Product scope](../docs/project-brief.md#scope-and-acceptance) | Determining included behavior, exclusions, or acceptance ownership. |
 | [Architecture boundaries](../docs/architecture.md#boundaries) | Locating component responsibilities before changing a runtime boundary. |
-| [PFD features](../docs/pfd/index.md#features) | Finding requirements, presentation, implementation, and acceptance scenarios for a specific instrument. |
-| [Shared PFD boundaries](../docs/pfd/index.md#shared-responsibilities) | Changing composition, frames, telemetry, global status, or cross-module rendering. |
+| [PFD features](../docs/efi/index.md#features) | Finding requirements, presentation, implementation, and acceptance scenarios for a specific instrument. |
+| [Shared PFD boundaries](../docs/efi/index.md#shared-responsibilities) | Changing composition, frames, telemetry, global status, or cross-module rendering. |
 | [Validation scope](../docs/testing/index.md#validation-by-change-scope) | Selecting required checks for a change. |
 | [Contribution workflow](../CONTRIBUTING.md#workflow) | Preparing an issue, branch, or PR. |
 | [Acceptance tracking](../CONTRIBUTING.md#acceptance-criteria-and-additional-verification) | Recording verified criteria, evidence, and pending checks. |

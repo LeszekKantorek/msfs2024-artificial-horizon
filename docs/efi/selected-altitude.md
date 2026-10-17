@@ -95,7 +95,7 @@ Automated coverage exercises these boundaries:
 Use these checks and artifacts for automated acceptance:
 
 * The [automated Rust and Node commands](../testing/automated.md#automated-checks) include these tests.
-* Both [desktop browser scripts](../testing/pfd.md#responsive-pfd-layout-and-desktop-checks) are required for this feature.
+* Both [desktop browser scripts](../testing/pfd.md#responsive-efi-layout-and-desktop-checks) are required for this feature.
 * The selected SVG checks use real panel modules with injected monotonic time.
 * They check bug paint visibility and minus-sign clearance at positive and negative capture without five-second wall-clock waits.
 * Inspect screenshots at `.local/pfd-browser/selected-altitude-*` and `.local/pfd-runtime-selected-altitude.png`.

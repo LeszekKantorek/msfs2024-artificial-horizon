@@ -42,6 +42,6 @@ Source: accepted context and documentation review, 2026-10-17, preserving local 
 ## Documentation boundary
 
 Follow [documentation ownership](../AGENTS.md#documentation-ownership) for the boundary between agent knowledge and project/user documentation.
-Use the [PFD content ownership map](../docs/pfd/index.md#content-ownership) to place feature and shared information.
+Use the [PFD content ownership map](../docs/efi/index.md#content-ownership) to place feature and shared information.
 
 Source: accepted documentation migration and link ownership rule, 2026-10-17.

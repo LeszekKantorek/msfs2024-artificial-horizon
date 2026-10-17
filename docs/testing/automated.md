@@ -45,4 +45,4 @@ Its tooling dependencies do not affect browser controller checks or the applicat
 | HTTP/SSE | Health independent of source, immediate full snapshot, framing, MIME/cache headers, reconnect without replay, shared acquisition, two clients, slow consumers, cleanup |
 | Browser | Pure transforms, message validation, separate source/transport status, receive timeout, fresh data after background/resume |
 
-See each [feature's tests](../pfd/index.md#features) for geometry expectations.
+See each [feature's tests](../efi/index.md#features) for geometry expectations.

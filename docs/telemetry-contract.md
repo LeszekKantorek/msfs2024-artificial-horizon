@@ -149,7 +149,7 @@ Extended live example:
 * `Publisher::publish(State)` clears speed fields, including in attitude-only live publications.
 * Finite values above the 999 kt display limit remain valid telemetry without clamping.
 
-[Speed presentation](pfd/airspeed.md#presentation) owns formatting, rounding, overflow, and unavailable marks.
+[Speed presentation](efi/airspeed.md#presentation) owns formatting, rounding, overflow, and unavailable marks.
 
 Speed fields extend the live example above:
 
@@ -186,7 +186,7 @@ The producer changes BARO text every six seconds through `29.92 inHg`, `30.12 in
 Transitions between sweeps are synthetic test cases, not a physical flight trajectory or a pressure-response model.
 
 `tests/fixtures/altitude-samples.json` contains independent checkpoints and cycle boundaries.
-[Altitude presentation](pfd/altitude.md#presentation) defines the display limits and rolling drums.
+[Altitude presentation](efi/altitude.md#presentation) defines the display limits and rolling drums.
 
 ### Optional selected altitude
 
@@ -229,7 +229,7 @@ Each 90-second approach uses this schedule:
 
 Attitude, speeds, coordinated-turn values, and pressure retain their existing 18-second cycles.
 `tests/fixtures/selected-altitude-samples.json` contains independent checkpoints.
-See [selected-altitude presentation](pfd/selected-altitude.md#presentation-and-alert-behavior) for alert rules and display validity.
+See [selected-altitude presentation](efi/selected-altitude.md#presentation-and-alert-behavior) for alert rules and display validity.
 
 ### Optional magnetic headings
 
@@ -266,7 +266,7 @@ The heading demo repeats every 360 samples at 20 Hz, following source turn rate:
 Phase boundaries use the starting phase's values. Normalization wraps calculations into `[0, 360)`.
 The producer still wraps after 3960 samples. The altitude cycle remains 198 seconds.
 `tests/fixtures/heading-samples.json` supplies independent checkpoints, including both north crossings.
-See [heading presentation](pfd/heading.md#presentation) and [heading acceptance](pfd/heading.md#heading-acceptance).
+See [heading presentation](efi/heading.md#presentation) and [heading acceptance](efi/heading.md#heading-acceptance).
 
 ### Optional vertical speed
 
@@ -296,7 +296,7 @@ The demo derives altitude and VSI from shared segment definitions:
 | Continuous phase boundary | Rate of the phase beginning at that sample |
 
 `tests/fixtures/vertical-speed-samples.json` supplies independent segment and jump checkpoints.
-See [VSI presentation](pfd/vertical-speed.md#presentation) for display limits and [VSI acceptance](pfd/vertical-speed.md#vertical-speed-acceptance) for checks.
+See [VSI presentation](efi/vertical-speed.md#presentation) for display limits and [VSI acceptance](efi/vertical-speed.md#vertical-speed-acceptance) for checks.
 
 ### Optional airspeed ranges and trend
 
@@ -334,7 +334,7 @@ These extensions follow the existing sample lifecycle:
 * Source/transport loss invalidates the panel. Local IAS loss does not invalidate a valid profile.
 
 The browser never computes acceleration from browser receipt intervals.
-[Ranges, references, and trend](pfd/airspeed-indications.md#presentation) defines the prediction, clipping, warnings, and fallback presentation.
+[Ranges, references, and trend](efi/airspeed-indications.md#presentation) defines the prediction, clipping, warnings, and fallback presentation.
 
 The demo acceleration is +25 kt/s during acceleration, zero during hold and rest, and -25 kt/s during deceleration.
 At each segment boundary, the new segment supplies the acceleration. Independent fixtures reside in `airspeed-profile.json` and `speed-indications.json`.
@@ -400,9 +400,9 @@ stale         = estimated age >= 1,000 ms
 * Never replace unavailable attitude with a credible level horizon.
 * Keep source identity in telemetry and internal client state; show no DEMO label or announcement.
 
-## Further PFD extension boundary
+## Further EFI extension boundary
 
-> The fields above define current v1. The remaining [PFD scope](project-brief.md#pfd-reference-and-coverage) defines planned additions.
+> The fields above define current v1. The remaining [EFI scope](project-brief.md#efi-reference-and-coverage) defines planned additions.
 
 Each feature slice must:
 
@@ -416,7 +416,7 @@ Each feature slice must:
 Constraints:
 
 * Never substitute zero or demo values for missing data.
-* The attitude-only SimConnect integration in #6 need not populate PFD extensions.
+* The attitude-only SimConnect integration in #6 need not populate EFI extensions.
 * Selected values remain source-supplied and read-only.
 * Add no control endpoint.
 * Feature issues own exact schema additions.

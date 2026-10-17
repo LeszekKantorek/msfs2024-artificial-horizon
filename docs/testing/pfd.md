@@ -1,4 +1,4 @@
-# Shared PFD validation
+# Shared EFI validation
 
 Controlled browser inputs, desktop commands, layout checks, and full-panel acceptance.
 
@@ -37,19 +37,19 @@ Controlled browser inputs, desktop commands, layout checks, and full-panel accep
 > The fixture server serves real web assets with synthetic SSE on loopback by default. Explicit LAN binding supports phone checks. It is separate from the release binary.
 > These checks establish UI behavior, not simulator compatibility.
 
-Use each [feature's controlled inputs](../pfd/index.md#features) for instrument-specific cases.
+Use each [feature's controlled inputs](../efi/index.md#features) for instrument-specific cases.
 
-## PFD presentation validation procedure
+## EFI presentation validation procedure
 
-Use [pfd-validate-presentation](../../.agents/skills/pfd-validate-presentation/SKILL.md) for the presentation validation procedure.
+Use [project-validate-presentation](../../.agents/skills/project-validate-presentation/SKILL.md) for the presentation validation procedure.
 The skill owns its steps. This page retains shared check commands and panel criteria.
 Feature pages own instrument criteria; [device procedures](devices.md) and [evidence rules](evidence.md) remain shared.
 
-## Responsive PFD layout and desktop checks
+## Responsive EFI layout and desktop checks
 
 Open `http://127.0.0.1:8082/layout.html` for the development-only arrangement of all 17 intended illustration items.
 The `LAYOUT FIXTURE` badge distinguishes the development fixture from the compiled demo.
-Use this page before changing layout geometry or adding the next PFD instrument.
+Use this page before changing layout geometry or adding the next EFI instrument.
 No fixture page or fixture control script enters the Rust binary.
 
 | Check | Expected result |
@@ -59,7 +59,7 @@ No fixture page or fixture control script enters the Rust binary.
 | Rotation / viewport changes during streaming | Preserve values and sample deadline, with a round ball and undistorted symbols |
 
 The scripted desktop checks use Playwright with an installed browser.
-They are required for the PFD changes in the [validation matrix](index.md#validation-by-change-scope) and optional for unrelated exploration.
+They are required for the EFI changes in the [validation matrix](index.md#validation-by-change-scope) and optional for unrelated exploration.
 It adds no application dependency or frontend build step.
 Install the test tool in ignored local storage if it is not already available:
 
@@ -106,10 +106,10 @@ Pure checks follow the existing module boundaries:
 > Review the screenshots: geometry checks alone do not establish readability.
 > Synthetic padding and page events do not establish actual cutout, browser-bar, or background behavior on phones.
 
-## Planned PFD demo acceptance
+## Planned EFI demo acceptance
 
 > This acceptance scope was defined for the staged delivery of #20-#26.
-> The procedures remain applicable to those features; their existence does not establish passing results or live PFD compatibility.
+> The procedures remain applicable to those features; their existence does not establish passing results or live EFI compatibility.
 
 * Each feature issue owns its automated and real-phone evidence.
 * #26 links earlier evidence and records a full-panel run for all 17 elements.
@@ -119,10 +119,10 @@ Pure checks follow the existing module boundaries:
 | Area | Scenarios and acceptance |
 | --- | --- |
 | End-to-end values | Independent fixtures agree across typed Rust data, deterministic demo, SSE, and display. Clients share values |
-| Compatibility | Old v1 snapshots display attitude. Missing PFD fields display unavailable, never zero. No excluded-instrument placeholders |
+| Compatibility | Old v1 snapshots display attitude. Missing EFI fields display unavailable, never zero. No excluded-instrument placeholders |
 | Instrument failures | Missing/invalid optional values affect only their indication. Source/transport loss invalidates the panel |
 | Timing | Controlled clocks check shared freshness and expiry before pending draw. No wall-clock sleeps |
-| Instrument geometry | Apply all [feature scenarios](../pfd/index.md#features) during full-panel acceptance |
+| Instrument geometry | Apply all [feature scenarios](../efi/index.md#features) during full-panel acceptance |
 | Mobile layout | From 320 CSS px, portrait, short landscape, safe areas, browser-bar changes, rotation while streaming |
 | Layout acceptance | No scrolling, indication-content collisions, clipped warnings, or distorted symbols, with intentional background overlap allowed |
 | Lifecycle | Wi-Fi recovery, server restart, lock/background/resume, source pause/stale/invalid states, partial failures |
@@ -135,7 +135,7 @@ Pure checks follow the existing module boundaries:
 
 > Desktop viewport checks do not establish mobile acceptance.
 
-## Modular and layered PFD acceptance
+## Modular and layered EFI acceptance
 
 These checks cover instrument composition, layers, and visual objects:
 
@@ -187,14 +187,14 @@ Later feature slices extend these checks:
 
 ## Geometry and paint regression checks
 
-* Use [pfd-validate-presentation](../../.agents/skills/pfd-validate-presentation/SKILL.md) for the validation procedure before changing geometry or adding an instrument. This section records layout constraints and regression lessons.
+* Use [project-validate-presentation](../../.agents/skills/project-validate-presentation/SKILL.md) for the validation procedure before changing geometry or adding an instrument. This section records layout constraints and regression lessons.
 * Validate all 17 intended elements through the development-only fixture before narrowing attitude space.
 * The accepted minimum is 320 CSS px wide and 240 CSS px of usable height after browser bars and safe areas.
 * Preserve the sample deadline during resize and redraw through the latest-sample frame scheduler.
 * Test painted symbol extents, including stroke clearance, rather than only instrument-region bounds.
 * Exclude hidden SVG labels and intersect visible bounds with their ancestor clips when checking content collisions.
 * After changing a browser viewport, wait for SVG `viewBox` dimensions to match its CSS bounds before measuring glyphs. A fresh sample alone does not confirm completed resize geometry.
-* For #37 and later, distinguish overlapping background coverage from non-overlapping indication content using the [module plan](../pfd/composition.md#rationale-and-regression-lessons).
+* For #37 and later, distinguish overlapping background coverage from non-overlapping indication content using the [module plan](../efi/composition.md#rationale-and-regression-lessons).
 * Keep desktop Edge evidence separate from required real iOS Safari and Android Chrome acceptance.
 
 ### Paint order checks
@@ -209,7 +209,7 @@ Apply these checks when changing SVG layers.
 * Preserve controlled inputs and baseline provenance under the [screenshot comparison procedure](evidence.md#screenshot-comparisons).
 * Include capture, pinned edges, both directions, signed values, missing data, expiry, and recovery when applicable.
 
-The [altitude trend acceptance procedure](../pfd/altitude-trend.md#altitude-trend-placement-acceptance) gives the concrete #63 scenarios.
+The [altitude trend acceptance procedure](../efi/altitude-trend.md#altitude-trend-placement-acceptance) gives the concrete #63 scenarios.
 
 ### Regression sources
 

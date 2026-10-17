@@ -10,11 +10,11 @@ Record results and acceptance progress in the related GitHub issue or PR.
 | Select checks or reuse evidence | [Validation scope](#validation-by-change-scope) and [evidence reuse](#evidence-reuse) | Every change |
 | Run application checks | [Automated checks](automated.md) | Application code, dependencies, or build changes |
 | Check startup, telemetry, or lifecycle | [Runtime checks](runtime.md) | Affected server, source, or browser lifecycle |
-| Validate presentation | [Shared PFD validation](pfd.md) | Rendering, geometry, lifecycle, or asset integration |
-| Validate one instrument | [Feature directory](../pfd/index.md#features) | Use that page's Testing section |
-| Validate speed | [IAS/GS](../pfd/airspeed.md#testing), [TAS](../pfd/true-airspeed.md#testing), [ranges/trend](../pfd/airspeed-indications.md#testing) | Changed speed indication |
-| Validate altitude | [Altitude/BARO](../pfd/altitude.md#testing), [alerts](../pfd/selected-altitude.md#testing), [VSI](../pfd/vertical-speed.md#testing), [trend](../pfd/altitude-trend.md#testing) | Changed right-side indication |
-| Validate heading | [Heading](../pfd/heading.md#testing) | Heading or full-panel acceptance |
+| Validate presentation | [Shared EFI validation](pfd.md) | Rendering, geometry, lifecycle, or asset integration |
+| Validate one instrument | [Feature directory](../efi/index.md#features) | Use that page's Testing section |
+| Validate speed | [IAS/GS](../efi/airspeed.md#testing), [TAS](../efi/true-airspeed.md#testing), [ranges/trend](../efi/airspeed-indications.md#testing) | Changed speed indication |
+| Validate altitude | [Altitude/BARO](../efi/altitude.md#testing), [alerts](../efi/selected-altitude.md#testing), [VSI](../efi/vertical-speed.md#testing), [trend](../efi/altitude-trend.md#testing) | Changed right-side indication |
+| Validate heading | [Heading](../efi/heading.md#testing) | Heading or full-panel acceptance |
 | Validate phones or supply controlled inputs | [Device procedure and fixtures](devices.md) | Device behavior or feature acceptance |
 | Record binary, visual, or performance evidence | [Evidence](evidence.md) | Results depend on a build, capture, or measurement |
 | Change acceptance CI | [Validator checks](../pr-acceptance.md#validate-changes-to-the-control) | Acceptance parser or workflow changes |
@@ -28,8 +28,8 @@ Use the changed behavior and acceptance criteria to select local checks:
 | Documentation or context only | Diff, links, anchors, terminology, preserved requirements, and claims against current sources | No local application build or browser run |
 | Session hooks or other development tooling | Changed behavior and failure paths | Application checks only when application inputs change |
 | PR acceptance control | [Validator suite](../pr-acceptance.md#validate-changes-to-the-control), permissions, and trusted-code boundary | Acceptance tooling |
-| Rust or browser application code, dependencies, or build configuration | [Automated checks](automated.md#automated-checks), affected [runtime checks](runtime.md), and [feature scenarios](../pfd/index.md#features) | Affected application behavior |
-| PFD rendering, geometry, lifecycle, or module/asset integration | Both [desktop browser scripts](pfd.md#responsive-pfd-layout-and-desktop-checks) and relevant screenshot inspection | Additional PFD evidence |
+| Rust or browser application code, dependencies, or build configuration | [Automated checks](automated.md#automated-checks), affected [runtime checks](runtime.md), and [feature scenarios](../efi/index.md#features) | Affected application behavior |
+| EFI rendering, geometry, lifecycle, or module/asset integration | Both [desktop browser scripts](pfd.md#responsive-efi-layout-and-desktop-checks) and relevant screenshot inspection | Additional EFI evidence |
 | Mobile behavior or feature acceptance | Applicable real iOS Safari and Android Chrome checks | Device evidence separate from desktop results |
 
 Apply these scope rules:

@@ -7,7 +7,7 @@ Measurement limits, build provenance, and matched screenshot comparisons.
 | Owner | Scope |
 | --- | --- |
 | #7 | Original simulator reliability/performance |
-| #20-#26 | Planned PFD demo acceptance, without expanding #7 or #8 |
+| #20-#26 | Planned EFI demo acceptance, without expanding #7 or #8 |
 
 Record:
 
@@ -96,7 +96,7 @@ Choose complementary evidence rather than treating one successful check as proof
 | Actual phone checks | Device, browser bars, safe areas, rotation, and recovery | Cover only the recorded devices and versions |
 | Independent code review | Assessed defects, unintended changes, and test gaps in a specified diff | Does not replace tests or establish absence of defects |
 
-Use [PFD layout validation](pfd.md#geometry-and-paint-regression-checks) for rendering checks and [screenshot comparisons](#screenshot-comparisons) for visual evidence.
+Use [EFI layout validation](pfd.md#geometry-and-paint-regression-checks) for rendering checks and [screenshot comparisons](#screenshot-comparisons) for visual evidence.
 
 ## Validation scope
 

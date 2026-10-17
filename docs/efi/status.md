@@ -35,7 +35,7 @@ Status preserves the full-panel presentation and accessible state:
 
 ## Testing
 
-Apply the [shared PFD checks](../testing/pfd.md) and [phone lifecycle procedure](../testing/devices.md#real-phone-acceptance-procedure).
+Apply the [shared EFI checks](../testing/pfd.md) and [phone lifecycle procedure](../testing/devices.md#real-phone-acceptance-procedure).
 
 ### Status acceptance
 

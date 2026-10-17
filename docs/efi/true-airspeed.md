@@ -58,7 +58,7 @@ Use the [speed contract](../telemetry-contract.md#optional-speed-indications) an
 | Geometry | Stable production nodes in both compositions; glyph containment for one-, two-, three-digit values, X and OVR; inset frame, opaque background, and clearance from heading and tape |
 | Runtime | Embedded TAS module supports HTTP/MIME and HEAD checks; real demo readouts recover after server restart without reload |
 
-Run the [automated checks](../testing/automated.md#automated-checks) and both [desktop scripts](../testing/pfd.md#responsive-pfd-layout-and-desktop-checks).
+Run the [automated checks](../testing/automated.md#automated-checks) and both [desktop scripts](../testing/pfd.md#responsive-efi-layout-and-desktop-checks).
 `true-airspeed-browser-checks.mjs` covers 320×480, 326×246, and 568×240 at whole/fractional bounds and simulated safe-area padding.
 Inspect `.local/pfd-browser/tas-*` screenshots over sky and ground.
 

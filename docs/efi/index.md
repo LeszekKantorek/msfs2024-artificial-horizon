@@ -1,6 +1,7 @@
-# PFD feature guide
+# EFI feature guide
 
-The primary flight display (PFD) combines attitude, speed, altitude, heading, and coordinated-turn indications in one responsive, read-only panel.
+The compact electronic flight instrument (EFI) combines attitude, speed, altitude, heading, and coordinated-turn indications in one responsive, read-only panel.
+The artificial horizon is its attitude indication; the [project terminology](../project-brief.md#terminology) distinguishes the instrument from its historical PFD naming.
 This guide groups each feature's requirements, presentation, implementation, rationale, and tests on one page.
 
 ## Shared responsibilities

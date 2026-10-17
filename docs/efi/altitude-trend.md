@@ -60,7 +60,7 @@ Shared browser commands, phone setup, and evidence rules are linked from those c
 ### Altitude trend placement acceptance
 
 [#63](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/63) owns the corrected placement and paint order.
-Use both [desktop browser scripts](../testing/pfd.md#responsive-pfd-layout-and-desktop-checks) and inspect the production page and full layout fixture.
+Use both [desktop browser scripts](../testing/pfd.md#responsive-efi-layout-and-desktop-checks) and inspect the production page and full layout fixture.
 
 The automated checks cover these visible results:
 

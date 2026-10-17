@@ -26,7 +26,7 @@ These six project skills are versioned locally. They are separate from the pinne
 | --- | --- | --- |
 | [project-plan-change](../.agents/skills/project-plan-change/SKILL.md) | Edit its `SKILL.md` | [Planning rationale and sources](implementation-planning.md); [handoff requirements](iterative-development.md#accepted-plans-and-handoffs) |
 | [project-diagnose-failure](../.agents/skills/project-diagnose-failure/SKILL.md) | Edit its `SKILL.md` | [Symptom map and sources](error-diagnosis.md); environment restrictions remain in their entries |
-| [pfd-validate-presentation](../.agents/skills/pfd-validate-presentation/SKILL.md) | Edit its `SKILL.md` | Feature checks, commands, and evidence requirements remain in testing documentation |
+| [project-validate-presentation](../.agents/skills/project-validate-presentation/SKILL.md) | Edit its `SKILL.md` | Feature checks, commands, and evidence requirements remain in testing documentation |
 | [project-prepare-pr](../.agents/skills/project-prepare-pr/SKILL.md) | Edit its `SKILL.md` | Acceptance criteria and CI interpretation retain their existing owners |
 | [project-review-change](../.agents/skills/project-review-change/SKILL.md) | Edit its `SKILL.md` | [Evidence selection and historical limits](../docs/testing/evidence.md#select-evidence-by-failure-risk) |
 | [project-decide-architecture](../.agents/skills/project-decide-architecture/SKILL.md) | Edit its `SKILL.md` | [Governing-decision map and sources](architecture-decisions.md) |

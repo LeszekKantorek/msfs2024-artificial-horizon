@@ -40,7 +40,7 @@ Source: writing requirement recorded in [issue #31](https://github.com/LeszekKan
 | [CONTRIBUTING](../CONTRIBUTING.md) | Developer setup, context tooling, contribution workflow |
 | [Brief](../docs/project-brief.md) | Requirements, scope, assumptions, success criteria |
 | [Architecture](../docs/architecture.md) | Target design, boundaries, library API |
-| [Panel presentation](../docs/pfd/index.md) | Feature requirements, presentation, implementation, rationale, and acceptance scenarios; shared composition, lifecycle, and rendering contracts |
+| [Panel presentation](../docs/efi/index.md) | Feature requirements, presentation, implementation, rationale, and acceptance scenarios; shared composition, lifecycle, and rendering contracts |
 | [Contract](../docs/telemetry-contract.md) | Wire interface, units, validity, freshness |
 | [Testing](../docs/testing/index.md) | Shared check commands, runtime and device procedures, validation selection, and evidence templates; feature scenarios remain on feature pages |
 | [Roadmap](../docs/roadmap.md) | Order and dependencies |
@@ -54,3 +54,10 @@ Source: accepted documentation correction, 2026-10-10, to introduce long bullet 
 Source: documentation structure correction for #56 and PR #55, 2026-10-11, separating Markdown checks from language checks.
 
 Source: formatting correction for the testing guide in PR #60, 2026-10-11, to group independent checks instead of stacking prose lines.
+
+## Instrument terminology
+
+Use [project terminology](../docs/project-brief.md#terminology): EFI for the complete instrument, artificial horizon for the attitude indication.
+Retain historical ADR wording and existing technical identifiers until a separate rename updates their consumers.
+
+Source: accepted terminology clarification, 2026-10-17.

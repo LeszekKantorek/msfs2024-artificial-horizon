@@ -1,6 +1,7 @@
 # MSFS2024 Artificial Horizon
 
-An aircraft attitude display for your phone. Start the Rust server on Windows,
+A compact electronic flight instrument (EFI) for your phone, centered on an artificial horizon.
+Start the Rust server on Windows,
 then open its address in a browser on the same network.
 
 **Windows x64** · **Read-only browser display** · **No phone app or account**
