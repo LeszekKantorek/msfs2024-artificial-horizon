@@ -43,7 +43,7 @@ Select checks for actual changes rather than adding unrelated security work.
 * For workflow changes, inspect checkout revision, token permissions, credential persistence, and handling of external text.
 * For dependency changes, inspect manifests, lockfiles, installation scripts, distribution rights, and relevant upstream security evidence.
 * For changed logs and artifacts, check whether credentials or local sensitive paths can enter committed or public output.
-* Use [validation by change scope](../docs/testing.md#validation-by-change-scope) and the [acceptance validator checks](../docs/pr-acceptance.md#validate-changes-to-the-control) where applicable.
+* Use [validation by change scope](../docs/testing/index.md#validation-by-change-scope) and the [acceptance validator checks](../docs/pr-acceptance.md#validate-changes-to-the-control) where applicable.
 * Request [project-review-change](../.agents/skills/project-review-change/SKILL.md) under the active delegation rules when the task requires it.
 
 ## Sources and limits

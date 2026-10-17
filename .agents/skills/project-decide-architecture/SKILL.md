@@ -35,7 +35,7 @@ Use criteria that affect the actual outcome.
 | Ownership and boundaries | Which component owns state, calculations, resources, and cleanup? | [ADR 0005](../../../docs/adr/0005-visual-object-composition.md) keeps calculations with their visual objects |
 | Complexity and deployment | Which new processes, dependencies, protocols, or installation steps does the option require? | [ADR 0001 alternatives](../../../docs/adr/0001-rust-http-sse.md#alternatives-and-trade-offs) compare simpler and larger designs |
 | Lifecycle and failure behavior | How does the option handle stale data, slow clients, cancellation, and shutdown? | [ADR 0002](../../../docs/adr/0002-sse-connection-lifecycle.md) rejects body-only socket timeouts |
-| Compatibility and verification | Which wire, visual, accessibility, or module contract must remain valid? | [PFD composition](../../../.context/pfd-module-plan.md) links frame, clipping, ownership, and SVG contracts |
+| Compatibility and verification | Which wire, visual, accessibility, or module contract must remain valid? | [PFD boundary map](../../../.context/pfd-module-plan.md) links frame, clipping, ownership, and SVG contracts |
 | Exposure and distribution | Does the option change trust boundaries, network access, SDK obligations, or permissions? | [Security review](../../../.context/security-review.md), [integration uncertainty](../../../docs/architecture.md#integration-uncertainty) |
 | Reconsideration | What future requirement or evidence would invalidate the choice? | [ADR 0001](../../../docs/adr/0001-rust-http-sse.md) identifies remote access, commands, history, and scale as triggers |
 
@@ -50,7 +50,7 @@ Follow the existing ADR examples and [document responsibilities](../../../.conte
 * Distinguish proposed choices, accepted decisions, implemented behavior, and verified acceptance.
 * Keep delivery status and execution results in the issue or PR.
 * Preserve accepted plans and amendments under the [local handoff rules](../../../.context/iterative-development.md#accepted-plans-and-handoffs).
-* Apply [project-plan-change](../project-plan-change/SKILL.md) and [validation and review](../../../.context/validation-and-review.md) after resolving the architectural choice.
+* Apply [project-plan-change](../project-plan-change/SKILL.md) and [evidence selection](../../../docs/testing/evidence.md#select-evidence-by-failure-risk) and [independent review guidance](../../../docs/testing/evidence.md#independent-subagent-review) after resolving the architectural choice.
 
 ## Completion checks
 

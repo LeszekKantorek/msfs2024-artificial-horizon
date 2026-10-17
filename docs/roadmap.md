@@ -39,15 +39,15 @@ flowchart LR
 
 > **Exit:** A phone displays synthetic demo attitude and recovers after connection loss without reload. The full path requires no simulator SDK.
 
-## Stage 2: G5 PFD demo vertical slice
+## Stage 2: G5 EFI demo vertical slice
 
-* [Panel presentation](pfd-presentation.md): modules, frame lifecycle, and layers.
-* [Project brief](project-brief.md#pfd-reference-and-coverage): included elements, exclusions, and responsive layout without a fixed aspect ratio.
+* [Panel presentation](efi/index.md): modules, frame lifecycle, and layers.
+* [Project brief](project-brief.md#efi-reference-and-coverage): included elements, exclusions, and responsive layout without a fixed aspect ratio.
 * [#19](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/19): scope and backlog work.
 
 | Order | Issue | Depends on | Deliverable |
 | --- | --- | --- | --- |
-| 1 | [#20 Responsive PFD attitude and coordinated turn](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/20) | #4 | Mobile layout, refined attitude, slip/skid and turn rate |
+| 1 | [#20 Responsive EFI attitude and coordinated turn](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/20) | #4 | Mobile layout, refined attitude, slip/skid and turn rate |
 | 2 | [#36 Modular rendering](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/36) | #20 | Instrument modules and panel scheduling, preserving the image |
 | 3 | [#37 Layered composition](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/37) | #36 | Shared attitude background and translucent instrument overlays |
 | 4 | [#21 Airspeed and ground speed](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/21) | #37 | IAS tape/readout and GS |
@@ -77,7 +77,7 @@ flowchart LR
 | Full-panel acceptance | #26 |
 
 > This evidence establishes demo behavior only. Stages 3-4 retain existing scope and dependencies.
-> The attitude-only provider leaves new PFD values unavailable. Live PFD integration requires separate future scope.
+> The attitude-only provider leaves new EFI values unavailable. Live EFI integration requires separate future scope.
 
 ## Stage 3: Real simulator data
 

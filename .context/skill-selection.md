@@ -8,7 +8,7 @@ The project replaced optional expert skills with existing context and Markdown d
 Use [task guidance](task-guidance.md) for the current task-to-source table and working approach.
 
 * Planning scope moved to [implementation planning](implementation-planning.md#scope-and-authorization).
-* Verification scope moved to [validation and review](validation-and-review.md#validation-scope).
+* Verification scope moved to [validation and review](../docs/testing/index.md#validation-by-change-scope).
 * This record preserves the replacement path for earlier references without retaining retired recommendations.
 
 Source: requested full context consistency review after the migration, 2026-10-11.

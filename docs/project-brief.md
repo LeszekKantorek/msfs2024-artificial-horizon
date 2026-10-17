@@ -5,7 +5,18 @@
 Display MSFS2024 flight data on a phone through a web address.
 Prioritize mobile readability, low delay, and explicit unavailable states.
 
-> Extend the demo into a responsive primary flight display (PFD). Keep live-simulator scope limited to pitch and bank.
+> Build a compact electronic flight instrument (EFI), inspired by a standby instrument, with an artificial horizon and supporting flight indications.
+> Keep live-simulator scope limited to pitch and bank.
+
+## Terminology
+
+* **Electronic Flight Instrument (EFI)** names the complete compact instrument in this project.
+* **Artificial horizon** names its attitude indication and remains part of the application name.
+* The intended presentation resembles a small standby instrument rather than a complete integrated cockpit display. This does not imply an independent backup data source.
+* **Primary Flight Display (PFD)** describes a display role and is not exclusive to the Garmin G1000. Garmin describes the G5 as an [electronic flight instrument usable as a primary or backup instrument](https://www.garmin.com/en-US/blog/aviation/garmin-introduces-electronic-flight-instrument-experimental-aircraft/).
+
+Historical ADRs and existing technical names in test scripts and fixture variables retain `pfd` during this terminology transition.
+Their names do not expand the product scope. Use EFI in new descriptions of the project.
 
 ## Requirements
 
@@ -19,7 +30,7 @@ Prioritize mobile readability, low delay, and explicit unavailable states.
 | Connection | Subscribe on page load. Recover automatically after interruption |
 | Simulator access | Read-only. No browser control commands |
 | Visuals | G5-inspired hierarchy and readability, original assets |
-| Project | GitHub Issues track work. New project text uses English, with the [original-plan exception](../.context/writing-style.md) |
+| Project | GitHub Issues track work. New project text uses English, except supplied accepted plans, which remain local and verbatim in their original language |
 
 ## Working assumptions
 
@@ -36,13 +47,13 @@ Prioritize mobile readability, low delay, and explicit unavailable states.
 | Scope | Data and controls | Boundary |
 | --- | --- | --- |
 | Original simulator MVP | Pitch/bank, scales, aircraft reference, source/connection status | Preserve #5-#8 scope and dependencies |
-| PFD demo | Deterministic Rust scenarios, including selected altitude, magnetic heading, selected-heading bug, and barometric setting | Deliver separate feature slices |
-| Future live PFD | Additional MSFS2024 indications | Requires separate scope. The attitude-only provider leaves these unavailable |
+| EFI demo | Deterministic Rust scenarios, including selected altitude, magnetic heading, selected-heading bug, and barometric setting | Deliver separate feature slices |
+| Future live EFI | Additional MSFS2024 indications | Requires separate scope. The attitude-only provider leaves these unavailable |
 | Browser controls | Read-only presentation | No menu, knob, editing, or sync actions |
 
 > Simulator failure must never select demo data silently.
 
-### PFD reference and coverage
+### EFI reference and coverage
 
 | Reference | Location |
 | --- | --- |
@@ -53,7 +64,7 @@ Prioritize mobile readability, low delay, and explicit unavailable states.
 
 Use original graphics. Do not embed PDF screenshots or copy the bezel.
 
-| Included illustration items | PFD capability | Feature issue |
+| Included illustration items | EFI capability | Feature issue |
 | --- | --- | --- |
 | 2, 3, 5, 7, 10 | Attitude, pitch scale, aircraft reference, slip/skid, turn rate | [#20](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/20) |
 | 1, 4, 8 | Airspeed tape, current IAS, ground speed | [#21](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/21) |
@@ -68,7 +79,7 @@ Use original graphics. Do not embed PDF screenshots or copy the bezel.
 | Exclusion | Rule |
 | --- | --- |
 | CDI (6), vertical navigation guidance (14), navigation course (17), ground track (19), battery (22) | No UI space, model fields, or demo scenarios |
-| HSI, ILS, GPS glidepath, VNAV | Outside scope. Current and selected heading remain PFD indications |
+| HSI, ILS, GPS glidepath, VNAV | Outside scope. Current and selected heading remain EFI indications |
 | Flight director, autopilot controls, recording, internet hosting | Outside scope |
 | Full G5 replica | Outside scope |
 | Fullscreen, wake lock, PWA installation | Later candidates |
@@ -96,7 +107,7 @@ Use original graphics. Do not embed PDF screenshots or copy the bezel.
 The opaque sky/ground background fills the entire panel, including side, heading, and supplemental regions.
 Tape backgrounds are translucent; digits, ticks, and value windows remain readable.
 Central pitch markings have separate clipping, and invalid data remains obscured.
-The [panel presentation](pfd-presentation.md#layers-and-clipping) defines layer ownership and clipping.
+The [panel presentation](efi/rendering.md#layers-and-clipping) defines layer ownership and clipping.
 
 [#36](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/36) first separates existing modules without changing the image.
 [#37](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/37) implements this composition without a top status bar. Background opacity remains subject to mobile acceptance.
@@ -111,7 +122,7 @@ Each instrument feature issue owns:
 * Readability evidence from real iOS Safari and Android Chrome, starting with the first slice.
 
 #26 also owns full-panel acceptance of all 17 elements.
-This does not expand #7 or establish live PFD compatibility.
+This does not expand #7 or establish live EFI compatibility.
 
 Acceptance criteria:
 

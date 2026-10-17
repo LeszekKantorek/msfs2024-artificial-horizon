@@ -20,7 +20,14 @@ Use these maps whenever a task needs project knowledge. Select rows by the reque
 * Reuse relevant content already read in this conversation while it remains applicable and unchanged.
 * Read README for startup or user-facing behavior, architecture for changed boundaries, and CONTRIBUTING for the applicable contribution stage.
 * Apply every relevant route when a change crosses boundaries, including required validation, acceptance, and accepted-plan invariants.
-* When validating a change, select required checks from the [validation scope matrix](docs/testing.md#validation-by-change-scope).
+* When validating a change, select required checks from the [validation scope matrix](docs/testing/index.md#validation-by-change-scope).
+
+## Documentation ownership
+
+Agent-facing technical materials, including `.context/`, `AGENTS.md`, `SKILL.md`, and skill reference files, may link into `.context/`.
+Project documentation, user instructions, and other non-agent documentation must not link into `.context/`.
+Keep agent procedures and supporting knowledge in their agent-facing sources. When project or user documentation needs that content, publish the relevant information in `docs/` or its appropriate documentation owner.
+Keep feature requirements, presentation, implementation details, and acceptance scenarios on the owning feature page; shared pages contain only shared contracts and procedures.
 
 ## Project constraints
 
@@ -38,7 +45,7 @@ Select a project procedure directly when its outcome matches the task. Maintain 
 | --- | --- |
 | [project-plan-change](.agents/skills/project-plan-change/SKILL.md) | Prepare a detailed implementation plan with invariants and acceptance evidence |
 | [project-diagnose-failure](.agents/skills/project-diagnose-failure/SKILL.md) | Diagnose an observed application, test, build, or environment failure |
-| [pfd-validate-presentation](.agents/skills/pfd-validate-presentation/SKILL.md) | Validate PFD presentation and report the limits of desktop and device evidence |
+| [project-validate-presentation](.agents/skills/project-validate-presentation/SKILL.md) | Validate EFI presentation and report the limits of desktop and device evidence |
 | [project-prepare-pr](.agents/skills/project-prepare-pr/SKILL.md) | Prepare a local PR description or publish the requested PR with accurate acceptance evidence |
 | [project-review-change](.agents/skills/project-review-change/SKILL.md) | Obtain and assess an independent diff review when delegation is authorized |
 | [project-decide-architecture](.agents/skills/project-decide-architecture/SKILL.md) | Compare architecture options and record an ADR with its actual decision status |
