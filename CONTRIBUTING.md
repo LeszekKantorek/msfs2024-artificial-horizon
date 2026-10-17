@@ -38,26 +38,36 @@ The project does not pin a compiler version.
 
 ### 3. Prepare agent skills and hooks
 
-The repository includes these skills from [LeszekKantorek/context-skills](https://github.com/LeszekKantorek/context-skills):
+The repository tests the skills from [context-skills PR #7](https://github.com/LeszekKantorek/context-skills/pull/7), branch `codex/context-skills-refresh`, pinned to commit `2598a6246b8649f7eaea68720201d9dbff1ddd84`:
 
 | Skill | Purpose |
 | --- | --- |
-| `context-apply` | Read and apply project knowledge before work |
-| `context-gather` | Save learning and maintain knowledge entries and their index |
-| `context-import-sessions` | Read selected saved sessions and pass them to gathering |
+| `context-preserve` | Preserve decisions and findings with rationale and evidence |
+| `context-review-sessions` | Review pending sessions through `context-preserve` |
+| `context-map` | Connect tasks and questions to relevant sources |
+| `context-maintain` | Improve knowledge coherence and organization |
+| `context-diagnose` | Investigate agent mistakes and check corrections |
+| `context-compile` | Turn established project procedures into skills |
 
 If the installed copies are missing, install them with:
 
 ```powershell
-npx --yes skills add LeszekKantorek/context-skills --agent codex --skill context-apply context-gather context-import-sessions --copy -y
+npx --yes skills add https://github.com/LeszekKantorek/context-skills/tree/2598a6246b8649f7eaea68720201d9dbff1ddd84 --agent codex --skill context-preserve context-review-sessions context-map context-maintain context-diagnose context-compile --copy -y
 ```
 
+The project also includes [procedural-skill-creator](https://github.com/LeszekKantorek/agent-skills/blob/main/skills/procedural-skill-creator/SKILL.md) for creating or revising executable skill procedures:
+
+```powershell
+npx --yes skills add LeszekKantorek/agent-skills --agent codex --skill procedural-skill-creator --copy -y
+```
+
+Choose the skill that fits the task; no skill sequence is required.
 Follow [AGENTS.md](AGENTS.md) when starting agent work.
 Use [task guidance](.context/task-guidance.md) to select procedures from project context and existing Markdown documentation.
 
 #### Session hooks
 
-The checkout also includes the [context-skills Codex integration](https://github.com/LeszekKantorek/context-skills/tree/main/integrations/codex).
+The checkout also includes the [Codex integration from the tested revision](https://github.com/LeszekKantorek/context-skills/tree/2598a6246b8649f7eaea68720201d9dbff1ddd84/integrations/codex).
 These files are separate from the skill installation command above:
 
 | File | Purpose |
@@ -67,8 +77,8 @@ These files are separate from the skill installation command above:
 
 | Event | Action |
 | --- | --- |
-| `SessionStart` | Remind the agent to apply project knowledge and use the context skills |
-| `Stop`, `Interrupt`, `PreCompact`, `SessionEnd` | Create or update one metadata record per session in Git-ignored `.context/sessions/` |
+| `SessionStart` | Describe the six context skills so the agent can select one for the task |
+| `Stop`, `Interrupt`, `PreCompact`, `SessionEnd` | Create or update one metadata row per session in Git-ignored `.context/sessions.log` |
 
 To prepare the hooks:
 
@@ -83,8 +93,12 @@ To prepare the hooks:
 3. Open `/hooks` after installation or hook changes.
 4. Review and trust the project definitions as described in the [hook documentation](https://learn.chatgpt.com/docs/hooks).
 
-> Hooks register session metadata. They do not read transcripts or run `context-gather` automatically.
-> Use `context-import-sessions` to process selected records later.
+> Hooks register session metadata. They do not read transcripts or run reviews automatically.
+> Use `context-review-sessions` with `context-preserve` to process pending records later.
+
+The registry uses UTF-8 CSV with `session_date`, `session_id`, `path`, and `reviewed_date` columns.
+Exclude `.context/sessions.log` and `.context/.sessions.lock` from commits and knowledge retrieval.
+The tested revision does not migrate the legacy `.context/sessions/` registry; retain it separately without treating its records as reviewed.
 
 See [agent maintenance](.context/agent-maintenance.md) for reinstalls and integration updates.
 

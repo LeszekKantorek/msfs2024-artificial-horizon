@@ -24,5 +24,5 @@
 | [Vertical speed](vertical-speed.md) | Extending or validating source-supplied VSI, the compact altitude/VSI composition, or the shared altitude scenario. |
 | [Heading](heading.md) | Extending or validating magnetic headings, numeric readout formatting, north wrapping, selected-bug capture, or top-strip geometry. |
 | [Writing style](writing-style.md) | Editing project prose or Markdown structure, or choosing which document owns a requirement. |
-| [Context tooling maintenance](agent-maintenance.md) | Maintaining the three context skills, their installation records, or session hooks. |
+| [Context tooling maintenance](agent-maintenance.md) | Maintaining the six context skills, procedural-skill-creator, their installation records, or CSV session hooks. |
 | [Context authoring](context-authoring.md) | Editing knowledge entries or their index. |
