@@ -198,9 +198,14 @@ export async function checkAirspeedIndications(page, setFixture, profile) {
     ['path', 'R'], ['path', 'X'], ['path', 'Y'], ['path', 'G'],
     ['text', 'R'], ['text', 'X'], ['text', 'Y'], ['text', 'G'],
   ]);
-  assert.deepEqual(scale.rangeOrder, ['low', 'flaps', 'normal', 'caution', 'overspeed']);
+  assert.deepEqual(scale.rangeOrder, ['low', 'normal', 'caution', 'overspeed', 'flaps']);
   for (const [width, height] of [[320, 240], [320, 480], [568, 240]]) {
     await page.setViewportSize({ width, height });
+    await page.waitForFunction(() => {
+      const svg = document.querySelector('svg'), bounds = svg.getBoundingClientRect();
+      const [,, width, height] = svg.getAttribute('viewBox').split(' ').map(Number);
+      return Math.abs(width - bounds.width) < 0.01 && Math.abs(height - bounds.height) < 0.01;
+    });
     for (const [ias, acceleration, prediction, overspeed, approaching] of [
       [0, 25, 150, false, true], [39.99, 0, null, false, false],
       [40, 0, null, false, false], [40.01, 0, null, false, false],
@@ -234,10 +239,13 @@ export async function checkAirspeedIndications(page, setFixture, profile) {
           const x = n.transform.baseVal.consolidate().matrix.e;
           return digits[i].x + x >= digitClip.x && digits[i].x + x + digits[i].width <= digitClip.x + digitClip.width;
         });
-        return { center, clip: { y: clip.y, bottom: clip.y + clip.height },
-          ranges: [...document.querySelectorAll('#airspeed-ranges rect')].map(n => {
-            const b = n.getBBox(); return { name: n.dataset.range, x: b.x, y: b.y, width: b.width, height: b.height };
-          }),
+        return { center, clip: { width: clip.width, y: clip.y, bottom: clip.y + clip.height },
+          ranges: Object.fromEntries([...document.querySelectorAll('#airspeed-ranges rect')].map(n => {
+            const b = n.getBBox(); return [n.dataset.range, { x: b.x, y: b.y, width: b.width, height: b.height }];
+          })),
+          trendWidth: getComputedStyle(trend).strokeWidth,
+          trendX: trendBox.x,
+          altitudeTrendWidth: getComputedStyle(document.querySelector('#altitude-trend')).strokeWidth,
           windowFill: getComputedStyle(window).fill,
           digitFills: [...group.querySelectorAll('.airspeed-digit')].map(n => getComputedStyle(n).fill),
           trendVisible: getComputedStyle(trend).display !== 'none',
@@ -247,19 +255,69 @@ export async function checkAirspeedIndications(page, setFixture, profile) {
       assert.ok(geometry.digitFills.every(fill => fill === (approaching ? 'rgb(255, 221, 67)' : 'rgb(245, 247, 250)')));
       assert.equal(geometry.digitsInside, true, `IAS digits fit at ${width}x${height}, ${ias} kt`);
       assert.equal(geometry.trendVisible, prediction !== null);
+      assert.equal(geometry.trendWidth, '3px');
+      assert.equal(geometry.altitudeTrendWidth, '3px');
       if (prediction !== null) {
+        assert.equal(geometry.trendX, geometry.clip.width - 10);
+        assert.equal(geometry.trendX - 1.5 - (geometry.ranges.normal.x + geometry.ranges.normal.width), 0.5);
         assert.ok(geometry.trendTop >= geometry.clip.y + 1 - 1e-4);
         assert.ok(geometry.trendBottom <= geometry.clip.bottom - 1 + 1e-4);
       }
-      for (const [index, [low, high]] of [[0, 40], [40, 85], [50, 110], [110, 140], [140, Infinity]].entries()) {
+      for (const [name, low, high] of [['low', 0, 40], ['flaps', 40, 85], ['normal', 50, 110],
+        ['caution', 110, 140], ['overspeed', 140, Infinity]]) {
         const top = Math.max(geometry.clip.y, Math.min(geometry.clip.bottom, geometry.center + (ias - high) * 4));
         const bottom = Math.max(geometry.clip.y, Math.min(geometry.clip.bottom, geometry.center + (ias - low) * 4));
-        const actual = geometry.ranges[index];
+        const actual = geometry.ranges[name];
         assert.ok(Math.abs(actual.y - top) < 1e-4 && Math.abs(actual.height - (bottom - top)) < 1e-4);
+        assert.equal(actual.x, geometry.clip.width - 18);
+        assert.equal(actual.width, name === 'flaps' ? 3 : 6);
       }
-      assert.equal(geometry.ranges[1].x + geometry.ranges[1].width, geometry.ranges[2].x,
-        'White and green occupy adjacent strips instead of overwriting each other');
     }
+    setFixture({ ias_kt: 65, ias_acceleration_ktps: 5, airspeed_profile: profile });
+    await page.waitForFunction(() => document.querySelector('#airspeed').getAttribute('aria-label') === 'Indicated airspeed 65 knots' &&
+      Number(document.querySelector('#airspeed-trend').dataset.predictionKt) === 95);
+    const paint = await page.evaluate(() => {
+      const white = document.querySelector('[data-range="flaps"]');
+      const green = document.querySelector('[data-range="normal"]');
+      const trend = document.querySelector('#airspeed-trend');
+      const clip = document.querySelector('#airspeed-tape-clip rect').getBBox();
+      const center = clip.height / 2;
+      // 72 kt is inside both ranges, above the readout and between integer ticks/references.
+      const y = center - 28;
+      const whitePoint = new DOMPoint(clip.width - 16.5, y).matrixTransform(white.getScreenCTM());
+      const greenPoint = new DOMPoint(clip.width - 13.5, y).matrixTransform(green.getScreenCTM());
+      const overlayCorrect = () => document.elementFromPoint(whitePoint.x, whitePoint.y) === white &&
+        document.elementFromPoint(greenPoint.x, greenPoint.y) === green;
+      const overlay = overlayCorrect();
+      const parent = white.parentNode, next = white.nextSibling;
+      let rejectsReversedOrder;
+      try {
+        parent.insertBefore(white, green);
+        rejectsReversedOrder = !overlayCorrect() && document.elementFromPoint(whitePoint.x, whitePoint.y) === green;
+      } finally { parent.insertBefore(white, next); }
+      const ticks = document.querySelector('.airspeed-ticks');
+      const label = document.querySelector('.airspeed-label');
+      const tickPositions = [...ticks.getAttribute('d').matchAll(/M ([\d.]+) (-?[\d.]+) H ([\d.]+)/g)];
+      const ticksFit = tickPositions.every((m, i) => Math.abs(Number(m[1]) - (clip.width - (i % 5 === 0 ? 28 : 24))) < 1e-4 &&
+        Math.abs(Number(m[3]) - (clip.width - 20)) < 1e-4);
+      const labelsFit = [...document.querySelectorAll('.airspeed-label')].every(n => {
+        const b = n.getBBox();
+        return Math.abs(Number(n.getAttribute('x')) - (clip.width - 30)) < 1e-4 && b.x >= 0 &&
+          b.x + b.width < clip.width - 28 - 0.5;
+      });
+      const pointer = document.querySelector('.airspeed-window');
+      const pointerPoint = new DOMPoint(clip.width - 17, center).matrixTransform(pointer.getScreenCTM());
+      return { overlay, rejectsReversedOrder, restored: overlayCorrect(), ticksFit, labelsFit,
+        pointerCoversBands: document.elementFromPoint(pointerPoint.x, pointerPoint.y) === pointer,
+        fills: [getComputedStyle(white).fill, getComputedStyle(green).fill],
+        sameTrendColor: getComputedStyle(trend).stroke === getComputedStyle(document.querySelector('#altitude-trend')).stroke,
+        tickWidth: getComputedStyle(ticks).strokeWidth, labelSize: getComputedStyle(label).fontSize };
+    });
+    assert.ok(paint.overlay && paint.rejectsReversedOrder && paint.restored && paint.pointerCoversBands &&
+      paint.ticksFit && paint.labelsFit && paint.sameTrendColor, JSON.stringify({ width, height, paint }));
+    assert.deepEqual(paint.fills, ['rgb(245, 247, 250)', 'rgb(55, 223, 100)']);
+    assert.equal(paint.tickWidth, '1px');
+    assert.equal(paint.labelSize, '12px');
     for (const speed of [55, 65, 75, 90, 0, 150]) {
       setFixture({ ias_kt: speed, ias_acceleration_ktps: 0 });
       await page.waitForFunction(speed => document.querySelector('#airspeed').getAttribute('aria-label') ===

@@ -2,7 +2,7 @@ import { clamp } from './helpers.js';
 
 // All coordinates are CSS pixels. Text and symbols do not stretch with the panel.
 export function pfdLayout(width, height) {
-  const airspeedWidth = clamp(width * 0.16, 50, 84);
+  const airspeedWidth = clamp(width * 0.16, 50, 84) + 1;
   const altitudeWidth = clamp(width * 0.19, 60, 92);
   const top = 32;
   const bottom = 48;

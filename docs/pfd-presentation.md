@@ -513,7 +513,7 @@ The compact numeric window and its numeric limits are application design decisio
 `altitude/index.js` composes the stateless `trend.js` object over the tape's left-side ticks:
 
 * The trend uses local `x = 2` inside a four CSS px clip at the tape's left edge.
-* The magenta line shares the airspeed trend's two-pixel stroke and color.
+* The magenta line shares the airspeed trend's color and 3 CSS px stroke. Its four-pixel clip leaves 0.5 CSS px on each side of the painted line.
 * It extends from the current-altitude center toward the altitude predicted in six seconds.
 * Source VSI supplies the rate without estimating browser altitude differences.
 * Climb extends upward and descent downward at the tape's fixed 0.4 CSS px/ft spacing.
@@ -694,13 +694,13 @@ Real-phone acceptance remains separate in [#23](https://github.com/LeszekKantore
 
 ## Airspeed and ground speed
 
-Composition and geometry preserve the existing panel allocation:
+Composition and geometry use the panel's airspeed allocation:
 
 * `airspeed/index.js` composes objects once and exposes `resize(layout)` and `render(frame)`.
 * IAS, TAS, and GS use layer 1.
 * IAS and GS local failure and overflow marks use layer 4. TAS marks stay inside its opaque layer-1 field.
-* The existing airspeed rectangle defines tape geometry.
-* The central attitude allocation remains unchanged.
+* The airspeed rectangle defines tape geometry and includes the 1 CSS px increase for wider range bands and scale-label clearance.
+* The central attitude region starts 1 CSS px farther right and is 1 CSS px narrower. Altitude retains its allocation.
 * GS stays at the bottom of the panel, with the same left edge and width as IAS.
 * The IAS background extends to GS without a gap.
 * IAS and altitude scales use clips of equal height over their complete existing allocations.
@@ -767,7 +767,11 @@ Unavailable acceleration hides the trend and predictive warning while preserving
 
 Range and readout geometry use these rules:
 
-* White and green use adjacent strips where they overlap.
+* Red, green, yellow, and red/white striped ranges share one 6 CSS px lane at local `x = tape width - 18`.
+* The white flap range overlays the left half of that lane at 3 CSS px width. Green remains visible on the right where both ranges apply.
+* The white range paints after the other range rectangles. Each range retains its configured speed interval, including the white-only interval below VS1.
+* Ticks and scale labels sit 2 CSS px farther left to clear the wider lane. The airspeed allocation is 1 CSS px wider to contain three-digit labels on the narrowest tape.
+* Tick lengths, stroke widths, and label sizes remain unchanged.
 * All ranges use the IAS scale's 4 CSS px/kt spacing and screen-space clip.
 * The fixed window remains opaque.
 * Digits use 17 px text to preserve three readable columns beside the new indications at minimum width.
@@ -805,6 +809,7 @@ Trend uses source-supplied acceleration:
 * `OVR` retains its existing meaning and hides the numeric tape and trend.
 * The browser calculates the six-second prediction as `IAS + 6 * ias_acceleration_ktps` from source-supplied acceleration.
 * The magenta vector extends from current IAS toward that prediction.
+* Its 3 CSS px stroke remains centered at local `x = tape width - 10`, leaving 0.5 CSS px between its painted edge and the range lane.
 * Its stroke stays inside the tape clip.
 * A negative prediction remains a calculation result and clips at the tape boundary.
 * Constant speed, missing acceleration, or a non-finite prediction hides the vector.
@@ -819,7 +824,9 @@ VNE changes the current-speed window and digits independently:
 * Profile loss removes both VNE warnings.
 * Acceleration loss removes only the predictive warning.
 
-All new content stays inside the existing IAS allocation. GS and central attitude geometry retain their positions.
+All range and trend content stays inside the IAS allocation.
+The airspeed column, including TAS and GS, gains 1 CSS px. Its width is `clamp(panel width * 0.16, 50, 84) + 1`.
+The central attitude region starts 1 CSS px farther right and is 1 CSS px narrower. The altitude allocation remains unchanged.
 
 ## Delivery boundaries
 
