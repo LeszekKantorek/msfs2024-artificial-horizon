@@ -49,48 +49,35 @@ async function currentSnapshot() {
   await reader.cancel();
   return JSON.parse(wire.split('\n').find(line => line.startsWith('data: ')).slice(6));
 }
-try {
-  await mkdir('.local', { recursive: true });
-  await start();
-  browser = await chromium.launch({ headless: true, channel: process.env.BROWSER_CHANNEL || undefined });
-  const page = await browser.newPage({ viewport: { width: 568, height: 240 } });
-  const errors = [];
-  const loadedModules = new Set();
-  page.on('pageerror', error => errors.push(String(error)));
-  page.on('response', response => {
-    const path = new URL(response.url()).pathname;
-    if (path.endsWith('.js')) {
-      if (response.status() !== 200 || !response.headers()['content-type']?.startsWith('text/javascript')) {
-        errors.push(`Module response: ${path} (${response.status()})`);
-      }
-      loadedModules.add(path);
-    }
-  });
-  await page.goto(address);
+const altitudeReading = page => page.evaluate(() => ({
+  state: document.querySelector('#altitude').dataset.state,
+  feet: Number(document.querySelector('#altitude').getAttribute('aria-label').split(' ')[2]),
+  sign: document.querySelector('#altitude-sign').textContent,
+  drums: Number([...document.querySelectorAll('#altitude-digits > g')].map(n => n.firstElementChild.textContent).join('')),
+  baroState: document.querySelector('#barometric-setting').dataset.state,
+  pressureLabel: document.querySelector('#barometric-setting').getAttribute('aria-label'),
+  pressureText: document.querySelector('#barometric-value').textContent,
+}));
+function verifyAltitude(reading) {
+  assert.equal(reading.state, 'available');
+  assert.equal(reading.baroState, 'available');
+  assert.ok(Number.isFinite(reading.feet));
+  assert.equal(reading.drums, Math.floor(Math.abs(reading.feet) / 20) * 20);
+  assert.equal(reading.sign, reading.feet < 0 ? '−' : '');
+  assert.match(reading.pressureText, /^\d+\.\d{2} inHg$/);
+  assert.equal(reading.pressureLabel, `Barometric setting ${reading.pressureText}`);
+}
+
+async function checkInitialDisplay(page) {
   await page.locator('.instrument[data-available="true"]').waitFor();
   assert.equal(await page.locator('#source-badge, .source').count(), 0);
   assert.equal(await page.locator('#telemetry-status').textContent().then(text => text.includes('DEMO')), false);
   assert.equal(await page.locator('#slip-skid').getAttribute('data-available'), 'true');
   assert.equal(await page.locator('#turn-rate').getAttribute('data-available'), 'true');
-  const altitudeReading = () => page.evaluate(() => ({
-    state: document.querySelector('#altitude').dataset.state,
-    feet: Number(document.querySelector('#altitude').getAttribute('aria-label').split(' ')[2]),
-    sign: document.querySelector('#altitude-sign').textContent,
-    drums: Number([...document.querySelectorAll('#altitude-digits > g')].map(n => n.firstElementChild.textContent).join('')),
-    baroState: document.querySelector('#barometric-setting').dataset.state,
-    pressureLabel: document.querySelector('#barometric-setting').getAttribute('aria-label'),
-    pressureText: document.querySelector('#barometric-value').textContent,
-  }));
-  function verifyAltitude(reading) {
-    assert.equal(reading.state, 'available');
-    assert.equal(reading.baroState, 'available');
-    assert.ok(Number.isFinite(reading.feet));
-    assert.equal(reading.drums, Math.floor(Math.abs(reading.feet) / 20) * 20);
-    assert.equal(reading.sign, reading.feet < 0 ? '−' : '');
-    assert.match(reading.pressureText, /^\d+\.\d{2} inHg$/);
-    assert.equal(reading.pressureLabel, `Barometric setting ${reading.pressureText}`);
-  }
-  verifyAltitude(await altitudeReading());
+  verifyAltitude(await altitudeReading(page));
+}
+
+async function checkEmbeddedAssets(loadedModules) {
   assert.deepEqual([...loadedModules].sort(), [
     '/airspeed/ground-speed.js', '/airspeed/true-airspeed.js', '/airspeed/helpers.js', '/airspeed/ias.js', '/airspeed/index.js',
     '/airspeed/readout.js', '/airspeed/references.js', '/airspeed/tape.js', '/altitude/baro.js', '/altitude/index.js', '/altitude/readout.js', '/altitude/selected.js', '/altitude/tape.js', '/altitude/trend.js', '/altitude/vsi.js', '/app.js', '/fixed-symbols/aircraft.js', '/fixed-symbols/bank-scale.js', '/fixed-symbols/index.js', '/frame-scheduler.js', '/heading.js', '/helpers.js', '/horizon/bank-pointer.js', '/horizon/index.js', '/horizon/pitch-scale.js', '/horizon/world.js', '/layout.js',
@@ -105,6 +92,9 @@ try {
   for (const path of ['/math.js', '/svg.js', '/telemetry-client.js', '/airspeed.js', '/horizon.js', '/fixed-symbols.js', '/airspeed/calculations.js', '/horizon/calculations.js', '/vertical-speed.js']) {
     assert.equal((await fetch(address + path)).status, 404);
   }
+}
+
+async function checkInitialTelemetry(page) {
   // The first synthetic-jump sample intentionally omits VSI for one tick.
   await page.locator('#vertical-speed[data-state="available"]').waitFor();
   const snapshot = await currentSnapshot();
@@ -126,12 +116,18 @@ try {
   assert.equal(await page.locator('#vertical-speed-value').textContent(), '+4881');
   assert.ok(Number.isFinite(snapshot.ias_acceleration_ktps));
   assert.equal(snapshot.airspeed_profile.vne_kt, 140);
+}
+
+async function checkApproachingOverspeed(page) {
   // Observe source-supplied acceleration and the corresponding six-second warning.
   await page.waitForFunction(() => document.querySelector('#airspeed').dataset.approaching === 'true' &&
     Number(document.querySelector('#airspeed-trend').dataset.predictionKt) >= 140,
     null, { timeout: 25000 });
   assert.equal(await page.locator('#airspeed').getAttribute('data-state'), 'available');
   assert.equal(await page.locator('#ground-speed').getAttribute('data-state'), 'available');
+}
+
+async function checkRightTurnAndSpeeds(page) {
   // Wait for the Rust-owned right-bank/standard-rate segment, not a browser fixture.
   await page.waitForFunction(() => document.querySelector('#turn-rate').getAttribute('aria-label') ===
     'Turn rate 3 degrees per second' &&
@@ -148,6 +144,9 @@ try {
   assert.equal(await page.locator('#airspeed').getAttribute('data-overspeed'), 'true');
   assert.equal(await page.locator('#airspeed-trend').evaluate(n => getComputedStyle(n).display), 'none');
   await page.screenshot({ path: '.local/pfd-runtime-landscape.png' });
+}
+
+async function checkNorthCrossing(page) {
   // The source crosses north after the +3 degrees/second segment.
   await page.waitForFunction(() => document.querySelector('#heading').getAttribute('aria-label') ===
     'Magnetic heading 0 degrees, selected heading 0 degrees', null, { timeout: 20000 });
@@ -158,6 +157,9 @@ try {
   }));
   assert.equal(north.value, '360'); assert.ok(Math.abs(north.center - north.bug) < 1e-4);
   await page.screenshot({ path: '.local/pfd-runtime-heading-north.png' });
+}
+
+async function checkSelectedAltitude(page) {
   await page.locator('#selected-altitude[data-state="available"]').waitFor({ timeout: 20000 });
   const target = await currentSnapshot();
   assert.equal(target.selected_altitude_ft, 10000);
@@ -167,10 +169,16 @@ try {
   assert.equal(await page.locator('#selected-altitude').getAttribute('data-alert'), 'none');
   assert.equal(await page.locator('#selected-altitude-bug').evaluate(n => n.transform.baseVal.consolidate().matrix.f), 14.5);
   await page.screenshot({ path: '.local/pfd-runtime-selected-altitude.png' });
+}
+
+async function checkAltitudeHold(page) {
   await page.waitForFunction(() => document.querySelector('#vertical-speed').getAttribute('aria-label') === 'Vertical speed 0 feet per minute');
   const held = await currentSnapshot();
   assert.equal(held.altitude_ft, 8500); assert.ok(held.vertical_speed_fpm === 0);
   assert.equal(await page.locator('#altitude-trend').evaluate(n => getComputedStyle(n).display), 'none');
+}
+
+async function checkClimbAndTrend(page) {
   await page.waitForFunction(() => document.querySelector('#vertical-speed').getAttribute('aria-label') === 'Vertical speed 1500 feet per minute', null, { timeout: 10000 });
   const climbing = await currentSnapshot();
   assert.ok(climbing.altitude_ft >= 8500 && climbing.altitude_ft < 8600);
@@ -185,13 +193,17 @@ try {
   });
   assert.deepEqual(altitudeTrend, { x: 2, dy: -60, predictionChange: 150, painted: true });
   await page.screenshot({ path: '.local/pfd-runtime-vertical-speed.png' });
-  await stop();
+}
+
+async function checkSourceLoss(page) {
   await page.locator('.instrument[data-available="false"]').waitFor();
   assert.equal(await page.locator('#heading-value').textContent(), 'X');
   assert.equal(await page.locator('#selected-heading-bug').getAttribute('transform'), null);
   assert.equal(await page.locator('#vertical-speed').getAttribute('data-state'), 'unavailable');
   assert.equal(await page.locator('#altitude-trend').evaluate(n => getComputedStyle(n).display), 'none');
-  await start();
+}
+
+async function checkRecovery(page) {
   await page.locator('.instrument[data-available="true"]').waitFor();
   assert.equal(await page.locator('#turn-rate').getAttribute('aria-label'), 'Turn rate 0 degrees per second');
   const recovered = await page.evaluate(() => ({
@@ -209,11 +221,44 @@ try {
   assert.equal(recovered.tas, Math.round(recovered.ias * 160 / 150));
   assert.equal(recovered.tasText, String(recovered.tas));
   assert.equal(recovered.digits, String(Math.floor(recovered.ias)));
-  verifyAltitude(await altitudeReading());
+  verifyAltitude(await altitudeReading(page));
   assert.equal(await page.locator('#heading-value').textContent(), '354');
   assert.equal(await page.locator('#selected-altitude').getAttribute('data-state'), 'unavailable');
   await page.locator('#vertical-speed[data-state="available"]').waitFor();
   assert.equal(await page.locator('#vertical-speed-value').textContent(), '+4881');
+}
+
+try {
+  await mkdir('.local', { recursive: true });
+  await start();
+  browser = await chromium.launch({ headless: true, channel: process.env.BROWSER_CHANNEL || undefined });
+  const page = await browser.newPage({ viewport: { width: 568, height: 240 } });
+  const errors = [];
+  const loadedModules = new Set();
+  page.on('pageerror', error => errors.push(String(error)));
+  page.on('response', response => {
+    const path = new URL(response.url()).pathname;
+    if (path.endsWith('.js')) {
+      if (response.status() !== 200 || !response.headers()['content-type']?.startsWith('text/javascript')) {
+        errors.push(`Module response: ${path} (${response.status()})`);
+      }
+      loadedModules.add(path);
+    }
+  });
+  await page.goto(address);
+  await checkInitialDisplay(page);
+  await checkEmbeddedAssets(loadedModules);
+  await checkInitialTelemetry(page);
+  await checkApproachingOverspeed(page);
+  await checkRightTurnAndSpeeds(page);
+  await checkNorthCrossing(page);
+  await checkSelectedAltitude(page);
+  await checkAltitudeHold(page);
+  await checkClimbAndTrend(page);
+  await stop();
+  await checkSourceLoss(page);
+  await start();
+  await checkRecovery(page);
   assert.deepEqual(errors, []);
   console.log(`Rust-to-browser PFD checks passed on ${await browser.version()}: embedded assets, heading/north capture, selected-altitude and VSI SSE/SVG, standard-rate turn, source loss and restart without page reload.`);
 } finally {

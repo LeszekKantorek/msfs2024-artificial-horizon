@@ -59,7 +59,7 @@ Use the [speed contract](../telemetry-contract.md#optional-speed-indications) an
 | Runtime | Embedded TAS module supports HTTP/MIME and HEAD checks; real demo readouts recover after server restart without reload |
 
 Run the [automated checks](../testing/automated.md#automated-checks) and both [desktop scripts](../testing/pfd.md#responsive-efi-layout-and-desktop-checks).
-`true-airspeed-browser-checks.mjs` covers 320×480, 326×246, and 568×240 at whole/fractional bounds and simulated safe-area padding.
+`tests/browser/checks/true-airspeed-browser-checks.mjs` covers 320×480, 326×246, and 568×240 at whole/fractional bounds and simulated safe-area padding.
 Inspect `.local/pfd-browser/tas-*` screenshots over sky and ground.
 
 Apply the [shared phone procedure](../testing/devices.md#real-phone-acceptance-procedure) for #66, using [phone fixtures](../testing/devices.md#phone-fixture-setup) in both compositions.

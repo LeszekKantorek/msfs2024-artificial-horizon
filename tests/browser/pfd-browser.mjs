@@ -5,18 +5,18 @@ import { spawn } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
 import { once } from 'node:events';
 import { readFileSync } from 'node:fs';
-import { checkAirspeedIndications, checkAirspeedAvailabilityTransitions } from './airspeed-browser-checks.mjs';
-import { checkAltitude } from './altitude-browser-checks.mjs';
-import { checkSelectedAltitude } from './selected-altitude-browser-checks.mjs';
-import { checkVerticalSpeed } from './vertical-speed-browser-checks.mjs';
-import { checkAltitudeTrend } from './altitude-trend-browser-checks.mjs';
-import { checkHeading } from './heading-browser-checks.mjs';
-import { checkTapeFooters } from './tape-footer-browser-checks.mjs';
-import { checkTrueAirspeed } from './true-airspeed-browser-checks.mjs';
+import { checkAirspeedIndications, checkAirspeedAvailabilityTransitions } from './checks/airspeed-browser-checks.mjs';
+import { checkAltitude } from './checks/altitude-browser-checks.mjs';
+import { checkSelectedAltitude } from './checks/selected-altitude-browser-checks.mjs';
+import { checkVerticalSpeed } from './checks/vertical-speed-browser-checks.mjs';
+import { checkAltitudeTrend } from './checks/altitude-trend-browser-checks.mjs';
+import { checkHeading } from './checks/heading-browser-checks.mjs';
+import { checkTapeFooters } from './checks/tape-footer-browser-checks.mjs';
+import { checkTrueAirspeed } from './checks/true-airspeed-browser-checks.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
-const server = spawn(process.execPath, ['tests/browser-fixture-server.mjs'], {
+const server = spawn(process.execPath, ['tests/browser/helpers/browser-fixture-server.mjs'], {
   env: { ...process.env, PFD_FIXTURE_HOST: '127.0.0.1', PFD_FIXTURE_PORT: '0' }, stdio: ['pipe', 'pipe', 'inherit'],
 });
 let activeClients = 0;
@@ -148,7 +148,7 @@ try {
       await page.screenshot({ path: `.local/pfd-browser/${path === '/' ? 'g1' : 'layout'}-${width}x${height}.png` });
     }
     await checkAirspeedAvailabilityTransitions(page, setFixture,
-      JSON.parse(readFileSync(new URL('./fixtures/airspeed-profile.json', import.meta.url))));
+      JSON.parse(readFileSync(new URL('../fixtures/airspeed-profile.json', import.meta.url))));
   }
   // Candidate opacity is a development experiment; mobile evidence selects the final value.
   for (const opacity of [0.50, 0.65, 0.80]) {
@@ -261,7 +261,7 @@ try {
   ]);
   assert.deepEqual(scaleGeometry.labels, [{ text: '0', y: 0 }, { text: '10', y: -40 }, { text: '20', y: -80 }]);
   await checkAirspeedIndications(page, setFixture,
-    JSON.parse(readFileSync(new URL('./fixtures/airspeed-profile.json', import.meta.url))));
+    JSON.parse(readFileSync(new URL('../fixtures/airspeed-profile.json', import.meta.url))));
   await checkAltitude(page, setFixture, url);
   await checkSelectedAltitude(page, setFixture, url);
   await checkVerticalSpeed(page, setFixture, url);
@@ -352,7 +352,7 @@ try {
   const resizeChecks = await page.evaluate(() => { const checks = window.resizeChecks; window.resizeChecks = null; return checks; });
   assert.ok(resizeChecks.length >= 2);
   assert.ok(resizeChecks.every(Boolean), 'ResizeObserver must leave a coherent pitch scale and reading');
-  const poses = JSON.parse(readFileSync(new URL('./fixtures/pfd-samples.json', import.meta.url)));
+  const poses = JSON.parse(readFileSync(new URL('../fixtures/pfd-samples.json', import.meta.url)));
   for (const [index, pose] of poses.entries()) {
     setFixture({ ...pose.attitude, slip_skid: pose.slip_skid, turn_rate_dps: pose.turn_rate_dps });
     await page.waitForFunction(({ slip, turn }) =>

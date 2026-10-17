@@ -251,7 +251,7 @@ The browser validates those samples and presents them within the available panel
 * Resize preserves the latest accepted sample and its original deadline.
 * Sky/ground and pitch markings use separate transformed groups with separate screen-space clipping.
 * Future instrument regions contain no readings or scales in the production page.
-* `tests/layout-fixture.js` identifies the full 17-element arrangement built from production modules through the development fixture server.
+* `tests/browser/helpers/layout-fixture.js` identifies the full 17-element arrangement built from production modules through the development fixture server.
 
 ### Panel boundary
 

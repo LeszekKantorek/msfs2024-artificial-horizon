@@ -5,7 +5,7 @@ import { isIP } from 'node:net';
 import { readFileSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 
-const profile = JSON.parse(readFileSync(new URL('./fixtures/airspeed-profile.json', import.meta.url)));
+const profile = JSON.parse(readFileSync(new URL('../../fixtures/airspeed-profile.json', import.meta.url)));
 let fixture = { state: 'live', pitch_deg: 0, roll_deg: 0, slip_skid: 0, turn_rate_dps: 0,
   heading_deg: 359, selected_heading_deg: 1,
   altitude_ft: 10000, selected_altitude_ft: 12000, vertical_speed_fpm: 0, baro_text: '29.92 inHg', ias_kt: 123, gs_kt: 137, tas_kt: 131, airspeed_profile: profile, ias_acceleration_ktps: 5, hold: false };
@@ -73,7 +73,7 @@ const server = createServer((request, response) => {
   if (path === '/layout-fixture.js') {
     response.end(readFileSync(new URL('./layout-fixture.js', import.meta.url))); return;
   }
-  let body = readFileSync(new URL(`../web/${file}`, import.meta.url), 'utf8');
+  let body = readFileSync(new URL(`../../../web/${file}`, import.meta.url), 'utf8');
   if (path === '/layout.html') body = body.replace('</head>', '<script type="module" src="/layout-fixture.js"></script></head>');
   response.end(body);
 });
