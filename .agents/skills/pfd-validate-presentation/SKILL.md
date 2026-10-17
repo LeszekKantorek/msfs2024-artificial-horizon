@@ -5,10 +5,6 @@ description: Validate PFD geometry, SVG layers, rendering lifecycle, or browser 
 
 # Validate PFD Presentation
 
-> Generated from [docs/testing.md#pfd-presentation-validation-procedure](../../../docs/testing.md#pfd-presentation-validation-procedure).
-> Edit that procedure, then run `python tools/compile_project_skills.py` from the repository root.
-> Check freshness with `python tools/compile_project_skills.py --check`. Do not edit this generated file.
-
 ## Goal
 
 Produce traceable presentation-validation results with unresolved failures and device-evidence limits stated explicitly.

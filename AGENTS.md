@@ -25,14 +25,14 @@ Use these maps whenever a task needs project knowledge. Select rows by the reque
 ## Project constraints
 
 * Write project text in English and preserve the MIT license.
-* Keep credentials, SDK binaries, local SDK paths, and generated output out of commits. The only generated-output exception is the PFD skill tracked under its [source ownership rules](.context/agent-maintenance.md#project-procedure-skills).
+* Keep credentials, SDK binaries, local SDK paths, and generated output out of commits.
 * Target Windows x64 MSVC for Rust work and keep default checks independent of the simulator.
 * Preserve accepted scope and user changes without an arbitrary file-count limit, and keep supplied implementation plans local and verbatim.
 * Report only validation actually performed or applicable recorded evidence, with missing checks stated explicitly.
 
 ## Project knowledge
 
-Select a project procedure directly when its outcome matches the task:
+Select a project procedure directly when its outcome matches the task. Maintain each procedure in its owning `SKILL.md` under the [source ownership rules](.context/agent-maintenance.md#project-procedure-skills):
 
 | Skill | Use |
 | --- | --- |
