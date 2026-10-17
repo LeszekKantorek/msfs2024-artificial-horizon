@@ -3,16 +3,37 @@ description: Keep project knowledge concise and selective. Use when editing .con
 status: active
 ---
 
-* Retain rules that change a future action, decision, or check.
+* Retain decisions, explanations, findings, and rules that help a future task, with their rationale and conditions of use.
 * Link to canonical documents instead of copying their content.
 * Remove session progress and expired task-specific permissions from reusable knowledge.
 * Preserve conditions, uncertainty, evidence limits, and source provenance.
 * Use concise technical English and the [writing style](writing-style.md).
 * Use tables or diagrams only when they reduce reading effort.
-* Give each entry a specific retrieval condition in the table-only index.
 * Keep independent topics separate so agents can read only relevant entries.
-* Keep task navigation in [task guidance](task-guidance.md) and procedural rules in their subject entries or canonical documents.
+* Put direct routes in the index and conditional routes in [task guidance](task-guidance.md).
+* Keep procedures in their owning sources.
 * Retain historical source pointers and scoped evidence limits when consolidating duplicate guidance.
-* Follow the context skills for metadata, retrieval, and review procedures instead of duplicating their instructions.
+* Select the appropriate [context skill](../AGENTS.md#project-knowledge) for preservation, maintenance, mapping, diagnosis, or session review.
+
+## Local entry and index convention
+
+These formats are project conventions. The installed context skills do not prescribe them.
+
+| Field / record | Project rule |
+| --- | --- |
+| `description` | State the entry's subject and when its knowledge is useful |
+| `status` | Use `active`, `superseded`, or `deprecated` |
+| `superseded_by` | Required for `superseded`; resolve the replacement path relative to the entry |
+| Active entry | Apply within its stated scope, retaining evidence limits and uncertainty |
+| Superseded entry | Follow the replacement; report broken paths or cycles instead of guessing |
+| Deprecated entry | Treat as withdrawn; retain the reason and useful history |
+| `.context/index.md` | Keep a table-only map with each active entry once and concrete selection conditions |
+| Direct documentation routes | Include recurring tasks that can go directly to a canonical document or section |
+
+Exclude session metadata and transcripts under [AGENTS](../AGENTS.md#project-knowledge).
+When moving knowledge, update incoming links, index rows, and replacement paths.
+Check that representative tasks still reach the applicable requirements, rationale, and evidence limits.
 
 Source: accepted requirement, 2026-10-09, to reduce recurring context cost without losing actionable knowledge.
+
+Source: accepted context and documentation review, 2026-10-17, preserving local metadata and navigation after the context-skills replacement.

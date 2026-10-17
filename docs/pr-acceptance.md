@@ -13,12 +13,8 @@ The acceptance control uses this workflow configuration:
 
 ## Prepare an issue and PR
 
-1. Give the issue an `Acceptance criteria` heading with Markdown task items.
-2. Mark criteria confirmed by unit tests or automated validation as checked and record the evidence.
-3. Add a closing reference to the PR, such as `Closes #21`.
-4. List pending PR verification as unchecked tasks.
-5. Describe the verification steps and expected results.
-6. Complete verification and check every issue Acceptance criterion and every PR task.
+Follow [CONTRIBUTING](../CONTRIBUTING.md#acceptance-criteria-and-additional-verification) for author responsibilities, evidence, and pending verification.
+The sections below define how the control interprets those records and publishes its status.
 
 ### Issue references
 

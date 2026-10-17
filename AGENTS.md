@@ -1,17 +1,25 @@
 # Agent instructions
 
-## Before work
+## Context selection
 
-1. Use [.context/index.md](.context/index.md) to select entries by the task's affected behavior.
-2. Read the selected entries and only the source sections needed for the current change.
-3. Use [task guidance](.context/task-guidance.md) when the route is unclear or the task crosses several areas.
+Use these maps whenever a task needs project knowledge. Select rows by the requested outcome, affected behavior, or unresolved question.
+
+| Need | Map |
+| --- | --- |
+| Change behavior across providers, telemetry, HTTP, or the browser | [Changes across components](.context/component-changes.md) |
+| Understand or reconsider an accepted architecture choice | [Governing decisions](.context/architecture-decisions.md#find-the-governing-decision) |
+| Select procedures for implementation, diagnosis, validation, review, documentation, or delivery | [Task guidance](.context/task-guidance.md#practical-selection) |
+
+1. Follow the applicable map rows and their conditions to the relevant sources.
+2. Read only the source sections needed for the task.
+3. Consult [.context/index.md](.context/index.md) as the final fallback when the maps leave a required source unidentified.
 4. Stop discovery when the expected result, applicable constraints, and validation method are clear.
-5. Expand discovery when a dependency, conflict, missing fact, or changed scope requires it.
+5. Return to the maps when a dependency, conflict, missing fact, or changed scope requires more context.
 
 * A link is a reference, not an instruction to read every linked document recursively.
 * Reuse relevant content already read in this conversation while it remains applicable and unchanged.
 * Read README for startup or user-facing behavior, architecture for changed boundaries, and CONTRIBUTING for the applicable contribution stage.
-* Apply every relevant route when a change crosses boundaries, including required validation and acceptance.
+* Apply every relevant route when a change crosses boundaries, including required validation, acceptance, and accepted-plan invariants.
 * When validating a change, select required checks from the [validation scope matrix](docs/testing.md#validation-by-change-scope).
 
 ## Project constraints
@@ -19,7 +27,7 @@
 * Write project text in English and preserve the MIT license.
 * Keep credentials, SDK binaries, local SDK paths, and generated output out of commits.
 * Target Windows x64 MSVC for Rust work and keep default checks independent of the simulator.
-* Preserve accepted scope and user changes, and keep supplied implementation plans local and verbatim.
+* Preserve accepted scope and user changes without an arbitrary file-count limit, and keep supplied implementation plans local and verbatim.
 * Report only validation actually performed or applicable recorded evidence, with missing checks stated explicitly.
 
 ## Project knowledge

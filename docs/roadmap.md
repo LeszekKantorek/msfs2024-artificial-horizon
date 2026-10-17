@@ -42,7 +42,7 @@ flowchart LR
 ## Stage 2: G5 PFD demo vertical slice
 
 * [Panel presentation](pfd-presentation.md): modules, frame lifecycle, and layers.
-* [Project brief](project-brief.md): 18 included elements, exclusions, responsive layout without a fixed aspect ratio.
+* [Project brief](project-brief.md#pfd-reference-and-coverage): included elements, exclusions, and responsive layout without a fixed aspect ratio.
 * [#19](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/19): scope and backlog work.
 
 | Order | Issue | Depends on | Deliverable |

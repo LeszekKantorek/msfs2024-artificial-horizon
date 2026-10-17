@@ -1,40 +1,34 @@
 ---
-description: Resolve unclear routes or tasks that cross several areas. Select only the project entries and source sections needed for the affected behavior.
+description: Select conditional sources when a task crosses knowledge areas or its direct route is unclear.
 status: active
 ---
 
 ## Practical selection
 
-Use this table when the index does not already identify a clear route.
-Select by the behavior being changed, not merely by the file extension or directory.
+Use this table for tasks that need more than one source or a condition-dependent route.
+[AGENTS](../AGENTS.md#context-selection) owns context selection and the fallback to the index.
 
 | Task | Read first | Extend only when relevant |
 | --- | --- | --- |
-| Project knowledge | [Context authoring](context-authoring.md) when editing knowledge | [Context maintenance](agent-maintenance.md) for changes to context tools or hooks |
-| Planning and module design | [Implementation planning](implementation-planning.md) for a requested detailed plan | [Handoffs](iterative-development.md#accepted-plans-and-handoffs) for accepted plans, [PFD composition](pfd-module-plan.md) for ownership, or the affected [architecture](../docs/architecture.md) section |
-| Interface development | The affected instrument entry from the [index](index.md) | [PFD layout validation](pfd-layout-validation.md) for geometry or layers, [browser presentation](browser-presentation.md) for shared behavior, and affected [presentation sections](../docs/pfd-presentation.md) |
-| Test implementation and diagnosis | [Test design](validation-and-review.md#select-evidence-by-failure-risk) for new tests, or [error diagnosis](error-diagnosis.md) for failures | [Local validation environment](local-validation-environment.md) for executable or browser failures, [Windows validation](windows-validation.md) for SAC or E0463 symptoms |
-| Test strategy and acceptance | [Validation scope](../docs/testing.md#validation-by-change-scope) | Applicable procedures in [testing](../docs/testing.md), [evidence limits](validation-and-review.md) for uncertain coverage, or [acceptance tracking](../CONTRIBUTING.md#acceptance-criteria-and-additional-verification) for checklists |
-| Review | [Independent subagent review](validation-and-review.md#independent-subagent-review) when preparing delegated review | The contracts affected by the diff and applicable [repository rules](repository-instructions.md) |
-| Verification | [Validation scope](../docs/testing.md#validation-by-change-scope) | [Evidence reuse](../docs/testing.md#evidence-reuse) for previous results, or [acceptance tracking](../CONTRIBUTING.md#acceptance-criteria-and-additional-verification) for issue or PR criteria |
-| Writing | Applicable [writing rules](writing-style.md) and the text being changed | [Document responsibilities](writing-style.md#document-responsibilities) when placing requirements, [context authoring](context-authoring.md) when editing knowledge |
-| Security | [Security review](security-review.md) for changed exposure, inputs, dependencies, or privileges | [Deployment](../docs/architecture.md#deployment) for network changes, [CI trust boundary](../docs/pr-acceptance.md#trust-boundary) for workflow permissions, or affected [repository rules](repository-instructions.md) |
-| Major architecture decision | [Architecture decisions](architecture-decisions.md) for material structural choices | The affected [architecture](../docs/architecture.md) section and ADR, such as [visual composition](../docs/adr/0005-visual-object-composition.md) only when changing that boundary |
+| Preserve findings or review knowledge | [Context authoring](context-authoring.md) and the matching [context skill](../AGENTS.md#project-knowledge) | [Tool maintenance](agent-maintenance.md) when changing skills or hooks |
+| Prepare a detailed implementation plan | [Implementation planning](implementation-planning.md) | [Handoffs](iterative-development.md#accepted-plans-and-handoffs) for accepted plans and amendments |
+| Change behavior across providers, telemetry, HTTP, or the browser | [Change map](component-changes.md) | [Governing decisions](architecture-decisions.md#find-the-governing-decision) when reconsidering accepted boundaries or behavior |
+| Change an instrument | [Presentation boundary map](../docs/pfd-presentation.md#find-the-affected-boundary) | [Wire contract](../docs/telemetry-contract.md#fields-and-conventions) for input changes; [layout validation](pfd-layout-validation.md) for geometry or layers |
+| Select checks or reuse evidence | [Validation scope](../docs/testing.md#validation-by-change-scope) | [Evidence reuse](../docs/testing.md#evidence-reuse) for prior runs; [test design](validation-and-review.md#select-evidence-by-failure-risk) for new checks |
+| Diagnose a failure | [Error diagnosis](error-diagnosis.md#select-the-diagnostic-boundary) | Follow the symptom-specific environment or rendering route in that table |
+| Prepare independent code review | [Review procedure](validation-and-review.md#independent-subagent-review) | Applicable contracts and [change requirements](../CONTRIBUTING.md#change-requirements) for the reviewed diff |
+| Prepare a branch or PR | [Contribution workflow](../CONTRIBUTING.md#workflow) | [Acceptance-control map](pr-acceptance.md) for validator failures or workflow changes |
+| Write or relocate documentation | [Writing rules and document responsibilities](writing-style.md) | [Context authoring](context-authoring.md) for knowledge entries and map changes |
+| Review an exposure or permission change | [Security boundaries](security-review.md#project-boundaries) | [Focused checks](security-review.md#focused-checks) for the affected input, network, dependency, or CI boundary |
+| Find the rationale or scope of an existing architecture choice | [Governing decisions](architecture-decisions.md#find-the-governing-decision) | [Change map](component-changes.md) when assessing affected contracts and checks |
+| Make a material architecture decision | [Decision procedure](architecture-decisions.md#decision-procedure), [governing decisions](architecture-decisions.md#find-the-governing-decision) | [Change map](component-changes.md) for affected contracts and validation |
 
 ## Working approach
 
-* Open only entries and source sections needed to establish the outcome, constraints, or validation method.
-* Links are references, not recursive reading requirements.
-* Apply all matching routes when a change affects several boundaries.
-* Stop discovery once the outcome, constraints, and validation method are clear.
-* Expand discovery for a dependency, conflict, missing fact, or changed scope.
-* Reuse content already read while its source and applicability remain unchanged.
-* Follow the accepted scope and applicable repository constraints without imposing an arbitrary file-count limit.
-* Optional expert skills are no longer part of the project workflow.
-* Do not install or restore them as prerequisites for planning, implementation, testing, review, or writing.
-* Keep the context retrieval and maintenance workflow defined in [AGENTS](../AGENTS.md).
-* Use verified learning to extend guidance through the [context authoring rules](context-authoring.md).
-* Conditional reading does not waive required checks, accepted plan invariants, or evidence limits.
+The expert-skill selection workflow retired on 2026-10-11 remains replaced by project procedures.
+Do not restore that former set as a prerequisite for project work.
+Select the currently installed skills through [AGENTS](../AGENTS.md#project-knowledge).
+The [historical selection entry](skill-selection.md) retains the replacement record.
 
 ## Sources
 

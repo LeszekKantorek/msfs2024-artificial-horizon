@@ -115,14 +115,33 @@ See [agent maintenance](.context/agent-maintenance.md) for reinstalls and integr
 4. Check that the attitude display appears.
 5. Stop the server with `Ctrl+C`.
 
+## Change requirements
+
+Apply the [project constraints](AGENTS.md#project-constraints) and the requirements for the changed boundary:
+
+| Changed boundary | Requirement / source |
+| --- | --- |
+| Dependencies | Commit `Cargo.lock` and exclude dependencies without distribution rights |
+| Material architecture choice | Record the decision in `docs/adr/` under the [decision procedure](.context/architecture-decisions.md) |
+| Tests | Check behavior independently of implementation details under [test design](.context/validation-and-review.md#select-evidence-by-failure-risk) |
+| Runtime lifecycle | Preserve errors, source-loss handling, reconnects, and cancellation cleanup under [HTTP startup checks](docs/testing.md#http-startup-checks) |
+| Telemetry | Update compatible fixtures and consumers with the [wire contract](docs/telemetry-contract.md) |
+| Documentation | Distinguish planned behavior, implementation, and confirmed device acceptance under the [writing rules](.context/writing-style.md) |
+
+Before delivery, apply the [validation scope matrix](docs/testing.md#validation-by-change-scope) and [evidence reuse rules](docs/testing.md#evidence-reuse).
+Record results against the tested revision and environment, including observations and unavailable checks.
+Use the [acceptance procedure](#acceptance-criteria-and-additional-verification) to track completion.
+Before marking work complete, confirm that required checks pass and acceptance criteria have supporting evidence.
+The [repository history](.context/repository-instructions.md#sources) records the origins of these requirements.
+
 ## Workflow
 
 1. Select or create a GitHub issue with an outcome and acceptance criteria.
 2. Check dependencies in the [roadmap](docs/roadmap.md).
 3. Create a branch from current `main` named `change/<issue>-<topic>`, for example `change/20-responsive-pfd`.
-4. Implement one reviewable outcome.
+4. Implement one reviewable outcome under the [change requirements](#change-requirements).
 5. Update affected documentation, contracts, and fixtures.
-6. Run the relevant [checks](docs/testing.md#automated-checks).
+6. Select and run checks through the [validation scope matrix](docs/testing.md#validation-by-change-scope).
 7. Open a PR referencing the issue, changed behavior, and validation evidence. For new features, include an acceptance checklist for manual verification.
 
 > Keep the checklist specific to the implemented feature. List only the main checks, without generic placeholders or detailed steps.
@@ -132,17 +151,18 @@ See [agent maintenance](.context/agent-maintenance.md) for reinstalls and integr
 
 ### Acceptance criteria and additional verification
 
-1. Mark an issue acceptance criterion as checked when passing unit tests or automated validation confirm it.
-2. Record the confirming tests or validation results in the issue or linked PR, including the tested commit and relevant environment.
-3. Leave unconfirmed criteria unchecked and include their verification in the PR as unchecked items under `Additional verification`. Adapt the wording to the PR context when needed.
-4. Describe how to verify the remaining items and what result confirms each one; update the issue and PR checkboxes after verification.
+1. Give the issue an `Acceptance criteria` heading with Markdown task items.
+2. Mark a criterion as checked when passing unit tests or automated validation confirm it.
+3. Record the confirming tests or validation results in the issue or linked PR, including the tested commit and relevant environment.
+4. Leave unconfirmed criteria unchecked and include their verification in the PR as unchecked items under `Additional verification`. Adapt the wording to the PR context when needed.
+5. Describe how to verify the remaining items and what result confirms each one; update the issue and PR checkboxes after verification.
 
-The [PR acceptance control](docs/pr-acceptance.md) checks linked issue criteria and the PR checklist.
-Missing criteria, unchecked issue Acceptance criteria, unchecked PR tasks, or unavailable issue data produce a blocking status when the main ruleset requires `Acceptance criteria`.
-The control checks checkbox states independently; it does not compare issue and PR wording or require copied text.
 Draft PRs can retain unchecked verification; complete it before merge.
+Use the [acceptance control reference](docs/pr-acceptance.md#checklist-scope) for parser rules and [status meanings](docs/pr-acceptance.md#understand-the-result) for blocking conditions.
 
 ### Promote agreed findings
+
+Collect reusable implementation findings in [#9](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9), referencing the originating task.
 
 1. Review a finding after its originating task closes and agree on the follow-up scope.
 2. Create the agreed issue with an outcome, acceptance criteria, and a link to the originating task.
@@ -153,7 +173,6 @@ Draft PRs can retain unchecked verification; complete it before merge.
 
 ## Project guidance
 
-* Check [repository rules and acceptance criteria](.context/repository-instructions.md#repository-rules) before submitting a change.
+* Apply the [change requirements](#change-requirements) and [acceptance procedure](#acceptance-criteria-and-additional-verification) before submitting a change.
 * Follow the [writing style and document responsibilities](.context/writing-style.md) for documentation, knowledge entries, code comments, commit messages, and GitHub issues, comments, and PRs.
-* Run the relevant [automated checks](docs/testing.md#automated-checks).
 * Follow [AGENTS.md](AGENTS.md) for agent work and [agent maintenance](.context/agent-maintenance.md) for skills and hooks.
