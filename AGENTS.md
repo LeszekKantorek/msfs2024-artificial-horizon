@@ -25,12 +25,25 @@ Use these maps whenever a task needs project knowledge. Select rows by the reque
 ## Project constraints
 
 * Write project text in English and preserve the MIT license.
-* Keep credentials, SDK binaries, local SDK paths, and generated output out of commits.
+* Keep credentials, SDK binaries, local SDK paths, and generated output out of commits. The only generated-output exception is the PFD skill tracked under its [source ownership rules](.context/agent-maintenance.md#project-procedure-skills).
 * Target Windows x64 MSVC for Rust work and keep default checks independent of the simulator.
 * Preserve accepted scope and user changes without an arbitrary file-count limit, and keep supplied implementation plans local and verbatim.
 * Report only validation actually performed or applicable recorded evidence, with missing checks stated explicitly.
 
 ## Project knowledge
+
+Select a project procedure directly when its outcome matches the task:
+
+| Skill | Use |
+| --- | --- |
+| [project-plan-change](.agents/skills/project-plan-change/SKILL.md) | Prepare a detailed implementation plan with invariants and acceptance evidence |
+| [project-diagnose-failure](.agents/skills/project-diagnose-failure/SKILL.md) | Diagnose an observed application, test, build, or environment failure |
+| [pfd-validate-presentation](.agents/skills/pfd-validate-presentation/SKILL.md) | Validate PFD presentation and report the limits of desktop and device evidence |
+| [project-prepare-pr](.agents/skills/project-prepare-pr/SKILL.md) | Prepare a local PR description or publish the requested PR with accurate acceptance evidence |
+| [project-review-change](.agents/skills/project-review-change/SKILL.md) | Obtain and assess an independent diff review when delegation is authorized |
+| [project-decide-architecture](.agents/skills/project-decide-architecture/SKILL.md) | Compare architecture options and record an ADR with its actual decision status |
+
+Use the context skills to maintain project knowledge:
 
 | Skill | Use |
 | --- | --- |

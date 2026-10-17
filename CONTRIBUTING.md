@@ -142,12 +142,12 @@ The [repository history](.context/repository-instructions.md#sources) records th
 4. Implement one reviewable outcome under the [change requirements](#change-requirements).
 5. Update affected documentation, contracts, and fixtures.
 6. Select and run checks through the [validation scope matrix](docs/testing.md#validation-by-change-scope).
-7. Open a PR referencing the issue, changed behavior, and validation evidence. For new features, include an acceptance checklist for manual verification.
+7. Follow [PR preparation](#prepare-a-pull-request) to prepare the description or publish the requested PR.
 
-> Keep the checklist specific to the implemented feature. List only the main checks, without generic placeholders or detailed steps.
+### Prepare a pull request
 
-> Include `Closes #N` in a PR that implements the issue, including a draft PR.
-> Record pending acceptance checks explicitly in the PR checklist; the closing keyword does not claim that those checks have passed.
+Use [project-prepare-pr](.agents/skills/project-prepare-pr/SKILL.md) to prepare a local description or publish the requested PR.
+The skill owns the preparation procedure; this document retains the contribution requirements and acceptance-tracking rules.
 
 ### Acceptance criteria and additional verification
 

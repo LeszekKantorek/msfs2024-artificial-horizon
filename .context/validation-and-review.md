@@ -1,5 +1,5 @@
 ---
-description: Select tests that detect relevant failures and keep evidence tied to the tested state. Prepare independent subagent review and report its limits separately.
+description: Select tests that detect relevant failures and keep evidence tied to the tested state. Use project-review-change for independent review and retain its historical evidence limits here.
 status: active
 ---
 
@@ -38,25 +38,7 @@ Use [PFD layout validation](pfd-layout-validation.md) for rendering checks and [
 
 Include this stage in code-change plans before delivery completion.
 
-1. Check whether the active instructions authorize subagent delegation.
-2. When delegation is authorized and available, request a separate read-only review after implementation and applicable validation.
-3. Supply the exact base and head revisions, checkout, and diff scope.
-4. Supply the complete accepted plan and amendments through the local handoff index.
-5. Supply applicable contracts, preserved invariants, validation evidence, and known limitations.
-6. Ask the reviewer to inspect correctness, regressions, scope changes, and gaps in tests or acceptance evidence.
-7. Require actionable findings with severity, file and line, failure scenario, and supporting reasoning.
-8. Assess each finding against the requirements and current code before changing the implementation.
-9. Resolve established defects and rerun affected checks.
-10. Request review of material fixes and record the resulting reviewed revision.
-11. Record the review outcome and any unreviewed scope separately from test results.
-
-Use a handoff that permits an independent conclusion.
-
-* Ask the reviewer to challenge the implementation without accepting the author's conclusion as evidence.
-* Permit read-only source inspection and relevant checks without concurrent edits to the same files.
-* Record unavailable delegation as an unperformed independent review.
-* Do not describe self-review, passing tests, or a review request without a returned report as completed independent review.
-* Keep unavailable device acceptance separate under [acceptance tracking](../CONTRIBUTING.md#acceptance-criteria-and-additional-verification).
+The [project-review-change skill](../.agents/skills/project-review-change/SKILL.md) owns the independent review procedure, delegation conditions, and completion checks.
 
 ## Sources and limits
 

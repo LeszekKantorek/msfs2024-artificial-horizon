@@ -44,7 +44,7 @@ Select checks for actual changes rather than adding unrelated security work.
 * For dependency changes, inspect manifests, lockfiles, installation scripts, distribution rights, and relevant upstream security evidence.
 * For changed logs and artifacts, check whether credentials or local sensitive paths can enter committed or public output.
 * Use [validation by change scope](../docs/testing.md#validation-by-change-scope) and the [acceptance validator checks](../docs/pr-acceptance.md#validate-changes-to-the-control) where applicable.
-* Request [independent review](validation-and-review.md#independent-subagent-review) under the active delegation rules when the task requires it.
+* Request [project-review-change](../.agents/skills/project-review-change/SKILL.md) under the active delegation rules when the task requires it.
 
 ## Sources and limits
 

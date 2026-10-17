@@ -3,7 +3,7 @@ description: Preserve responsive PFD geometry and use the full arrangement fixtu
 status: active
 ---
 
-* Use [PFD desktop checks](../docs/testing.md#responsive-pfd-layout-and-desktop-checks) before changing geometry or adding an instrument.
+* Use [pfd-validate-presentation](../.agents/skills/pfd-validate-presentation/SKILL.md) for the validation procedure before changing geometry or adding an instrument. This entry retains layout constraints and regression lessons.
 * Validate all 17 intended elements through the development-only fixture before narrowing attitude space.
 * The accepted minimum is 320 CSS px wide and 240 CSS px of usable height after browser bars and safe areas.
 * Preserve the sample deadline during resize and redraw through the latest-sample frame scheduler.

@@ -1,5 +1,5 @@
 ---
-description: Maintain the six context skills, procedural-skill-creator, installation records, and session hooks.
+description: Maintain upstream context skills, locally owned project skills, generated procedures, installation records, and session hooks.
 status: active
 ---
 
@@ -17,6 +17,35 @@ Use [setup and skill sources](../CONTRIBUTING.md#3-prepare-agent-skills-and-hook
 * Keep `procedural-skill-creator` installed from `LeszekKantorek/agent-skills`.
 * Preserve the [exclusions](../.gitignore) that include the six context skills and `procedural-skill-creator` while excluding unrelated local skills.
 * Keep `.context/index.md` as this project's table-only navigation map; the upstream skills impose no index format.
+
+## Project procedure skills
+
+These six project skills are versioned locally. They are separate from the pinned upstream skills and have no installer entries in `skills-lock.json`.
+
+| Skill | Procedure owner | Supporting knowledge |
+| --- | --- | --- |
+| [project-plan-change](../.agents/skills/project-plan-change/SKILL.md) | Edit its `SKILL.md` | [Planning rationale and sources](implementation-planning.md); [handoff requirements](iterative-development.md#accepted-plans-and-handoffs) |
+| [project-diagnose-failure](../.agents/skills/project-diagnose-failure/SKILL.md) | Edit its `SKILL.md` | [Symptom map and sources](error-diagnosis.md); environment restrictions remain in their entries |
+| [pfd-validate-presentation](../.agents/skills/pfd-validate-presentation/SKILL.md) | Edit [PFD validation procedure](../docs/testing.md#pfd-presentation-validation-procedure), then regenerate | Feature checks, commands, and evidence requirements remain in testing documentation |
+| [project-prepare-pr](../.agents/skills/project-prepare-pr/SKILL.md) | Edit its `SKILL.md` | Acceptance criteria and CI interpretation retain their existing owners |
+| [project-review-change](../.agents/skills/project-review-change/SKILL.md) | Edit its `SKILL.md` | [Evidence selection and historical limits](validation-and-review.md) |
+| [project-decide-architecture](../.agents/skills/project-decide-architecture/SKILL.md) | Edit its `SKILL.md` | [Governing-decision map and sources](architecture-decisions.md) |
+
+Run from the repository root:
+
+```powershell
+python tools/compile_project_skills.py
+python tools/compile_project_skills.py --check
+python -m unittest discover -s tests -p test_compile_project_skills.py
+```
+
+The [compiler](../tools/compile_project_skills.py) owns the generated PFD skill name, description, and goal; its testing-document section owns the steps. PR preparation is maintained directly in its skill and is not generated.
+It rebases relative links and compares complete generated contents without relying on timestamps.
+`--check` reports missing, manually edited, or stale outputs without modifying files.
+Regenerate after editing a selected source section or its selection metadata. Do not maintain a second copy of its procedure manually.
+The six skill directories are explicitly included by [.gitignore](../.gitignore); unrelated local skills remain ignored.
+Keep planning rationale, diagnostic maps, and historical evidence in `.context`, with references to the owning skills.
+Select skills by task; no sequence of the six skills is required.
 
 ## Test revision and compatibility
 

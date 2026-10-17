@@ -3,8 +3,8 @@ description: Choose module boundaries for agreed delivery and preserve accepted 
 status: active
 ---
 
-Use [architecture decisions](architecture-decisions.md) to assess material structural choices against the current outcome and next agreed use.
-Use [implementation planning](implementation-planning.md) to turn the accepted choice into executable steps.
+Use [project-decide-architecture](../.agents/skills/project-decide-architecture/SKILL.md) to assess material structural choices against the current outcome and next agreed use.
+Use [project-plan-change](../.agents/skills/project-plan-change/SKILL.md) to turn the accepted choice into executable steps.
 
 * Keep speculative frameworks and later issues outside current scope.
 * Do not postpone useful structural changes solely because the current skeleton works.
@@ -14,7 +14,7 @@ Use [implementation planning](implementation-planning.md) to turn the accepted c
 
 ## Accepted plans and handoffs
 
-* Use the [implementation planning procedure](implementation-planning.md) for detailed steps, substeps, completion conditions, and acceptance evidence.
+* Use the [project-plan-change](../.agents/skills/project-plan-change/SKILL.md) for detailed steps, substeps, completion conditions, and acceptance evidence.
 * Preserve the complete accepted plan verbatim, including supplied language, requirements, and invariants.
 * Store implementation plans, amendments, and handoff indexes under Git-ignored `.local/plans/<issue>-<topic>/`.
 * Do not commit implementation plans or publish them in GitHub issues or PRs unless explicitly requested.

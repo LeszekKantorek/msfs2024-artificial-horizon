@@ -11,7 +11,7 @@ Start with the change scope, then select the affected procedure:
 | Select checks | [Validation scope](#validation-by-change-scope) | Every change |
 | Reuse previous results | [Evidence reuse](#evidence-reuse) | Relevant validation already exists |
 | Run application checks | [Automated checks](#automated-checks) | Application code, dependencies, or build changes |
-| Validate presentation | [Desktop scripts](#responsive-pfd-layout-and-desktop-checks) | Rendering, geometry, lifecycle, or asset integration changes |
+| Validate presentation | [pfd-validate-presentation](../.agents/skills/pfd-validate-presentation/SKILL.md) | Rendering, geometry, lifecycle, or asset integration changes |
 | Validate speed indications | [IAS/GS](#airspeed-and-ground-speed-acceptance), [TAS](#true-airspeed-acceptance), [ranges and trend](#airspeed-ranges-references-and-trend-acceptance) | Select the changed speed indication |
 | Validate altitude indications | [Altitude/BARO](#altitude-and-pressure-acceptance), [alerts](#selected-altitude-and-alert-acceptance), [VSI](#vertical-speed-acceptance), [trend placement](#altitude-trend-placement-acceptance) | Select the changed right-side indication |
 | Validate heading | [Heading acceptance](#heading-acceptance) | Heading changes or full-panel acceptance |
@@ -516,6 +516,20 @@ Add these attitude checks for each phone:
 
 > The fixture server serves real web assets with synthetic SSE on loopback by default. Explicit LAN binding supports phone checks. It is separate from the release binary.
 > These checks establish UI behavior, not simulator compatibility.
+
+### PFD presentation validation procedure
+
+Use this procedure for geometry, layers, rendering lifecycle, and browser module integration changes.
+Run commands from the repository root, using the Windows environment in [setup](../CONTRIBUTING.md#environment-setup).
+
+1. Identify the revision, changed behavior, accepted invariants, and affected instruments. Use the [validation matrix](#validation-by-change-scope) to confirm scope. For prose-only changes, perform documentation checks and stop this presentation procedure.
+2. Select applicable scenarios from the [feature procedures](#find-the-required-procedure) and [layout constraints](../.context/pfd-layout-validation.md). Define expected results for geometry, availability, expiry, and recovery where affected. Apply [evidence reuse](#evidence-reuse) before scheduling new runs.
+3. For visual comparisons, preserve baseline and candidate inputs under [screenshot comparisons](#screenshot-comparisons). Before binary-dependent checks, establish [build provenance](#build-provenance). If provenance is uncertain, follow its fresh-build recovery. Keep source and artifact failures separate from rendering failures.
+4. Run required [automated checks](#automated-checks) and both [desktop scripts](#responsive-pfd-layout-and-desktop-checks) for the affected PFD scope, unless their recorded evidence remains reusable. Supply the explicit release executable to the runtime script. Apply [environment diagnosis](../.context/local-validation-environment.md) for launch or fixture failures, and the mandatory [SAC stop rule](../.context/windows-validation.md) if error 4551 occurs.
+5. Inspect the relevant screenshots and painted bounds. For layer changes, apply [paint-order checks](../.context/pfd-layout-validation.md#paint-order-checks), including test sensitivity and cleanup. Check visible content within clips after resize settles; geometry assertions alone do not prove readability.
+6. Correct established defects within the authorized scope and repeat affected checks. Preserve ambiguous observations as unresolved; do not attribute pixel differences to browser variation without evidence. If a restriction blocks execution, retain completed evidence and identify the missing check.
+7. When device behavior or feature acceptance requires it, apply the [real-phone procedure](#real-phone-acceptance-procedure) and the feature's scenarios on actual iOS Safari and Android Chrome. If devices are unavailable, leave that acceptance unconfirmed. Desktop results cannot replace device evidence.
+8. Record commands, native exit codes, revision and artifact identity, environment, screenshots, observations, and unresolved checks in the requested report. Use the owning issue or PR when publication is authorized. Distinguish fixture, compiled application, and real-device evidence. Finish when every selected check has a result or an explicit unresolved condition.
 
 ### Responsive PFD layout and desktop checks
 

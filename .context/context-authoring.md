@@ -12,6 +12,7 @@ status: active
 * Keep independent topics separate so agents can read only relevant entries.
 * Put direct routes in the index and conditional routes in [task guidance](task-guidance.md).
 * Keep procedures in their owning sources.
+* For compiled procedures, follow the [skill ownership table](agent-maintenance.md#project-procedure-skills). Keep rationale and evidence in context; edit steps only in their designated owner.
 * Retain historical source pointers and scoped evidence limits when consolidating duplicate guidance.
 * Select the appropriate [context skill](../AGENTS.md#project-knowledge) for preservation, maintenance, mapping, diagnosis, or session review.
 
