@@ -65,7 +65,7 @@ Start the development fixture on the PC's specific private LAN IP:
 
 ```powershell
 $env:PFD_FIXTURE_HOST = '<PC LAN IP>'
-node tests/browser-fixture-server.mjs
+node tests/browser/helpers/browser-fixture-server.mjs
 ```
 
 Open the printed address on the phone. Use `/` for production composition and `/layout.html` for all 17 illustration elements.

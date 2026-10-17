@@ -7,7 +7,7 @@ Controlled browser inputs, desktop commands, layout checks, and full-panel accep
 1. Start the development-only fixture server.
 
    ```powershell
-   node tests/browser-fixture-server.mjs
+   node tests/browser/helpers/browser-fixture-server.mjs
    ```
 
 2. Open `http://127.0.0.1:8082`.
@@ -61,14 +61,26 @@ No fixture page or fixture control script enters the Rust binary.
 The scripted desktop checks use Playwright with an installed browser.
 They are required for the EFI changes in the [validation matrix](index.md#validation-by-change-scope) and optional for unrelated exploration.
 It adds no application dependency or frontend build step.
+
+Browser tests are grouped under `tests/browser/`:
+
+* `pfd-browser.mjs` runs controlled fixture checks.
+* `pfd-runtime-browser.mjs` checks the compiled application.
+* `checks/` contains instrument scenarios called by `pfd-browser.mjs`.
+* `helpers/` contains the fixture server and layout fixture module.
+
+Shared input data remains in `tests/fixtures/` for both Rust and JavaScript tests.
+Run the browser scripts separately from the Node `tests/*.test.mjs` suite in CI.
+Run all commands below from the repository root.
+
 Install the test tool in ignored local storage if it is not already available:
 
 ```powershell
 npm install --prefix .local/browser --no-save playwright
 $env:PLAYWRIGHT_MODULE = Join-Path $PWD '.local/browser/node_modules/playwright'
 $env:BROWSER_CHANNEL = 'msedge'
-node tests/pfd-browser.mjs
-node tests/pfd-runtime-browser.mjs target/x86_64-pc-windows-msvc/release/msfs2024-artificial-horizon.exe
+node tests/browser/pfd-browser.mjs
+node tests/browser/pfd-runtime-browser.mjs target/x86_64-pc-windows-msvc/release/msfs2024-artificial-horizon.exe
 ```
 
 | Script | Input | Checks | Output |

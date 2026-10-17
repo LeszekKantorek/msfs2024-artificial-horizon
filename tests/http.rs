@@ -244,7 +244,7 @@ async fn static_router_does_not_create_a_telemetry_source() {
         "/api/v1/events",
         "/layout.html",
         "/layout-fixture.js",
-        "/tests/layout-fixture.js",
+        "/tests/browser/helpers/layout-fixture.js",
         "/math.js",
         "/svg.js",
         "/telemetry-client.js",

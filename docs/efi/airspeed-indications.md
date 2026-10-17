@@ -158,7 +158,7 @@ The [contract](../telemetry-contract.md#optional-airspeed-ranges-and-trend) defi
 The browser checks use independent expected positions and inspect computed colors, SVG bounds, clipping edges, and node identity.
 Screenshots include `speed-approaching-vne.png`, `speed-at-vne.png`, and fallback views under `.local/pfd-browser/`.
 
-`checkAirspeedAvailabilityTransitions` in `tests/airspeed-browser-checks.mjs` checks 40 loss/resize/recovery transitions through `pfd-browser.mjs`:
+`checkAirspeedAvailabilityTransitions` in `tests/browser/checks/airspeed-browser-checks.mjs` checks 40 loss/resize/recovery transitions through `pfd-browser.mjs`:
 
 | Scenario | Coverage |
 | --- | --- |

@@ -113,7 +113,7 @@ Apply the [shared phone procedure](../testing/devices.md#real-phone-acceptance-p
 #### Tape footers and source-formatted BARO
 
 Issue [#65](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/65) owns the revised footer and BARO acceptance.
-The desktop layout script runs `tests/tape-footer-browser-checks.mjs` against both compositions.
+The desktop layout script runs `tests/browser/checks/tape-footer-browser-checks.mjs` against both compositions.
 
 | Check | Expected behavior |
 | --- | --- |
