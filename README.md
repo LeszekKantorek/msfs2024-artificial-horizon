@@ -70,57 +70,6 @@ Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
 > Use the PC's LAN IP on the phone. `localhost` refers to the phone itself.
 > LAN access has no authentication. Do not forward the port on your router.
 
-## What to expect
-
-| Behavior | Current demo |
-| --- | --- |
-| Instrument | Responsive attitude, 2.5-degree pitch ladder, extreme-pitch chevrons, bank scale, fixed aircraft reference, slip/skid and turn rate |
-| Motion | Repeating 18-second cycle: seven original attitudes, then +70/-50-degree pitch. Centered and both-direction slip/skid; +/-3 deg/s turns |
-| Speed | IAS accelerates from 0 to 150 kt, holds, then decelerates. TAS reaches 160 kt and GS reaches 170 kt in the same cycle |
-| Speed display | Rolling IAS digits, tape labels every 10 kt, colored speed ranges, R/X/Y/G references, and a magenta six-second trend. Separate rounded GS without a visible unit suffix, in a matching magenta frame over opaque dark background |
-| True airspeed | TAS above the left tape, rounded to whole knots without leading zeros or a unit suffix. White text and frame over the opaque GS/BARO background |
-| Speed warnings | Red current-speed pointer at or above 140 kt. Yellow IAS digits when the rising trend predicts reaching 140 kt |
-| Speed unavailable | `X` means unavailable, `OVR` means above 999 kt. Configured references appear above GS when IAS is unavailable |
-| Altitude | Aligned `[KT]`/`[FT]` labels and equal-height side scales. Fixed 8 CSS px spacing per 20 ft. Labels every 100 ft. Taller panels show more altitude. Signed readout: -9999 to 99999 ft. |
-| Altitude trend | Magenta line over the left-side altitude ticks predicts altitude in six seconds from VSI. The turquoise selected-altitude bug covers it. Climb extends up, descent down. Zero or missing required data hides it |
-| Pressure | Centered source-formatted BARO text in a cyan frame. Demo supplies text such as `29.92 inHg`; text may also contain hPa or `BARO` |
-| Selected altitude | Read-only target above altitude, with a notched turquoise tape block pinned at either edge. The black pointer fits its notch at capture. `X` means unavailable. `OVR` means outside -9999 to 99999 ft |
-| Altitude alerts | Five-second flashing on entry within 1000 and 200 ft. Entry within +/-200 ft arms deviation. Leaving it flashes yellow for five seconds, then stays yellow until return or reset |
-| Altitude/pressure unavailable | Independent `X` marks. Altitude beyond its display limit shows `OVR`; BARO text is displayed verbatim |
-| Vertical speed | Compact rectangular readout below current altitude, with the same font family, background and border. Signed whole ft/min: `+` for climb, `-` for descent and `0` for level flight |
-| VSI limits | Red `X` means unavailable. `+OVR` or `-OVR` means beyond +/-9999 ft/min. Valid VSI remains available without altitude or pressure |
-| Heading | Magnetic heading above the horizon. Three digits without a unit suffix. North is `360`. Fixed 4 CSS px/degree scale with labels every 10 degrees |
-| Selected heading | Read-only cyan bug, with a notch matching the current-heading pointer. Pins at either edge and wraps across north |
-| Heading unavailable | Missing current heading shows red `X` and hides the scale and bug. Missing selected heading hides only the bug |
-| Data | Synthetic samples at 20 Hz, without a source badge |
-| Presentation | Sky/ground across the full panel, centrally clipped pitch scale, no top status bar |
-| Connection loss | Opaque full-panel cover with the reason and automatic retry after two seconds |
-| Stale or unavailable data | Explicit status, no fabricated level-flight reading |
-| Background/resume | A fresh snapshot is required before live attitude returns |
-| Sizing | No fixed aspect ratio; minimum 320 CSS px width and 240 CSS px usable height after browser bars and safe areas |
-| Old snapshots | Attitude-only snapshots display attitude with unavailable IAS, TAS, GS, altitude, selected altitude, VSI, pressure, heading, slip/skid and turn rate |
-
-> Real iOS Safari and Android Chrome acceptance requires [device evidence](docs/testing.md#attitude-display-real-device-phone-acceptance).
-> Issue #4 owns the original attitude acceptance, [#20](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/20) owns the attitude/turn extension, and [#37](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/37) owns layers and background opacity.
-
-[#21](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/21) owns IAS/GS acceptance. [#66](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/66) owns TAS acceptance.
-[#22](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/22) owns range, reference, and trend acceptance.
-The speed profile is fictional: VS0/VS1 40/50, VFE/VNO/VNE 85/110/140, and VR/VX/VY/VG 55/65/75/90 kt.
-These values are not verified performance of a real aircraft. See the [speed contract](docs/telemetry-contract.md#optional-airspeed-ranges-and-trend).
-[#23](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/23) owns altitude and pressure acceptance.
-The altitude demo repeats every 198 seconds. It starts with 18 seconds of signed digit sweeps.
-Two 90-second approaches and departures follow, at selected targets of 10000 and 1000 ft.
-The other indications keep their existing 18-second cycles. Transitions are not a physical flight model.
-[#24](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/24) owns selected-altitude and alert acceptance on real phones.
-First samples after target changes or recovery establish the alert state without flashing.
-[#25](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/25) owns VSI acceptance.
-VSI matches each altitude segment's slope. Artificial jumps omit VSI for one sample instead of inventing a rate.
-[#63](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/63) owns acceptance of the altitude trend's tick-lane placement and paint order.
-[#26](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/26) owns heading and full-panel acceptance.
-Heading follows the demo's turn rate across north in both directions, repeating every 18 seconds.
-Ground track, a separate numeric selected heading, and heading controls are outside this demo's scope.
-See the [project brief](docs/project-brief.md) for coverage and exclusions, and the [roadmap](docs/roadmap.md) for delivery order.
-
 ## Options and troubleshooting
 
 ```powershell
@@ -140,7 +89,7 @@ cargo run --locked --bin msfs2024-artificial-horizon -- --source demo --listen-a
 
 | I want to… | Read |
 | --- | --- |
-| Run checks or test a phone | [Testing](docs/testing.md) |
+| Run checks or test a phone | [Testing](docs/testing/index.md) |
 | Contribute a change | [Contributing](CONTRIBUTING.md) |
 | Use the Rust library or understand the design | [Architecture](docs/architecture.md#application-api) |
 | Consume telemetry | [Telemetry contract](docs/telemetry-contract.md) |

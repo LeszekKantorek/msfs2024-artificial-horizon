@@ -12,7 +12,7 @@ status: active
 * Keep independent topics separate so agents can read only relevant entries.
 * Put direct routes in the index and conditional routes in [task guidance](task-guidance.md).
 * Keep procedures in their owning sources.
-* For compiled procedures, follow the [skill ownership table](agent-maintenance.md#project-procedure-skills). Keep rationale and evidence in context; edit steps only in their designated owner.
+* For compiled procedures, follow the [skill ownership table](agent-maintenance.md#project-procedure-skills). Keep publicly required rationale and evidence in documentation; edit steps only in their designated owner.
 * Retain historical source pointers and scoped evidence limits when consolidating duplicate guidance.
 * Select the appropriate [context skill](../AGENTS.md#project-knowledge) for preservation, maintenance, mapping, diagnosis, or session review.
 
@@ -38,3 +38,10 @@ Check that representative tasks still reach the applicable requirements, rationa
 Source: accepted requirement, 2026-10-09, to reduce recurring context cost without losing actionable knowledge.
 
 Source: accepted context and documentation review, 2026-10-17, preserving local metadata and navigation after the context-skills replacement.
+
+## Documentation boundary
+
+Follow [documentation ownership](../AGENTS.md#documentation-ownership) for the boundary between agent knowledge and project/user documentation.
+Use the [PFD content ownership map](../docs/pfd/index.md#content-ownership) to place feature and shared information.
+
+Source: accepted documentation migration and link ownership rule, 2026-10-17.

@@ -17,4 +17,4 @@ status: active
 | Rust E0463 occurred when Windows blocked that existing DLL | Do not assume a dependency upgrade fixes missing-crate errors |
 
 Sources: explicit stop requirement from issue #3 planning, 2026-10-07, and [Microsoft SAC FAQ](https://support.microsoft.com/en-us/windows/security/threat-malware-protection/smart-app-control-frequently-asked-questions).
-See [testing](../docs/testing.md) for checks and hardware evidence limits.
+See [testing](../docs/testing/index.md) for checks and hardware evidence limits.

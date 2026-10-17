@@ -255,7 +255,7 @@ The browser validates those samples and presents them within the available panel
 
 ### Panel boundary
 
-[Panel presentation](pfd-presentation.md) defines the module tree, frame lifecycle, and layer composition.
+[Panel presentation](pfd/index.md) defines the module tree, frame lifecycle, and layer composition.
 
 The architecture records these distinct changes:
 
@@ -276,11 +276,11 @@ The architecture records these distinct changes:
 
 The presentation reference owns these contracts:
 
-* [Panel interface and frame lifecycle](pfd-presentation.md#panel-interface-and-frame-lifecycle): normalized read-only frames, initialization, scheduling, and invalidation.
-* [Internal seams](pfd-presentation.md#internal-module-seams): visual ownership, private nodes, shared hosts/clips, and concrete child inputs.
-* [Pure calculations and helpers](pfd-presentation.md#pure-calculations-and-helpers): calculation ownership, actual shared consumers, and DOM-free imports.
-* [Telemetry operations](pfd-presentation.md#telemetry-operations): validation, callback publication, and connection lifecycle.
-* [Delivery boundaries](pfd-presentation.md#delivery-boundaries): future instruments and asset integration.
+* [Panel interface and frame lifecycle](pfd/lifecycle.md#panel-interface-and-frame-lifecycle): normalized read-only frames, initialization, scheduling, and invalidation.
+* [Internal seams](pfd/composition.md#internal-module-seams): visual ownership, private nodes, shared hosts/clips, and concrete child inputs.
+* [Pure calculations and helpers](pfd/composition.md#pure-calculations-and-helpers): calculation ownership, actual shared consumers, and DOM-free imports.
+* [Telemetry operations](pfd/telemetry.md#telemetry-operations): validation, callback publication, and connection lifecycle.
+* [Delivery boundaries](pfd/composition.md#delivery-boundaries): future instruments and asset integration.
 
 Embedded assets have a separate registration boundary:
 
@@ -342,6 +342,6 @@ The browser owns connection recovery and presentation scheduling:
 * `frame-scheduler.js` owns latest-frame scheduling independently of instrument geometry.
 * `panel.js` delegates resize, coherent frames, and invalidation to the implemented presentation modules.
 * `app.js` assembles telemetry, status, panel, resize observation, and page lifecycle.
-* [Panel presentation](pfd-presentation.md) defines the implemented module interfaces and #37 layer containers.
+* [Panel presentation](pfd/index.md) defines the implemented module interfaces and #37 layer containers.
 * Nest pitch translation inside bank rotation so combined attitudes move in world-local coordinates.
 * Apply no interpolation or extrapolation.

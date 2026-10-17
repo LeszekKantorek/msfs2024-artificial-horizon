@@ -8,9 +8,9 @@ Use [project-plan-change](../.agents/skills/project-plan-change/SKILL.md) to tur
 
 * Keep speculative frameworks and later issues outside current scope.
 * Do not postpone useful structural changes solely because the current skeleton works.
-* Keep the [separate altitude tape](altitude-baro.md) unless actual shared requirements justify reconsidering its scale, sign, digit, selection, and alert boundaries.
-* Use the implemented [internal seams](../docs/pfd-presentation.md#internal-module-seams) first instead of inferring shared rules from a planned instrument.
-* Apply the [PFD composition rules](pfd-module-plan.md) for calculation ownership and extraction to actual shared consumers.
+* Keep the [separate altitude tape](../docs/pfd/altitude.md#rationale-and-regression-lessons) unless actual shared requirements justify reconsidering its scale, sign, digit, selection, and alert boundaries.
+* Use the implemented [internal seams](../docs/pfd/composition.md#internal-module-seams) first instead of inferring shared rules from a planned instrument.
+* Apply the [PFD composition rules](../docs/pfd/composition.md#rationale-and-regression-lessons) for calculation ownership and extraction to actual shared consumers.
 
 ## Accepted plans and handoffs
 

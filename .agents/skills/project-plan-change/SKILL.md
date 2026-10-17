@@ -46,7 +46,7 @@ Check the plan before presenting it.
 * Add substeps where dependency, risk, or distinct verification requires them.
 * Avoid adding steps merely to increase plan length.
 * Link canonical procedures instead of copying unrelated checklists.
-* Apply [validation and review](../../../.context/validation-and-review.md) when selecting evidence and preparing the review handoff.
+* Apply [evidence selection](../../../docs/testing/evidence.md#select-evidence-by-failure-risk) and [independent review guidance](../../../docs/testing/evidence.md#independent-subagent-review) when selecting evidence and preparing the review handoff.
 * Link relevant project sources under [task guidance selection](../../../.context/task-guidance.md) for each implementation step.
 
 ## Supporting knowledge

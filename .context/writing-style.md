@@ -40,9 +40,9 @@ Source: writing requirement recorded in [issue #31](https://github.com/LeszekKan
 | [CONTRIBUTING](../CONTRIBUTING.md) | Developer setup, context tooling, contribution workflow |
 | [Brief](../docs/project-brief.md) | Requirements, scope, assumptions, success criteria |
 | [Architecture](../docs/architecture.md) | Target design, boundaries, library API |
-| [Panel presentation](../docs/pfd-presentation.md) | Instrument interfaces, frame lifecycle, layer ownership, clipping |
+| [Panel presentation](../docs/pfd/index.md) | Feature requirements, presentation, implementation, rationale, and acceptance scenarios; shared composition, lifecycle, and rendering contracts |
 | [Contract](../docs/telemetry-contract.md) | Wire interface, units, validity, freshness |
-| [Testing](../docs/testing.md) | Check commands, procedures, criteria, evidence templates |
+| [Testing](../docs/testing/index.md) | Shared check commands, runtime and device procedures, validation selection, and evidence templates; feature scenarios remain on feature pages |
 | [Roadmap](../docs/roadmap.md) | Order and dependencies |
 | [ADRs](../docs/adr/) | Decisions and decision lifecycle, not implementation status |
 | GitHub Issues / PRs | Task status, execution results, acceptance evidence |
@@ -53,4 +53,4 @@ Source: accepted documentation correction, 2026-10-10, to introduce long bullet 
 
 Source: documentation structure correction for #56 and PR #55, 2026-10-11, separating Markdown checks from language checks.
 
-Source: formatting correction for `docs/testing.md` in PR #60, 2026-10-11, to group independent checks instead of stacking prose lines.
+Source: formatting correction for the testing guide in PR #60, 2026-10-11, to group independent checks instead of stacking prose lines.

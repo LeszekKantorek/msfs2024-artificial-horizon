@@ -36,8 +36,8 @@ Keep diagnosis separate from speculation and recovery attempts.
 * Preserve timestamps and deadlines rather than refreshing stale data to make a test pass.
 * Report "cause not established" when observations cannot distinguish the candidate causes.
 * Do not broaden permissions, disable security controls, or stop unrelated processes as diagnostic shortcuts.
-* Use the [validation procedure](../../../.context/validation-and-review.md#select-evidence-by-failure-risk) for a regression check that detects the original failure.
-* Reuse unaffected evidence under the [evidence-reuse rules](../../../docs/testing.md#evidence-reuse).
+* Use the [validation procedure](../../../docs/testing/evidence.md#select-evidence-by-failure-risk) for a regression check that detects the original failure.
+* Reuse unaffected evidence under the [evidence-reuse rules](../../../docs/testing/index.md#evidence-reuse).
 * Save established reusable findings through [context authoring](../../../.context/context-authoring.md), rather than storing raw debugging progress.
 
 ## Completion checks

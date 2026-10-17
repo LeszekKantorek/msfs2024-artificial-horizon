@@ -20,7 +20,14 @@ Use these maps whenever a task needs project knowledge. Select rows by the reque
 * Reuse relevant content already read in this conversation while it remains applicable and unchanged.
 * Read README for startup or user-facing behavior, architecture for changed boundaries, and CONTRIBUTING for the applicable contribution stage.
 * Apply every relevant route when a change crosses boundaries, including required validation, acceptance, and accepted-plan invariants.
-* When validating a change, select required checks from the [validation scope matrix](docs/testing.md#validation-by-change-scope).
+* When validating a change, select required checks from the [validation scope matrix](docs/testing/index.md#validation-by-change-scope).
+
+## Documentation ownership
+
+Agent-facing technical materials, including `.context/`, `AGENTS.md`, `SKILL.md`, and skill reference files, may link into `.context/`.
+Project documentation, user instructions, and other non-agent documentation must not link into `.context/`.
+Keep agent procedures and supporting knowledge in their agent-facing sources. When project or user documentation needs that content, publish the relevant information in `docs/` or its appropriate documentation owner.
+Keep feature requirements, presentation, implementation details, and acceptance scenarios on the owning feature page; shared pages contain only shared contracts and procedures.
 
 ## Project constraints
 

@@ -5,7 +5,7 @@ status: active
 
 * Read [Windows validation](windows-validation.md) first if the failure reports SAC error 4551 or a blocked Rust tool or DLL.
 * Preserve its stop requirement. The recoveries below do not authorize bypassing SAC.
-* Use [testing](../docs/testing.md) for check commands and browser fixture setup.
+* Use [testing](../docs/testing/index.md) for check commands and browser fixture setup.
 
 ## Executable replacement fails
 

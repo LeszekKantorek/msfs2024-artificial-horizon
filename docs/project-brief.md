@@ -19,7 +19,7 @@ Prioritize mobile readability, low delay, and explicit unavailable states.
 | Connection | Subscribe on page load. Recover automatically after interruption |
 | Simulator access | Read-only. No browser control commands |
 | Visuals | G5-inspired hierarchy and readability, original assets |
-| Project | GitHub Issues track work. New project text uses English, with the [original-plan exception](../.context/writing-style.md) |
+| Project | GitHub Issues track work. New project text uses English, except supplied accepted plans, which remain local and verbatim in their original language |
 
 ## Working assumptions
 
@@ -96,7 +96,7 @@ Use original graphics. Do not embed PDF screenshots or copy the bezel.
 The opaque sky/ground background fills the entire panel, including side, heading, and supplemental regions.
 Tape backgrounds are translucent; digits, ticks, and value windows remain readable.
 Central pitch markings have separate clipping, and invalid data remains obscured.
-The [panel presentation](pfd-presentation.md#layers-and-clipping) defines layer ownership and clipping.
+The [panel presentation](pfd/rendering.md#layers-and-clipping) defines layer ownership and clipping.
 
 [#36](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/36) first separates existing modules without changing the image.
 [#37](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/37) implements this composition without a top status bar. Background opacity remains subject to mobile acceptance.

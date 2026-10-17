@@ -18,7 +18,7 @@ The visual-object decision addresses these internal boundaries:
 ## Decision
 
 Use JavaScript factories, composition, and small object interfaces within the existing modular architecture.
-The [presentation reference](../pfd-presentation.md#internal-module-seams) owns detailed interfaces, calculation locations, and resource ownership.
+The [presentation reference](../pfd/composition.md#internal-module-seams) owns detailed interfaces, calculation locations, and resource ownership.
 
 Visual ownership defines the interfaces:
 

@@ -62,8 +62,7 @@ npx --yes skills add LeszekKantorek/agent-skills --agent codex --skill procedura
 ```
 
 Choose the skill that fits the task; no skill sequence is required.
-Follow [AGENTS.md](AGENTS.md) when starting agent work.
-Use [task guidance](.context/task-guidance.md) to select procedures from project context and existing Markdown documentation.
+Follow [AGENTS.md](AGENTS.md#context-selection) for agent work and procedure selection.
 
 #### Session hooks
 
@@ -100,11 +99,12 @@ The registry uses UTF-8 CSV with `session_date`, `session_id`, `path`, and `revi
 Exclude `.context/sessions.log` and `.context/.sessions.lock` from commits and knowledge retrieval.
 The tested revision does not migrate the legacy `.context/sessions/` registry; retain it separately without treating its records as reviewed.
 
-See [agent maintenance](.context/agent-maintenance.md) for reinstalls and integration updates.
+For reinstalls, preserve intentional local changes, use the pinned revision above, and update installed skills and `skills-lock.json` together.
+Keep installer-generated hashes as source provenance and preserve unrelated hooks.
 
 ### 4. Check the environment
 
-1. Run the [automated checks](docs/testing.md#automated-checks), including the build and tests.
+1. Run the [automated checks](docs/testing/automated.md#automated-checks), including the build and tests.
 2. Start the demo:
 
    ```powershell
@@ -122,17 +122,16 @@ Apply the [project constraints](AGENTS.md#project-constraints) and the requireme
 | Changed boundary | Requirement / source |
 | --- | --- |
 | Dependencies | Commit `Cargo.lock` and exclude dependencies without distribution rights |
-| Material architecture choice | Record the decision in `docs/adr/` under the [decision procedure](.context/architecture-decisions.md) |
-| Tests | Check behavior independently of implementation details under [test design](.context/validation-and-review.md#select-evidence-by-failure-risk) |
-| Runtime lifecycle | Preserve errors, source-loss handling, reconnects, and cancellation cleanup under [HTTP startup checks](docs/testing.md#http-startup-checks) |
+| Material architecture choice | Record the decision in `docs/adr/` under the [decision procedure](.agents/skills/project-decide-architecture/SKILL.md) |
+| Tests | Check behavior independently of implementation details under [test design](docs/testing/evidence.md#select-evidence-by-failure-risk) |
+| Runtime lifecycle | Preserve errors, source-loss handling, reconnects, and cancellation cleanup under [HTTP startup checks](docs/testing/runtime.md#http-startup-checks) |
 | Telemetry | Update compatible fixtures and consumers with the [wire contract](docs/telemetry-contract.md) |
-| Documentation | Distinguish planned behavior, implementation, and confirmed device acceptance under the [writing rules](.context/writing-style.md) |
+| Documentation | Distinguish planned behavior, implementation, and confirmed device acceptance under the [writing guidance](#writing-guidance) |
 
-Before delivery, apply the [validation scope matrix](docs/testing.md#validation-by-change-scope) and [evidence reuse rules](docs/testing.md#evidence-reuse).
+Before delivery, apply the [validation scope matrix](docs/testing/index.md#validation-by-change-scope) and [evidence reuse rules](docs/testing/index.md#evidence-reuse).
 Record results against the tested revision and environment, including observations and unavailable checks.
 Use the [acceptance procedure](#acceptance-criteria-and-additional-verification) to track completion.
 Before marking work complete, confirm that required checks pass and acceptance criteria have supporting evidence.
-The [repository history](.context/repository-instructions.md#sources) records the origins of these requirements.
 
 ## Workflow
 
@@ -141,7 +140,7 @@ The [repository history](.context/repository-instructions.md#sources) records th
 3. Create a branch from current `main` named `change/<issue>-<topic>`, for example `change/20-responsive-pfd`.
 4. Implement one reviewable outcome under the [change requirements](#change-requirements).
 5. Update affected documentation, contracts, and fixtures.
-6. Select and run checks through the [validation scope matrix](docs/testing.md#validation-by-change-scope).
+6. Select and run checks through the [validation scope matrix](docs/testing/index.md#validation-by-change-scope).
 7. Follow [PR preparation](#prepare-a-pull-request) to prepare the description or publish the requested PR.
 
 ### Prepare a pull request
@@ -174,5 +173,14 @@ Collect reusable implementation findings in [#9](https://github.com/LeszekKantor
 ## Project guidance
 
 * Apply the [change requirements](#change-requirements) and [acceptance procedure](#acceptance-criteria-and-additional-verification) before submitting a change.
-* Follow the [writing style and document responsibilities](.context/writing-style.md) for documentation, knowledge entries, code comments, commit messages, and GitHub issues, comments, and PRs.
-* Follow [AGENTS.md](AGENTS.md) for agent work and [agent maintenance](.context/agent-maintenance.md) for skills and hooks.
+* Follow the [writing guidance](#writing-guidance) for documentation, knowledge entries, code comments, commit messages, and GitHub issues, comments, and PRs.
+* Follow [AGENTS.md](AGENTS.md) for agent work and the [setup instructions](#3-prepare-agent-skills-and-hooks) for skills and hooks.
+
+## Writing guidance
+
+* Write concise, impersonal English with consistent terms.
+* Preserve requirements, units, limits, source provenance, and uncertainty. Distinguish planned behavior, implementation, and confirmed acceptance.
+* Keep supplied accepted plans local and verbatim, including their original language.
+* Put feature requirements, presentation, implementation details, and tests on the owning feature page. Keep shared procedures in the testing guide.
+* Link canonical public documentation rather than agent context. Check moved content, links, anchors, and Markdown paragraph boundaries.
+* Use the [technical writing rules](.agents/skills/technical-writing-rules/SKILL.md) for detailed writing and review guidance.
