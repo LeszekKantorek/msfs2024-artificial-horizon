@@ -11,7 +11,7 @@ Start with the change scope, then select the affected procedure:
 | Select checks | [Validation scope](#validation-by-change-scope) | Every change |
 | Reuse previous results | [Evidence reuse](#evidence-reuse) | Relevant validation already exists |
 | Run application checks | [Automated checks](#automated-checks) | Application code, dependencies, or build changes |
-| Validate presentation | [Desktop scripts](#responsive-pfd-layout-and-desktop-checks) | Rendering, geometry, lifecycle, or asset integration changes |
+| Validate presentation | [pfd-validate-presentation](../.agents/skills/pfd-validate-presentation/SKILL.md) | Rendering, geometry, lifecycle, or asset integration changes |
 | Validate speed indications | [IAS/GS](#airspeed-and-ground-speed-acceptance), [TAS](#true-airspeed-acceptance), [ranges and trend](#airspeed-ranges-references-and-trend-acceptance) | Select the changed speed indication |
 | Validate altitude indications | [Altitude/BARO](#altitude-and-pressure-acceptance), [alerts](#selected-altitude-and-alert-acceptance), [VSI](#vertical-speed-acceptance), [trend placement](#altitude-trend-placement-acceptance) | Select the changed right-side indication |
 | Validate heading | [Heading acceptance](#heading-acceptance) | Heading changes or full-panel acceptance |
@@ -516,6 +516,11 @@ Add these attitude checks for each phone:
 
 > The fixture server serves real web assets with synthetic SSE on loopback by default. Explicit LAN binding supports phone checks. It is separate from the release binary.
 > These checks establish UI behavior, not simulator compatibility.
+
+### PFD presentation validation procedure
+
+Use [pfd-validate-presentation](../.agents/skills/pfd-validate-presentation/SKILL.md) for the presentation validation procedure.
+The skill owns its steps; this document retains check commands, feature criteria, evidence requirements, and the real-phone procedure.
 
 ### Responsive PFD layout and desktop checks
 

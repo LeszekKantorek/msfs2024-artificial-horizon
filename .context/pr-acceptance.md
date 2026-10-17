@@ -5,7 +5,7 @@ status: active
 
 | Situation | Source |
 | --- | --- |
-| Prepare issue or PR evidence and pending checks | [Author responsibilities](../CONTRIBUTING.md#acceptance-criteria-and-additional-verification) |
+| Prepare a PR with evidence and pending checks | [project-prepare-pr](../.agents/skills/project-prepare-pr/SKILL.md); [author responsibilities](../CONTRIBUTING.md#acceptance-criteria-and-additional-verification) define acceptance tracking |
 | Diagnose rejected references or unchecked tasks | [Issue references](../docs/pr-acceptance.md#issue-references), [checklist scope](../docs/pr-acceptance.md#checklist-scope) |
 | Diagnose status refresh or API failures | [Status meanings](../docs/pr-acceptance.md#understand-the-result), [refresh events](../docs/pr-acceptance.md#validation-triggers), [API recovery](../docs/pr-acceptance.md#api-failures-and-recovery) |
 | Activate the required check | [Activation order](../docs/pr-acceptance.md#activate-merge-blocking) |

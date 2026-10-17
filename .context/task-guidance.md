@@ -11,17 +11,19 @@ Use this table for tasks that need more than one source or a condition-dependent
 | Task | Read first | Extend only when relevant |
 | --- | --- | --- |
 | Preserve findings or review knowledge | [Context authoring](context-authoring.md) and the matching [context skill](../AGENTS.md#project-knowledge) | [Tool maintenance](agent-maintenance.md) when changing skills or hooks |
-| Prepare a detailed implementation plan | [Implementation planning](implementation-planning.md) | [Handoffs](iterative-development.md#accepted-plans-and-handoffs) for accepted plans and amendments |
+| Prepare a detailed implementation plan | [project-plan-change](../.agents/skills/project-plan-change/SKILL.md) | [Planning rationale](implementation-planning.md#why-these-details-matter) when choosing detail; [handoffs](iterative-development.md#accepted-plans-and-handoffs) for accepted plans and amendments |
 | Change behavior across providers, telemetry, HTTP, or the browser | [Change map](component-changes.md) | [Governing decisions](architecture-decisions.md#find-the-governing-decision) when reconsidering accepted boundaries or behavior |
 | Change an instrument | [Presentation boundary map](../docs/pfd-presentation.md#find-the-affected-boundary) | [Wire contract](../docs/telemetry-contract.md#fields-and-conventions) for input changes; [layout validation](pfd-layout-validation.md) for geometry or layers |
 | Select checks or reuse evidence | [Validation scope](../docs/testing.md#validation-by-change-scope) | [Evidence reuse](../docs/testing.md#evidence-reuse) for prior runs; [test design](validation-and-review.md#select-evidence-by-failure-risk) for new checks |
-| Diagnose a failure | [Error diagnosis](error-diagnosis.md#select-the-diagnostic-boundary) | Follow the symptom-specific environment or rendering route in that table |
-| Prepare independent code review | [Review procedure](validation-and-review.md#independent-subagent-review) | Applicable contracts and [change requirements](../CONTRIBUTING.md#change-requirements) for the reviewed diff |
-| Prepare a branch or PR | [Contribution workflow](../CONTRIBUTING.md#workflow) | [Acceptance-control map](pr-acceptance.md) for validator failures or workflow changes |
+| Diagnose an application, test, build, or environment failure | [project-diagnose-failure](../.agents/skills/project-diagnose-failure/SKILL.md) | [Diagnostic boundary map](error-diagnosis.md#select-the-diagnostic-boundary) for symptom-specific contracts and restrictions |
+| Validate PFD geometry, layers, lifecycle, or browser module integration | [pfd-validate-presentation](../.agents/skills/pfd-validate-presentation/SKILL.md) | Feature-specific checks selected by the procedure; actual phones when device acceptance is required |
+| Prepare independent code review | [project-review-change](../.agents/skills/project-review-change/SKILL.md) | Applicable contracts and [change requirements](../CONTRIBUTING.md#change-requirements) for the reviewed diff |
+| Prepare or publish a PR for agreed changes | [project-prepare-pr](../.agents/skills/project-prepare-pr/SKILL.md) | [Acceptance-control map](pr-acceptance.md) for validator failures or workflow changes |
+| Start a contribution branch | [Contribution workflow](../CONTRIBUTING.md#workflow) | [project-plan-change](../.agents/skills/project-plan-change/SKILL.md) only when a detailed implementation plan is needed |
 | Write or relocate documentation | [Writing rules and document responsibilities](writing-style.md) | [Context authoring](context-authoring.md) for knowledge entries and map changes |
 | Review an exposure or permission change | [Security boundaries](security-review.md#project-boundaries) | [Focused checks](security-review.md#focused-checks) for the affected input, network, dependency, or CI boundary |
 | Find the rationale or scope of an existing architecture choice | [Governing decisions](architecture-decisions.md#find-the-governing-decision) | [Change map](component-changes.md) when assessing affected contracts and checks |
-| Make a material architecture decision | [Decision procedure](architecture-decisions.md#decision-procedure), [governing decisions](architecture-decisions.md#find-the-governing-decision) | [Change map](component-changes.md) for affected contracts and validation |
+| Make a material architecture decision | [project-decide-architecture](../.agents/skills/project-decide-architecture/SKILL.md) | [Change map](component-changes.md) for affected contracts and validation |
 
 ## Working approach
 

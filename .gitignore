@@ -34,6 +34,12 @@ __pycache__/
 !/.agents/skills/context-diagnose/
 !/.agents/skills/context-compile/
 !/.agents/skills/procedural-skill-creator/
+!/.agents/skills/project-plan-change/
+!/.agents/skills/project-diagnose-failure/
+!/.agents/skills/pfd-validate-presentation/
+!/.agents/skills/project-prepare-pr/
+!/.agents/skills/project-review-change/
+!/.agents/skills/project-decide-architecture/
 
 # RustRover
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can

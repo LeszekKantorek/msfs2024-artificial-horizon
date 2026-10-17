@@ -1,25 +1,11 @@
 ---
-description: Diagnose application, test, and environment failures from reproducible observations. Use before selecting a fix or attributing a failure to its cause.
+description: Select diagnostic boundaries, environment restrictions, and supporting sources. Use project-diagnose-failure for the diagnosis procedure.
 status: active
 ---
 
 ## Diagnostic procedure
 
-Follow this sequence within the affected task scope.
-
-1. Record the expected behavior and the observed failure separately.
-2. Identify the revision, relevant local changes, environment, exact command or interaction, inputs, and native exit code.
-3. Preserve relevant logs, screenshots, and artifact provenance without exposing credentials or unrelated data.
-4. Check whether an existing environment recovery or execution restriction applies.
-5. Reproduce the failure with the smallest scenario that retains its trigger.
-6. Locate the first boundary where the observed behavior differs from its contract.
-7. State a candidate cause and an observation that would distinguish it from competing causes.
-8. Change one relevant condition or add a focused observation to test that candidate.
-9. Select a fix only when the evidence explains the failure mechanism.
-10. Check the original failing scenario and affected regression behavior after the fix.
-11. Record the established cause, fix, evidence, and remaining uncertainty in the issue or PR.
-
-If reproduction is intermittent, record its conditions and frequency before drawing a causal conclusion.
+The project-diagnose-failure skill owns the [diagnostic steps](../.agents/skills/project-diagnose-failure/SKILL.md#steps).
 
 ## Select the diagnostic boundary
 
@@ -37,16 +23,7 @@ Use the source that owns the failing boundary.
 
 ## Evidence and recovery limits
 
-Keep diagnosis separate from speculation and recovery attempts.
-
-* Use the actual telemetry-to-display boundaries to narrow application failures.
-* Compare receipt, normalization, freshness, scheduling, and painting where the symptom requires them.
-* Preserve timestamps and deadlines rather than refreshing stale data to make a test pass.
-* Report "cause not established" when observations cannot distinguish the candidate causes.
-* Do not broaden permissions, disable security controls, or stop unrelated processes as diagnostic shortcuts.
-* Use the [validation procedure](validation-and-review.md#select-evidence-by-failure-risk) for a regression check that detects the original failure.
-* Reuse unaffected evidence under the [evidence-reuse rules](../docs/testing.md#evidence-reuse).
-* Save established reusable findings through [context authoring](context-authoring.md), rather than storing raw debugging progress.
+The project-diagnose-failure skill owns the [evidence and recovery limits](../.agents/skills/project-diagnose-failure/SKILL.md#evidence-and-recovery-limits).
 
 ## Sources and limits
 
