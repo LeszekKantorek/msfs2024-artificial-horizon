@@ -2,6 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { pfdLayout } from '../web/layout.js';
 
+test('airspeed reserves the extra pixel for scale-label clearance without moving altitude', () => {
+  for (const [width, expectedSpeedWidth, expectedAltitudeWidth] of [[300, 51, 60], [314, 51.24, 60],
+    [320, 52.2, 60.8], [568, 85, 92]]) {
+    const layout = pfdLayout(width, 240);
+    assert.ok(Math.abs(layout.airspeed.width - expectedSpeedWidth) < 1e-8);
+    assert.ok(Math.abs(layout.attitude.x - expectedSpeedWidth) < 1e-8);
+    assert.equal(layout.altitude.width, expectedAltitudeWidth);
+    assert.equal(layout.altitude.x, width - expectedAltitudeWidth);
+    assert.equal(layout.attitude.x + layout.attitude.width, layout.altitude.x);
+  }
+});
+
 test('portrait and short landscape allocate disjoint instrument regions without changing symbol proportions', () => {
   for (const [width, height] of [[314, 444], [384, 628], [562, 204], [661, 244], [838, 284], [314, 204]]) {
     const l = pfdLayout(width, height);

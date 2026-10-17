@@ -46,8 +46,8 @@ export async function checkAltitudeTrend(page, setFixture, url) {
           const height = document.querySelector('#altitude-tape-clip rect').getBBox().height;
           return { x: start.x, start: start.y, end: end.y, height, prediction: Number(trend.dataset.predictionFt),
             width: clip.width, coversTick, rejectsUnderTicks,
-            contained: bounds.left - 1 >= clipStart.x && bounds.right + 1 <= clipEnd.x && bounds.top >= clipStart.y && bounds.bottom <= clipEnd.y,
-            sameStyle: style.stroke === ias.stroke && style.strokeWidth === ias.strokeWidth,
+            contained: bounds.left - 1.5 >= clipStart.x && bounds.right + 1.5 <= clipEnd.x && bounds.top >= clipStart.y && bounds.bottom <= clipEnd.y,
+            sameStyle: style.stroke === ias.stroke && style.strokeWidth === '3px' && ias.strokeWidth === '3px',
             stable: trend === window.trendNode };
         });
         assert.equal(paint.prediction, 10060 + fpm / 10);

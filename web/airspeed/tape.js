@@ -3,6 +3,8 @@ import { MAX_SPEED, tapeOffset } from './helpers.js';
 
 const MINOR_TICK_STEP_KT = 2;
 const MAJOR_TICK_STEP_KT = 10;
+const RANGE_LANE_RIGHT_INSET = 12;
+const RANGE_LANE_WIDTH = 6;
 
 export function speedRanges(profile) {
   return [
@@ -33,7 +35,7 @@ export function createTape(defs, parent) {
   });
   scale.append(ticks, ...labels);
   const ranges = svgElement('g', { id: 'airspeed-ranges' });
-  const rangeRects = Object.fromEntries(['low', 'flaps', 'normal', 'caution', 'overspeed'].map(name => {
+  const rangeRects = Object.fromEntries(['low', 'normal', 'caution', 'overspeed', 'flaps'].map(name => {
     const rect = svgElement('rect', { 'data-range': name, class: `airspeed-range-${name}` });
     ranges.append(rect); return [name, rect];
   }));
@@ -44,8 +46,8 @@ export function createTape(defs, parent) {
     ranges.style.display = profile && ias.state === 'available' ? '' : 'none';
     if (!profile || ias.state !== 'available') return;
     for (const range of speedRanges(profile)) {
-      setAttributes(rangeRects[range.name], { x: geometry.width - (range.name === 'flaps' ? 17 : 15),
-        width: range.name === 'flaps' ? 2 : 3, ...rangeBounds(ias.value, range, geometry) });
+      setAttributes(rangeRects[range.name], { x: geometry.width - RANGE_LANE_RIGHT_INSET - RANGE_LANE_WIDTH,
+        width: range.name === 'flaps' ? RANGE_LANE_WIDTH / 2 : RANGE_LANE_WIDTH, ...rangeBounds(ias.value, range, geometry) });
     }
   }
   function renderTrend(ias, prediction) {
@@ -60,9 +62,9 @@ export function createTape(defs, parent) {
       ticks.setAttribute('d', Array.from({ length: Math.floor(MAX_SPEED / MINOR_TICK_STEP_KT) + 1 }, (_, index) => {
         const speed = index * MINOR_TICK_STEP_KT;
         const major = speed % MAJOR_TICK_STEP_KT === 0;
-        return `M ${tape.width - (major ? 26 : 22)} ${tapeOffset(0, speed)} H ${tape.width - 18}`;
+        return `M ${tape.width - (major ? 28 : 24)} ${tapeOffset(0, speed)} H ${tape.width - 20}`;
       }).join(' '));
-      for (const label of labels) label.setAttribute('x', tape.width - 28);
+      for (const label of labels) label.setAttribute('x', tape.width - 30);
     },
     render(ias, profile, prediction) {
       if (ias.state === 'available') scale.setAttribute('transform', `translate(0 ${geometry.centerY + tapeOffset(ias.value, 0)})`);

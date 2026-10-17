@@ -282,7 +282,7 @@ The automated checks cover these visible results:
 | Scenario | Expected result |
 | --- | --- |
 | 10060 ft, +1500 / -1500 ft/min | Six-second prediction at 10210 / 9910 ft, with endpoints 60 CSS px above / below center |
-| Tick crossing | The magenta two-pixel stroke at local `x = 2` covers the tick stroke |
+| Tick crossing | The magenta 3 CSS px stroke at local `x = 2` covers the tick stroke and retains 0.5 CSS px clearance inside either side of its four-pixel clip |
 | Positive and negative capture, either rate sign | The turquoise strip covers the trend and the black pointer fits the notch |
 | Selected target above / below the scale, +10000 / -10000 ft/min | The clipped trend stays below the whole pinned bug at either edge |
 | Readout overlap | The opaque altitude window and its border cover the trend and bug |
@@ -791,8 +791,12 @@ The [contract](telemetry-contract.md#optional-airspeed-ranges-and-trend) defines
 | Area | Expected behavior |
 | --- | --- |
 | Profile | Five positive, strictly increasing thresholds and four named positive references at or below VNE. Invalid configuration affects only its indications |
-| Ranges | Red below 40, white 40-85, green 50-110, yellow 110-140, red/white from 140 kt. White and green appear in parallel |
+| Ranges | Red below 40, white 40-85, green 50-110, yellow 110-140, red/white from 140 kt. White overlays the left half of green where their intervals overlap |
 | Range clipping | Unbounded overspeed ranges clip to the tape. Literal expectations cover infinite bounds and preserve `NaN` coordinates without zero substitution |
+| Range lane (#64) | Red, green, yellow, and striped bands share `x = tape width - 18` and 6 CSS px width. White uses the same left edge and 3 CSS px width, painted above green |
+| Range paint (#64) | At IAS 65 kt, inspect 72 kt above the readout: white covers the left half and green remains visible on the right. Reversing their SVG order must fail the same paint check; restore the original order afterward |
+| Trend thickness (#64) | Airspeed and altitude trends share a 3 CSS px stroke and the same magenta at their existing axes. Check positive/negative prediction and both clip boundaries |
+| Scale clearance (#64) | Ticks and numbers move 2 CSS px left within the 1 px wider airspeed allocation. Original tick lengths, 1 px stroke, 12 px labels, reference speed anchors, and opaque IAS pointer remain readable |
 | Boundaries | Values below, at, and above every threshold retain coherent geometry. Marker positions match configured speeds |
 | Trend | Six-second prediction comes from source acceleration. Positive, negative, zero, missing, malformed, and overflowing calculations have independent expectations |
 | VNE | IAS 140 kt makes the pointer red. IAS 110 with +5 kt/s predicts exactly 140 and makes digits yellow. Current readings never become predictions |
@@ -848,6 +852,21 @@ Enter these JSON lines into the fixture terminal. The fixture initially supplies
 Restart the fixture to restore its initial profile after the partial-loss checks.
 Check immediately below and above the five thresholds with the same input mechanism.
 Real-phone acceptance requires passing records from both devices. Desktop checks provide separate evidence.
+
+### Wider airspeed bands acceptance (#64)
+
+Preserve matched before/after screenshots for `/` and `/layout.html` at 320x240, 320x480, and 568x240 CSS px.
+Use IAS 25, 65, 95, 123, and 150 kt to cover low speed, white/green overlap, normal, caution, and striped overspeed.
+Include rising and falling trends, range thresholds, readout overlap, and clipping at both tape edges.
+Inspect painted bounds, labels, and V-speed references after resize settles.
+Confirm that other PFD stroke widths remain unchanged.
+The IAS/TAS/GS column gains 1 CSS px, the horizon loses 1 CSS px, and the altitude allocation remains unchanged.
+
+Apply the [shared phone procedure](#real-phone-acceptance-procedure) on actual iOS Safari and Android Chrome.
+Inspect the 6 px range lane, its 3 px white left overlay, and matching 3 px airspeed and altitude trends.
+Check portrait/landscape, rotation, browser bars, safe areas, connection loss, and lock/background recovery.
+Record the tested revision, device model, OS/browser versions, date, viewport, observations, and pass/fail.
+Leave device acceptance unconfirmed until both records pass.
 
 ## Planned PFD demo acceptance
 
