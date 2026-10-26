@@ -8,7 +8,7 @@ Prerequisites: Rust stable, rustfmt, and Clippy on Windows x64 MSVC.
 Use committed `Cargo.lock`. These checks require no simulator or SDK.
 
 1. Run the [automated checks](automated.md#automated-checks), including the build and tests.
-2. Record the compiler version with results. CI records it in its logs.
+2. Record the compiler version with local results.
 
    ```powershell
    rustc --version --verbose
@@ -54,7 +54,7 @@ node --test tests/*.test.mjs
 ```
 
 Node checks require Node.js 24, without npm install or a browser framework.
-These checks run in Windows CI.
+Run these checks locally on Windows x64 MSVC.
 
 | Suite | Coverage / method |
 | --- | --- |

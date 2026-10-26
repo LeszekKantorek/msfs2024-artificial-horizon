@@ -27,3 +27,5 @@ Source: accepted acceptance-tracking rule and simplified control, 2026-10-10: ma
 Source: accepted conditional routing change, 2026-10-11, replacing mandatory full-document reads with scope-specific source sections.
 
 Source: accepted consolidation, 2026-10-17. Requirements moved to CONTRIBUTING; this entry retains their provenance and previous link targets.
+
+Source: accepted #5 workflow change, 2026-10-26, superseding mandatory PR test-status sections and checklists. Local validation remains mandatory; evidence and pending acceptance belong to the issue or a linked validation record. PR descriptions explain the change, rationale, and consequences, and any optional PR tasks remain subject to the acceptance validator.

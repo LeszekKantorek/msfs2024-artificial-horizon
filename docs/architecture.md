@@ -39,7 +39,7 @@ flowchart LR
 * Keep SDK types outside telemetry and HTTP.
 * Give a dedicated worker ownership of blocking SimConnect callbacks.
 * Send normalized state from that worker to the async runtime.
-* Support Rust builds, runtime, and CI on Windows x64 MSVC only.
+* Support Rust builds and runtime on Windows x64 MSVC only. Run application builds and test suites locally; retain the GitHub PR acceptance control.
 * Reject other targets at the library root.
 * Provider modules do not need separate platform gates.
 * Expose no Cargo features from this package.
@@ -122,7 +122,7 @@ web/
 tests/
   http_sse.rs
   fixtures/                 # known attitudes and lifecycle states
-.github/workflows/ci.yml
+.github/workflows/acceptance.yml # issue criteria and optional PR tasks; no build/test suites
 ```
 
 ### Application API

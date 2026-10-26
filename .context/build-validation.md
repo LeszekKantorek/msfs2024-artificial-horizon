@@ -1,5 +1,5 @@
 ---
-description: Apply the package feature policy and shared Windows target when changing builds or CI.
+description: Apply the package feature policy, shared Windows target, and mandatory local validation when changing builds or workflows.
 status: active
 ---
 
@@ -9,9 +9,9 @@ status: active
 * Follow the shared target and Tests-before-Build-release sequence in [automated checks](../docs/testing/automated.md#automated-checks).
 * The final build produces the release executable; debug tests and optimized release artifacts use separate profiles.
 * Cargo explicitly names the executable `msfs2024-artificial-horizon`, with its entry point at `src/bin/main.rs`.
-* The current SimConnect module is a placeholder and does not establish SDK or simulator compatibility.
-* Measure local command time separately from GitHub runner setup.
-* CI uses no cross-run Rust cache action, as requested on 2026-10-10.
-* When publishing the renamed `Build & Test` job, check whether repository rules still require the old `check` status.
+* Passing checks without a simulator does not establish SDK or simulator compatibility.
+* Application compilation, Rust/JavaScript tests, and acceptance-validator tests run locally; local validation remains mandatory for the selected scope.
+* Keep [PR acceptance](../.github/workflows/acceptance.yml) and its trusted-code boundary. Remove the retired `Build & Test` required status from the `main` ruleset while preserving `Acceptance criteria` and unrelated protections.
+* Record actual validation evidence in the owning issue or a linked validation record. PR descriptions explain the change, rationale, and consequences without mandatory test-status sections, command lists, or testing checklists.
 
-Source: accepted build optimization scope, 2026-10-10; implementation in [CI](../.github/workflows/ci.yml) and [architecture](../docs/architecture.md#boundaries).
+Sources: accepted build optimization scope, 2026-10-10; accepted local-validation and workflow change for #5, 2026-10-26; [automated checks](../docs/testing/automated.md#automated-checks), [acceptance control](../docs/pr-acceptance.md), and [architecture](../docs/architecture.md#boundaries).

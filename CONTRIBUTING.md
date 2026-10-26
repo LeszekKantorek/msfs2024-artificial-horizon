@@ -6,7 +6,7 @@
 
 | Tool | Requirement / purpose |
 | --- | --- |
-| Windows x64 | Supported development and CI platform |
+| Windows x64 | Supported development, build, and runtime platform |
 | Git | Clone the repository and manage changes |
 | Visual Studio C++ Build Tools | MSVC linker and Windows SDK |
 | Rust through rustup | Stable MSVC toolchain, rustfmt, and Clippy |
@@ -129,7 +129,8 @@ Apply the [project constraints](AGENTS.md#project-constraints) and the requireme
 | Documentation | Distinguish planned behavior, implementation, and confirmed device acceptance under the [writing guidance](#writing-guidance) |
 
 Before delivery, apply the [validation scope matrix](docs/testing/index.md#validation-by-change-scope) and [evidence reuse rules](docs/testing/index.md#evidence-reuse).
-Record results against the tested revision and environment, including observations and unavailable checks.
+Local validation remains mandatory; GitHub Actions does not compile the application or run its test suites.
+Record results in the owning issue or a linked validation record against the tested revision and environment, including observations and unavailable checks.
 Use the [acceptance procedure](#acceptance-criteria-and-additional-verification) to track completion.
 Before marking work complete, confirm that required checks pass and acceptance criteria have supporting evidence.
 
@@ -147,16 +148,19 @@ Before marking work complete, confirm that required checks pass and acceptance c
 
 Use [project-prepare-pr](.agents/skills/project-prepare-pr/SKILL.md) to prepare a local description or publish the requested PR.
 The skill owns the preparation procedure; this document retains the contribution requirements and acceptance-tracking rules.
+Describe what changed, why, and important design choices or consequences.
+Link the owning issue. Test-status sections, command lists, and testing checklists are not required in PR descriptions.
 
 ### Acceptance criteria and additional verification
 
 1. Give the issue an `Acceptance criteria` heading with Markdown task items.
-2. Mark a criterion as checked when passing unit tests or automated validation confirm it.
-3. Record the confirming tests or validation results in the issue or linked PR, including the tested commit and relevant environment.
-4. Leave unconfirmed criteria unchecked and include their verification in the PR as unchecked items under `Additional verification`. Adapt the wording to the PR context when needed.
-5. Describe how to verify the remaining items and what result confirms each one; update the issue and PR checkboxes after verification.
+2. Mark a criterion as checked when the required automated or manual validation confirms it.
+3. Record the confirming tests or validation results in the issue or a linked validation record, including the tested commit and relevant environment.
+4. Leave unconfirmed criteria unchecked in the issue. Record how to verify each remaining item and the expected result there or in the linked validation record.
+5. Update issue criteria after verification. If a PR includes task items, keep them accurate; any visible unchecked PR task blocks the acceptance status.
 
-Draft PRs can retain unchecked verification; complete it before merge.
+Draft PRs can retain incomplete acceptance; complete it before merge.
+PR descriptions need no test checklist when acceptance is tracked in the issue.
 Use the [acceptance control reference](docs/pr-acceptance.md#checklist-scope) for parser rules and [status meanings](docs/pr-acceptance.md#understand-the-result) for blocking conditions.
 
 ### Promote agreed findings
