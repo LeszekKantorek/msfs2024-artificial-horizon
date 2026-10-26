@@ -27,12 +27,12 @@ Dynamic loading does not establish redistribution permission; runtime packaging 
 Run from the repository root in PowerShell:
 
 ```powershell
-cargo build --locked --release --bin simconnect-probe
 $simconnectDll = Read-Host 'Absolute path to the official x64 SimConnect.dll'
-.\target\release\simconnect-probe.exe --dll "$simconnectDll" --scenario off-menu-flight
+cargo run --locked --release --bin simconnect-probe -- --dll "$simconnectDll" --scenario off-menu-flight
 ```
 
 Select one scenario before each run.
+`cargo run` selects the correct executable directory whether or not `CARGO_BUILD_TARGET` is configured.
 Scenario labels are free text stored in the log; they do not automate simulator actions.
 Repeat a scenario by starting the probe again with the same label.
 Each run creates a new file without replacing earlier sessions.
