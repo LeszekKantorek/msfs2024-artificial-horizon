@@ -1,2 +1,10 @@
-//! Windows-only integration boundary, reserved for the SDK spike in issue #5.
-//! This module does not yet add an SDK dependency or enable data acquisition.
+//! Diagnostic-only SimConnect experiment. Production acquisition remains issue #6.
+//!
+//! The native library is loaded only by an explicitly started probe worker.
+mod event;
+mod journal;
+mod lifecycle;
+mod native;
+mod probe;
+
+pub use probe::{ProbeConfig, ProbeError, run_probe};

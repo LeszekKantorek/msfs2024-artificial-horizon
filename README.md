@@ -86,6 +86,10 @@ cargo run --locked --bin msfs2024-artificial-horizon -- --source demo --listen-a
 | Phone cannot connect | Check the private network, PC address, port, VPN interface, and firewall scope |
 | SimConnect selection fails | `--source simconnect` is not implemented. Demo never replaces it automatically |
 
+The separate [SimConnect console probe](docs/simconnect-probe.md) records diagnostic sessions for local simulator testing.
+It requires an explicit DLL path and scenario and does not start the browser display.
+Live signs, availability, and lifecycle behavior remain unverified.
+
 ## Project guide
 
 | I want to… | Read |
@@ -94,6 +98,7 @@ cargo run --locked --bin msfs2024-artificial-horizon -- --source demo --listen-a
 | Contribute a change | [Contributing](CONTRIBUTING.md) |
 | Use the Rust library or understand the design | [Architecture](docs/architecture.md#application-api) |
 | Consume telemetry | [Telemetry contract](docs/telemetry-contract.md) |
+| Run the SimConnect experiment | [Probe setup and scenarios](docs/simconnect-probe.md) |
 | Review scope and future work | [Project brief](docs/project-brief.md) · [Roadmap](docs/roadmap.md) |
 | Understand the stack choice | [ADR 0001](docs/adr/0001-rust-http-sse.md) |
 | Track work | [GitHub Issues](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues) |

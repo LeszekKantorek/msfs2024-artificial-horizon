@@ -18,7 +18,7 @@ pub enum SourceError {
     SimConnectUnavailable,
 }
 
-mod simconnect;
+pub mod simconnect;
 
 pub(crate) fn validate_source(source: Source) -> Result<(), SourceError> {
     match source {

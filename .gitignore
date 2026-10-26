@@ -26,6 +26,11 @@ __pycache__/
 
 # Local work and additional skills
 /.local/
+# Microsoft SDK artifacts are obtained separately, never versioned.
+SimConnect.h
+SimConnect*.lib
+SimConnect*.dll
+Microsoft.FlightSimulator.SimConnect.dll
 /.agents/skills/*/
 !/.agents/skills/context-preserve/
 !/.agents/skills/context-review-sessions/
