@@ -99,6 +99,16 @@ It validates finite pitch in `[-90, 90]` under the existing [telemetry contract]
 Negating both signs is an experimental hypothesis requiring cockpit observations.
 The variable names and agreement between two requested units do not establish the correct physical sign.
 
+The attitude request uses `SIMCONNECT_OBJECT_ID_USER_AIRCRAFT` (proxy value zero)
+to select the user's aircraft. Responses are matched by the connection's attitude
+request and definition IDs. Their `object_id` is retained as reported; it must not
+be required to equal that request-side proxy. A live MSFS2024 session returned
+`object_id=540672` for request/definition 1, and requiring zero discarded every
+attitude packet. The runtime ID is not hard-coded or pinned across flights.
+Payload length, four untagged values, numeric validation and the availability guard
+still apply. See the official [request API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_requestdataonsimobject/)
+and [response structure](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/structures-and-enumerations/simconnect_recv_simobject_data/).
+
 `state_transition` separates `candidate_state` from the actual `published` snapshot.
 The candidate combines `Sim`, `Pause_EX1`, `FlightLoaded`, and fresh valid samples.
 No single event or nonempty flight filename proves active-flight availability.
@@ -136,11 +146,14 @@ The records provide these diagnostic groups:
 Rejected `SIMOBJECT_DATA` packets retain `message: "Unknown"` and include
 `data.rejected_simobject_data` in their `dispatch` record. This contains received
 `request_id`, `define_id`, `object_id`, `flags`, `entry_number`, `out_of`, and
-`define_count`, plus the three expected identifiers and individual `*_matches`
-results. The reason is `attitude_identifiers_mismatch`. These header-only records
+`define_count`, plus expected request/definition IDs and their `*_matches`
+results. `requested_object_proxy` records the request-side aircraft selector,
+not an expected response object ID. The reason is
+`attitude_request_or_definition_mismatch`. These header-only records
 identify which filter rejected the packet without interpreting its payload or
 accepting it as a flight sample. Unsupported receive IDs remain `Unknown` without
-this field. The telemetry acceptance rules are unchanged by this diagnostic.
+this field. Older logs used `attitude_identifiers_mismatch` and incorrectly
+compared the returned object ID with zero; retain those records as historical evidence.
 
 `elapsed_us` is monotonic time since session start; `started_unix_ms` supplies a UTC reference.
 No scenario field is written; use the filename and sidecar observations to organize scenarios.

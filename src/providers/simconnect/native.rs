@@ -25,6 +25,7 @@ use windows_sys::Win32::{
 
 pub(super) const ATTITUDE_REQUEST: u32 = 1;
 pub(super) const ATTITUDE_DEFINITION: u32 = 1;
+// Request-side proxy; received dwObjectID may be the aircraft's runtime ID.
 const OBJECT_ID_USER_AIRCRAFT: u32 = 0;
 const OPEN_CONFIGINDEX_LOCAL: u32 = u32::MAX;
 const UNUSED: u32 = u32::MAX;
@@ -454,10 +455,9 @@ pub(super) struct RejectedSimobjectData {
     define_count: u32,
     expected_request_id: u32,
     expected_define_id: u32,
-    expected_object_id: u32,
+    requested_object_proxy: u32,
     request_id_matches: bool,
     define_id_matches: bool,
-    object_id_matches: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -625,12 +625,11 @@ fn decode(bytes: &[u8]) -> Result<Packet, NativeError> {
             let request_id = word(bytes, 12)?;
             let object_id = word(bytes, 16)?;
             let define_id = word(bytes, 20)?;
-            if request_id != ATTITUDE_REQUEST
-                || define_id != ATTITUDE_DEFINITION
-                || object_id != OBJECT_ID_USER_AIRCRAFT
-            {
+            // This connection owns one request sent for USER_AIRCRAFT (proxy 0).
+            // Responses carry a runtime object ID; correlate by request/definition.
+            if request_id != ATTITUDE_REQUEST || define_id != ATTITUDE_DEFINITION {
                 rejected_simobject_data = Some(RejectedSimobjectData {
-                    reason: "attitude_identifiers_mismatch",
+                    reason: "attitude_request_or_definition_mismatch",
                     request_id,
                     define_id,
                     object_id,
@@ -640,10 +639,9 @@ fn decode(bytes: &[u8]) -> Result<Packet, NativeError> {
                     define_count: word(bytes, 36)?,
                     expected_request_id: ATTITUDE_REQUEST,
                     expected_define_id: ATTITUDE_DEFINITION,
-                    expected_object_id: OBJECT_ID_USER_AIRCRAFT,
+                    requested_object_proxy: OBJECT_ID_USER_AIRCRAFT,
                     request_id_matches: request_id == ATTITUDE_REQUEST,
                     define_id_matches: define_id == ATTITUDE_DEFINITION,
-                    object_id_matches: object_id == OBJECT_ID_USER_AIRCRAFT,
                 });
                 Message::Unknown
             } else {
@@ -968,15 +966,18 @@ mod tests {
             assert!(matches!(decoded.message, Message::Unknown));
             let diagnostic = serde_json::to_value(&decoded).unwrap();
             let rejected = &diagnostic["rejected_simobject_data"];
-            assert_eq!(rejected["reason"], "attitude_identifiers_mismatch");
+            assert_eq!(
+                rejected["reason"],
+                "attitude_request_or_definition_mismatch"
+            );
             assert_eq!(rejected["expected_request_id"], 1);
             assert_eq!(rejected["expected_define_id"], 1);
-            assert_eq!(rejected["expected_object_id"], 0);
+            assert_eq!(rejected["requested_object_proxy"], 0);
             assert_eq!(rejected["request_id"], if offset == 12 { 99 } else { 1 });
             assert_eq!(rejected["define_id"], if offset == 20 { 99 } else { 1 });
             assert_eq!(rejected["request_id_matches"], offset != 12);
             assert_eq!(rejected["define_id_matches"], offset != 20);
-            assert_eq!(rejected["object_id_matches"], true);
+            assert!(rejected.get("object_id_matches").is_none());
         }
         for (offset, value) in [(36, 3_u32), (36, 5), (24, 2)] {
             let mut bytes = attitude();
@@ -986,8 +987,44 @@ mod tests {
     }
 
     #[test]
-    fn wrong_object_cannot_be_decoded_as_user_aircraft_attitude() {
+    fn user_aircraft_request_accepts_the_runtime_object_id_observed_in_live_logs() {
+        // rejected-ids.jsonl records 37..1438: matching request/definition 1,
+        // runtime object 540672, four untagged values and one returned object.
+        // Payload values here are synthetic; the old log did not retain them.
+        for runtime_id in [0_u32, 540_672, 540_673] {
+            let mut bytes = attitude();
+            bytes[16..20].copy_from_slice(&runtime_id.to_le_bytes());
+            let decoded = decode(&bytes).unwrap();
+            match decoded.message {
+                Message::Attitude {
+                    request_id,
+                    define_id,
+                    object_id,
+                    values,
+                    ..
+                } => {
+                    assert_eq!((request_id, define_id, object_id), (1, 1, runtime_id));
+                    assert_eq!(values, [0.25, 14.32, -0.5, -28.64]);
+                }
+                message => panic!("user-aircraft response was rejected: {message:?}"),
+            }
+            assert!(decoded.rejected_simobject_data.is_none());
+            // A runtime object ID must not bypass payload/shape validation.
+            for (offset, value) in [(24, 2_u32), (36, 3)] {
+                let mut malformed = bytes.clone();
+                malformed[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
+                assert!(decode(&malformed).is_err());
+            }
+            bytes.truncate(71);
+            bytes[..4].copy_from_slice(&71_u32.to_le_bytes());
+            assert!(decode(&bytes).is_err());
+        }
+    }
+
+    #[test]
+    fn unknown_request_retains_object_identity_without_decoding_its_payload() {
         let mut bytes = attitude();
+        bytes[12..16].copy_from_slice(&99_u32.to_le_bytes());
         bytes[16..20].copy_from_slice(&42_u32.to_le_bytes());
         let decoded = decode(&bytes).unwrap();
         assert!(matches!(decoded.message, Message::Unknown));
@@ -996,15 +1033,16 @@ mod tests {
         let rejected = &diagnostic["rejected_simobject_data"];
         assert_eq!(diagnostic["message"], "Unknown");
         assert_eq!(rejected["object_id"], 42);
-        assert_eq!(rejected["object_id_matches"], false);
-        assert_eq!(rejected["request_id_matches"], true);
+        assert_eq!(rejected["requested_object_proxy"], 0);
+        assert!(rejected.get("object_id_matches").is_none());
+        assert_eq!(rejected["request_id_matches"], false);
         assert_eq!(rejected["define_id_matches"], true);
         assert_eq!(rejected["flags"], 0);
         assert_eq!(rejected["define_count"], 4);
         assert_eq!(rejected["entry_number"], 1);
         assert_eq!(rejected["out_of"], 1);
 
-        // Reject the object before inspecting its payload or attitude shape.
+        // Reject the unknown request before inspecting its payload or attitude shape.
         bytes.truncate(40);
         bytes[..4].copy_from_slice(&40_u32.to_le_bytes());
         bytes[24..28].copy_from_slice(&2_u32.to_le_bytes());
@@ -1017,7 +1055,7 @@ mod tests {
     }
 
     #[test]
-    fn rejection_diagnostics_preserve_all_identifier_mismatches() {
+    fn rejection_diagnostics_preserve_request_and_definition_mismatches() {
         let mut bytes = attitude();
         for (offset, value) in [(12, 123_u32), (16, 456), (20, 789)] {
             bytes[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
@@ -1027,13 +1065,11 @@ mod tests {
         assert_eq!(rejected["request_id"], 123);
         assert_eq!(rejected["object_id"], 456);
         assert_eq!(rejected["define_id"], 789);
-        for key in [
-            "request_id_matches",
-            "object_id_matches",
-            "define_id_matches",
-        ] {
+        for key in ["request_id_matches", "define_id_matches"] {
             assert_eq!(rejected[key], false);
         }
+        assert_eq!(rejected["requested_object_proxy"], 0);
+        assert!(rejected.get("expected_object_id").is_none());
         // Matching attitudes and unsupported receive IDs must not claim rejection.
         for bytes in [attitude(), packet(0xf000, 12)] {
             let value = serde_json::to_value(decode(&bytes).unwrap()).unwrap();
