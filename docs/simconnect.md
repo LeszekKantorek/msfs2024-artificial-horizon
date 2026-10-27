@@ -133,6 +133,15 @@ The records provide these diagnostic groups:
 | `notification_release`, `library_release`, `session_end` | Cleanup attempts and session outcome |
 
 `session_id` identifies the run on every record. `record` numbering starts anew for each session.
+Rejected `SIMOBJECT_DATA` packets retain `message: "Unknown"` and include
+`data.rejected_simobject_data` in their `dispatch` record. This contains received
+`request_id`, `define_id`, `object_id`, `flags`, `entry_number`, `out_of`, and
+`define_count`, plus the three expected identifiers and individual `*_matches`
+results. The reason is `attitude_identifiers_mismatch`. These header-only records
+identify which filter rejected the packet without interpreting its payload or
+accepting it as a flight sample. Unsupported receive IDs remain `Unknown` without
+this field. The telemetry acceptance rules are unchanged by this diagnostic.
+
 `elapsed_us` is monotonic time since session start; `started_unix_ms` supplies a UTC reference.
 No scenario field is written; use the filename and sidecar observations to organize scenarios.
 Some times and intervals are strings to retain integer precision.

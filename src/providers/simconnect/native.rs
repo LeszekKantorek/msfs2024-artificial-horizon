@@ -437,6 +437,27 @@ pub(super) struct Packet {
     pub size: u32,
     pub version: u32,
     pub message: Message,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rejected_simobject_data: Option<RejectedSimobjectData>,
+}
+
+/// Header-only evidence for rejected data; the untrusted payload is never decoded.
+#[derive(Debug, Serialize)]
+pub(super) struct RejectedSimobjectData {
+    reason: &'static str,
+    request_id: u32,
+    define_id: u32,
+    object_id: u32,
+    flags: u32,
+    entry_number: u32,
+    out_of: u32,
+    define_count: u32,
+    expected_request_id: u32,
+    expected_define_id: u32,
+    expected_object_id: u32,
+    request_id_matches: bool,
+    define_id_matches: bool,
+    object_id_matches: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -543,6 +564,7 @@ fn decode(bytes: &[u8]) -> Result<Packet, NativeError> {
     }
     let bytes = &bytes[..size as usize];
     let id = word(bytes, 8)?;
+    let mut rejected_simobject_data = None;
     let message = match id {
         RECV_OPEN => {
             require(bytes, size_of::<RecvOpen>())?;
@@ -607,6 +629,22 @@ fn decode(bytes: &[u8]) -> Result<Packet, NativeError> {
                 || define_id != ATTITUDE_DEFINITION
                 || object_id != OBJECT_ID_USER_AIRCRAFT
             {
+                rejected_simobject_data = Some(RejectedSimobjectData {
+                    reason: "attitude_identifiers_mismatch",
+                    request_id,
+                    define_id,
+                    object_id,
+                    flags: word(bytes, 24)?,
+                    entry_number: word(bytes, 28)?,
+                    out_of: word(bytes, 32)?,
+                    define_count: word(bytes, 36)?,
+                    expected_request_id: ATTITUDE_REQUEST,
+                    expected_define_id: ATTITUDE_DEFINITION,
+                    expected_object_id: OBJECT_ID_USER_AIRCRAFT,
+                    request_id_matches: request_id == ATTITUDE_REQUEST,
+                    define_id_matches: define_id == ATTITUDE_DEFINITION,
+                    object_id_matches: object_id == OBJECT_ID_USER_AIRCRAFT,
+                });
                 Message::Unknown
             } else {
                 let define_count = word(bytes, 36)?;
@@ -644,6 +682,7 @@ fn decode(bytes: &[u8]) -> Result<Packet, NativeError> {
         size,
         version: word(bytes, 4)?,
         message,
+        rejected_simobject_data,
     })
 }
 
@@ -925,7 +964,19 @@ mod tests {
             let mut bytes = attitude()[..40].to_vec();
             bytes[..4].copy_from_slice(&40_u32.to_le_bytes());
             bytes[offset..offset + 4].copy_from_slice(&99_u32.to_le_bytes());
-            assert!(matches!(decode(&bytes).unwrap().message, Message::Unknown));
+            let decoded = decode(&bytes).unwrap();
+            assert!(matches!(decoded.message, Message::Unknown));
+            let diagnostic = serde_json::to_value(&decoded).unwrap();
+            let rejected = &diagnostic["rejected_simobject_data"];
+            assert_eq!(rejected["reason"], "attitude_identifiers_mismatch");
+            assert_eq!(rejected["expected_request_id"], 1);
+            assert_eq!(rejected["expected_define_id"], 1);
+            assert_eq!(rejected["expected_object_id"], 0);
+            assert_eq!(rejected["request_id"], if offset == 12 { 99 } else { 1 });
+            assert_eq!(rejected["define_id"], if offset == 20 { 99 } else { 1 });
+            assert_eq!(rejected["request_id_matches"], offset != 12);
+            assert_eq!(rejected["define_id_matches"], offset != 20);
+            assert_eq!(rejected["object_id_matches"], true);
         }
         for (offset, value) in [(36, 3_u32), (36, 5), (24, 2)] {
             let mut bytes = attitude();
@@ -941,13 +992,53 @@ mod tests {
         let decoded = decode(&bytes).unwrap();
         assert!(matches!(decoded.message, Message::Unknown));
         assert_eq!((decoded.id, decoded.size, decoded.version), (8, 72, 7));
+        let diagnostic = serde_json::to_value(&decoded).unwrap();
+        let rejected = &diagnostic["rejected_simobject_data"];
+        assert_eq!(diagnostic["message"], "Unknown");
+        assert_eq!(rejected["object_id"], 42);
+        assert_eq!(rejected["object_id_matches"], false);
+        assert_eq!(rejected["request_id_matches"], true);
+        assert_eq!(rejected["define_id_matches"], true);
+        assert_eq!(rejected["flags"], 0);
+        assert_eq!(rejected["define_count"], 4);
+        assert_eq!(rejected["entry_number"], 1);
+        assert_eq!(rejected["out_of"], 1);
 
         // Reject the object before inspecting its payload or attitude shape.
         bytes.truncate(40);
         bytes[..4].copy_from_slice(&40_u32.to_le_bytes());
         bytes[24..28].copy_from_slice(&2_u32.to_le_bytes());
         bytes[36..40].copy_from_slice(&99_u32.to_le_bytes());
-        assert!(matches!(decode(&bytes).unwrap().message, Message::Unknown));
+        let decoded = decode(&bytes).unwrap();
+        assert!(matches!(decoded.message, Message::Unknown));
+        let rejected = serde_json::to_value(decoded).unwrap()["rejected_simobject_data"].clone();
+        assert_eq!(rejected["flags"], 2);
+        assert_eq!(rejected["define_count"], 99);
+    }
+
+    #[test]
+    fn rejection_diagnostics_preserve_all_identifier_mismatches() {
+        let mut bytes = attitude();
+        for (offset, value) in [(12, 123_u32), (16, 456), (20, 789)] {
+            bytes[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
+        }
+        let value = serde_json::to_value(decode(&bytes).unwrap()).unwrap();
+        let rejected = &value["rejected_simobject_data"];
+        assert_eq!(rejected["request_id"], 123);
+        assert_eq!(rejected["object_id"], 456);
+        assert_eq!(rejected["define_id"], 789);
+        for key in [
+            "request_id_matches",
+            "object_id_matches",
+            "define_id_matches",
+        ] {
+            assert_eq!(rejected[key], false);
+        }
+        // Matching attitudes and unsupported receive IDs must not claim rejection.
+        for bytes in [attitude(), packet(0xf000, 12)] {
+            let value = serde_json::to_value(decode(&bytes).unwrap()).unwrap();
+            assert!(value.get("rejected_simobject_data").is_none());
+        }
     }
 
     #[test]
