@@ -26,7 +26,7 @@ The original native ownership, ABI, telemetry, and live-validation constraints r
 | Boundary | Accepted choice |
 | --- | --- |
 | Native declarations | Minimal hand-written Rust declarations from official MSFS2024 SDK headers |
-| Organization | Existing package under `src/providers/simconnect.rs`, with focused internal modules as needed |
+| Organization | Existing package under `src/providers/simconnect/mod.rs`, with focused internal modules as needed |
 | Loading | `LoadLibraryExW`, resolved exports, and controlled DLL lifetime; no `SimConnect.lib` linkage |
 | DLL selection | Default `SimConnect.dll` beside the running executable, independent of working directory; optional absolute override; dependency search restricted to DLL and Windows system directories |
 | Execution | One long-running worker owns one active connection and all direct SimConnect calls |

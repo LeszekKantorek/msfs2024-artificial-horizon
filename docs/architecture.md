@@ -77,8 +77,8 @@ src/
   providers/
     mod.rs                  # source boundary
     demo.rs
-    simconnect.rs           # Windows SDK integration boundary
     simconnect/             # minimal native ABI, worker, lifecycle hypotheses, journal
+      mod.rs                # Windows SDK integration boundary
   http/
     mod.rs                  # asset/health composition, telemetry routes, application state
     assets.rs               # explicit compile-time asset table and registration loop
