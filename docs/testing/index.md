@@ -36,7 +36,7 @@ Apply these scope rules:
 
 * Use every applicable row when a change crosses boundaries.
 * Local validation remains mandatory. Application builds and test suites do not run in GitHub Actions.
-* Preserve the acceptance workflow's triggers, required `Acceptance criteria` status, and unrelated repository protections. The retired `Build & Test` status must not remain required.
+* Preserve the acceptance workflow's triggers, required `Acceptance criteria` status, and unrelated repository protections. The `Build & Test` status must not be required.
 * Report checks prevented by explicit task restrictions.
 * Leave the corresponding acceptance criteria unconfirmed when required evidence is missing.
 

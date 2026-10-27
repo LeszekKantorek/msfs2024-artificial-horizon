@@ -11,4 +11,4 @@ status: active
 | Activate the required check | [Activation order](../docs/pr-acceptance.md#activate-merge-blocking) |
 | Change the acceptance workflow | [Validator checks](../docs/pr-acceptance.md#validate-changes-to-the-control), [trust boundary](../docs/pr-acceptance.md#trust-boundary) |
 
-Sources: accepted dynamic PR checklist control and its simplified scope, 2026-10-10, prepared for [#48](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/48); accepted #5 workflow change, 2026-10-26, retaining acceptance control while moving test suites and builds to mandatory local validation. Evidence belongs to the issue or a linked record; PR checklists are optional.
+Run test suites and builds locally. Evidence belongs to the issue or a linked record; PR checklists are optional.

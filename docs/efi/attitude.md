@@ -57,7 +57,7 @@ Panel and fixed-object boundaries remain explicit:
 
 ### Module responsibilities
 
-| Module | Implemented responsibility |
+| Module | Responsibility |
 | --- | --- |
 | `horizon/` | Compose world, pitch scale with chevrons, and bank pointer. Calculate common attitude transforms |
 | `fixed-symbols/` | Compose fixed bank scale and aircraft reference with outline |
@@ -210,7 +210,7 @@ Start the [shared fixture server](../testing/pfd.md#controlled-browser-fixtures)
 
 ### Geometry evidence provenance
 
-Sources: accepted #20 implementation plan, 2026-10-09; bank-zero clipping reproduced in 568x240 desktop viewport and covered by `tests/layout.test.mjs`.
+Bank-zero clipping was reproduced at a 568 × 240 desktop viewport and is covered by `tests/layout.test.mjs`.
 
 ### Simulator comparison scope
 

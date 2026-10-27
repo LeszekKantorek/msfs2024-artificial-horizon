@@ -30,5 +30,3 @@ status: active
 * During #20 validation, error 5 prevented removal of the running debug executable. Checks passed with separate target output.
 * Browser launch and fixture reachability failures occurred across sandbox boundaries. Running the fixture and browser together enabled the checks.
 * These observations establish conditional recovery paths, not a universal cause for either symptom.
-
-Source: session `01a121eb-3bf2-70c1-add4-5cd56f3fe761`, 2026-10-09, reviewed in [#41](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/41).

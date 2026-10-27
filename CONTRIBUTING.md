@@ -97,7 +97,7 @@ To prepare the hooks:
 
 The registry uses UTF-8 CSV with `session_date`, `session_id`, `path`, and `reviewed_date` columns.
 Exclude `.context/sessions.log` and `.context/.sessions.lock` from commits and knowledge retrieval.
-The tested revision does not migrate the legacy `.context/sessions/` registry; retain it separately without treating its records as reviewed.
+The session tools do not migrate or read `.context/sessions/`. Retain its metadata separately without treating its records as reviewed.
 
 For reinstalls, preserve intentional local changes, use the pinned revision above, and update installed skills and `skills-lock.json` together.
 Keep installer-generated hashes as source provenance and preserve unrelated hooks.
@@ -183,7 +183,7 @@ Collect reusable implementation findings in [#9](https://github.com/LeszekKantor
 ## Writing guidance
 
 * Write concise, impersonal English with consistent terms.
-* Preserve requirements, units, limits, source provenance, and uncertainty. Distinguish planned behavior, implementation, and confirmed acceptance.
+* Preserve requirements, units, limits, and uncertainty. Omit the history and provenance of documentation changes. Distinguish planned behavior, implementation, and confirmed acceptance.
 * Keep supplied accepted plans local and verbatim, including their original language.
 * Put feature requirements, presentation, implementation details, and tests on the owning feature page. Keep shared procedures in the testing guide.
 * Link canonical public documentation rather than agent context. Check moved content, links, anchors, and Markdown paragraph boundaries.

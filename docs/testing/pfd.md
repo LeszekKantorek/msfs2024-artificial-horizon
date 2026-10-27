@@ -120,11 +120,9 @@ Pure checks follow the existing module boundaries:
 
 ## Planned EFI demo acceptance
 
-> This acceptance scope was defined for the staged delivery of #20-#26.
-> The procedures remain applicable to those features; their existence does not establish passing results or live EFI compatibility.
+> The procedures apply to the EFI demo and do not establish passing results or live EFI compatibility.
 
 * Each feature issue owns its automated and real-phone evidence.
-* #26 links earlier evidence and records a full-panel run for all 17 elements.
 * Use the [device evidence template](devices.md#real-phone-acceptance-procedure).
 * Preserve original simulator acceptance scope.
 
@@ -222,7 +220,3 @@ Apply these checks when changing SVG layers.
 * Include capture, pinned edges, both directions, signed values, missing data, expiry, and recovery when applicable.
 
 The [altitude trend acceptance procedure](../efi/altitude-trend.md#altitude-trend-placement-acceptance) gives the concrete #63 scenarios.
-
-### Regression sources
-
-Source: #63 painted-overlap and reversed-layer checks consolidated from validation guidance, 2026-10-11.

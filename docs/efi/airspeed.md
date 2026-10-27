@@ -235,11 +235,3 @@ Keep these pitfalls in scope when extending the instrument:
 * Measure fallback reference glyphs against both the IAS warning and persistent `[KT]` when changing footer positions.
 * Keep unit-label margins primary when choosing font size, and measure their clearance from the tape clip and footer.
 * Reuse the speed-trend magenta token for the GS border and the opaque BARO background for both footers.
-
-Source: accepted implementation plan for [#21](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/21), 2026-10-10, including the explicit 0–999 kt choice.
-
-Source: accepted layout clarification, 2026-10-10, to keep GS at the bottom and replace the IAS/GS background gap with empty tape background.
-
-Source: accepted #65 plan and Edge glyph measurements, 2026-10-11, preserving 16 px fallback row spacing while clearing `[KT]`.
-
-Source: accepted #65 correction, 2026-10-11; Edge 155 measures 1 CSS px above and below both labels at 10 CSS px centered at panel height minus 40 CSS px.

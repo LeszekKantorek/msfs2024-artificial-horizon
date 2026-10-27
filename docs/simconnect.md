@@ -250,8 +250,8 @@ Use these evidence rules:
 
 Acceptance and rationale have separate sources:
 
-* [#5 acceptance record](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5): tested versions, session results, historical corrections.
-* [ADR 0006](adr/0006-simconnect-manual-ffi.md#live-publication-amendment-2026-10-27): decision to enable live publication.
+* [#5 acceptance record](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5): tested environments and evidence limits.
+* [ADR 0006](adr/0006-simconnect-manual-ffi.md#live-publication-amendment): decision to enable live publication.
 
 ## Rationale and regression lessons
 
@@ -261,12 +261,12 @@ Acceptance and rationale have separate sources:
 | Diagnostic degree and repeat probes | No effect on canonical validity. The cause of discrepancies remains unresolved |
 | Native bindings and ownership | Defined in [ADR 0006](adr/0006-simconnect-manual-ffi.md) |
 
-The [completed validation](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) has these limits:
+The [validation evidence](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) has these limits:
 
 | Area | Evidence limit |
 | --- | --- |
 | Compatibility | Tested setup only, not every aircraft, UI phase, or simulator and DLL version |
 | Cockpit comparison | No certification of precise angles or independently timed readiness |
-| Live publication | Automated regressions for the change. Earlier physical sessions used the provisional waiting gate |
-| Performance | Short active CPU observations, not a benchmark. Menu CPU deferred. No numerical shutdown latency |
+| Live publication | Automated regression tests cover live publication. Physical sessions using the waiting gate do not establish behavior with live publication enabled |
+| Performance | Short active CPU observations, not a benchmark. Menu CPU and numerical shutdown latency are unmeasured |
 | Other environments and interruption | Untested: clean machine without SDK, interruption during a blocked native call, independent OS unload verification |

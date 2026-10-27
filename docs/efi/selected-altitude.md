@@ -127,12 +127,4 @@ These lessons explain the lifecycle and validation constraints:
 * Entry into +/-200 ft, silent initialization, 2 Hz flashing, and persistent yellow are project decisions, not fully specified Garmin behavior.
 * Compare SVG matrix positions with a subpixel tolerance because fractional values use single-precision matrices.
 
-Source: accepted #24 plan and implementation, 2026-10-11.
-
-Source: accepted #25 plan, 2026-10-11, extending the altitude cycle from 90 to 198 seconds for coherent VSI.
-
-Source: accepted notched-bug and separate trend-lane amendment, 2026-10-11, replacing the earlier bug paint order.
-
-Source: accepted [#63](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/63) plan, 2026-10-11, replacing the outside trend lane with tick overlap below the bug.
-
 Evidence limit: desktop and automated results do not establish real iOS Safari or Android Chrome acceptance.

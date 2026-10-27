@@ -27,4 +27,4 @@ Do not describe self-review, passing tests, or a review request without a return
 An independent review does not establish absence of defects or replace tests and actual device acceptance.
 Keep unavailable device checks separate under [acceptance tracking](../../../CONTRIBUTING.md#acceptance-criteria-and-additional-verification).
 Use [evidence selection](../../../docs/testing/evidence.md#select-evidence-by-failure-risk) when findings require additional checks.
-The [source record](../../../docs/testing/evidence.md#sources-and-limits) retains historical review omissions and evidence limits.
+The [evidence guidance](../../../docs/testing/evidence.md#sources-and-limits) explains review and device evidence limits.

@@ -15,7 +15,7 @@ Prioritize mobile readability, low delay, and explicit unavailable states.
 * The intended presentation resembles a small standby instrument rather than a complete integrated cockpit display. This does not imply an independent backup data source.
 * **Primary Flight Display (PFD)** describes a display role and is not exclusive to the Garmin G1000. Garmin describes the G5 as an [electronic flight instrument usable as a primary or backup instrument](https://www.garmin.com/en-US/blog/aviation/garmin-introduces-electronic-flight-instrument-experimental-aircraft/).
 
-Historical ADRs and existing technical names in test scripts and fixture variables retain `pfd` during this terminology transition.
+Test scripts, fixture variables, and ADRs use the technical identifier `pfd`.
 Their names do not expand the product scope. Use EFI in new descriptions of the project.
 
 ## Requirements

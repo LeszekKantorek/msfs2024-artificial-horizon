@@ -214,7 +214,7 @@ Acquisition outcome and disabled, complete, or failed diagnostics remain separat
 The [SimConnect reference](simconnect.md#run-a-session) owns the file, failure, and observation requirements.
 
 The [acceptance record in #5](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) supports native-radian conversion, pitch/bank signs, observed pause/menu unavailability, fresh-sample recovery and reconnect within the [documented limits](simconnect.md#live-publication-evidence).
-The 2026-10-27 gate-release decision permits `live` through the existing `Publisher` when the simulator is running, a flight is loaded, pause flags are zero, and a fresh finite, in-range sample is available.
+The gate-release decision permits `live` through the existing `Publisher` when the simulator is running, a flight is loaded, pause flags are zero, and a fresh finite, in-range sample is available.
 Pause, invalid data, disconnect and flight transitions clear retained attitude; resume requires a new sample.
 Every new valid sample, including an equal attitude, refreshes publication; queries and cached data do not.
 The 1000 ms freshness limit is unchanged.
@@ -222,13 +222,13 @@ Historical schema 1–3 logs retain the earlier candidate-live-to-`waiting` guar
 Exact cockpit-readiness timing, quantitative angle agreement, broader compatibility and complete performance coverage remain evidence limits.
 The [wire contract](telemetry-contract.md) retains its normalized units and freshness rules.
 
-Issue #5 owns completed reception acceptance and its recorded evidence.
+The [reception acceptance record](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) contains the evidence and its limits.
 HTTP/SSE, multiple clients, and browser integration of the same acquisition module remain in [#6](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/6).
 SDK/DLL distribution conditions and packaging remain to be established before release in [#8](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/8); dynamic loading establishes no redistribution permission.
 
 ## EFI demo extension
 
-> Planned scope: [project brief](project-brief.md). Decisions: [ADR 0003](adr/0003-responsive-pfd-demo.md). Feature order: [roadmap](roadmap.md).
+> Scope: [project brief](project-brief.md). Decisions: [ADR 0003](adr/0003-responsive-pfd-demo.md). Dependencies: [roadmap](roadmap.md).
 
 * Retain one Rust process, SSE, plain JavaScript, and SVG.
 * Let Rust own deterministic scenarios, selected values, and the synthetic speed profile shared by all subscribers.
@@ -289,13 +289,7 @@ The browser validates those samples and presents them within the available panel
 
 [Panel presentation](efi/index.md) defines the module tree, frame lifecycle, and layer composition.
 
-The architecture records these distinct changes:
-
-| Record | Boundary |
-| --- | --- |
-| [ADR 0004](adr/0004-modular-pfd-presentation.md), #36 and #37 | Instrument composition and layers |
-| Maintenance [#54](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/54) | Historical separation of pure calculations and validation |
-| [#56](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/56) and [ADR 0005](adr/0005-visual-object-composition.md) | Visual-object composition with object-specific calculations in implementing modules |
+[ADR 0004](adr/0004-modular-pfd-presentation.md) defines instrument composition and layers. [ADR 0005](adr/0005-visual-object-composition.md) defines visual-object composition and calculation ownership.
 
 | Module | Responsibility |
 | --- | --- |
@@ -372,8 +366,8 @@ The browser owns connection recovery and presentation scheduling:
 * The renderer retains one latest sample and one pending animation frame.
 * It checks expiry before drawing and cancels pending work when data becomes unavailable.
 * `frame-scheduler.js` owns latest-frame scheduling independently of instrument geometry.
-* `panel.js` delegates resize, coherent frames, and invalidation to the implemented presentation modules.
+* `panel.js` delegates resize, coherent frames, and invalidation to the presentation modules.
 * `app.js` assembles telemetry, status, panel, resize observation, and page lifecycle.
-* [Panel presentation](efi/index.md) defines the implemented module interfaces and #37 layer containers.
+* [Panel presentation](efi/index.md) defines the module interfaces and layer containers.
 * Nest pitch translation inside bank rotation so combined attitudes move in world-local coordinates.
 * Apply no interpolation or extrapolation.

@@ -1,8 +1,6 @@
 # ADR 0001: One Rust server with a lightweight SSE client
 
-| Date | Status |
-| --- | --- |
-| 2026-10-05 | Accepted as the initial implementation baseline |
+Decision status: Accepted.
 
 ## Context
 

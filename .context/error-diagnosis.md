@@ -27,6 +27,4 @@ The project-diagnose-failure skill owns the [evidence and recovery limits](../.a
 
 ## Sources and limits
 
-* Sources: the linked environment recoveries, architecture boundaries, telemetry contracts, and testing evidence procedures.
-* Source: request to create project-based diagnostic guidance, 2026-10-11.
 * This procedure combines existing diagnostic lessons without claiming a new reproduced failure or an established universal cause.

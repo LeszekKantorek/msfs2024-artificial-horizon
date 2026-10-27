@@ -1,8 +1,6 @@
 # ADR 0003: Extend the demo with a responsive read-only PFD
 
-| Date | Status |
-| --- | --- |
-| 2026-10-08 | Accepted |
+Decision status: Accepted.
 
 ## Context
 

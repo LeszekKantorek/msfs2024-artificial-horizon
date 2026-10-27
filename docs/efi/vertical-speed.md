@@ -124,14 +124,4 @@ Retain these implementation and validation lessons:
 * Align VSI text with the altitude drum's measured right edge during resize. Centering does not preserve the accepted alignment.
 * Wait for raw accessible values in browser checks when successive samples have identical rounded text.
 
-Source: accepted #25 plan and implementation, 2026-10-11.
-
-Source: accepted compact-window and altitude composition amendment, 2026-10-11, replacing the scale and arrow presentation.
-
-Source: accepted right-alignment correction, 2026-10-11.
-
-Source: accepted one-pixel reduction in VSI window width, height and font size, 2026-10-11.
-
-Source: accepted [#63](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/63) plan, 2026-10-11, placing the trend over ticks and below the selected bug.
-
 Evidence limit: desktop checks do not establish real iOS Safari or Android Chrome acceptance.

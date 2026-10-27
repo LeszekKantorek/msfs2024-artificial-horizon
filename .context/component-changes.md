@@ -20,4 +20,4 @@ Use the [decision map](architecture-decisions.md#find-the-governing-decision) wh
 | Move rendering, scheduling, or visual-object responsibilities | [Panel boundary](../docs/architecture.md#panel-boundary), [presentation map](../docs/efi/index.md#features) | [project-validate-presentation](../.agents/skills/project-validate-presentation/SKILL.md), [composition acceptance](../docs/testing/pfd.md#modular-and-layered-efi-acceptance) | [Telemetry operations](../docs/efi/telemetry.md#telemetry-operations) when changing acceptance or invalidation of samples |
 | Change the listen address or network exposure | [Deployment](../docs/architecture.md#deployment), [application API](../docs/architecture.md#application-api) | [HTTP startup checks](../docs/testing/runtime.md#http-startup-checks) | [Security boundaries](security-review.md#project-boundaries) when changing access or trust; [phone setup](../README.md#use-your-phone) when changing LAN instructions |
 
-Sources: the linked architecture, contracts, decisions, and validation procedures. This map routes changes without adding requirements.
+This map routes changes without adding requirements.

@@ -11,10 +11,10 @@ status: active
 
 ## Evidence and limits
 
-| Observation, 2026-10-07 | Consequence |
+| Observation | Consequence |
 | --- | --- |
 | CodeIntegrity event 3077 recorded blocked Rust tools, build scripts, test executables, and a generated `tokio-macros` DLL | Check current SAC state instead of assuming it |
 | Rust E0463 occurred when Windows blocked that existing DLL | Do not assume a dependency upgrade fixes missing-crate errors |
 
-Sources: explicit stop requirement from issue #3 planning, 2026-10-07, and [Microsoft SAC FAQ](https://support.microsoft.com/en-us/windows/security/threat-malware-protection/smart-app-control-frequently-asked-questions).
+See the [Microsoft SAC FAQ](https://support.microsoft.com/en-us/windows/security/threat-malware-protection/smart-app-control-frequently-asked-questions) for Smart App Control behavior.
 See [testing](../docs/testing/index.md) for checks and hardware evidence limits.

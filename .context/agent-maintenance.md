@@ -28,25 +28,21 @@ These six project skills are versioned locally. They are separate from the pinne
 | [project-diagnose-failure](../.agents/skills/project-diagnose-failure/SKILL.md) | Edit its `SKILL.md` | [Symptom map and sources](error-diagnosis.md); environment restrictions remain in their entries |
 | [project-validate-presentation](../.agents/skills/project-validate-presentation/SKILL.md) | Edit its `SKILL.md` | Feature checks, commands, and evidence requirements remain in testing documentation |
 | [project-prepare-pr](../.agents/skills/project-prepare-pr/SKILL.md) | Edit its `SKILL.md` | Acceptance criteria and CI interpretation retain their existing owners |
-| [project-review-change](../.agents/skills/project-review-change/SKILL.md) | Edit its `SKILL.md` | [Evidence selection and historical limits](../docs/testing/evidence.md#select-evidence-by-failure-risk) |
+| [project-review-change](../.agents/skills/project-review-change/SKILL.md) | Edit its `SKILL.md` | [Evidence selection and limits](../docs/testing/evidence.md#select-evidence-by-failure-risk) |
 | [project-decide-architecture](../.agents/skills/project-decide-architecture/SKILL.md) | Edit its `SKILL.md` | [Governing-decision map and sources](architecture-decisions.md) |
 
 Each project skill owns its name, description, goal, and procedure. Edit its `SKILL.md` directly.
 Keep one maintained copy of each procedure; documentation and maps link to the owning skill.
 After edits, check selection conditions, relative links, and preservation of constraints and evidence limits.
 The six skill directories are explicitly included by [.gitignore](../.gitignore); unrelated local skills remain ignored.
-Keep agent planning rationale, diagnostic maps, and historical evidence in `.context`, with references to the owning skills.
+Keep agent planning rationale, diagnostic maps, and evidence limits in `.context`, with references to the owning skills.
 Project and user documentation retain their relevant requirements and evidence in `docs/`.
 Select skills by task; no sequence of the six skills is required.
 
-## Test revision and compatibility
+## Session tooling compatibility
 
-* The test installation uses [context-skills PR #7](https://github.com/LeszekKantorek/context-skills/pull/7), branch `codex/context-skills-refresh`, commit `2598a6246b8649f7eaea68720201d9dbff1ddd84`.
-* The six skills replace the retired Apply, Gather, and Import Sessions skills; do not reinstall the retired set for testing.
 * The session registry is UTF-8 CSV at `.context/sessions.log`, with an OS-backed `.context/.sessions.lock`.
-* The new tools do not migrate or read the legacy `.context/sessions/` registry.
-* Retain legacy session metadata separately; absence from the new registry does not establish completed review.
-* Previous local importer adaptations apply to the retired implementation; do not copy them into the new workflow without evidence of a current defect.
+* The tools do not read or migrate `.context/sessions/`. Retain that metadata separately; absence from the CSV registry does not establish review.
 * Keep session-tooling tests upstream in `context-skills`.
 
 ## Hook maintenance
@@ -55,14 +51,8 @@ Select skills by task; no sequence of the six skills is required.
 * Preserve unrelated hooks when updating the integration.
 * The startup reminder describes the six context skills without prescribing a sequence.
 * Use `context-review-sessions` with `context-preserve` for pending-session review and completion bookkeeping.
-* Exclude the CSV registry, its lock, and legacy session metadata from knowledge retrieval and commits.
+* Exclude the CSV registry, its lock, and session metadata under `.context/sessions/` from knowledge retrieval and commits.
 * Stop and PreCompact allow five seconds; Interrupt and SessionEnd retain the host's three-second maximum.
 * An unavailable transcript prevents content review but does not prove that the session performed no work.
 
 > Setup documentation and helper tests do not prove that local Codex hook events executed successfully.
-
-## Sources
-
-* Source: requested replacement with PR #7 and installation of `procedural-skill-creator`, 2026-10-17.
-* Source: installation instructions and Codex integration at the pinned upstream revision.
-* Source: earlier project maintenance rules, 2026-10-09 through 2026-10-11; retired implementation details are superseded by the test revision above.
