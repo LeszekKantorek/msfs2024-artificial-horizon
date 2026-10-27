@@ -89,11 +89,11 @@ The original acceptance left these choices as hypotheses:
 * Five-second state queries and a 15-second packet-silence watchdog provide useful connection diagnostics.
 * `Sim`, `Pause_EX1`, and `FlightLoaded`, combined with fresh samples, can distinguish active flight from menu/loading and both pause modes.
 
-Negating pitch and bank, with bank wrapping, has [basic direction evidence](../simconnect.md#direction-evidence)
+Negating pitch and bank, with bank wrapping, has [basic direction evidence in #5](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5)
 from a recorded live session paired with operator-confirmed nose-up/down and left/right maneuvers.
 That supports retaining the conversion in the tested setup; it does not certify
 exact cockpit angles or compatibility with other versions.
-Later combined-pose confirmation and bounded lifecycle results are recorded in the [feature evidence summary](../simconnect.md#live-publication-evidence).
+Combined-pose confirmation and bounded lifecycle results are also retained in #5; the [feature guide](../simconnect.md#data-and-availability) describes the resulting conventions and behavior.
 
 Native radians are the authoritative input, converted locally; requested degrees and repeated radians are diagnostic only when logging is enabled.
 Raw values are recorded before normalization and publication when diagnostics are enabled.
@@ -111,7 +111,7 @@ Successful console acquisition does not establish HTTP/SSE, multi-client or mobi
 ## Live-publication amendment, 2026-10-27
 
 The accumulated evidence is sufficient to remove the unconditional candidate-live-to-`waiting` gate within the recorded MSFS2024 sessions' scope.
-The [SimConnect feature guide](../simconnect.md#live-publication-evidence) owns the dated sources, results, decision rationale and limits.
+The [completed acceptance record in #5](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) owns the session results and tested environment; the [feature guide](../simconnect.md#live-publication-evidence) describes current limits.
 It records confirmed basic signs and combined poses, unavailable publication during observed pause/menu intervals, fresh-sample recovery, forced simulator termination/reconnect, no-log reception and qualitative shutdown confirmation.
 Three corrected logged sessions at runtime revision `ca483b9` contain 33,425 valid canonical samples without false-invalid transitions; no false-live interval was recorded in the observed scenarios.
 
@@ -125,7 +125,7 @@ The recorded live sessions exercised candidate states under the earlier publicat
 Automated regressions validate the changed publication path; this amendment does not claim a new live run of the gate-release change.
 Exact cockpit-ready timestamps remain an accepted scenario assumption, precise cockpit-angle agreement and broader version compatibility remain unestablished, and short active CPU observations do not constitute a benchmark.
 Menu CPU is deferred; no new stopwatch measurement or repetition of completed maneuvers is required without a concrete question or contradiction.
-Issue #5 remains open. HTTP/SSE and live EFI remain #6; SDK/DLL packaging and redistribution remain #8.
+HTTP/SSE and live EFI remain #6; SDK/DLL packaging and redistribution remain #8.
 
 ## Consequences and reconsideration
 

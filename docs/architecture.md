@@ -213,7 +213,7 @@ Initial diagnostic failure aborts before DLL loading; later write/flush failure 
 Acquisition outcome and disabled, complete, or failed diagnostics remain separately visible to callers.
 The [SimConnect reference](simconnect.md#run-a-session) owns the file, failure, and observation requirements.
 
-The [live-publication evidence](simconnect.md#live-publication-evidence) supports native-radian conversion, pitch/bank signs, observed pause/menu unavailability, fresh-sample recovery and reconnect in the recorded MSFS2024 sessions.
+The [acceptance record in #5](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) supports native-radian conversion, pitch/bank signs, observed pause/menu unavailability, fresh-sample recovery and reconnect within the [documented limits](simconnect.md#live-publication-evidence).
 The 2026-10-27 gate-release decision permits `live` through the existing `Publisher` when the simulator is running, a flight is loaded, pause flags are zero, and a fresh finite, in-range sample is available.
 Pause, invalid data, disconnect and flight transitions clear retained attitude; resume requires a new sample.
 Every new valid sample, including an equal attitude, refreshes publication; queries and cached data do not.
@@ -222,7 +222,7 @@ Historical schema 1–3 logs retain the earlier candidate-live-to-`waiting` guar
 Exact cockpit-readiness timing, quantitative angle agreement, broader compatibility and complete performance coverage remain evidence limits.
 The [wire contract](telemetry-contract.md) retains its normalized units and freshness rules.
 
-Issue #5 remains open for final acceptance work; the gate-release decision does not close it.
+Issue #5 owns completed reception acceptance and its recorded evidence.
 HTTP/SSE, multiple clients, and browser integration of the same acquisition module remain in [#6](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/6).
 SDK/DLL distribution conditions and packaging remain to be established before release in [#8](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/8); dynamic loading establishes no redistribution permission.
 

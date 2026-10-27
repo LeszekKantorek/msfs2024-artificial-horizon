@@ -1,462 +1,197 @@
 # SimConnect integration and diagnostics
 
-The main application selects SimConnect with `--source simconnect` for [#5](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5).
-One integration module receives user-aircraft pitch and bank and publishes through the existing telemetry channel.
-Optional JSONL diagnostics retain native messages, raw values, and lifecycle decisions.
-This mode does not start HTTP or display telemetry in the browser.
-[#6](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/6) will connect the same module to HTTP/SSE and validate the complete path to EFI.
-
-Live-session results and their limits are tracked in #5 and summarized under [live-publication evidence](#live-publication-evidence).
-The 2026-10-27 decision enables live publication within that recorded scope; issue #5 remains open for final acceptance work.
-The accepted integration boundaries are recorded in [ADR 0006](adr/0006-simconnect-manual-ffi.md).
+SimConnect mode receives user-aircraft pitch and bank and publishes through the application's telemetry channel.
+Select it with `--source simconnect`; it starts no HTTP server or browser display.
+[#6](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/6) connects this same module to HTTP/SSE and EFI.
+Completed validation and historical results belong to [#5](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5); design decisions belong to [ADR 0006](adr/0006-simconnect-manual-ffi.md).
 
 ## Local requirements
 
-Use Windows x64 and the Rust MSVC development environment from [CONTRIBUTING](../CONTRIBUTING.md#environment-setup).
-Obtain the official MSFS2024 SDK separately and make its x64 `SimConnect.dll` available beside the application executable, or select it with `--dll`.
-The declarations were inspected against SDK **1.8.1, build 2603316**.
-This identifies the header source, not a verified simulator/DLL compatibility combination.
-Record the actual DLL and simulator versions for every session.
-
-The Rust build requires no SDK headers, import library, or installed simulator.
-Demo mode never attempts to load SimConnect, including when the DLL is available.
-Do not commit SDK files, local SDK paths, logs, captures, or generated output.
-Dynamic loading does not establish redistribution permission; runtime packaging and SDK distribution conditions remain part of [#8](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/8).
+Use Windows x64 MSVC with the [development environment](../CONTRIBUTING.md#environment-setup).
+Obtain the official x64 `SimConnect.dll` separately.
+The Rust build requires no SDK headers, import library or installed simulator; [ADR 0006](adr/0006-simconnect-manual-ffi.md#decision) identifies the inspected SDK declarations and binding strategy.
+Keep SDK files, installation paths and generated diagnostics out of Git.
+DLL packaging and redistribution conditions remain in [#8](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/8).
 
 ## Run a session
 
-With `SimConnect.dll` beside the executable, run from the repository root in PowerShell:
+With `SimConnect.dll` beside the executable, run from the repository root:
 
 ```powershell
-cargo run --locked --release --bin msfs2024-artificial-horizon -- --source simconnect --log ".local\simconnect-sessions\off-menu-flight.jsonl"
+cargo run --locked --release --bin msfs2024-artificial-horizon -- --source simconnect --log ".local\simconnect-sessions\flight.jsonl"
 ```
 
-The default DLL location is the directory of the running executable, independent of the working directory.
-For a Cargo run, place the DLL beside the executable in the applicable Cargo output directory.
-An explicit absolute path takes precedence:
+For Cargo runs, place the DLL beside the EXE in the applicable Cargo output directory.
+The working directory does not affect DLL selection.
+To override the location:
 
 ```powershell
 $simconnectDll = Read-Host 'Absolute path to the official x64 SimConnect.dll'
-cargo run --locked --release --bin msfs2024-artificial-horizon -- --source simconnect --dll "$simconnectDll" --log ".local\simconnect-sessions\off-menu-flight.jsonl"
+cargo run --locked --release --bin msfs2024-artificial-horizon -- --source simconnect --dll "$simconnectDll" --log ".local\simconnect-sessions\flight.jsonl"
 ```
 
-Select one scenario before each run and distinguish it through the log filename.
-The application does not interpret that filename or store scenario metadata.
-Repeating the command appends a new session to the same file without replacing earlier records.
+Omit `--log` when diagnostic recording is unnecessary.
 
-| Option | Meaning |
+| Option | Behavior |
 | --- | --- |
-| No source option or `--source demo` | Demo with HTTP/SSE, without loading SimConnect |
-| `--source simconnect` | Native reception and telemetry publication without HTTP/SSE in #5 |
-| `--dll <file>` | Optional absolute DLL override; default is `SimConnect.dll` beside the running executable |
-| `--log <file>` | Optional exact JSONL file, absolute or relative to the working directory; append mode |
-| `--help`, `--version` | CLI information without starting a session |
-| `Ctrl+C` | Request controlled shutdown and wait for the worker to finish |
+| No source option or `--source demo` | Demo with HTTP/SSE; never loads SimConnect |
+| `--source simconnect` | Native acquisition and local telemetry publication |
+| `--dll <file>` | Optional absolute override; default is `SimConnect.dll` beside the running EXE |
+| `--log <file>` | Optional exact JSONL destination, absolute or relative to the working directory |
+| `--help`, `--version` | Show information without opening a DLL or log |
+| `Ctrl+C` | Request shutdown and wait for the native worker |
 
-`--dll` and `--log` are accepted only for SimConnect.
-Explicit HTTP listen-address/port options are rejected for SimConnect until #6.
-Help and version do not open the DLL or log.
+`--dll` and `--log` are available only for SimConnect.
+Explicit HTTP address/port options are rejected in this mode.
+There is no `--simconnect` or `--scenario` option; distinguish diagnostic scenarios by log filenames, which are not interpreted as metadata.
 
-The console reports startup, the selected DLL, connections, state transitions, important errors, and shutdown even without logging.
-Without `--log`, no diagnostic file or expensive raw-record formatting and environment collection is performed.
-Numeric and lifecycle acceptance claims require logs paired with independent observations.
-No-log console observations can support connection, availability and shutdown behavior, but cannot establish numeric angle agreement.
+DLL loading never searches `PATH`, the working directory or SDK installations.
+A failed explicit selection never falls back to another DLL.
+Dependencies are searched only beside the selected DLL and in the Windows system directory.
+Missing DLLs, wrong architecture and missing exports produce controlled errors.
+Console messages report the selected DLL, connections, state transitions, important errors and shutdown, including without logging.
 
-With logging enabled, the application creates missing parent directories and opens exactly the supplied file for append before loading the DLL.
-Each run has a unique `session_id` on every record, its own record numbering, and monotonic time from session start.
-Only one process may write a file at a time; a second writer receives a controlled open error.
-A partial final line from an interrupted process is preserved and separated from the new session by a newline; it is not a valid record.
-The selected DLL and running executable cannot be used as the log destination.
+## Data and availability
 
-Failure to open the log or write its initial records aborts startup before DLL loading.
-A later write or flush failure disables diagnostics for the rest of the run while reception and cleanup continue.
-The console reports the failure immediately and again at shutdown; the module result retains the diagnostic failure separately from acquisition errors.
-Keep that console output with the observations, since the failed journal cannot reliably record it.
-A session without a final `session_end` record has an unconfirmed ending; interrupted logging never establishes a complete measurement.
+The worker requests `PLANE PITCH DEGREES` and `PLANE BANK DEGREES` as `FLOAT64` radians once per simulator frame, without `CHANGED`.
+Despite their names, the [SimVars' native unit](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simvars/aircraft-simvars/aircraft-miscellaneous-variables/) is radians.
+The adapter converts locally to the [telemetry conventions](telemetry-contract.md#fields-and-conventions):
 
-Missing DLLs, incompatible architecture, and missing exports are controlled errors.
-An absent default DLL reports its expected location and the `--dll` override.
-Loading never searches `PATH`, the working directory, or SDK installations, and a failed explicit override never falls back to another DLL.
-Dependency search is restricted to the selected DLL directory and the Windows system directory.
-An unavailable simulator causes interruptible connection retries after 1, 2, 4, 8, then at most 10 seconds.
-These intervals are experimental settings.
-There is no automatic switch to demo.
-
-## What the records mean
-
-The worker requests `FLOAT64` values in one definition for the user aircraft, once per simulator frame, without `CHANGED`.
-Native radians are the authoritative input for pitch and bank.
-The official [aircraft SimVar reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simvars/aircraft-simvars/aircraft-miscellaneous-variables/)
-lists both variables in radians despite their names.
-Without logging, the definition contains only these two fields:
-
-| Index | Variable | Requested unit |
-| --- | --- | --- |
-| 0 | `PLANE PITCH DEGREES` | radians |
-| 1 | `PLANE BANK DEGREES` | radians |
-
-If logging is enabled when the connection opens, the six-field diagnostic definition retains its established order:
-
-| Index | Variable | Requested unit |
-| --- | --- | --- |
-| 0 | `PLANE PITCH DEGREES` | radians, authoritative |
-| 1 | `PLANE PITCH DEGREES` | degrees, diagnostic |
-| 2 | `PLANE BANK DEGREES` | radians, authoritative |
-| 3 | `PLANE BANK DEGREES` | degrees, diagnostic |
-| 4 | `PLANE PITCH DEGREES` | radians, repeated |
-| 5 | `PLANE BANK DEGREES` | radians, repeated |
-
-The connection retains its selected two- or six-field definition until it closes.
-A later logging failure does not change an active definition; a subsequent connection can use two fields after diagnostics have been disabled.
-The decoder requires the configured field count and enough bytes for its untagged payload.
-The two-field packet contains 16 payload bytes, or 56 bytes including its receive header.
-The six-field packet contains 48 payload bytes, or 88 bytes including its receive header.
-An unsupported duplicate definition or asynchronous exception follows the controlled error path; it does not silently fall back to two fields.
-The `attitude_definition` record identifies the actual connection profile.
-
-With diagnostics enabled, each sample records the primary radians and requested degrees before normalization and publication.
-`attitude_raw.data.sample_index` counts samples within the connection.
-For a six-field definition, `data.repeated_radians` records `pitch` and `bank` using the same numeric representation as the original raw values.
-Nonfinite numbers use JSON-compatible value/classification/bit records.
-Normalization converts the primary radians to degrees locally, negates pitch and bank, and wraps bank into `[-180, 180)`.
-Primary radians and their converted values must be finite, and pitch must remain in `[-90, 90]` under the existing [telemetry contract](telemetry-contract.md#fields-and-conventions).
-Requested degrees and repeated radians are diagnostic values only.
-Their disagreement or nonfinite values do not invalidate an otherwise valid primary-radian attitude.
-The cross-unit diagnostic comparison retains its `0.00001`-degree tolerance.
-This separates native input validity from an unsupported assumption that two requested units represent one atomic observation.
-Negating both signs is supported by a recorded live session and operator-confirmed
-nose-up/nose-down and left/right maneuvers; see [direction evidence](#direction-evidence).
-The variable names and agreement between two requested units do not establish the correct physical sign.
-
-The attitude request uses `SIMCONNECT_OBJECT_ID_USER_AIRCRAFT` (proxy value zero)
-to select the user's aircraft. Responses are matched by the connection's attitude
-request and definition IDs. Their `object_id` is retained as reported; it must not
-be required to equal that request-side proxy. A live MSFS2024 session returned
-`object_id=540672` for request/definition 1, and requiring zero discarded every
-attitude packet. The runtime ID is not hard-coded or pinned across flights.
-Payload length, the configured untagged field count, numeric validation and the availability checks
-still apply. See the official [request API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_requestdataonsimobject/)
-and [response structure](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/structures-and-enumerations/simconnect_recv_simobject_data/).
-
-`state_transition` retains `candidate_state` alongside the actual `published` snapshot for diagnostic continuity.
-Live publication requires `Sim` running, a loaded flight, `Pause_EX1` flags zero, and a fresh finite, in-range sample.
-No single event or nonempty flight filename proves active-flight availability.
-All nonzero pause flags, including unknown bits, are treated conservatively as paused.
-Pause, invalid data, disconnect and flight transitions clear retained attitude so resume and a new flight require a new valid sample.
-Every new valid sample is published, including identical angles; cached values, connection events, and system-state queries do not refresh sample age.
-The freshness limit remains 1000 ms with a 50 ms control interval.
-
-**Live publication is enabled within the [recorded evidence scope](#live-publication-evidence).**
-The unconditional candidate-live-to-`waiting` gate was removed by the 2026-10-27 decision.
-All states use the existing `Publisher` and latest-value watch channel.
-The log is diagnostic output, not another telemetry queue or distribution mechanism.
-A state label alone is not evidence of cockpit readiness or menu detection.
-
-Journal schema 4 records `live_publication_enabled: true`, a `validation_scope` pointing to this evidence section, and `sign_convention: "positive nose up and right wing down; native pitch and bank negated"`.
-The historical `candidate_state` and `candidate_attitude` field names remain, with `candidate_is_hypothesis: false`.
-The obsolete blanket verification booleans are removed.
-Schemas 1–3 retain their historical guarded publication and metadata; their candidate-live records do not show actual live publication.
-
-The receiver uses `GetNextDispatch`, a Windows notification event, a separate cancellation event, 50 ms waits, and batches of at most 128 messages.
-Empty dispatches and their HRESULTs are aggregated in one-second summaries.
-An empty queue or `E_FAIL` alone does not prove disconnection.
-System-state queries every 5 seconds and a 15-second packet-silence watchdog remain bounded diagnostic mechanisms.
-The watchdog can request reconnection; its label is not proof of connection loss.
-Investigate unexpected queries, wake patterns, retries or CPU use against the [recorded evidence](#live-publication-evidence).
-
-The records provide these diagnostic groups:
-
-| Records | Analysis use |
+| Output | Convention |
 | --- | --- |
-| `session_start`, `environment`, `dll_identity` | Session identity, timing, configuration and selected DLL, executable/DLL SHA-256, runtime Rust/Git/Windows context, optional nearby SDK metadata |
-| `dispatch` with an Open message | Application and SimConnect versions reported by the simulator |
-| `connection_attempt`, `api_result`, `native_error` | Connection generation, HRESULT/Windows errors, requests, sent packet IDs, and exception correlation |
-| `attitude_definition` | Actual two- or six-field connection profile and requested field order |
-| `dispatch`, `attitude_raw`, `attitude_sample` | Message ID/size and owned decoded data; raw units and sample intervals before conversion; then candidate normalization |
-| `attitude_unit_check` | Original unit mismatch, changed repeated-radian bits, or nonfinite probe values; per-axis numeric comparisons for the focused experiment |
-| `state_transition`, `connection_lost`, `reconnect_wait` | Hypothesized lifecycle, actual publication, reason, and retry timing |
-| `dispatch_summary` | Packet/empty-dispatch counts, notification/timeout wakes, last HRESULT, and packet silence |
-| `notification_release`, `library_release`, `session_end` | Cleanup attempts and session outcome |
+| `pitch_deg` | Finite degrees, positive nose up, in `[-90, 90]` |
+| `roll_deg` | Finite degrees, positive right wing down, in `[-180, 180)` |
 
-`session_id` identifies the run on every record. `record` numbering starts anew for each session.
-Rejected `SIMOBJECT_DATA` packets retain `message: "Unknown"` and include
-`data.rejected_simobject_data` in their `dispatch` record. This contains received
-`request_id`, `define_id`, `object_id`, `flags`, `entry_number`, `out_of`, and
-`define_count`, plus expected request/definition IDs and their `*_matches`
-results. `requested_object_proxy` records the request-side aircraft selector,
-not an expected response object ID. The reason is
-`attitude_request_or_definition_mismatch`. These header-only records
-identify which filter rejected the packet without interpreting its payload or
-accepting it as a flight sample. Unsupported receive IDs remain `Unknown` without
-this field. Older logs used `attitude_identifiers_mismatch` and incorrectly
-compared the returned object ID with zero; retain those records as historical evidence.
+Both native signs are negated; bank is wrapped into the output range.
+Invalid or nonfinite input is rejected rather than clamped.
+Requested degree values and repeated radians are diagnostic only: disagreement or nonfinite probe values cannot invalidate otherwise valid primary radians.
+The SDK does not establish atomic acquisition across requested units or repeated fields.
 
-`elapsed_us` is monotonic time since session start; `started_unix_ms` supplies a UTC reference.
-No scenario field is written; use the filename and sidecar observations to organize scenarios.
-Some times and intervals are strings to retain integer precision.
-Logs flush at significant lifecycle/error records and at least once per second while records are being written.
-Normal cleanup closes the connection, releases its notification handle, and unloads the DLL after native use ends.
-A failed native close is an error and retains both the DLL mapping and its notification handle until process exit rather than recycling resources that may still be in use.
-A release record describes the attempted path; inspect errors and the final process outcome as well.
+Live publication requires running `Sim`, a nonempty loaded flight, known zero `Pause_EX1` flags and a fresh valid sample.
+No single event or filename establishes readiness.
+State handling follows the [freshness contract](telemetry-contract.md#freshness-and-status):
 
-### Paired-unit diagnostic limits
+| State | Meaning |
+| --- | --- |
+| `waiting` | Lifecycle information is incomplete/inactive, or a new sample is required |
+| `live` | A valid sample is available from an active, unpaused flight |
+| `paused` | Pause flags are nonzero, including unknown bits |
+| `stale` | No new valid sample for 1000 ms while expecting live data |
+| `disconnected` | The native connection is unavailable |
+| `invalid` | Current input fails normalization or validation |
 
-The repeated-radian fields investigate sparse disagreements between requested radians and degrees.
-The diagnostic comparison does not control primary-radian validity or sample freshness.
-`attitude_unit_check` is emitted when an original unit pair disagrees, repeated radians change bits, or a probe value is nonfinite.
-For each axis, it retains original radians converted to degrees, requested degrees and their signed difference, repeated radians and their conversion, bit equality, and comparisons against the original degree value.
-The bounds comparison includes the existing `0.00001`-degree tolerance.
-Schema-3 check records explicitly set `affects_sample_validity` to false.
-Dispatch summaries retain separate counts for unit-pair mismatches, repeated-radian changes, and nonfinite repeats.
-These comparisons are observations, not an automatic classification of atomic or non-atomic simulator behavior.
+Pause, invalid data, disconnect and flight/simulator transitions invalidate retained attitude.
+Resume and a new flight require a new valid sample.
+Every eligible acquisition publishes, including identical angles, with its original receive time.
+Cached values, heartbeats and system-state queries never refresh age.
+Freshness is evaluated every 50 ms; unavailable publication carries no attitude.
+Sample reception may continue while paused.
+Ordinary pause and menu can share flags, so these signals are not a unique UI-phase classifier.
 
-The official [definition API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_addtodatadefinition/)
-permits compatible alternative units but does not explicitly document repeated identical SimVar/unit entries.
-The [period documentation](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/structures-and-enumerations/simconnect_period/)
-specifies frame-based transmission; it does not establish simultaneous acquisition of every field.
-Repeated fields are therefore an experimental observation, not an SDK atomicity guarantee.
+One native worker owns all SimConnect calls.
+It uses `GetNextDispatch`, Windows notification and cancellation events, and batches of at most 128 messages.
+An empty queue or `E_FAIL` alone does not establish disconnection.
+State queries run every 5 seconds; a 15-second packet-silence watchdog can request reconnection but does not prove native connection loss.
+Unavailable connections retry after 1, 2, 4, 8, then at most 10 seconds; waits are interruptible.
+Connection loss never switches to demo.
 
-In the 2026-10-27 local `pause-menu.jsonl` session, raw sample index 9550
-(zero-based analysis index, record 29119, elapsed 159465059 microseconds)
-retained exactly the preceding sample's bank radians while bank degrees advanced.
-The bank difference was about `0.002556` degrees; pitch agreed within ordinary floating-point rounding in the same packet.
-This is compatible with values acquired or cached at different times and is not explained by conversion rounding alone.
-The exact origin within the simulator, transport, or DLL remains unresolved.
-One earlier direction session contained one inconsistent packet among 11,462 samples;
-the pause/menu session contained four among 10,264. These historical schema-2 sessions rejected such samples under the earlier cross-unit gate.
+Shutdown stops reception, closes the connection, releases notification handles and the DLL, then joins the worker.
+A failed native close retains the DLL mapping and notification handle until process exit to avoid releasing resources still in native use.
+A cleanup record describes the attempted path; the final outcome and errors still matter.
 
-The later schema-2 six-field unit-probe session contained 11,897 samples.
-Original and repeated radians were bit-identical for both axes in every sample, and all six fields remained finite.
-Two pitch unit differences occurred at about 18.7928 and 182.2505 seconds:
-local radian conversion minus requested degrees was approximately `-0.001726` and `-0.001388` degrees.
-Bank remained consistent. Both differences occurred with pause flags zero;
-confirmed pauses bounded the session at about 0.13–8.22 and 193.12–195.46 seconds.
-The old consumer rejected both samples and recovered on the next sample.
-Identical repeats do not distinguish caching by variable/unit from SDK field assembly, establish pitch/bank atomicity, or prove which representation was closer to the cockpit attitude.
+## Diagnostic logging
 
-The consumer therefore selects the documented native unit and performs one local conversion.
-This removes false rejection caused solely by a diagnostic cross-unit disagreement; it does not claim to repair the simulator's internal acquisition mechanism.
-Journal schema 3 introduced this policy and the two- or six-field profiles; schema 4 retains it while enabling live publication.
-Older schema-2 records retain their earlier conversion and rejection semantics.
+Logs append to exactly the supplied file, creating missing parent directories.
+Existing data is preserved, and only one writer may use the file.
+A partial trailing line is retained and separated from the next session; it is not a valid record.
+The selected DLL and executable are rejected as log destinations.
+
+Each record contains a unique per-run `session_id`, a per-session `record` number and monotonic `elapsed_us`.
+`started_unix_ms` provides the UTC reference; some integers use strings to preserve precision.
+Nonfinite numbers retain JSON-compatible value, classification and bit-pattern fields.
+Logs flush at significant events, at least once per second while recording, and at shutdown.
+
+Failure to open the log or write its initial records aborts before DLL loading.
+A later write/flush failure disables diagnostics while acquisition and cleanup continue.
+The console warns immediately and at shutdown; `DiagnosticStatus` distinguishes disabled, completed and failed logging independently of the native result.
+A missing final `session_end` leaves termination unconfirmed.
+Without `--log`, the application creates no journal and avoids diagnostic environment collection and raw-record formatting.
+
+### Payload profiles
+
+The connection selects its profile when opened and retains it until closed:
+
+| Profile | Fields in order | Payload / complete packet |
+| --- | --- | --- |
+| No logging | pitch radians, bank radians | 16 / 56 bytes |
+| Logging enabled | pitch radians, pitch degrees, bank radians, bank degrees, repeated pitch radians, repeated bank radians | 48 / 88 bytes |
+
+A later logging failure does not change the active definition; a subsequent connection can use two fields.
+The decoder validates the configured field count, flags and payload bounds and copies into owned values.
+Definition errors do not silently fall back to another profile.
+
+The user-aircraft selector `SIMCONNECT_OBJECT_ID_USER_AIRCRAFT` is a request-side proxy.
+Responses are correlated by request/definition IDs; their actual `object_id` need not equal that proxy and is not pinned across flights.
+See the official [request API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_requestdataonsimobject/).
+
+### Record reference
+
+| Records | Content |
+| --- | --- |
+| `session_start`, `environment`, `dll_identity` | Session/configuration, executable/DLL identities, runtime environment and SDK metadata when available |
+| `dispatch` | Message ID/size and decoded native data; Open includes reported simulator/SimConnect versions |
+| `connection_attempt`, `api_result`, `native_error` | Connection generation, API results, sent-packet IDs and exception correlation |
+| `attitude_definition` | Selected two- or six-field profile |
+| `attitude_raw`, `attitude_sample` | Raw values/bits and intervals before normalization/publication, then normalized attitude or validation error |
+| `attitude_unit_check` | Diagnostic unit disagreement, changed repeated-radian bits or nonfinite probes |
+| `state_transition`, `connection_lost`, `reconnect_wait` | Lifecycle decision, published snapshot, reason and reconnect timing |
+| `dispatch_summary` | Aggregated packet/empty-dispatch counts, notification/timeout wakes, last HRESULT and silence |
+| `notification_release`, `library_release`, `session_end` | Cleanup attempts and final session outcome |
+
+`attitude_raw.data.sample_index` is per connection; `repeated_radians` holds the extra pitch/bank probes.
+Unit comparisons retain a `0.00001`-degree tolerance, differences, bit equality and repeated-read bounds.
+`affects_sample_validity: false` separates these observations from primary-radian validation; their producer-side cause remains unresolved.
+Rejected attitude packets retain `message: "Unknown"` and `rejected_simobject_data` with received headers, expected request/definition IDs and match results, without interpreting rejected payloads.
+Other unsupported message IDs remain `Unknown`.
+
+Schema 4 records `live_publication_enabled: true` and the bounded `validation_scope`.
+The retained `candidate_state` and `candidate_attitude` names use `candidate_is_hypothesis: false`.
+Historical schemas retain their original semantics: schemas 1–3 withheld candidate live, and schema 2 could reject cross-unit disagreements.
+The [ADR amendment](adr/0006-simconnect-manual-ffi.md#live-publication-amendment-2026-10-27) records the gate-release rationale.
 
 ## Live-publication evidence
 
-On 2026-10-27, accumulated logs and independent simulator observations were accepted as sufficient to remove the unconditional live-to-`waiting` gate for the tested MSFS2024 environment.
-The decision retains finite/range validation, lifecycle invalidation, new-sample requirements and the 1000 ms freshness limit.
-No candidate-live interval contradicted the observed menu, pause, startup or reconnect availability.
-This supports bounded publication without claiming universal simulator readiness detection.
+[#5](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) owns the completed acceptance summary, tested versions, session results and historical corrections.
+[ADR 0006](adr/0006-simconnect-manual-ffi.md#live-publication-amendment-2026-10-27) records why that evidence supports live publication with the current lifecycle, validity and freshness checks.
 
-The evidence consists of the following recorded sessions and confirmations:
-
-| Evidence source, 2026-10-27 | Supported result |
-| --- | --- |
-| Basic attitude-direction session and independent maneuver confirmation | Native pitch and bank negation gives positive nose-up and right-wing-down values. Combined pitch/bank poses were also confirmed complete; precise cockpit angles were not measured. |
-| Ordinary pause, Active Pause, menu exit and new-flight session | Ordinary pause and the observed menu interval reported flag 8; Active Pause reported flag 4. Publication remained unavailable despite continued raw samples. Resume and new-flight acquisition required new valid samples. |
-| Canonical-unit correction session, runtime revision `ca483b9` | All 9,298 primary-radian samples were valid and matched independent local conversion. Recurring diagnostic unit discrepancies caused no false-invalid transition. |
-| Startup, forced simulator termination, restart and reconnect session, runtime revision `ca483b9` | All 16,431 samples were valid. Unavailable startup retried, interruption cleared availability, and both connections required fresh data and lifecycle confirmation. Different returned aircraft object IDs were accepted. |
-| Active CPU and two-field no-log sessions, runtime revision `ca483b9` | The logged run had 7,696 valid samples with no conversion mismatch or false-invalid transition. Console observations confirmed candidate live without logging; both runs stopped with `Ctrl+C`. Logged cleanup completed normally. |
-
-The three corrected logged sessions contain 33,425 valid samples in total, with diagnostic unit discrepancies retained and no canonical conversion mismatches or validation errors.
-The retained six-field degree/repeat probes remain diagnostic only; their simulator-internal disagreement cause is unresolved.
-The recorded receive strategy showed bounded dispatch and low application CPU during the observed active phase, and normal cleanup records support the exercised shutdown paths.
-Qualitative shutdown feedback reported no noticeable delay; no numeric cancellation latency is claimed.
-
-The recorded sessions above used the earlier publication gate: candidate live was actually published as `waiting`.
-They support the state and conversion decision, while automated regression checks validate the changed publication path; no new live run of the gate-release change is claimed.
-Runtime revision metadata identifies the checkout at launch and does not independently prove the executable's build provenance.
-SDK 1.8.1, build 2603316, identifies the inspected headers; these observations do not establish a general SDK/DLL/simulator version-compatibility matrix.
-
-These limits remain explicit:
-
-* Cockpit readiness at approximately 2:32 and 6:38 in the startup/reconnect session is an accepted scenario assumption, without independent UI timing. Retained flight filenames or state queries alone do not prove readiness.
-* Flag 8 does not uniquely distinguish ordinary pause from menu. The evidence supports unavailable publication for the observed phases, not exact UI classification or every aircraft/menu/loading combination.
-* Active CPU observations ended early after about 38 seconds without logging and 57 seconds with logging. Average process use was about 0.285% and 0.470% of one logical CPU respectively. These short windows do not establish reproducibility, precise logging overhead, simulator performance or system-wide load.
-* Menu/idle CPU measurements are deferred. SDK-free clean-machine validation, arbitrary native-call interruption and independent operating-system unload verification were not performed.
-* HTTP/SSE, multiple browsers and live mobile EFI remain #6; packaging and redistribution remain #8. The decision does not close #5.
-
-Reuse this evidence when relevant inputs are unchanged.
-Select a targeted simulator rerun only for a concrete affected behavior, contradiction or requested additional claim.
-Completed directions, combined poses, pause and reconnect scenarios do not require repetition solely to meet a former duration or repetition target.
-Deferred menu CPU and stopwatch timing are not current blocking tasks.
-
-## Record observations alongside the log
-
-Before running, retain a local build record with the source revision, any dirty changes, build command/result, build-time Rust/Cargo versions, and executable SHA-256.
-The log's runtime Git and `rustc` results describe the machine when launched; they cannot prove which source or compiler produced an existing executable.
-Keep the build record and any local diff outside Git with the session artifacts.
-
-Create an adjacent observations file for each scenario log, such as `off-menu-flight.observations.md`.
-For appended runs, retain a separate entry keyed by `session_id` and repetition number.
-Record these fields:
-
-* Log filename, session ID, scenario name from the filename, repetition number, date, and local build-record reference.
-* Windows, SDK, DLL, and simulator versions; aircraft, flight setup, and relevant simulator options.
-* Observed action and cockpit attitude at each elapsed time from session start, including pause mode, menu/loading state, and any interruption method.
-* Expected and observed units/signs, sample behavior, candidate and published states, retries, and any CPU or shutdown measurements relevant to the selected question.
-* Result for each question: confirmed, contradicted, or insufficient, with session IDs and relevant record numbers or elapsed times.
-* Diagnostic status and any console write/flush error; mark incomplete journals as insufficient evidence where records are missing.
-
-For a timing-dependent question, retain approximate action times and their relation to the log clock; state the timing precision.
-Screenshots or video can support attitude observations.
-Do not infer a sign, menu transition, or pause mode from log values without an independent simulator observation.
-Retain unexpected outcomes as evidence rather than changing the scenario retrospectively.
+The evidence is bounded to the tested setup, not every aircraft, UI phase or simulator/DLL version.
+Precise cockpit angles and independently timed cockpit readiness are not certified.
+The publication change has automated regression coverage; earlier physical sessions used the provisional waiting gate.
+Short active CPU observations are not a benchmark; menu CPU is deferred and no numerical shutdown latency is claimed.
+A clean SDK-free machine, arbitrary blocked-native-call interruption and independent OS unload verification were not separately tested.
+HTTP/SSE, multiple clients and live mobile EFI remain #6; packaging remains #8.
 
 ## Repeatable simulator scenarios
 
-These scenarios are reference procedures for a diagnosed change, contradiction or additional evidence request.
-Select only the affected scenario and adapt its observation window to the question.
-The durations below are observation windows, not claims of measured performance or pass thresholds.
-Allow loading and startup to finish before timing a stable phase.
-Reuse completed evidence before requesting another run; investigate inconsistent results with a narrower session.
-Keep every run's session records and observations, including when multiple runs share one file.
+Use existing evidence before requesting a manual run.
+For a concrete change, contradiction or additional claim, select only the affected scenario:
 
-### `off-menu-flight`
-
-1. Close MSFS2024. Start the application in SimConnect mode and wait 30 seconds. Observe controlled connection errors and bounded retry intervals.
-2. Start MSFS2024 and remain in its main menu for at least 30 seconds. Record when a connection opens and all lifecycle/sample behavior.
-3. Load a flight. Record loading start/end and cockpit availability. Remain in an active, unpaused flight for 30 seconds.
-4. Hold a steady attitude for another 30 seconds. Check new sample records and intervals even when values are equal.
-5. Stop with `Ctrl+C` and retain cleanup records.
-
-Expected evidence: no demo fallback, recovery when the simulator becomes available, and a reproducible distinction between menu/loading and observed active flight.
-Actual publication must remain unavailable in menu/loading and may become live only after all availability conditions and a new valid sample.
-If an observed menu interval produces live, retain the contradiction and investigate before relying on that path.
-
-### `attitude-signs`
-
-1. Begin an active flight with a known aircraft and readable cockpit attitude reference. Record 15 seconds near level.
-2. Hold nose-up, then nose-down attitudes for at least 10 seconds each. Note approximate cockpit pitch and elapsed times.
-3. Hold left, then right banks for at least 10 seconds each. Note bank direction and approximate angle.
-4. Hold one combined pitch/bank attitude for 10 seconds, then a combination with the opposite bank for 10 seconds.
-5. Return near level for 15 seconds and stop the application.
-
-Expected evidence: both observed physical signs match the application conventions after local radian conversion, and combined attitudes remain consistent.
-Inspect radians/degrees agreement separately as diagnostic evidence.
-The application requires positive nose-up pitch and positive right-wing-down roll.
-If observations contradict either sign, retain the raw data and identify which conversion needs revision before relying on live publication in that environment.
-
-#### Direction evidence
-
-On 2026-10-27, the operator confirmed the maneuver order in the recorded
-basic direction session. Around 45–55 seconds, observed
-nose-up corresponded to normalized pitch +7.4 degrees; around 65–80 seconds,
-nose-down corresponded to -3.6 degrees. The first long left bank corresponded
-to about -19.0 degrees, followed by a right bank around +31.6 degrees.
-These values are log-window medians; the operator confirmed directions and order,
-not exact cockpit angles. Retain the current negation of native pitch and bank.
-
-The session contained 11,461 valid samples and one rejected radians/degrees pair;
-the cause of that isolated inconsistency is unresolved. It does not establish
-a sign error. [#5](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5)
-owns the input identity, observation evidence and remaining acceptance.
-This basic direction confirmation does not certify quantitative cockpit agreement
-or broader compatibility. Later combined-pose confirmation and lifecycle evidence
-are summarized under [live-publication evidence](#live-publication-evidence).
-
-### `attitude-unit-probe`
-
-1. Start a logged session in a loaded flight with ordinary pause active. Confirm that `attitude_definition` records the six-field profile. Record the pause action and allow about 5 seconds of paused samples.
-2. Resume and hold a calm, nearly steady attitude for about 30 seconds. Record the aircraft, conditions, and cockpit behavior.
-3. Make gentle pitch and bank changes for about 90 seconds. Record their start/end times; avoid menu transitions during this focused phase.
-4. Pause again for about 5 seconds and stop with `Ctrl+C`. Retain the complete log and local observations, including every `attitude_unit_check` record and neighboring samples.
-5. Check that each finite, in-range primary-radian sample produces the local conversion. A diagnostic unit disagreement must remain recorded without causing `attitude_validation_failed`. Both pause intervals must remain unavailable, and resume must require a new sample.
-6. Repeat or extend when more recurrence evidence is needed. Compare original unit errors, repeated-radian bits, recurrence counts, and any asynchronous exceptions across runs.
-
-The duration gives an opportunity to observe the sparse disagreements; a clean run does not establish their absence or complete live acceptance.
-Interpret the comparisons within these limits:
-
-| Observation | Supported interpretation and limit |
+| Scenario | Observe |
 | --- | --- |
-| Repeated radians change and agree with the original degrees | Supports values changing during acquisition or assembly; does not identify the component responsible |
-| Repeated radians change and original degrees lie between both converted values | Compatible with an intermediate attitude; bounds alone do not prove acquisition order or atomicity |
-| Repeated radians match bit-for-bit while the original unit pair disagrees | Compatible with caching by variable/unit or a conversion-path difference; matching duplicates do not prove atomicity |
-| Duplicate fields are rejected or the returned count differs | The configured probe was not accepted; retain the controlled error and do not infer the cause of the earlier four-field failures |
-| No probe anomaly recurs | Verifies the exercised conversion and lifecycle path, but provides no new recurrence evidence because the original disagreements were intermittent |
+| Startup, flight and reconnect | Unavailable startup, menu/loading, fresh active data, simulator termination/restart and new samples after reconnect; no demo fallback |
+| Attitude | Level, nose up/down, left/right bank and combined poses against the cockpit; signs and any requested quantitative comparison |
+| Pause and flight change | Ordinary pause, Active Pause, resume, menu exit and another flight; unavailable attitude and new-sample recovery despite continued packets |
+| Unit diagnostics | Primary-radian validity, degree/repeat probes and surrounding anomalous packets; discrepancies cannot cause false invalids |
+| CPU or cancellation | Only the affected stable phase, with/without logging as relevant; process CPU over measured wall time or the specific shutdown failure |
 
-Keep strict primary-radian validity and lifecycle/freshness checks throughout the experiment.
-The consumer correction addresses the cross-unit rejection policy; the simulator's internal cause remains unresolved.
+Retain the build/source/artifact identity, versions, log/session ID and independent simulator actions relevant to the question.
+Keep observations and raw logs locally; log values alone do not identify physical maneuvers or UI phases.
+Runtime Git/compiler metadata cannot establish which source/compiler produced an existing binary; use [build provenance](testing/evidence.md#build-provenance).
+CPU-seconds divided by wall-seconds measures consumption relative to one logical CPU; state any whole-machine normalization.
+For no-log runs, console observations support connection/availability/shutdown, not numerical attitude agreement.
 
-### `pause-modes`
-
-1. Begin an active, unpaused flight and record 20 seconds of samples.
-2. Enter ordinary pause for 20 seconds. Record the exact pause action, flags, sample arrivals, and candidate/published transitions.
-3. Resume for 20 seconds. Verify that a new valid sample is required; cached values must not make the candidate fresh.
-4. Enter Active Pause for 20 seconds and record the same observations separately.
-5. Resume for 20 seconds and stop.
-
-Expected evidence: both pause modes are distinguishable from active flight, unavailable publication persists during pause, and resume does not refresh sample age by itself.
-Record any continued sample stream or combined/unknown pause flags; numeric movement alone does not identify the pause mode.
-
-### `flight-exit-new-flight`
-
-1. Record 20 seconds in an active flight, then leave it for the main menu.
-2. Remain in the menu for 30 seconds. Note whether old filenames, state values, or attitude samples persist.
-3. Load another flight, preferably with a visibly different initial attitude or aircraft. Record the loading phase and 30 seconds after cockpit availability.
-4. Stop the application.
-
-Expected evidence: retained samples are invalidated across flight transitions and candidate freshness requires samples from the new active flight.
-A retained filename or a successful state query must not be accepted as proof of flight availability.
-Any live state during an independently observed menu interval is a contradiction requiring targeted investigation.
-
-#### Pause and menu evidence
-
-In a 2026-10-27 session recorded in #5, the operator confirmed ordinary pause
-at about 38–63 seconds, Active Pause at about 82–101 seconds, then a main-menu
-exit and another flight. The observed pause flags were respectively 8 and 4;
-both intervals remained `paused` despite continued identical attitude samples.
-Each resume required a new sample before candidate live returned.
-
-The menu interval also reported flag 8 and remained unavailable. Subsequent
-Sim/FlightLoaded transitions cleared retained state, and candidate live returned
-only after a new sample. Thus flag 8 is not a unique ordinary-pause or menu
-discriminator, and a retained FlightLoaded filename or Sim query is insufficient
-to identify the UI phase. Exact cockpit-ready timing was not independently recorded.
-Four isolated paired-unit inconsistencies were rejected by this historical schema-2 session; their cause remains unresolved.
-The later canonical-unit correction retains these discrepancies as diagnostic values without rejecting valid native radians.
-The [gate-release decision and current limits](#live-publication-evidence) supersede the earlier unconditional publication guard.
-
-### `shutdown-restart-interruption`
-
-1. Record 20 seconds in an active flight. Close MSFS2024 while leaving the application running.
-2. Wait at least 30 seconds. Observe Quit messages, dispatch results, watchdog behavior, state changes, and retries.
-3. Restart MSFS2024. Observe the menu for 20 seconds, then load a flight and observe 30 seconds.
-4. In a separate repetition, interrupt the connection using a recorded reproducible local method, if available. Do not label a normal shutdown as a separate interruption result.
-5. Restore the simulator/connection and stop after another 30 seconds.
-
-Expected evidence: loss never selects demo, retries remain interruptible, connection generation changes on reconnect, and cached attitude is not reused.
-If an independent connection interruption cannot be produced, mark that part untested.
-Distinguish a watchdog-triggered retry from an observed native disconnect.
-
-### `cancel-and-cpu`
-
-For a concrete cancellation failure, select the affected phase: initial connection attempts, maximum retry wait, idle/menu reception, active reception, pause or reconnect.
-For a concrete CPU question, compare the affected stable phases with and without logging; a 2-minute window is a reference duration when appropriate.
-Retain console observations for runs without a journal.
-The [recorded active CPU and shutdown evidence](#live-publication-evidence) remains applicable; menu CPU is deferred and no stopwatch task is pending.
-
-For each phase, record process CPU time before/after the interval and its measured wall duration, or Task Manager CPU observations with the sampling method.
-CPU-seconds divided by wall-seconds expresses use relative to one logical CPU; state any normalization used for whole-machine percentages.
-For logged runs, compare idle and active phases with dispatch/wake counts to identify unexpected continuous polling.
-Record machine load and logical CPU count so results remain interpretable.
-No numeric CPU acceptance threshold has yet been established by a live session.
-
-If numeric cancellation latency is the question, measure from the cancellation request to process exit and state timing precision.
-Inspect Close/release/session-end records for logged runs and retain console output for all runs.
-Expected evidence: waiting and retrying can be cancelled promptly, continuous dispatch cannot starve cancellation, and normal shutdown releases the connection and handles before unloading the DLL.
-A hung native call, missing exit, failed Close, or unexplained CPU load is a failed observation requiring investigation.
-
-## Evaluate and retain evidence
-
-Compare logs with the sidecar observations and the questions in each scenario.
-Preserve raw evidence and diagnostic progress locally.
-When publication is requested, use a suitable acceptance summary against the tested revision in #5 or its linked validation record.
-Include actual versions, repetitions, confirmed results, contradictions, missing checks, and a focused follow-up only when needed.
-Logs may contain local paths and flight filenames; inspect them before sharing.
-
-Simulator-free tests check CLI source/options, executable-relative DLL selection, SDK-independent builds, layout, decoding, conversion, live/unavailable publication, freshness, loader errors, retry bounds, cancellation, and optional diagnostic failure paths.
-They also check exact-file append sessions, distinct session IDs, writer exclusion, partial-tail handling, and publication through the supplied telemetry channel.
-Use the shared [automated checks](testing/automated.md#automated-checks) for local validation.
-An additional opt-in cancellation smoke check requires an explicitly selected official DLL:
+Use the shared [automated checks](testing/automated.md#automated-checks) for simulator-free regression coverage.
+An optional official-DLL cancellation smoke requires an explicitly selected DLL and a closed simulator:
 
 ```powershell
 $env:SIMCONNECT_TEST_DLL = $simconnectDll
@@ -464,9 +199,5 @@ cargo test --locked --test simconnect official_dll_stops_on_requested_shutdown_a
 Remove-Item Env:SIMCONNECT_TEST_DLL
 ```
 
-This requests cancellation after 750 ms and retains its session log.
-Run it with the simulator closed to check loading, unavailable connection attempts, and interruptible retry.
-It does not replace console `Ctrl+C`, live acquisition, or the longer lifecycle scenarios.
-Rust layout tests can repeat an incorrect header interpretation and do not prove ABI compatibility by themselves.
-No automated test or console session certifies HTTP/SSE, multiple browser clients, or mobile EFI with live MSFS2024 data.
-Those integration questions remain in #6 and its dependent acceptance work.
+This checks loading, unavailable connection attempts and requested shutdown after 750 ms.
+It does not establish active-flight behavior, and Rust layout tests alone do not prove SDK ABI compatibility.
