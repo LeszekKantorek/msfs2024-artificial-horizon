@@ -45,6 +45,7 @@ Microsoft.FlightSimulator.SimConnect.dll
 !/.agents/skills/project-prepare-pr/
 !/.agents/skills/project-review-change/
 !/.agents/skills/project-decide-architecture/
+!/.agents/skills/technical-writing-rules/
 
 # RustRover
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can

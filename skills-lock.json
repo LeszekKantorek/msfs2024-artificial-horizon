@@ -48,6 +48,12 @@
       "sourceType": "github",
       "skillPath": "skills/procedural-skill-creator/SKILL.md",
       "computedHash": "2c552756848d42d4ef5b6c705af24220cc4b748974197443adce86a1354c2935"
+    },
+    "technical-writing-rules": {
+      "source": "LeszekKantorek/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/technical-writing-rules/SKILL.md",
+      "computedHash": "d6aea91ec7dc1bb17e68171cabc7660efa33c60fedb8b6d2a683a685c60f0e12"
     }
   }
 }
