@@ -2,142 +2,130 @@
 
 | Date | Status |
 | --- | --- |
-| 2026-10-26 | Accepted integration boundaries; receive, normalization, and lifecycle hypotheses require live evidence |
-| 2026-10-27 | Amended runtime entry point, DLL selection, and optional diagnostics; live evidence requirements retained |
-| 2026-10-27 | Accepted bounded live publication from accumulated MSFS2024 evidence; unconditional live-to-waiting gate removed |
+| 2026-10-26 | Accepted manual bindings, runtime loading, and one native worker |
+| 2026-10-27 | Amended application entry point, DLL selection, and diagnostics |
+| 2026-10-27 | Accepted bounded live publication after evidence assessment |
 
 ## Context
 
-[#5](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) develops and validates native user-aircraft pitch and bank reception before HTTP/SSE and EFI integration in [#6](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/6).
-The existing Rust library, dedicated acquisition boundary, `Publisher`, latest-value watch channel, HTTP/SSE, and browser contracts remain suitable.
-The experiment needs direct control over a small native API surface and reproducible diagnostics without an SDK build dependency.
-The accepted integration plan selects manual bindings; repeating a third-party wrapper selection is outside this iteration.
+The integration preserves these boundaries:
 
-This refines [ADR 0001](0001-rust-http-sse.md), which deferred FFI selection.
-Its process, transport, and normalized latest-value decisions remain unchanged.
-Runtime loading replaces any implication that SimConnect requires an optional Cargo dependency or feature.
-The package exposes no Cargo features.
-
-The 2026-10-27 amendment replaces the separate diagnostic executable with the main application's SimConnect mode.
-It also replaces mandatory explicit DLL selection and per-run generated logs with an executable-relative default and optional exact-file append diagnostics.
-The original native ownership, ABI, telemetry, and live-validation constraints remain in force.
+* [#5](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) establishes native pitch and bank acquisition before HTTP/SSE and EFI integration in [#6](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/6).
+* The existing library, `Publisher`, latest-value watch channel, and browser contract remain suitable.
+* Direct control over a small native API supports diagnostics without an SDK build dependency.
+* [ADR 0001](0001-rust-http-sse.md) deferred FFI selection. Its process, transport, and normalized-state decisions remain unchanged.
+* The accepted scope selects manual bindings. Wrapper selection is outside this iteration.
+* The main application replaces the separate diagnostic executable.
+* Default DLL selection beside the EXE and optional append logs replace the mandatory DLL override and generated logs.
 
 ## Decision
 
+### Bindings and runtime
+
 | Boundary | Accepted choice |
 | --- | --- |
-| Native declarations | Minimal hand-written Rust declarations from official MSFS2024 SDK headers |
-| Organization | Existing package under `src/providers/simconnect/mod.rs`, with focused internal modules as needed |
-| Loading | `LoadLibraryExW`, resolved exports, and controlled DLL lifetime; no `SimConnect.lib` linkage |
-| DLL selection | Default `SimConnect.dll` beside the running executable, independent of working directory; optional absolute override; dependency search restricted to DLL and Windows system directories |
-| Execution | One long-running worker owns one active connection and all direct SimConnect calls |
-| Memory boundary | Validate message type/length, respect packed receive layouts, copy into owned Rust values, retain no native buffer across dispatch |
-| Telemetry | Normalize in the adapter and publish through existing typed `Publisher`/watch APIs |
-| Entry point | Main executable with `--source demo` or `--source simconnect`; SimConnect has no HTTP/SSE in #5 |
-| Diagnostics | Optional exact-file JSONL append with per-record session identity; no scenario configuration or metadata |
-| Source failure | Explicit unavailable states and retries; never select demo automatically |
+| Declarations | Minimal hand-written Rust declarations from official SDK headers |
+| Header source | SDK 1.8.1, build 2603316 |
+| Organization | Existing package under `src/providers/simconnect/mod.rs`, with focused internal modules |
+| Loading | `LoadLibraryExW`, resolved exports, controlled DLL lifetime. No `SimConnect.lib` linkage |
+| DLL selection | `SimConnect.dll` beside the EXE, independent of working directory, or an optional absolute override |
+| Dependencies | Selected DLL directory and Windows system directory only |
+| Execution | One long-running worker owns one active connection and all SimConnect calls |
+| Memory | Validate message types and lengths, respect packed layouts, copy owned values, retain no native buffer across dispatch |
+| Telemetry | Adapter normalization and publication through the caller's existing typed `Publisher` and watch channel |
+| Entry point | Main executable with `--source demo` or `--source simconnect`. No HTTP/SSE in #5 |
 
-The initial API surface has eight exports: `SimConnect_Open`, `SimConnect_Close`, `SimConnect_GetNextDispatch`, `SimConnect_AddToDataDefinition`, `SimConnect_RequestDataOnSimObject`, `SimConnect_SubscribeToSystemEvent`, `SimConnect_RequestSystemState`, and `SimConnect_GetLastSentPacketID`.
-Add a declaration only for a demonstrated requirement.
-SDK 1.8.1, build 2603316, is the inspected header source.
-The declaration source alone does not establish live SDK/DLL/simulator compatibility.
+The binding surface remains limited:
 
-No wrapper crate, binding generator, separate package, C++ helper, general SDK framework, new telemetry queue, or extra high-level adapter layer is introduced.
-The diagnostic journal is local experiment output, separate from latest-state distribution.
-Demo and normal builds remain independent of SDK installation; demo never loads SimConnect.
-The integration receives the existing `Publisher` and shutdown from its caller, with no hidden telemetry channel.
-Issue #6 connects that same worker to the existing server rather than adding a second receiver.
+| Purpose | Exports |
+| --- | --- |
+| Connection | `SimConnect_Open`, `SimConnect_Close` |
+| Dispatch | `SimConnect_GetNextDispatch` |
+| Attitude | `SimConnect_AddToDataDefinition`, `SimConnect_RequestDataOnSimObject` |
+| Lifecycle | `SimConnect_SubscribeToSystemEvent`, `SimConnect_RequestSystemState` |
+| Correlation | `SimConnect_GetLastSentPacketID` |
 
-Resolve the selected DLL to a full path before opening diagnostics or loading native code.
-An explicit override has precedence; its failure never selects another DLL.
-Do not search `PATH`, the working directory, or SDK installations.
-Without logging, omit diagnostic files and expensive raw-record formatting and metadata collection.
-With logging, abort startup on open/initial-write failure before DLL loading.
-A later write/flush failure disables diagnostics while reception and cleanup continue, with immediate and final console reporting.
-Keep acquisition outcome and diagnostic status separate; an interrupted journal cannot establish a complete measurement.
+Integration constraints preserve the existing architecture:
 
-## Alternatives and rationale
+* Add declarations only for demonstrated requirements.
+* Add no third-party SimConnect wrapper, binding generator, separate package, C++ helper, general SDK framework, or extra adapter layer.
+* Expose no Cargo features or SDK build dependencies.
+* Accept the existing publisher and shutdown signal from the caller. Create no hidden channel or sample queue.
+* Keep demo independent of the SDK. Never load SimConnect for demo or select demo after simulator loss.
+* Connect this same module to the server in #6 rather than adding another receiver.
+* Resolve the full DLL path before opening diagnostics or loading native code.
+* Apply explicit override precedence without fallback. Do not search `PATH`, the working directory, or SDK installations.
 
-| Option | Consequence | Decision |
-| --- | --- | --- |
-| Retain the demo and postpone the experiment | Preserves current behavior but cannot establish real units, lifecycle, or native compatibility | Retain demo independently; add the focused experiment |
-| Third-party Rust wrapper | Delegates API coverage and maintenance but adds an external integration abstraction | Superseded by the accepted manual-binding scope |
-| Minimal manual FFI | Keeps ownership, debugging, compatibility changes, and the used declarations within the project | Select; accept declaration maintenance and verification costs |
-| Generated/full SDK bindings | Adds generation tooling or unused API surface | Reject for this small, explicit scope |
-| Import-library linking | Requires the native library during linking | Reject; runtime loading keeps SDK files outside default builds |
-| Separate crate or C++ ABI helper | Adds a package or language/tool boundary | Reject; manual header inspection, focused Rust tests, and live checks are the accepted verification approach |
-| Native callbacks | Requires callback/context lifetime handling | Retain as a possible alternative only if the preferred dispatch experiment proves inadequate |
+### Diagnostics
 
-The worker isolates native work from Tokio and provides one connection owner.
-The binding boundary owns DLL/function lifetimes; the adapter owns message interpretation, normalization, and application states.
-Cleanup stops processing, closes the connection, releases handles, and unloads the DLL after native use ends.
-A failed close retains the mapping and its notification handle until process exit as a conservative failure path.
-Dropping a Rust value is not assumed to interrupt a blocking native call.
+| Condition | Accepted behavior |
+| --- | --- |
+| Destination | Optional exact-file JSONL append with per-record session identity |
+| Scenario | Filename and observations, without scenario configuration or metadata |
+| No logging | No diagnostic file, expensive raw formatting, or diagnostic metadata collection |
+| Open or initial write failure | Abort before DLL loading |
+| Later write or flush failure | Disable diagnostics, continue acquisition and cleanup, report immediately and at shutdown |
+| Outcomes | Separate acquisition result from diagnostic status. An interrupted journal does not establish a complete measurement |
 
-The project accepts maintenance responsibility for signatures, constants, layouts, and SDK changes.
-Header-derived Rust size/alignment/offset tests can reproduce a mistaken translation.
-They support verification but do not independently prove the ABI; real integration evidence remains necessary.
+The [feature guide](../simconnect.md#diagnostic-logging) owns operational details and record formats.
 
-## Experimental choices and evidence limits
+### Live-publication amendment, 2026-10-27
 
-The [SimConnect reference](../simconnect.md) owns diagnostic behavior, repeatable scenarios, and observation procedures.
-Execution results and acceptance evidence belong in #5 or its linked validation record.
+The [accepted evidence in #5](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) supports removing the provisional live-to-`waiting` gate within the tested setup:
 
-The original acceptance left these choices as hypotheses:
+* Use native radians and local conversion. Requested degrees and repeated radians remain diagnostic only.
+* Record raw values before normalization and publication when logging is enabled.
+* Publish live only with running `Sim`, a loaded flight, zero pause flags, and a fresh finite, in-range sample.
+* Invalidate retained attitude on pause, invalid input, disconnect, and flight or simulator transitions.
+* Require a new sample after resume. Publish each eligible acquisition, including equal values, with its original receive time.
+* Keep the 1000 ms freshness limit. Cached values, queries, and heartbeats do not refresh age.
+* Use schema 4 for enabled publication. Historical schemas 1–3 retain their original waiting gate.
 
-* `GetNextDispatch` with a Windows notification event, separate cancellation event, bounded batches, and 50 ms waits provides reliable reception with acceptable CPU use and shutdown.
-* Five-second state queries and a 15-second packet-silence watchdog provide useful connection diagnostics.
-* `Sim`, `Pause_EX1`, and `FlightLoaded`, combined with fresh samples, can distinguish active flight from menu/loading and both pause modes.
+## Alternatives and consequences
 
-Negating pitch and bank, with bank wrapping, has [basic direction evidence in #5](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5)
-from a recorded live session paired with operator-confirmed nose-up/down and left/right maneuvers.
-That supports retaining the conversion in the tested setup; it does not certify
-exact cockpit angles or compatibility with other versions.
-Combined-pose confirmation and bounded lifecycle results are also retained in #5; the [feature guide](../simconnect.md#data-and-availability) describes the resulting conventions and behavior.
+| Alternative | Decision and consequence |
+| --- | --- |
+| Postpone native integration | Retain demo independently, but add acquisition to establish native compatibility |
+| Third-party wrapper | Not selected under the accepted manual-binding scope |
+| Minimal manual FFI | Select for direct ownership and focused declarations. Accept SDK maintenance and verification costs |
+| Generated or full SDK bindings | Reject generation tooling and unused API surface |
+| Import-library linking | Reject the native library requirement during linking |
+| Separate crate or C++ ABI helper | Reject extra package or language boundaries. Use header inspection, focused Rust tests, and live evidence |
+| Native callbacks | Defer unless receive and wait observations contradict the selected dispatch strategy |
 
-Native radians are the authoritative input, converted locally; requested degrees and repeated radians are diagnostic only when logging is enabled.
-Raw values are recorded before normalization and publication when diagnostics are enabled.
-The existing 1000 ms freshness limit remains unchanged.
-New equal samples can be fresh; cached values and heartbeat queries cannot refresh sample age.
-The original accepted plan required candidate live to be published as `waiting` until signs and availability had supporting evidence.
-That guard prevented unverified diagnostic hypotheses from becoming live application telemetry; it did not prove correct flight detection or signs.
-Historical schema 1–3 logs retain this behavior.
+Ownership has these consequences:
 
-The original structural acceptance did not establish a live run, physical signs, menu/pause mapping, reliable dispatch/wait behavior or successful reconnect/cleanup.
-Runtime version records and executable hashes identify context and bytes; separate local build evidence is needed for source/compiler provenance.
-Logs must be paired with observed simulator actions and attitudes for physical and lifecycle claims.
-Successful console acquisition does not establish HTTP/SSE, multi-client or mobile acceptance.
+* The worker isolates native work from Tokio.
+* The binding boundary owns DLL and function lifetimes. The adapter owns message interpretation, normalization, and application states.
+* Cleanup stops reception, closes the connection, releases handles, and unloads the DLL after native use ends.
+* A failed close retains the DLL mapping and notification handle until process exit.
+* Dropping a Rust value does not establish that a blocking native call has stopped.
+* The project maintains signatures, constants, layouts, and SDK compatibility.
+* Header-derived Rust layout tests can repeat translation errors. They do not independently prove the SDK ABI.
+* SDK artifacts, local installation paths, and generated session output remain outside commits.
+* Distribution rights must be established in [#8](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/8). Dynamic loading and other projects' practices establish no redistribution permission.
 
-## Live-publication amendment, 2026-10-27
+### Evidence limits
 
-The accumulated evidence is sufficient to remove the unconditional candidate-live-to-`waiting` gate within the recorded MSFS2024 sessions' scope.
-The [completed acceptance record in #5](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) owns the session results and tested environment; the [feature guide](../simconnect.md#live-publication-evidence) describes current limits.
-It records confirmed basic signs and combined poses, unavailable publication during observed pause/menu intervals, fresh-sample recovery, forced simulator termination/reconnect, no-log reception and qualitative shutdown confirmation.
-Three corrected logged sessions at runtime revision `ca483b9` contain 33,425 valid canonical samples without false-invalid transitions; no false-live interval was recorded in the observed scenarios.
+Evidence and decision records have separate scopes:
 
-Live publication continues to require a running simulator, a loaded flight, zero pause flags and a fresh finite, in-range sample.
-Pause, invalid data, disconnect and flight transitions invalidate retained attitude.
-Resume requires a new sample; every new valid sample, including equal values, refreshes publication, while queries and cached values do not.
-The 1000 ms freshness limit and typed `Publisher`/watch boundary remain unchanged.
-Schema 4 identifies enabled live publication and its bounded evidence scope; historical guarded logs retain their original meanings.
+| Record | Establishes or limits |
+| --- | --- |
+| This ADR | Binding, ownership, loading, and publication decisions |
+| SDK header source | Inspected declarations, not general simulator and DLL compatibility |
+| [#5 acceptance record](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) | Tested environment, paired simulator observations, execution results, and accepted deferrals |
+| [Feature limits](../simconnect.md#rationale-and-regression-lessons) | Current compatibility, readiness, angle, performance, and untested-path qualifications |
+| Earlier simulator sessions | Candidate behavior under the former gate. The changed publication path has automated regression coverage |
+| Runtime metadata | Environment context, not independent proof of a binary's source or compiler |
 
-The recorded live sessions exercised candidate states under the earlier publication guard.
-Automated regressions validate the changed publication path; this amendment does not claim a new live run of the gate-release change.
-Exact cockpit-ready timestamps remain an accepted scenario assumption, precise cockpit-angle agreement and broader version compatibility remain unestablished, and short active CPU observations do not constitute a benchmark.
-Menu CPU is deferred; no new stopwatch measurement or repetition of completed maneuvers is required without a concrete question or contradiction.
-HTTP/SSE and live EFI remain #6; SDK/DLL packaging and redistribution remain #8.
+> Acceptance of this decision does not certify precise cockpit angles, universal readiness detection, or HTTP/SSE and mobile EFI integration.
 
-## Consequences and reconsideration
+### Reconsideration
 
-The selected DLL must remain available and compatible at runtime.
-Executable-relative default selection and absolute overrides are the current runtime policy; release packaging is not settled here.
-No SDK headers, libraries, binaries, local installation paths, or generated session output enter commits.
-Dynamic linking grants no redistribution right.
-Legal and practical SDK/DLL distribution conditions must be established before release packaging in [#8](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/8).
-No conclusion is drawn from other projects' distribution practices.
-
-Reconsider the receive/wait strategy if measured events, empty queues, CPU use, or shutdown contradict it.
-Reconsider lifecycle and sign conversion only against raw records paired with independent simulator observations.
-Suspend an unsafe native path when ABI or bounds handling is suspect.
-If observations contradict the availability checks, keep the affected path unavailable and investigate before relying on it in #6.
-Changes requiring additional API surface, packages, queues, helper languages, or altered telemetry contracts require a demonstrated need and an agreed scope amendment.
+| Trigger | Required response |
+| --- | --- |
+| Contradictory receive, wake, CPU, or shutdown observations | Reconsider the receive and wait strategy |
+| Contradictory lifecycle or sign observations | Compare raw records with independent simulator observations before changing interpretation |
+| Suspected ABI or buffer-boundary error | Suspend the affected unsafe native path |
+| Contradictory availability | Keep the affected path unavailable and investigate before relying on it in #6 |
+| New APIs, dependencies, helpers, queues, or telemetry contracts | Demonstrate the need and agree on a scope amendment |
