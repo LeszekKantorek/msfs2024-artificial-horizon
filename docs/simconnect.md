@@ -2,12 +2,12 @@
 
 The main application selects SimConnect with `--source simconnect` for [#5](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5).
 One integration module receives user-aircraft pitch and bank and publishes through the existing telemetry channel.
-Optional JSONL diagnostics retain native messages, raw values, and lifecycle hypotheses.
+Optional JSONL diagnostics retain native messages, raw values, and lifecycle decisions.
 This mode does not start HTTP or display telemetry in the browser.
 [#6](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/6) will connect the same module to HTTP/SSE and validate the complete path to EFI.
 
-Live-session results and their limits are tracked in #5.
-Issue #5 remains open until repeated simulator observations confirm units, signs, availability, dispatch, freshness, reconnection, and cleanup.
+Live-session results and their limits are tracked in #5 and summarized under [live-publication evidence](#live-publication-evidence).
+The 2026-10-27 decision enables live publication within that recorded scope; issue #5 remains open for final acceptance work.
 The accepted integration boundaries are recorded in [ADR 0006](adr/0006-simconnect-manual-ffi.md).
 
 ## Local requirements
@@ -59,7 +59,8 @@ Help and version do not open the DLL or log.
 
 The console reports startup, the selected DLL, connections, state transitions, important errors, and shutdown even without logging.
 Without `--log`, no diagnostic file or expensive raw-record formatting and environment collection is performed.
-Acceptance sessions require logging and independent observations.
+Numeric and lifecycle acceptance claims require logs paired with independent observations.
+No-log console observations can support connection, availability and shutdown behavior, but cannot establish numeric angle agreement.
 
 With logging enabled, the application creates missing parent directories and opens exactly the supplied file for append before loading the DLL.
 Each run has a unique `session_id` on every record, its own record numbering, and monotonic time from session start.
@@ -117,7 +118,7 @@ With diagnostics enabled, each sample records the primary radians and requested 
 `attitude_raw.data.sample_index` counts samples within the connection.
 For a six-field definition, `data.repeated_radians` records `pitch` and `bank` using the same numeric representation as the original raw values.
 Nonfinite numbers use JSON-compatible value/classification/bit records.
-The candidate conversion converts the primary radians to degrees locally, negates pitch and bank, and wraps bank into `[-180, 180)`.
+Normalization converts the primary radians to degrees locally, negates pitch and bank, and wraps bank into `[-180, 180)`.
 Primary radians and their converted values must be finite, and pitch must remain in `[-90, 90]` under the existing [telemetry contract](telemetry-contract.md#fields-and-conventions).
 Requested degrees and repeated radians are diagnostic values only.
 Their disagreement or nonfinite values do not invalidate an otherwise valid primary-radian attitude.
@@ -133,31 +134,35 @@ request and definition IDs. Their `object_id` is retained as reported; it must n
 be required to equal that request-side proxy. A live MSFS2024 session returned
 `object_id=540672` for request/definition 1, and requiring zero discarded every
 attitude packet. The runtime ID is not hard-coded or pinned across flights.
-Payload length, the configured untagged field count, numeric validation and the availability guard
+Payload length, the configured untagged field count, numeric validation and the availability checks
 still apply. See the official [request API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_requestdataonsimobject/)
 and [response structure](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/structures-and-enumerations/simconnect_recv_simobject_data/).
 
-`state_transition` separates `candidate_state` from the actual `published` snapshot.
-The candidate combines `Sim`, `Pause_EX1`, `FlightLoaded`, and fresh valid samples.
+`state_transition` retains `candidate_state` alongside the actual `published` snapshot for diagnostic continuity.
+Live publication requires `Sim` running, a loaded flight, `Pause_EX1` flags zero, and a fresh finite, in-range sample.
 No single event or nonempty flight filename proves active-flight availability.
 All nonzero pause flags, including unknown bits, are treated conservatively as paused.
-State changes clear retained attitude so resume and a new flight require a new valid sample.
-New identical samples refresh candidate age; cached values, connection events, and system-state queries do not.
+Pause, invalid data, disconnect and flight transitions clear retained attitude so resume and a new flight require a new valid sample.
+Every new valid sample is published, including identical angles; cached values, connection events, and system-state queries do not refresh sample age.
 The freshness limit remains 1000 ms with a 50 ms control interval.
 
-**A candidate `live` is published as `waiting`.**
-The integration deliberately withholds live application telemetry while flight availability remains unverified.
-The conservative runtime labels and metadata do not automatically change when external operator evidence is recorded.
-Other unavailable candidate states use the existing `Publisher` and latest-value watch channel.
+**Live publication is enabled within the [recorded evidence scope](#live-publication-evidence).**
+The unconditional candidate-live-to-`waiting` gate was removed by the 2026-10-27 decision.
+All states use the existing `Publisher` and latest-value watch channel.
 The log is diagnostic output, not another telemetry queue or distribution mechanism.
-A `candidate_state: live` record is neither live acceptance nor evidence that menu detection works.
+A state label alone is not evidence of cockpit readiness or menu detection.
+
+Journal schema 4 records `live_publication_enabled: true`, a `validation_scope` pointing to this evidence section, and `sign_convention: "positive nose up and right wing down; native pitch and bank negated"`.
+The historical `candidate_state` and `candidate_attitude` field names remain, with `candidate_is_hypothesis: false`.
+The obsolete blanket verification booleans are removed.
+Schemas 1–3 retain their historical guarded publication and metadata; their candidate-live records do not show actual live publication.
 
 The receiver uses `GetNextDispatch`, a Windows notification event, a separate cancellation event, 50 ms waits, and batches of at most 128 messages.
 Empty dispatches and their HRESULTs are aggregated in one-second summaries.
 An empty queue or `E_FAIL` alone does not prove disconnection.
-System-state queries every 5 seconds and a 15-second packet-silence watchdog are diagnostic hypotheses to test.
+System-state queries every 5 seconds and a 15-second packet-silence watchdog remain bounded diagnostic mechanisms.
 The watchdog can request reconnection; its label is not proof of connection loss.
-Record unexpected queries, wake patterns, retries, or CPU use before accepting this receive strategy.
+Investigate unexpected queries, wake patterns, retries or CPU use against the [recorded evidence](#live-publication-evidence).
 
 The records provide these diagnostic groups:
 
@@ -220,7 +225,7 @@ The exact origin within the simulator, transport, or DLL remains unresolved.
 One earlier direction session contained one inconsistent packet among 11,462 samples;
 the pause/menu session contained four among 10,264. These historical schema-2 sessions rejected such samples under the earlier cross-unit gate.
 
-The later schema-2 `unit-check.jsonl` session contained 11,897 six-field samples.
+The later schema-2 six-field unit-probe session contained 11,897 samples.
 Original and repeated radians were bit-identical for both axes in every sample, and all six fields remained finite.
 Two pitch unit differences occurred at about 18.7928 and 182.2505 seconds:
 local radian conversion minus requested degrees was approximately `-0.001726` and `-0.001388` degrees.
@@ -231,8 +236,48 @@ Identical repeats do not distinguish caching by variable/unit from SDK field ass
 
 The consumer therefore selects the documented native unit and performs one local conversion.
 This removes false rejection caused solely by a diagnostic cross-unit disagreement; it does not claim to repair the simulator's internal acquisition mechanism.
-Journal schema 3 records this policy and the two- or six-field profiles.
+Journal schema 3 introduced this policy and the two- or six-field profiles; schema 4 retains it while enabling live publication.
 Older schema-2 records retain their earlier conversion and rejection semantics.
+
+## Live-publication evidence
+
+On 2026-10-27, accumulated logs and independent simulator observations were accepted as sufficient to remove the unconditional live-to-`waiting` gate for the tested MSFS2024 environment.
+The decision retains finite/range validation, lifecycle invalidation, new-sample requirements and the 1000 ms freshness limit.
+No candidate-live interval contradicted the observed menu, pause, startup or reconnect availability.
+This supports bounded publication without claiming universal simulator readiness detection.
+
+The evidence consists of the following recorded sessions and confirmations:
+
+| Evidence source, 2026-10-27 | Supported result |
+| --- | --- |
+| Basic attitude-direction session and independent maneuver confirmation | Native pitch and bank negation gives positive nose-up and right-wing-down values. Combined pitch/bank poses were also confirmed complete; precise cockpit angles were not measured. |
+| Ordinary pause, Active Pause, menu exit and new-flight session | Ordinary pause and the observed menu interval reported flag 8; Active Pause reported flag 4. Publication remained unavailable despite continued raw samples. Resume and new-flight acquisition required new valid samples. |
+| Canonical-unit correction session, runtime revision `ca483b9` | All 9,298 primary-radian samples were valid and matched independent local conversion. Recurring diagnostic unit discrepancies caused no false-invalid transition. |
+| Startup, forced simulator termination, restart and reconnect session, runtime revision `ca483b9` | All 16,431 samples were valid. Unavailable startup retried, interruption cleared availability, and both connections required fresh data and lifecycle confirmation. Different returned aircraft object IDs were accepted. |
+| Active CPU and two-field no-log sessions, runtime revision `ca483b9` | The logged run had 7,696 valid samples with no conversion mismatch or false-invalid transition. Console observations confirmed candidate live without logging; both runs stopped with `Ctrl+C`. Logged cleanup completed normally. |
+
+The three corrected logged sessions contain 33,425 valid samples in total, with diagnostic unit discrepancies retained and no canonical conversion mismatches or validation errors.
+The retained six-field degree/repeat probes remain diagnostic only; their simulator-internal disagreement cause is unresolved.
+The recorded receive strategy showed bounded dispatch and low application CPU during the observed active phase, and normal cleanup records support the exercised shutdown paths.
+Qualitative shutdown feedback reported no noticeable delay; no numeric cancellation latency is claimed.
+
+The recorded sessions above used the earlier publication gate: candidate live was actually published as `waiting`.
+They support the state and conversion decision, while automated regression checks validate the changed publication path; no new live run of the gate-release change is claimed.
+Runtime revision metadata identifies the checkout at launch and does not independently prove the executable's build provenance.
+SDK 1.8.1, build 2603316, identifies the inspected headers; these observations do not establish a general SDK/DLL/simulator version-compatibility matrix.
+
+These limits remain explicit:
+
+* Cockpit readiness at approximately 2:32 and 6:38 in the startup/reconnect session is an accepted scenario assumption, without independent UI timing. Retained flight filenames or state queries alone do not prove readiness.
+* Flag 8 does not uniquely distinguish ordinary pause from menu. The evidence supports unavailable publication for the observed phases, not exact UI classification or every aircraft/menu/loading combination.
+* Active CPU observations ended early after about 38 seconds without logging and 57 seconds with logging. Average process use was about 0.285% and 0.470% of one logical CPU respectively. These short windows do not establish reproducibility, precise logging overhead, simulator performance or system-wide load.
+* Menu/idle CPU measurements are deferred. SDK-free clean-machine validation, arbitrary native-call interruption and independent operating-system unload verification were not performed.
+* HTTP/SSE, multiple browsers and live mobile EFI remain #6; packaging and redistribution remain #8. The decision does not close #5.
+
+Reuse this evidence when relevant inputs are unchanged.
+Select a targeted simulator rerun only for a concrete affected behavior, contradiction or requested additional claim.
+Completed directions, combined poses, pause and reconnect scenarios do not require repetition solely to meet a former duration or repetition target.
+Deferred menu CPU and stopwatch timing are not current blocking tasks.
 
 ## Record observations alongside the log
 
@@ -247,20 +292,22 @@ Record these fields:
 * Log filename, session ID, scenario name from the filename, repetition number, date, and local build-record reference.
 * Windows, SDK, DLL, and simulator versions; aircraft, flight setup, and relevant simulator options.
 * Observed action and cockpit attitude at each elapsed time from session start, including pause mode, menu/loading state, and any interruption method.
-* Expected and observed units/signs, sample behavior, candidate and published states, retries, CPU measurements, and shutdown duration.
+* Expected and observed units/signs, sample behavior, candidate and published states, retries, and any CPU or shutdown measurements relevant to the selected question.
 * Result for each question: confirmed, contradicted, or insufficient, with session IDs and relevant record numbers or elapsed times.
 * Diagnostic status and any console write/flush error; mark incomplete journals as insufficient evidence where records are missing.
 
-Use a stopwatch from launch and note its offset from the first log record when timing is approximate.
-Record exact action times where possible; screenshots or video can support attitude observations.
+For a timing-dependent question, retain approximate action times and their relation to the log clock; state the timing precision.
+Screenshots or video can support attitude observations.
 Do not infer a sign, menu transition, or pause mode from log values without an independent simulator observation.
 Retain unexpected outcomes as evidence rather than changing the scenario retrospectively.
 
 ## Repeatable simulator scenarios
 
+These scenarios are reference procedures for a diagnosed change, contradiction or additional evidence request.
+Select only the affected scenario and adapt its observation window to the question.
 The durations below are observation windows, not claims of measured performance or pass thresholds.
 Allow loading and startup to finish before timing a stable phase.
-Repeat the selected scenario at least twice; investigate inconsistent results with a narrower session.
+Reuse completed evidence before requesting another run; investigate inconsistent results with a narrower session.
 Keep every run's session records and observations, including when multiple runs share one file.
 
 ### `off-menu-flight`
@@ -272,8 +319,8 @@ Keep every run's session records and observations, including when multiple runs 
 5. Stop with `Ctrl+C` and retain cleanup records.
 
 Expected evidence: no demo fallback, recovery when the simulator becomes available, and a reproducible distinction between menu/loading and observed active flight.
-Actual publication must remain unavailable throughout this unverified integration, including `waiting` for candidate live.
-If menu produces candidate live, mark the availability hypothesis contradicted; do not certify it from the publication guard alone.
+Actual publication must remain unavailable in menu/loading and may become live only after all availability conditions and a new valid sample.
+If an observed menu interval produces live, retain the contradiction and investigate before relying on that path.
 
 ### `attitude-signs`
 
@@ -286,12 +333,12 @@ If menu produces candidate live, mark the availability hypothesis contradicted; 
 Expected evidence: both observed physical signs match the application conventions after local radian conversion, and combined attitudes remain consistent.
 Inspect radians/degrees agreement separately as diagnostic evidence.
 The application requires positive nose-up pitch and positive right-wing-down roll.
-If observations contradict either sign, retain the raw data and identify which conversion needs revision before any live publication is enabled.
+If observations contradict either sign, retain the raw data and identify which conversion needs revision before relying on live publication in that environment.
 
 #### Direction evidence
 
 On 2026-10-27, the operator confirmed the maneuver order in the recorded
-`attiude-signs.jsonl` session (actual filename). Around 45–55 seconds, observed
+basic direction session. Around 45–55 seconds, observed
 nose-up corresponded to normalized pitch +7.4 degrees; around 65–80 seconds,
 nose-down corresponded to -3.6 degrees. The first long left bank corresponded
 to about -19.0 degrees, followed by a right bank around +31.6 degrees.
@@ -302,9 +349,9 @@ The session contained 11,461 valid samples and one rejected radians/degrees pair
 the cause of that isolated inconsistency is unresolved. It does not establish
 a sign error. [#5](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5)
 owns the input identity, observation evidence and remaining acceptance.
-Quantitative cockpit agreement, full combined-attitude/repetition coverage,
-availability, pause/menu behavior and broader compatibility are not certified
-by this basic direction confirmation.
+This basic direction confirmation does not certify quantitative cockpit agreement
+or broader compatibility. Later combined-pose confirmation and lifecycle evidence
+are summarized under [live-publication evidence](#live-publication-evidence).
 
 ### `attitude-unit-probe`
 
@@ -326,7 +373,7 @@ Interpret the comparisons within these limits:
 | Duplicate fields are rejected or the returned count differs | The configured probe was not accepted; retain the controlled error and do not infer the cause of the earlier four-field failures |
 | No probe anomaly recurs | Verifies the exercised conversion and lifecycle path, but provides no new recurrence evidence because the original disagreements were intermittent |
 
-Keep strict primary-radian validity and the conservative publication guard throughout the experiment.
+Keep strict primary-radian validity and lifecycle/freshness checks throughout the experiment.
 The consumer correction addresses the cross-unit rejection policy; the simulator's internal cause remains unresolved.
 
 ### `pause-modes`
@@ -349,7 +396,7 @@ Record any continued sample stream or combined/unknown pause flags; numeric move
 
 Expected evidence: retained samples are invalidated across flight transitions and candidate freshness requires samples from the new active flight.
 A retained filename or a successful state query must not be accepted as proof of flight availability.
-Any menu candidate live is a failed hypothesis requiring a follow-up experiment.
+Any live state during an independently observed menu interval is a contradiction requiring targeted investigation.
 
 #### Pause and menu evidence
 
@@ -363,10 +410,10 @@ The menu interval also reported flag 8 and remained unavailable. Subsequent
 Sim/FlightLoaded transitions cleared retained state, and candidate live returned
 only after a new sample. Thus flag 8 is not a unique ordinary-pause or menu
 discriminator, and a retained FlightLoaded filename or Sim query is insufficient
-to identify the UI phase. Exact cockpit-ready timing and complete lifecycle
-acceptance remain unverified. Four isolated paired-unit inconsistencies were
-rejected in this session; their cause remains unresolved. Keep raw evidence and
-the conservative availability guard.
+to identify the UI phase. Exact cockpit-ready timing was not independently recorded.
+Four isolated paired-unit inconsistencies were rejected by this historical schema-2 session; their cause remains unresolved.
+The later canonical-unit correction retains these discrepancies as diagnostic values without rejecting valid native radians.
+The [gate-release decision and current limits](#live-publication-evidence) supersede the earlier unconditional publication guard.
 
 ### `shutdown-restart-interruption`
 
@@ -382,10 +429,10 @@ Distinguish a watchdog-triggered retry from an observed native disconnect.
 
 ### `cancel-and-cpu`
 
-Use separate runs to stop with `Ctrl+C` during initial connection attempts, a maximum retry wait, idle/menu reception, active reception, pause, and reconnect.
-Hold each phase for at least 30 seconds before cancellation when possible.
-Also measure an idle/menu phase for 2 minutes and an active high-rate phase for 2 minutes, both with and without logging.
-Compare the runs to assess the effect of diagnostics; retain console observations for runs without a journal.
+For a concrete cancellation failure, select the affected phase: initial connection attempts, maximum retry wait, idle/menu reception, active reception, pause or reconnect.
+For a concrete CPU question, compare the affected stable phases with and without logging; a 2-minute window is a reference duration when appropriate.
+Retain console observations for runs without a journal.
+The [recorded active CPU and shutdown evidence](#live-publication-evidence) remains applicable; menu CPU is deferred and no stopwatch task is pending.
 
 For each phase, record process CPU time before/after the interval and its measured wall duration, or Task Manager CPU observations with the sampling method.
 CPU-seconds divided by wall-seconds expresses use relative to one logical CPU; state any normalization used for whole-machine percentages.
@@ -393,7 +440,7 @@ For logged runs, compare idle and active phases with dispatch/wake counts to ide
 Record machine load and logical CPU count so results remain interpretable.
 No numeric CPU acceptance threshold has yet been established by a live session.
 
-Measure from the cancellation request to process exit and state timing precision.
+If numeric cancellation latency is the question, measure from the cancellation request to process exit and state timing precision.
 Inspect Close/release/session-end records for logged runs and retain console output for all runs.
 Expected evidence: waiting and retrying can be cancelled promptly, continuous dispatch cannot starve cancellation, and normal shutdown releases the connection and handles before unloading the DLL.
 A hung native call, missing exit, failed Close, or unexplained CPU load is a failed observation requiring investigation.
@@ -403,10 +450,10 @@ A hung native call, missing exit, failed Close, or unexplained CPU load is a fai
 Compare logs with the sidecar observations and the questions in each scenario.
 Preserve raw evidence and diagnostic progress locally.
 When publication is requested, use a suitable acceptance summary against the tested revision in #5 or its linked validation record.
-Include actual versions, repetitions, confirmed results, contradictions, missing checks, and the next focused experiment.
+Include actual versions, repetitions, confirmed results, contradictions, missing checks, and a focused follow-up only when needed.
 Logs may contain local paths and flight filenames; inspect them before sharing.
 
-Simulator-free tests check CLI source/options, executable-relative DLL selection, SDK-independent builds, layout, decoding, conversion hypotheses, freshness, loader errors, retry bounds, cancellation, and optional diagnostic failure paths.
+Simulator-free tests check CLI source/options, executable-relative DLL selection, SDK-independent builds, layout, decoding, conversion, live/unavailable publication, freshness, loader errors, retry bounds, cancellation, and optional diagnostic failure paths.
 They also check exact-file append sessions, distinct session IDs, writer exclusion, partial-tail handling, and publication through the supplied telemetry channel.
 Use the shared [automated checks](testing/automated.md#automated-checks) for local validation.
 An additional opt-in cancellation smoke check requires an explicitly selected official DLL:

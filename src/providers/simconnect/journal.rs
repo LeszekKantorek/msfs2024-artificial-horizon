@@ -104,9 +104,10 @@ impl Journal {
             session_id,
         };
         if let Err(error) = active.record("session_start", json!({
-            "schema_version": 3, "started_unix_ms": (started_unix_ns / 1_000_000).to_string(),
+            "schema_version": 4, "started_unix_ms": (started_unix_ns / 1_000_000).to_string(),
             "clock": "UTC Unix epoch milliseconds", "process_id": std::process::id(),
-            "diagnostic_only": true, "availability_mapping_verified": false, "attitude_signs_verified": false,
+            "live_publication_enabled": true,
+            "validation_scope": "recorded MSFS2024 sessions; see docs/simconnect.md#live-publication-evidence",
         }), true) {
             // Dropping BufWriter retries writes; discard the failed buffer instead.
             let _ = active.writer.into_parts();

@@ -4,6 +4,7 @@
 | --- | --- |
 | 2026-10-26 | Accepted integration boundaries; receive, normalization, and lifecycle hypotheses require live evidence |
 | 2026-10-27 | Amended runtime entry point, DLL selection, and optional diagnostics; live evidence requirements retained |
+| 2026-10-27 | Accepted bounded live publication from accumulated MSFS2024 evidence; unconditional live-to-waiting gate removed |
 
 ## Context
 
@@ -39,7 +40,7 @@ The original native ownership, ABI, telemetry, and live-validation constraints r
 The initial API surface has eight exports: `SimConnect_Open`, `SimConnect_Close`, `SimConnect_GetNextDispatch`, `SimConnect_AddToDataDefinition`, `SimConnect_RequestDataOnSimObject`, `SimConnect_SubscribeToSystemEvent`, `SimConnect_RequestSystemState`, and `SimConnect_GetLastSentPacketID`.
 Add a declaration only for a demonstrated requirement.
 SDK 1.8.1, build 2603316, is the inspected header source.
-This does not claim that any live SDK/DLL/simulator combination has passed acceptance.
+The declaration source alone does not establish live SDK/DLL/simulator compatibility.
 
 No wrapper crate, binding generator, separate package, C++ helper, general SDK framework, new telemetry queue, or extra high-level adapter layer is introduced.
 The diagnostic journal is local experiment output, separate from latest-state distribution.
@@ -82,27 +83,49 @@ They support verification but do not independently prove the ABI; real integrati
 The [SimConnect reference](../simconnect.md) owns diagnostic behavior, repeatable scenarios, and observation procedures.
 Execution results and acceptance evidence belong in #5 or its linked validation record.
 
-These choices remain hypotheses:
+The original acceptance left these choices as hypotheses:
 
 * `GetNextDispatch` with a Windows notification event, separate cancellation event, bounded batches, and 50 ms waits provides reliable reception with acceptable CPU use and shutdown.
 * Five-second state queries and a 15-second packet-silence watchdog provide useful connection diagnostics.
 * `Sim`, `Pause_EX1`, and `FlightLoaded`, combined with fresh samples, can distinguish active flight from menu/loading and both pause modes.
 
-Negating pitch and bank, with bank wrapping, now has [basic direction evidence](../simconnect.md#direction-evidence)
+Negating pitch and bank, with bank wrapping, has [basic direction evidence](../simconnect.md#direction-evidence)
 from a recorded live session paired with operator-confirmed nose-up/down and left/right maneuvers.
 That supports retaining the conversion in the tested setup; it does not certify
-exact cockpit angles, all combined attitudes or compatibility with other versions.
+exact cockpit angles or compatibility with other versions.
+Later combined-pose confirmation and bounded lifecycle results are recorded in the [feature evidence summary](../simconnect.md#live-publication-evidence).
 
-The integration requests each attitude variable in both radians and degrees and, when diagnostics are enabled, records raw values before normalization and publication.
+Native radians are the authoritative input, converted locally; requested degrees and repeated radians are diagnostic only when logging is enabled.
+Raw values are recorded before normalization and publication when diagnostics are enabled.
 The existing 1000 ms freshness limit remains unchanged.
 New equal samples can be fresh; cached values and heartbeat queries cannot refresh sample age.
-An unverified candidate live state is deliberately published as `waiting`, so diagnostic hypotheses cannot become live application telemetry.
-That guard does not prove correct flight detection or signs.
+The original accepted plan required candidate live to be published as `waiting` until signs and availability had supporting evidence.
+That guard prevented unverified diagnostic hypotheses from becoming live application telemetry; it did not prove correct flight detection or signs.
+Historical schema 1–3 logs retain this behavior.
 
-No live run, confirmed physical sign, verified menu/pause mapping, reliable dispatch/wait strategy, or successful reconnect/cleanup measurement is established by accepting this ADR.
+The original structural acceptance did not establish a live run, physical signs, menu/pause mapping, reliable dispatch/wait behavior or successful reconnect/cleanup.
 Runtime version records and executable hashes identify context and bytes; separate local build evidence is needed for source/compiler provenance.
-Repeated logs must be paired with observed simulator actions and attitudes.
-Successful console acquisition would still not establish HTTP/SSE, multi-client, or mobile acceptance.
+Logs must be paired with observed simulator actions and attitudes for physical and lifecycle claims.
+Successful console acquisition does not establish HTTP/SSE, multi-client or mobile acceptance.
+
+## Live-publication amendment, 2026-10-27
+
+The accumulated evidence is sufficient to remove the unconditional candidate-live-to-`waiting` gate within the recorded MSFS2024 sessions' scope.
+The [SimConnect feature guide](../simconnect.md#live-publication-evidence) owns the dated sources, results, decision rationale and limits.
+It records confirmed basic signs and combined poses, unavailable publication during observed pause/menu intervals, fresh-sample recovery, forced simulator termination/reconnect, no-log reception and qualitative shutdown confirmation.
+Three corrected logged sessions at runtime revision `ca483b9` contain 33,425 valid canonical samples without false-invalid transitions; no false-live interval was recorded in the observed scenarios.
+
+Live publication continues to require a running simulator, a loaded flight, zero pause flags and a fresh finite, in-range sample.
+Pause, invalid data, disconnect and flight transitions invalidate retained attitude.
+Resume requires a new sample; every new valid sample, including equal values, refreshes publication, while queries and cached values do not.
+The 1000 ms freshness limit and typed `Publisher`/watch boundary remain unchanged.
+Schema 4 identifies enabled live publication and its bounded evidence scope; historical guarded logs retain their original meanings.
+
+The recorded live sessions exercised candidate states under the earlier publication guard.
+Automated regressions validate the changed publication path; this amendment does not claim a new live run of the gate-release change.
+Exact cockpit-ready timestamps remain an accepted scenario assumption, precise cockpit-angle agreement and broader version compatibility remain unestablished, and short active CPU observations do not constitute a benchmark.
+Menu CPU is deferred; no new stopwatch measurement or repetition of completed maneuvers is required without a concrete question or contradiction.
+Issue #5 remains open. HTTP/SSE and live EFI remain #6; SDK/DLL packaging and redistribution remain #8.
 
 ## Consequences and reconsideration
 
@@ -116,5 +139,5 @@ No conclusion is drawn from other projects' distribution practices.
 Reconsider the receive/wait strategy if measured events, empty queues, CPU use, or shutdown contradict it.
 Reconsider lifecycle and sign conversion only against raw records paired with independent simulator observations.
 Suspend an unsafe native path when ABI or bounds handling is suspect.
-If active flight cannot be distinguished reliably from menu or pause, retain unavailable publication and investigate before #6.
+If observations contradict the availability checks, keep the affected path unavailable and investigate before relying on it in #6.
 Changes requiring additional API surface, packages, queues, helper languages, or altered telemetry contracts require a demonstrated need and an agreed scope amendment.

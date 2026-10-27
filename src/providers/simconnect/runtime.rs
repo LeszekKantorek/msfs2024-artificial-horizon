@@ -110,7 +110,7 @@ pub async fn run(
     };
     println!("SimConnect DLL: {}", dll.display());
     println!(
-        "Flight availability and attitude signs remain unverified. No HTTP server in issue #5. Press Ctrl+C to stop."
+        "Live telemetry requires an active, unpaused flight and fresh valid samples. No HTTP server in issue #5. Press Ctrl+C to stop."
     );
     let stop = match Event::new(true) {
         Ok(event) => Arc::new(event),
@@ -253,7 +253,7 @@ fn worker(
         "base_requested_fields": ["pitch radians", "bank radians"],
         "angular_input": "native radians; convert to degrees locally",
         "unit_probe_profile": "SDK degrees and repeated radians are diagnostics only; six fields if logging is enabled at connection open",
-        "sign_hypothesis": "negate pitch and bank; normalize bank to [-180,180)",
+        "sign_convention": "positive nose up and right wing down; native pitch and bank negated",
         "note": "runtime toolchain/git metadata is contextual; executable SHA-256 identifies the tested bytes",
     }), true);
     journal.record("dll_identity", || identity(dll), true);
@@ -305,7 +305,7 @@ fn connections(
         transition: None,
     };
     let mut lifecycle = Lifecycle::default();
-    output.update(&lifecycle, journal, Instant::now())?;
+    output.update(&lifecycle, journal, Instant::now(), None)?;
     let mut generation = 0_u64;
     let mut failures = 0_u32;
     loop {
@@ -345,7 +345,7 @@ fn connections(
             journal.record("api_result", || json!({ "operation": "SimConnect_Open", "success": true, "generation": generation }), true);
             println!("SimConnect connected (session {generation}).");
             lifecycle.connect();
-            output.update(&lifecycle, journal, Instant::now())?;
+            output.update(&lifecycle, journal, Instant::now(), None)?;
             session(
                 &mut connection,
                 notification.event(),
@@ -373,7 +373,7 @@ fn connections(
         );
         drop(notification);
         lifecycle.disconnect();
-        output.update(&lifecycle, journal, Instant::now())?;
+        output.update(&lifecycle, journal, Instant::now(), None)?;
         match result? {
             SessionEnd::Stop => return Ok(()),
             SessionEnd::Reconnect => {}
@@ -420,7 +420,7 @@ impl Drop for Notification<'_> {
 
 struct Output {
     publisher: Publisher,
-    transition: Option<(&'static str, &'static str, &'static str)>,
+    transition: Option<(&'static str, &'static str)>,
 }
 impl Output {
     fn update(
@@ -428,29 +428,37 @@ impl Output {
         lifecycle: &Lifecycle,
         journal: &mut Journal,
         now: Instant,
+        received_at: Option<Instant>,
     ) -> Result<(), SimConnectError> {
-        self.publisher.expire()?;
         let evaluation = lifecycle.evaluate(now);
-        let transition = (
-            state_name(evaluation.candidate),
-            state_name(evaluation.published),
-            evaluation.reason,
-        );
-        if self.transition != Some(transition) {
-            self.publisher.publish(evaluation.published)?;
+        let transition = (state_name(evaluation.state), evaluation.reason);
+        let changed = self.transition != Some(transition);
+        match evaluation.state {
+            // Publish each new acquisition, including equal angles. Timer ticks
+            // and lifecycle queries must never republish a cached live sample.
+            telemetry::State::Live(attitude) => {
+                if let Some(received_at) = received_at {
+                    self.publisher
+                        .publish_attitude_at(attitude, received_at.into())?;
+                }
+            }
+            state if changed => self.publisher.publish(state)?,
+            _ => {}
+        }
+        if changed {
             journal.record(
                 "state_transition",
                 || {
                     json!({ "candidate_state": transition.0,
-                "candidate_is_hypothesis": true, "published": self.publisher.snapshot(),
+                "candidate_is_hypothesis": false, "published": self.publisher.snapshot(),
                 "reason": evaluation.reason,
-                "note": "unverified live hypotheses remain waiting in application telemetry" })
+                "note": "live publication requires a new valid sample from an active, unpaused flight" })
                 },
                 true,
             );
             println!(
                 "State: {} (candidate: {}, {})",
-                transition.1, transition.0, transition.2
+                transition.0, transition.0, transition.1
             );
             self.transition = Some(transition);
         }
@@ -638,9 +646,11 @@ fn session(
                     return Err(error.into());
                 }
             };
+            let packet_received_at = Instant::now();
             counters.packets += 1;
             last_packet = Instant::now();
             let is_attitude = matches!(packet.message, Message::Attitude { .. });
+            let mut received_at = None;
             journal.record("dispatch", || json!(&packet), !is_attitude);
             match packet.message {
                 Message::Quit => {
@@ -698,7 +708,7 @@ fn session(
                     unit_probe,
                     ..
                 } => {
-                    let now = Instant::now();
+                    let now = packet_received_at;
                     sample_index += 1;
                     journal.record("attitude_raw", || json!({
                         "sample_index": sample_index,
@@ -737,18 +747,19 @@ fn session(
                     let candidate = candidate_attitude(radians);
                     journal.record("attitude_sample", || json!({
                         "sample_index": sample_index,
-                        "candidate_attitude": candidate.as_ref().ok(), "candidate_is_hypothesis": true,
+                        "candidate_attitude": candidate.as_ref().ok(), "candidate_is_hypothesis": false,
                         "validation_error": candidate.as_ref().err().map(ToString::to_string),
                     }), false);
                     last_sample = Some(now);
                     lifecycle.sample(candidate, now);
+                    received_at = Some(now);
                 }
                 _ => {}
             }
-            output.update(lifecycle, journal, Instant::now())?;
+            output.update(lifecycle, journal, Instant::now(), received_at)?;
         }
         let now = Instant::now();
-        output.update(lifecycle, journal, now)?;
+        output.update(lifecycle, journal, now, None)?;
         if summary.elapsed() >= Duration::from_secs(1) {
             journal.record(
                 "dispatch_summary",
@@ -867,7 +878,7 @@ mod tests {
         let mut journal = Journal::failing_for_test();
         let mut lifecycle = Lifecycle::default();
         output
-            .update(&lifecycle, &mut journal, Instant::now())
+            .update(&lifecycle, &mut journal, Instant::now(), None)
             .unwrap();
         assert!(matches!(journal.status(), DiagnosticStatus::Failed { .. }));
         assert_eq!(
@@ -876,12 +887,207 @@ mod tests {
         );
         lifecycle.connect();
         output
-            .update(&lifecycle, &mut journal, Instant::now())
+            .update(&lifecycle, &mut journal, Instant::now(), None)
             .unwrap();
         let snapshot = serde_json::to_value(subscription.snapshot()).unwrap();
         assert_eq!(snapshot["state"], "waiting");
         assert_eq!(snapshot["sequence"], 2);
         assert_eq!(snapshot["source"], "simconnect");
+        lifecycle.sim(true);
+        lifecycle.pause(0);
+        lifecycle.flight("active.flt", true);
+        let now = Instant::now();
+        lifecycle.sample(Ok(telemetry::Attitude::new(5.0, -10.0).unwrap()), now);
+        output
+            .update(&lifecycle, &mut journal, now, Some(now))
+            .unwrap();
+        let snapshot = serde_json::to_value(subscription.snapshot()).unwrap();
+        assert_eq!(snapshot["state"], "live");
+        assert_eq!(snapshot["attitude"]["pitch_deg"], 5.0);
+        assert!(matches!(journal.status(), DiagnosticStatus::Failed { .. }));
+    }
+
+    #[test]
+    fn every_new_sample_publishes_but_queries_and_ticks_do_not_refresh_cached_values() {
+        let (publisher, subscription) = telemetry::channel(Source::SimConnect);
+        let mut output = Output {
+            publisher,
+            transition: None,
+        };
+        let mut journal = Journal::open(None, &[]).unwrap();
+        let mut lifecycle = Lifecycle::default();
+        lifecycle.connect();
+        lifecycle.sim(true);
+        lifecycle.pause(0);
+        lifecycle.flight("active.flt", true);
+        let now = Instant::now();
+        let first_at = now - Duration::from_millis(600);
+        let first = telemetry::Attitude::new(5.0, -10.0).unwrap();
+        lifecycle.sample(Ok(first), first_at);
+        output
+            .update(&lifecycle, &mut journal, now, Some(first_at))
+            .unwrap();
+        let snapshot = serde_json::to_value(subscription.snapshot()).unwrap();
+        assert_eq!(snapshot["state"], "live");
+        assert_eq!(snapshot["sequence"], 1);
+        assert!(snapshot["sample_age_ms"].as_u64().unwrap() >= 600);
+
+        // Repeated system state and freshness checks contain no new acquisition.
+        lifecycle.sim(true);
+        lifecycle.flight("active.flt", false);
+        for _ in 0..3 {
+            output.update(&lifecycle, &mut journal, now, None).unwrap();
+        }
+        let snapshot = serde_json::to_value(subscription.snapshot()).unwrap();
+        assert_eq!(snapshot["sequence"], 1);
+        assert!(snapshot["sample_age_ms"].as_u64().unwrap() >= 600);
+
+        let second_at = now - Duration::from_millis(400);
+        let second = telemetry::Attitude::new(-7.0, 30.0).unwrap();
+        lifecycle.sample(Ok(second), second_at);
+        output
+            .update(&lifecycle, &mut journal, now, Some(second_at))
+            .unwrap();
+        let snapshot = serde_json::to_value(subscription.snapshot()).unwrap();
+        assert_eq!(snapshot["sequence"], 2);
+        assert_eq!(snapshot["attitude"]["pitch_deg"], -7.0);
+        assert_eq!(snapshot["attitude"]["roll_deg"], 30.0);
+        assert!(snapshot["sample_age_ms"].as_u64().unwrap() >= 400);
+
+        // Equal angles, even at the same clock resolution, are a new callback.
+        lifecycle.sample(Ok(second), second_at);
+        output
+            .update(&lifecycle, &mut journal, now, Some(second_at))
+            .unwrap();
+        assert_eq!(
+            serde_json::to_value(subscription.snapshot()).unwrap()["sequence"],
+            3
+        );
+        let equal_at = now - Duration::from_millis(200);
+        lifecycle.sample(Ok(second), equal_at);
+        output
+            .update(&lifecycle, &mut journal, now, Some(equal_at))
+            .unwrap();
+        let snapshot = serde_json::to_value(subscription.snapshot()).unwrap();
+        assert_eq!(snapshot["sequence"], 4);
+        assert!(snapshot["sample_age_ms"].as_u64().unwrap() >= 200);
+
+        // The lifecycle's independent tick expires data even without callbacks.
+        output
+            .update(
+                &lifecycle,
+                &mut journal,
+                equal_at + telemetry::STALE_AFTER,
+                None,
+            )
+            .unwrap();
+        let snapshot = serde_json::to_value(subscription.snapshot()).unwrap();
+        assert_eq!(snapshot["state"], "stale");
+        assert!(snapshot["attitude"].is_null());
+        assert_eq!(snapshot["sequence"], 5);
+    }
+
+    #[test]
+    fn pause_modes_menu_new_flight_and_reconnect_require_new_samples_before_live() {
+        let (publisher, subscription) = telemetry::channel(Source::SimConnect);
+        let mut output = Output {
+            publisher,
+            transition: None,
+        };
+        let mut journal = Journal::open(None, &[]).unwrap();
+        let mut lifecycle = Lifecycle::default();
+        let now = Instant::now();
+        let attitude = telemetry::Attitude::new(3.0, 12.0).unwrap();
+        let state = || serde_json::to_value(subscription.snapshot()).unwrap()["state"].clone();
+        lifecycle.connect();
+        output.update(&lifecycle, &mut journal, now, None).unwrap();
+        assert_eq!(state(), "waiting");
+        lifecycle.sim(true);
+        lifecycle.pause(0);
+        lifecycle.flight("first.flt", true);
+        lifecycle.sample(Ok(attitude), now);
+        output
+            .update(&lifecycle, &mut journal, now, Some(now))
+            .unwrap();
+        assert_eq!(state(), "live");
+        for flags in [4, 8, 9, 0x8000_0000] {
+            lifecycle.pause(flags);
+            lifecycle.sample(Ok(attitude), now);
+            output
+                .update(&lifecycle, &mut journal, now, Some(now))
+                .unwrap();
+            assert_eq!(state(), "paused");
+            assert!(serde_json::to_value(subscription.snapshot()).unwrap()["attitude"].is_null());
+            lifecycle.pause(0);
+            output.update(&lifecycle, &mut journal, now, None).unwrap();
+            assert_eq!(state(), "waiting");
+            lifecycle.sample(Ok(attitude), now);
+            output
+                .update(&lifecycle, &mut journal, now, Some(now))
+                .unwrap();
+            assert_eq!(state(), "live");
+        }
+        lifecycle.sim(false);
+        lifecycle.flight("second.flt", true);
+        lifecycle.sample(Ok(attitude), now);
+        output
+            .update(&lifecycle, &mut journal, now, Some(now))
+            .unwrap();
+        assert_eq!(state(), "waiting");
+        lifecycle.sim(true);
+        output.update(&lifecycle, &mut journal, now, None).unwrap();
+        assert_eq!(state(), "waiting");
+        lifecycle.sample(Ok(attitude), now);
+        output
+            .update(&lifecycle, &mut journal, now, Some(now))
+            .unwrap();
+        assert_eq!(state(), "live");
+        lifecycle.disconnect();
+        output.update(&lifecycle, &mut journal, now, None).unwrap();
+        assert_eq!(state(), "disconnected");
+        lifecycle.connect();
+        lifecycle.sim(true);
+        lifecycle.pause(0);
+        lifecycle.flight("second.flt", true);
+        output.update(&lifecycle, &mut journal, now, None).unwrap();
+        assert_eq!(state(), "waiting");
+        lifecycle.sample(Ok(attitude), now);
+        output
+            .update(&lifecycle, &mut journal, now, Some(now))
+            .unwrap();
+        assert_eq!(state(), "live");
+    }
+
+    #[test]
+    fn invalid_or_already_expired_acquisitions_never_publish_live() {
+        let (publisher, subscription) = telemetry::channel(Source::SimConnect);
+        let mut output = Output {
+            publisher,
+            transition: None,
+        };
+        let mut journal = Journal::open(None, &[]).unwrap();
+        let mut lifecycle = Lifecycle::default();
+        lifecycle.connect();
+        lifecycle.sim(true);
+        lifecycle.pause(0);
+        lifecycle.flight("active.flt", true);
+        let now = Instant::now();
+        let expired = now - telemetry::STALE_AFTER;
+        lifecycle.sample(Ok(telemetry::Attitude::new(1.0, 2.0).unwrap()), expired);
+        output
+            .update(&lifecycle, &mut journal, now, Some(expired))
+            .unwrap();
+        assert_eq!(
+            serde_json::to_value(subscription.snapshot()).unwrap()["state"],
+            "stale"
+        );
+        lifecycle.sample(candidate_attitude([f64::NAN, 0.0]), now);
+        output
+            .update(&lifecycle, &mut journal, now, Some(now))
+            .unwrap();
+        let snapshot = serde_json::to_value(subscription.snapshot()).unwrap();
+        assert_eq!(snapshot["state"], "invalid");
+        assert!(snapshot["attitude"].is_null());
     }
 
     #[test]
@@ -918,6 +1124,9 @@ mod tests {
             .lines()
             .map(|line| serde_json::from_str(line).unwrap())
             .collect();
+        assert_eq!(records[0]["data"]["schema_version"], 4);
+        assert_eq!(records[0]["data"]["live_publication_enabled"], true);
+        assert!(records[0]["data"].get("attitude_signs_verified").is_none());
         assert!(
             records
                 .iter()

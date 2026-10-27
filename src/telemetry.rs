@@ -523,23 +523,32 @@ impl Publisher {
 
     /// Live means a fresh callback from an active, unpaused source, not cached data.
     pub fn publish(&mut self, state: State) -> Result<(), TelemetryError> {
-        self.publish_values(state, None)
+        self.publish_values(state, None, Instant::now())
+    }
+    /// Preserve the adapter's receive time across normalization and diagnostics.
+    pub(crate) fn publish_attitude_at(
+        &mut self,
+        attitude: Attitude,
+        received_at: Instant,
+    ) -> Result<(), TelemetryError> {
+        self.publish_values(State::Live(attitude), None, received_at)
     }
     /// Publish one fresh acquisition atomically, sharing sequence and age with attitude.
     pub fn publish_sample(&mut self, sample: FlightSample) -> Result<(), TelemetryError> {
-        self.publish_values(State::Live(sample.attitude), Some(sample))
+        self.publish_values(State::Live(sample.attitude), Some(sample), Instant::now())
     }
     fn publish_values(
         &mut self,
         state: State,
         sample: Option<FlightSample>,
+        received_at: Instant,
     ) -> Result<(), TelemetryError> {
         if self.current.sequence == MAX_SEQUENCE {
             return Err(TelemetryError::SequenceExhausted);
         }
         self.current.sequence += 1;
         if matches!(state, State::Live(_)) {
-            self.current.accepted_at = Some(Instant::now());
+            self.current.accepted_at = Some(received_at);
         }
         self.current.state = state;
         self.current.heading = sample.as_ref().and_then(|s| s.heading_deg);

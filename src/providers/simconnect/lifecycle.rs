@@ -1,5 +1,4 @@
-//! Experimental interpretation; an unverified active-flight hypothesis is never
-//! published as live application telemetry.
+//! Conservative flight availability from lifecycle signals and fresh samples.
 use crate::telemetry::{Attitude, STALE_AFTER, State, TelemetryError};
 use std::time::Instant;
 
@@ -20,8 +19,7 @@ pub(super) struct Lifecycle {
 }
 
 pub(super) struct Evaluation {
-    pub candidate: State,
-    pub published: State,
+    pub state: State,
     pub reason: &'static str,
 }
 
@@ -83,7 +81,7 @@ impl Lifecycle {
     }
 
     pub(super) fn evaluate(&self, now: Instant) -> Evaluation {
-        let (candidate, reason) = if !self.connected {
+        let (state, reason) = if !self.connected {
             (State::Disconnected, "connection_unavailable")
         } else if self.pause.is_some_and(|flags| flags != 0) {
             (State::Paused, "explicit_pause_flags")
@@ -100,20 +98,13 @@ impl Lifecycle {
             } else {
                 (
                     State::Live(attitude),
-                    "active_flight_and_signs_are_unverified_hypotheses",
+                    "active_unpaused_flight_and_fresh_valid_sample",
                 )
             }
         } else {
             (State::Waiting, "new_valid_sample_required")
         };
-        Evaluation {
-            published: match candidate {
-                State::Live(_) => State::Waiting,
-                other => other,
-            },
-            candidate,
-            reason,
-        }
+        Evaluation { state, reason }
     }
 }
 
@@ -163,15 +154,11 @@ mod tests {
         lifecycle.sample(Ok(attitude()), at);
         lifecycle.sample(Ok(attitude()), at + Duration::from_millis(900));
         assert!(matches!(
-            lifecycle
-                .evaluate(at + Duration::from_millis(1800))
-                .candidate,
+            lifecycle.evaluate(at + Duration::from_millis(1800)).state,
             State::Live(_)
         ));
         assert!(matches!(
-            lifecycle
-                .evaluate(at + Duration::from_millis(1900))
-                .candidate,
+            lifecycle.evaluate(at + Duration::from_millis(1900)).state,
             State::Stale
         ));
     }
@@ -183,37 +170,39 @@ mod tests {
         lifecycle.sample(Ok(attitude()), at);
         lifecycle.pause(4);
         lifecycle.sample(Ok(attitude()), at);
-        assert!(matches!(lifecycle.evaluate(at).published, State::Paused));
+        assert!(matches!(lifecycle.evaluate(at).state, State::Paused));
         lifecycle.pause(0);
-        assert!(matches!(lifecycle.evaluate(at).candidate, State::Waiting));
+        assert!(matches!(lifecycle.evaluate(at).state, State::Waiting));
         lifecycle.sample(Ok(attitude()), at);
         lifecycle.sim(false);
         lifecycle.sim(true);
-        assert!(matches!(lifecycle.evaluate(at).candidate, State::Waiting));
+        assert!(matches!(lifecycle.evaluate(at).state, State::Waiting));
         lifecycle.sample(Ok(attitude()), at);
         lifecycle.flight("test.flt", true);
-        assert!(matches!(lifecycle.evaluate(at).candidate, State::Waiting));
+        assert!(matches!(lifecycle.evaluate(at).state, State::Waiting));
     }
 
     #[test]
-    fn open_and_heartbeats_do_not_prove_flight_and_unverified_live_is_not_published() {
+    fn live_requires_complete_lifecycle_and_a_new_sample_after_reconnect() {
         let at = Instant::now();
         let mut lifecycle = Lifecycle::default();
         lifecycle.connect();
         lifecycle.sample(Ok(attitude()), at);
-        assert!(matches!(lifecycle.evaluate(at).candidate, State::Waiting));
+        assert!(matches!(lifecycle.evaluate(at).state, State::Waiting));
         lifecycle = active();
         lifecycle.sample(Ok(attitude()), at);
         let evaluated = lifecycle.evaluate(at);
-        assert!(matches!(evaluated.candidate, State::Live(_)));
-        assert!(matches!(evaluated.published, State::Waiting));
+        assert!(matches!(evaluated.state, State::Live(_)));
         lifecycle.disconnect();
-        assert!(matches!(
-            lifecycle.evaluate(at).published,
-            State::Disconnected
-        ));
+        assert!(matches!(lifecycle.evaluate(at).state, State::Disconnected));
         lifecycle.connect();
-        assert!(matches!(lifecycle.evaluate(at).published, State::Waiting));
+        assert!(matches!(lifecycle.evaluate(at).state, State::Waiting));
+        lifecycle.sim(true);
+        lifecycle.pause(0);
+        lifecycle.flight("new.flt", true);
+        assert!(matches!(lifecycle.evaluate(at).state, State::Waiting));
+        lifecycle.sample(Ok(attitude()), at);
+        assert!(matches!(lifecycle.evaluate(at).state, State::Live(_)));
     }
 
     #[test]
@@ -221,12 +210,12 @@ mod tests {
         let mut lifecycle = active();
         let at = Instant::now();
         lifecycle.sample(Err(TelemetryError::InvalidAttitude), at);
-        assert!(matches!(lifecycle.evaluate(at).published, State::Invalid));
+        assert!(matches!(lifecycle.evaluate(at).state, State::Invalid));
         lifecycle.pause(1);
-        assert!(matches!(lifecycle.evaluate(at).published, State::Paused));
+        assert!(matches!(lifecycle.evaluate(at).state, State::Paused));
         lifecycle.pause(0);
         lifecycle.sample(Ok(attitude()), at);
-        assert!(matches!(lifecycle.evaluate(at).candidate, State::Live(_)));
+        assert!(matches!(lifecycle.evaluate(at).state, State::Live(_)));
     }
 
     #[test]
@@ -272,8 +261,7 @@ mod tests {
             let mut lifecycle = active();
             let now = Instant::now();
             lifecycle.sample(Ok(value), now);
-            assert!(matches!(lifecycle.evaluate(now).candidate, State::Live(_)));
-            assert!(matches!(lifecycle.evaluate(now).published, State::Waiting));
+            assert!(matches!(lifecycle.evaluate(now).state, State::Live(_)));
         }
     }
 }

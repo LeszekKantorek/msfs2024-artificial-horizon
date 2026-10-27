@@ -7,7 +7,7 @@ then open its address in a browser on the same network.
 **Windows x64** · **Read-only browser display** · **No phone app or account**
 
 > **Try the demo today.** The executable displays synthetic attitude, IAS, TAS, GS, altitude, selected-altitude alerts, vertical speed, pressure, magnetic heading, slip/skid, and turn rate.
-> SimConnect reception is available for local validation without the browser display. Live simulator behavior remains unverified. This is not a real-flight instrument.
+> SimConnect publishes live attitude locally within the [recorded MSFS2024 evidence scope](docs/simconnect.md#live-publication-evidence), without the browser display. This is not a real-flight instrument.
 
 [Start the demo](#start-the-demo) · [Use your phone](#use-your-phone) · [Development](CONTRIBUTING.md)
 
@@ -97,8 +97,9 @@ The default DLL location is independent of the working directory.
 Optional `--log` appends sessions to exactly the supplied file; distinguish scenarios by filename.
 See [SimConnect setup and scenarios](docs/simconnect.md) for requirements and observation procedures.
 This mode starts no HTTP/SSE listener in #5; browser integration belongs to #6.
-Basic pitch/bank directions have paired live-log and operator support; see the linked reference for evidence limits.
-Full availability, dispatch, reconnect and cleanup acceptance remains incomplete.
+Live publication requires a running simulator, a loaded flight, zero pause flags, and a fresh valid sample.
+Recorded sessions support signs, pause/menu unavailability, fresh-sample recovery and reconnect in the tested setup; see [evidence and limits](docs/simconnect.md#live-publication-evidence).
+Issue #5 remains open; broader compatibility and complete performance coverage are not established.
 
 ## Project guide
 

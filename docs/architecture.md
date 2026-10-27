@@ -77,7 +77,7 @@ src/
   providers/
     mod.rs                  # source boundary
     demo.rs
-    simconnect/             # minimal native ABI, worker, lifecycle hypotheses, journal
+    simconnect/             # minimal native ABI, worker, lifecycle validation, journal
       mod.rs                # Windows SDK integration boundary
   http/
     mod.rs                  # asset/health composition, telemetry routes, application state
@@ -205,7 +205,7 @@ The default DLL is `SimConnect.dll` beside the running executable, independent o
 An optional absolute `--dll` override has precedence, with no fallback or search through `PATH`, the working directory, or SDK installations.
 Dependency search is restricted to the selected DLL directory and Windows system directory.
 These choices do not establish release packaging or redistribution permission.
-SDK 1.8.1, build 2603316, identifies the inspected declarations; live compatibility remains unverified.
+SDK 1.8.1, build 2603316, identifies the inspected declarations; recorded live evidence is bounded to the tested setup, without a general version-compatibility claim.
 
 Optional `--log` appends to exactly the supplied file, with one session ID on every record.
 Scenario names belong to filenames and observations, not module configuration or journal metadata.
@@ -213,13 +213,16 @@ Initial diagnostic failure aborts before DLL loading; later write/flush failure 
 Acquisition outcome and disabled, complete, or failed diagnostics remain separately visible to callers.
 The [SimConnect reference](simconnect.md#run-a-session) owns the file, failure, and observation requirements.
 
-Live logs and operator observations support the [basic pitch/bank directions](simconnect.md#direction-evidence).
-The experiment must still complete combined-attitude and quantitative cockpit checks, active-flight/menu/pause detection, dispatch/wait behavior, freshness, reconnect, CPU use, and cleanup acceptance from repeated simulator sessions.
-Raw values and candidate states are diagnostic hypotheses.
-Candidate live is published as `waiting` until availability and signs are verified.
+The [live-publication evidence](simconnect.md#live-publication-evidence) supports native-radian conversion, pitch/bank signs, observed pause/menu unavailability, fresh-sample recovery and reconnect in the recorded MSFS2024 sessions.
+The 2026-10-27 gate-release decision permits `live` through the existing `Publisher` when the simulator is running, a flight is loaded, pause flags are zero, and a fresh finite, in-range sample is available.
+Pause, invalid data, disconnect and flight transitions clear retained attitude; resume requires a new sample.
+Every new valid sample, including an equal attitude, refreshes publication; queries and cached data do not.
+The 1000 ms freshness limit is unchanged.
+Historical schema 1–3 logs retain the earlier candidate-live-to-`waiting` guard; schema 4 identifies enabled live publication.
+Exact cockpit-readiness timing, quantitative angle agreement, broader compatibility and complete performance coverage remain evidence limits.
 The [wire contract](telemetry-contract.md) retains its normalized units and freshness rules.
 
-Issue #5 remains open for this evidence.
+Issue #5 remains open for final acceptance work; the gate-release decision does not close it.
 HTTP/SSE, multiple clients, and browser integration of the same acquisition module remain in [#6](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/6).
 SDK/DLL distribution conditions and packaging remain to be established before release in [#8](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/8); dynamic loading establishes no redistribution permission.
 
