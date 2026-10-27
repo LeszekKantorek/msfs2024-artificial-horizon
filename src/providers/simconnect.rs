@@ -1,10 +1,11 @@
-//! Diagnostic-only SimConnect experiment. Production acquisition remains issue #6.
+//! SimConnect acquisition shared by the application and its optional diagnostics.
 //!
-//! The native library is loaded only by an explicitly started probe worker.
+//! Only explicit SimConnect selection loads native code. HTTP integration is #6.
 mod event;
 mod journal;
 mod lifecycle;
 mod native;
-mod probe;
+mod runtime;
 
-pub use probe::{ProbeConfig, ProbeError, run_probe};
+pub use journal::DiagnosticStatus;
+pub use runtime::{RunReport, SimConnectConfig, SimConnectError, resolve_dll, run};

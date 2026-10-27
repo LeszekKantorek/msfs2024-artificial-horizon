@@ -13,7 +13,7 @@ pub enum Source {
 #[derive(Debug, thiserror::Error)]
 pub enum SourceError {
     #[error(
-        "SimConnect integration is not implemented yet (issues #5 and #6); explicitly select --source demo to start the HTTP skeleton"
+        "SimConnect HTTP/SSE integration belongs to issue #6; use the application's --source simconnect mode for acquisition without HTTP, or --source demo for the server"
     )]
     SimConnectUnavailable,
 }

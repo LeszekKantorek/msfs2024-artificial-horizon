@@ -7,7 +7,7 @@ then open its address in a browser on the same network.
 **Windows x64** · **Read-only browser display** · **No phone app or account**
 
 > **Try the demo today.** The executable displays synthetic attitude, IAS, TAS, GS, altitude, selected-altitude alerts, vertical speed, pressure, magnetic heading, slip/skid, and turn rate.
-> MSFS2024 integration remains planned. This is not a real-flight instrument.
+> SimConnect reception is available for local validation without the browser display. Live simulator behavior remains unverified. This is not a real-flight instrument.
 
 [Start the demo](#start-the-demo) · [Use your phone](#use-your-phone) · [Development](CONTRIBUTING.md)
 
@@ -84,11 +84,20 @@ cargo run --locked --bin msfs2024-artificial-horizon -- --source demo --listen-a
 | Port occupied | Select another `--port` from `1` to `65535` |
 | Invalid address | Use an IPv4/IPv6 address, not a hostname, multicast address, or IPv4 broadcast address |
 | Phone cannot connect | Check the private network, PC address, port, VPN interface, and firewall scope |
-| SimConnect selection fails | `--source simconnect` is not implemented. Demo never replaces it automatically |
+| SimConnect DLL cannot load | Place the official x64 DLL beside the executable or supply an absolute `--dll` path. Demo never replaces SimConnect automatically |
 
-The separate [SimConnect console probe](docs/simconnect-probe.md) records diagnostic sessions for local simulator testing.
-It requires an explicit DLL path and scenario and does not start the browser display.
-Live signs, availability, and lifecycle behavior remain unverified.
+Select native reception with `--source simconnect`:
+
+```powershell
+cargo run --locked --release --bin msfs2024-artificial-horizon -- --source simconnect --log ".local\simconnect-sessions\active-pause.jsonl"
+```
+
+Place `SimConnect.dll` beside the running executable, or add `--dll` with its absolute path.
+The default DLL location is independent of the working directory.
+Optional `--log` appends sessions to exactly the supplied file; distinguish scenarios by filename.
+See [SimConnect setup and scenarios](docs/simconnect.md) for requirements and observation procedures.
+This mode starts no HTTP/SSE listener in #5; browser integration belongs to #6.
+Live signs, availability, dispatch, reconnect, and cleanup remain unverified.
 
 ## Project guide
 
@@ -98,7 +107,7 @@ Live signs, availability, and lifecycle behavior remain unverified.
 | Contribute a change | [Contributing](CONTRIBUTING.md) |
 | Use the Rust library or understand the design | [Architecture](docs/architecture.md#application-api) |
 | Consume telemetry | [Telemetry contract](docs/telemetry-contract.md) |
-| Run the SimConnect experiment | [Probe setup and scenarios](docs/simconnect-probe.md) |
+| Run SimConnect reception or diagnostics | [SimConnect setup and scenarios](docs/simconnect.md) |
 | Review scope and future work | [Project brief](docs/project-brief.md) · [Roadmap](docs/roadmap.md) |
 | Understand the stack choice | [ADR 0001](docs/adr/0001-rust-http-sse.md) |
 | Track work | [GitHub Issues](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues) |

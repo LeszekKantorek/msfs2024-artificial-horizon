@@ -1,12 +1,12 @@
 use super::{
     event::{Event, Wake},
-    journal::{Journal, fingerprint, number},
+    journal::{DiagnosticStatus, Journal, fingerprint, number},
     lifecycle::{self, Lifecycle, candidate_attitude, state_name},
     native::{Connection, Library, Message, NativeError},
 };
 use crate::{
     Source,
-    telemetry::{self, Publisher, Subscription},
+    telemetry::{self, Publisher},
 };
 use serde_json::{Value, json};
 use std::{
@@ -20,19 +20,25 @@ use std::{
     time::{Duration, Instant},
 };
 
-/// Explicit diagnostic selection. This does not enable the production provider.
+/// Acquisition options; omission selects SimConnect.dll beside the running executable.
+#[derive(Debug, Default)]
+pub struct SimConnectConfig {
+    pub dll: Option<PathBuf>,
+    pub log: Option<PathBuf>,
+}
+
+/// Acquisition and diagnostic outcomes remain independent.
 #[derive(Debug)]
-pub struct ProbeConfig {
-    pub dll: PathBuf,
-    pub scenario: String,
-    pub log_dir: PathBuf,
+pub struct RunReport {
+    pub result: Result<(), SimConnectError>,
+    pub diagnostics: DiagnosticStatus,
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum ProbeError {
-    #[error("Invalid probe configuration: {0}")]
+pub enum SimConnectError {
+    #[error("Invalid SimConnect configuration: {0}")]
     Configuration(String),
-    #[error("Probe I/O or logging error: {0}")]
+    #[error("SimConnect I/O error: {0}")]
     Io(#[from] io::Error),
     #[error("SimConnect error: {0}")]
     Native(String),
@@ -42,40 +48,82 @@ pub enum ProbeError {
     WorkerPanic,
 }
 
-impl From<NativeError> for ProbeError {
+impl From<NativeError> for SimConnectError {
     fn from(error: NativeError) -> Self {
         Self::Native(error.to_string())
     }
 }
 
-/// Run one diagnostic worker until caller-owned cancellation or a fatal error.
-/// Native calls and the log writer belong to the worker, never the Tokio runtime.
-/// Successful return means controlled shutdown, not live simulator acceptance.
-pub async fn run_probe(
-    config: ProbeConfig,
-    shutdown: impl Future<Output = io::Result<()>>,
-) -> Result<PathBuf, ProbeError> {
-    if !config.dll.is_absolute() {
-        return Err(ProbeError::Configuration(
+/// Resolve one DLL path without searching PATH, the working directory, or SDK installs.
+pub fn resolve_dll(override_path: Option<&Path>) -> Result<PathBuf, SimConnectError> {
+    if let Some(path) = override_path {
+        return explicit_dll(path);
+    }
+    let executable = std::env::current_exe().map_err(|error| {
+        SimConnectError::Configuration(format!(
+            "cannot locate the running executable: {error}; specify an absolute --dll path"
+        ))
+    })?;
+    adjacent_dll(&executable)
+}
+
+fn explicit_dll(path: &Path) -> Result<PathBuf, SimConnectError> {
+    if !path.is_absolute() {
+        return Err(SimConnectError::Configuration(
             "--dll must be an absolute path".into(),
         ));
     }
-    if config.scenario.trim().is_empty() {
-        return Err(ProbeError::Configuration(
-            "--scenario must not be empty".into(),
+    Ok(path.to_owned())
+}
+
+fn adjacent_dll(executable: &Path) -> Result<PathBuf, SimConnectError> {
+    executable
+        .parent()
+        .map(|parent| parent.join("SimConnect.dll"))
+        .ok_or_else(|| {
+            SimConnectError::Configuration(
+                "cannot locate executable directory; specify --dll".into(),
+            )
+        })
+}
+
+/// Acquire on one native worker into the caller's SimConnect channel; never start HTTP.
+/// Caller owns signals. Cancellation signals the worker even if this future is dropped.
+pub async fn run(
+    config: SimConnectConfig,
+    publisher: Publisher,
+    shutdown: impl Future<Output = io::Result<()>>,
+) -> RunReport {
+    let early_error = |error| RunReport {
+        result: Err(error),
+        diagnostics: DiagnosticStatus::Disabled,
+    };
+    if publisher.source() != Source::SimConnect {
+        return early_error(SimConnectError::Configuration(
+            "publisher must identify the SimConnect source".into(),
         ));
     }
-    let journal = Journal::create(&config.log_dir, &config.scenario)?;
-    let log_path = journal.path().to_owned();
-    println!("Session log: {}", log_path.display());
+    let dll = match resolve_dll(config.dll.as_deref()) {
+        Ok(dll) => dll,
+        Err(error) => return early_error(error),
+    };
+    println!("SimConnect DLL: {}", dll.display());
     println!(
-        "Diagnostic hypotheses only; flight availability and attitude signs require cockpit verification. Press Ctrl+C to stop."
+        "Flight availability and attitude signs remain unverified. No HTTP server in issue #5. Press Ctrl+C to stop."
     );
-    let stop = Arc::new(Event::new(true)?);
+    let stop = match Event::new(true) {
+        Ok(event) => Arc::new(event),
+        Err(error) => return early_error(error.into()),
+    };
     let worker_stop = Arc::clone(&stop);
-    let worker = thread::Builder::new()
-        .name("simconnect-probe".into())
-        .spawn(move || worker_entry(config, journal, &worker_stop))?;
+    let log_path = config.log.clone();
+    let worker = match thread::Builder::new()
+        .name("simconnect".into())
+        .spawn(move || worker_entry(dll, config.log, publisher, &worker_stop))
+    {
+        Ok(worker) => worker,
+        Err(error) => return early_error(error.into()),
+    };
     let cancellation = Cancellation(Arc::clone(&stop));
     tokio::pin!(shutdown);
     let signal_result = loop {
@@ -83,19 +131,33 @@ pub async fn run_probe(
             break Ok(());
         }
         tokio::select! {
-            result = &mut shutdown => { stop.signal()?; break result; }
+            result = &mut shutdown => {
+                let signalled = stop.signal();
+                break result.and(signalled);
+            }
             _ = tokio::time::sleep(Duration::from_millis(50)) => {}
         }
     };
-    // Joining only after completion keeps native work off this runtime thread.
     while !worker.is_finished() {
         tokio::time::sleep(Duration::from_millis(20)).await;
     }
-    let result = worker.join().map_err(|_| ProbeError::WorkerPanic)?;
+    let mut report = match worker.join() {
+        Ok(report) => report,
+        Err(_) => RunReport {
+            result: Err(SimConnectError::WorkerPanic),
+            diagnostics: log_path.map_or(DiagnosticStatus::Disabled, |path| {
+                DiagnosticStatus::Failed {
+                    path,
+                    error: "worker panicked; diagnostic completion unconfirmed".into(),
+                }
+            }),
+        },
+    };
     drop(cancellation);
-    result?;
-    signal_result?;
-    Ok(log_path)
+    if report.result.is_ok() {
+        report.result = signal_result.map_err(Into::into);
+    }
+    report
 }
 
 struct Cancellation(Arc<Event>);
@@ -105,25 +167,58 @@ impl Drop for Cancellation {
     }
 }
 
-fn worker_entry(config: ProbeConfig, mut journal: Journal, stop: &Event) -> Result<(), ProbeError> {
-    let result = worker(&config, &mut journal, stop);
-    let ending = journal.record(
+fn worker_entry(
+    dll: PathBuf,
+    log: Option<PathBuf>,
+    publisher: Publisher,
+    stop: &Event,
+) -> RunReport {
+    let executable = match std::env::current_exe() {
+        Ok(path) => path,
+        Err(error) => {
+            return RunReport {
+                result: Err(error.into()),
+                diagnostics: DiagnosticStatus::Disabled,
+            };
+        }
+    };
+    let mut journal = match Journal::open(log.as_deref(), &[&dll, &executable]) {
+        Ok(journal) => journal,
+        Err(error) => {
+            return RunReport {
+                diagnostics: log.map_or(DiagnosticStatus::Disabled, |path| {
+                    DiagnosticStatus::Failed {
+                        path,
+                        error: error.to_string(),
+                    }
+                }),
+                result: Err(error.into()),
+            };
+        }
+    };
+    if let Some(path) = &log {
+        println!("Session log: {}", path.display());
+    }
+    let result = worker(&dll, publisher, &mut journal, stop);
+    journal.record(
         "session_end",
-        json!({
-            "success": result.is_ok(), "error": result.as_ref().err().map(ToString::to_string),
-        }),
+        || {
+            json!({
+                "success": result.is_ok(), "error": result.as_ref().err().map(ToString::to_string),
+            })
+        },
         true,
     );
-    match (result, ending) {
-        (Err(error), Err(log_error)) => Err(ProbeError::Io(io::Error::other(format!(
-            "{error}; cannot record session end: {log_error}"
-        )))),
-        (Err(error), _) => Err(error),
-        (Ok(()), ending) => {
-            ending?;
-            Ok(())
-        }
+    journal.finish();
+    RunReport {
+        result,
+        diagnostics: journal.status(),
     }
+}
+
+fn identity(path: &Path) -> Value {
+    fingerprint(path)
+        .unwrap_or_else(|error| json!({ "path": path, "unavailable": error.to_string() }))
 }
 
 fn command_record(program: &str, arguments: &[&str]) -> Value {
@@ -138,43 +233,45 @@ fn command_record(program: &str, arguments: &[&str]) -> Value {
     }
 }
 
-fn worker(config: &ProbeConfig, journal: &mut Journal, stop: &Event) -> Result<(), ProbeError> {
+fn worker(
+    dll: &Path,
+    publisher: Publisher,
+    journal: &mut Journal,
+    stop: &Event,
+) -> Result<(), SimConnectError> {
     let executable = std::env::current_exe()?;
-    journal.record("environment", json!({
+    journal.record("environment", || json!({
         "package_version": env!("CARGO_PKG_VERSION"), "target": "x86_64-pc-windows-msvc",
         "profile": if cfg!(debug_assertions) { "debug" } else { "release" },
-        "current_directory": std::env::current_dir()?, "executable": fingerprint(&executable)?,
+        "current_directory": std::env::current_dir().ok(), "executable": identity(&executable),
         "rustc_at_run": command_record("rustc", &["-Vv"]),
         "git_head_at_run": command_record("git", &["rev-parse", "HEAD"]),
         "git_changes_at_run": command_record("git", &["status", "--porcelain", "--untracked-files=no"]),
         "windows": command_record("cmd", &["/d", "/c", "ver"]),
-        "sdk": sdk_version(&config.dll), "scenario": config.scenario,
+        "sdk": sdk_version(dll), "dll": dll,
         "requested_fields": ["pitch radians", "pitch degrees", "bank radians", "bank degrees"],
         "sign_hypothesis": "negate pitch and bank; normalize bank to [-180,180)",
         "note": "runtime toolchain/git metadata is contextual; executable SHA-256 identifies the tested bytes",
-    }), true)?;
-    match fingerprint(&config.dll) {
-        Ok(identity) => journal.record("dll_identity", identity, true)?,
-        Err(error) => {
-            journal.record(
-                "dll_identity_error",
-                json!({ "path": config.dll, "error": error.to_string() }),
-                true,
-            )?;
-        }
-    }
-    journal.record("library_load_attempt", json!({ "path": config.dll }), true)?;
-    let library = Library::load(&config.dll).inspect_err(|error| {
-        let _ = journal.record("native_error", error, true);
+    }), true);
+    journal.record("dll_identity", || identity(dll), true);
+    journal.record("library_load_attempt", || json!({ "path": dll }), true);
+    let library = Library::load(dll).map_err(|error| {
+        journal.record("native_error", || json!(error), true);
+        SimConnectError::Native(format!(
+            "{error}; selected DLL: {}; use --dll to select another absolute path",
+            dll.display()
+        ))
     })?;
-    journal.record("library_loaded", json!({}), true)?;
-    let result = connections(&library, journal, stop);
+    journal.record("library_loaded", || json!({}), true);
+    let result = connections(&library, publisher, journal, stop);
     journal.record(
         "library_release",
-        json!({ "after_all_connections_closed": result.is_ok(),
-        "note": "a failed native close retains the mapping; see native_error records" }),
+        || {
+            json!({ "after_all_connections_closed": result.is_ok(),
+        "note": "a failed native close retains the mapping; see native_error records" })
+        },
         true,
-    )?;
+    );
     drop(library);
     result
 }
@@ -194,11 +291,14 @@ fn retry_seconds(attempt: u32) -> u32 {
     (1_u32 << attempt.min(4)).min(10)
 }
 
-fn connections(library: &Library, journal: &mut Journal, stop: &Event) -> Result<(), ProbeError> {
-    let (publisher, subscription) = telemetry::channel(Source::SimConnect);
+fn connections(
+    library: &Library,
+    publisher: Publisher,
+    journal: &mut Journal,
+    stop: &Event,
+) -> Result<(), SimConnectError> {
     let mut output = Output {
         publisher,
-        subscription,
         transition: None,
     };
     let mut lifecycle = Lifecycle::default();
@@ -216,20 +316,21 @@ fn connections(library: &Library, journal: &mut Journal, stop: &Event) -> Result
         };
         journal.record(
             "connection_attempt",
-            json!({ "generation": generation }),
+            || json!({ "generation": generation }),
             true,
-        )?;
+        );
         let mut connection = match library.open(notification.event().handle()) {
             Ok(connection) => connection,
             Err(error) => {
-                journal.record("native_error", &error, true)?;
+                eprintln!("SimConnect connection unavailable: {error}");
+                journal.record("native_error", || json!(&error), true);
                 let seconds = retry_seconds(failures);
                 failures = failures.saturating_add(1);
                 journal.record(
                     "reconnect_wait",
-                    json!({ "seconds": seconds, "generation": generation }),
+                    || json!({ "seconds": seconds, "generation": generation }),
                     true,
-                )?;
+                );
                 if matches!(stop.wait(None, seconds * 1000)?, Wake::Stop) {
                     return Ok(());
                 }
@@ -238,7 +339,7 @@ fn connections(library: &Library, journal: &mut Journal, stop: &Event) -> Result
         };
         let session_start = Instant::now();
         let result = (|| {
-            journal.record("api_result", json!({ "operation": "SimConnect_Open", "success": true, "generation": generation }), true)?;
+            journal.record("api_result", || json!({ "operation": "SimConnect_Open", "success": true, "generation": generation }), true);
             println!("SimConnect connected (session {generation}).");
             lifecycle.connect();
             output.update(&lifecycle, journal, Instant::now())?;
@@ -253,21 +354,20 @@ fn connections(library: &Library, journal: &mut Journal, stop: &Event) -> Result
         })();
         // Explicit cleanup is attempted even when the logger or packet decoder failed.
         let closed = connection.close();
-        let close_log = match &closed {
+        match &closed {
             Ok(()) => journal.record(
                 "api_result",
-                json!({ "operation": "SimConnect_Close", "success": true }),
+                || json!({ "operation": "SimConnect_Close", "success": true }),
                 true,
             ),
-            Err(error) => journal.record("native_error", error, true),
+            Err(error) => journal.record("native_error", || json!(error), true),
         };
         closed?;
-        close_log?;
         journal.record(
             "notification_release",
-            json!({ "generation": generation }),
+            || json!({ "generation": generation }),
             true,
-        )?;
+        );
         drop(notification);
         lifecycle.disconnect();
         output.update(&lifecycle, journal, Instant::now())?;
@@ -282,9 +382,9 @@ fn connections(library: &Library, journal: &mut Journal, stop: &Event) -> Result
         failures = failures.saturating_add(1);
         journal.record(
             "reconnect_wait",
-            json!({ "seconds": seconds, "generation": generation }),
+            || json!({ "seconds": seconds, "generation": generation }),
             true,
-        )?;
+        );
         if matches!(stop.wait(None, seconds * 1000)?, Wake::Stop) {
             return Ok(());
         }
@@ -317,7 +417,6 @@ impl Drop for Notification<'_> {
 
 struct Output {
     publisher: Publisher,
-    subscription: Subscription,
     transition: Option<(&'static str, &'static str, &'static str)>,
 }
 impl Output {
@@ -326,7 +425,7 @@ impl Output {
         lifecycle: &Lifecycle,
         journal: &mut Journal,
         now: Instant,
-    ) -> Result<(), ProbeError> {
+    ) -> Result<(), SimConnectError> {
         self.publisher.expire()?;
         let evaluation = lifecycle.evaluate(now);
         let transition = (
@@ -338,12 +437,14 @@ impl Output {
             self.publisher.publish(evaluation.published)?;
             journal.record(
                 "state_transition",
-                json!({ "candidate_state": transition.0,
-                "candidate_is_hypothesis": true, "published": self.subscription.snapshot(),
+                || {
+                    json!({ "candidate_state": transition.0,
+                "candidate_is_hypothesis": true, "published": self.publisher.snapshot(),
                 "reason": evaluation.reason,
-                "note": "unverified live hypotheses remain waiting in application telemetry" }),
+                "note": "unverified live hypotheses remain waiting in application telemetry" })
+                },
                 true,
-            )?;
+            );
             println!(
                 "State: {} (candidate: {}, {})",
                 transition.1, transition.0, transition.2
@@ -364,31 +465,39 @@ fn api_result(
     journal: &mut Journal,
     operation: &str,
     result: Result<(), NativeError>,
-    context: Value,
-) -> Result<(), ProbeError> {
+    context: impl FnOnce() -> Value,
+) -> Result<(), SimConnectError> {
     match result {
         Ok(()) => {
+            if !journal.enabled() {
+                return Ok(());
+            }
             let sent = connection.last_sent_packet_id();
             journal.record(
                 "api_result",
-                json!({ "operation": operation, "success": true,
-                "send_id": sent.as_ref().ok(), "context": context }),
+                || {
+                    json!({ "operation": operation, "success": true,
+                "send_id": sent.as_ref().ok(), "context": context() })
+                },
                 false,
-            )?;
+            );
             match sent {
-                Ok(id) => journal.record("api_result", json!({ "operation": "SimConnect_GetLastSentPacketID", "success": true, "send_id": id }), false)?,
-                Err(error) => journal.record("native_error", error, true)?,
+                Ok(id) => journal.record("api_result", || json!({ "operation": "SimConnect_GetLastSentPacketID", "success": true, "send_id": id }), false),
+                Err(error) => journal.record("native_error", || json!(error), true),
             }
             Ok(())
         }
         Err(error) => {
-            journal.record("native_error", &error, true)?;
+            journal.record("native_error", || json!(&error), true);
             Err(error.into())
         }
     }
 }
 
-fn configure(connection: &mut Connection<'_>, journal: &mut Journal) -> Result<(), ProbeError> {
+fn configure(
+    connection: &mut Connection<'_>,
+    journal: &mut Journal,
+) -> Result<(), SimConnectError> {
     for index in 0..4 {
         let result = connection.add_attitude_field(index);
         api_result(
@@ -396,7 +505,7 @@ fn configure(connection: &mut Connection<'_>, journal: &mut Journal) -> Result<(
             journal,
             "SimConnect_AddToDataDefinition",
             result,
-            json!({ "field_index": index }),
+            || json!({ "field_index": index }),
         )?;
     }
     for (id, name) in [
@@ -410,7 +519,7 @@ fn configure(connection: &mut Connection<'_>, journal: &mut Journal) -> Result<(
             journal,
             "SimConnect_SubscribeToSystemEvent",
             result,
-            json!({ "event_id": id, "name": name.to_string_lossy() }),
+            || json!({ "event_id": id, "name": name.to_string_lossy() }),
         )?;
     }
     query_states(connection, journal)?;
@@ -420,11 +529,14 @@ fn configure(connection: &mut Connection<'_>, journal: &mut Journal) -> Result<(
         journal,
         "SimConnect_RequestDataOnSimObject",
         result,
-        json!({ "period": "SIM_FRAME", "flags": 0, "object_id": 0 }),
+        || json!({ "period": "SIM_FRAME", "flags": 0, "object_id": 0 }),
     )
 }
 
-fn query_states(connection: &mut Connection<'_>, journal: &mut Journal) -> Result<(), ProbeError> {
+fn query_states(
+    connection: &mut Connection<'_>,
+    journal: &mut Journal,
+) -> Result<(), SimConnectError> {
     for (id, name) in [
         (lifecycle::STATE_SIM, c"Sim"),
         (lifecycle::STATE_FLIGHT, c"FlightLoaded"),
@@ -439,14 +551,14 @@ fn request_state(
     journal: &mut Journal,
     id: u32,
     name: &CStr,
-) -> Result<(), ProbeError> {
+) -> Result<(), SimConnectError> {
     let result = connection.request_state(id, name);
     api_result(
         connection,
         journal,
         "SimConnect_RequestSystemState",
         result,
-        json!({ "request_id": id, "name": name.to_string_lossy() }),
+        || json!({ "request_id": id, "name": name.to_string_lossy() }),
     )
 }
 
@@ -466,7 +578,7 @@ fn session(
     journal: &mut Journal,
     lifecycle: &mut Lifecycle,
     output: &mut Output,
-) -> Result<SessionEnd, ProbeError> {
+) -> Result<SessionEnd, SimConnectError> {
     configure(connection, journal)?;
     let mut counters = Counters::default();
     let mut last_packet = Instant::now();
@@ -493,7 +605,7 @@ fn session(
                     break;
                 }
                 Err(error) => {
-                    journal.record("native_error", &error, true)?;
+                    journal.record("native_error", || json!(&error), true);
                     // Decoder/ABI errors are fatal, never retried as routine disconnects.
                     if error.operation == "SimConnect_GetNextDispatch" && error.hresult.is_some() {
                         return Ok(SessionEnd::Reconnect);
@@ -504,21 +616,24 @@ fn session(
             counters.packets += 1;
             last_packet = Instant::now();
             let is_attitude = matches!(packet.message, Message::Attitude { .. });
-            journal.record("dispatch", &packet, !is_attitude)?;
+            journal.record("dispatch", || json!(&packet), !is_attitude);
             match packet.message {
                 Message::Quit => {
                     journal.record(
                         "connection_lost",
-                        json!({ "reason": "SIMCONNECT_RECV_QUIT" }),
+                        || json!({ "reason": "SIMCONNECT_RECV_QUIT" }),
                         true,
-                    )?;
+                    );
                     return Ok(SessionEnd::Reconnect);
                 }
-                Message::Exception { .. } => {
-                    return Err(ProbeError::Native(
-                        "Asynchronous SimConnect exception; inspect send_id and api_result records"
-                            .into(),
-                    ));
+                Message::Exception {
+                    exception,
+                    send_id,
+                    index,
+                } => {
+                    return Err(SimConnectError::Native(format!(
+                        "Asynchronous SimConnect exception {exception}, send_id {send_id}, index {index}"
+                    )));
                 }
                 Message::Event {
                     event_id: lifecycle::EVENT_SIM,
@@ -541,10 +656,12 @@ fn session(
                 } => {
                     journal.record(
                         "system_state_float",
-                        json!({ "request_id": request_id, "raw": number(f64::from(float)),
-                            "native_f32_bits_hex": format!("{:08x}", float.to_bits()) }),
+                        || {
+                            json!({ "request_id": request_id, "raw": number(f64::from(float)),
+                            "native_f32_bits_hex": format!("{:08x}", float.to_bits()) })
+                        },
                         false,
-                    )?;
+                    );
                     match request_id {
                         lifecycle::STATE_SIM => lifecycle.sim(integer != 0),
                         lifecycle::STATE_FLIGHT => lifecycle.flight(&string, false),
@@ -553,14 +670,16 @@ fn session(
                 }
                 Message::Attitude { values, .. } => {
                     let now = Instant::now();
-                    let candidate = candidate_attitude(values);
-                    journal.record("attitude_sample", json!({
+                    journal.record("attitude_raw", || json!({
                         "raw": { "pitch_radians": number(values[0]), "pitch_degrees": number(values[1]),
                             "bank_radians": number(values[2]), "bank_degrees": number(values[3]) },
                         "interval_us": last_sample.map(|at| now.saturating_duration_since(at).as_micros().to_string()),
+                    }), false);
+                    let candidate = candidate_attitude(values);
+                    journal.record("attitude_sample", || json!({
                         "candidate_attitude": candidate.as_ref().ok(), "candidate_is_hypothesis": true,
                         "validation_error": candidate.as_ref().err().map(ToString::to_string),
-                    }), false)?;
+                    }), false);
                     last_sample = Some(now);
                     lifecycle.sample(candidate, now);
                 }
@@ -573,28 +692,34 @@ fn session(
         if summary.elapsed() >= Duration::from_secs(1) {
             journal.record(
                 "dispatch_summary",
-                json!({ "counters": counters,
+                || {
+                    json!({ "counters": counters,
                 "last_dispatch_hresult": format!("0x{:08X}", connection.dispatch_hresult() as u32),
-                "silence_ms": last_packet.elapsed().as_millis().to_string() }),
+                "silence_ms": last_packet.elapsed().as_millis().to_string() })
+                },
                 true,
-            )?;
+            );
             counters = Counters::default();
             summary = now;
         }
         if query.elapsed() >= Duration::from_secs(5) {
             match query_states(connection, journal) {
                 Ok(()) => query = now,
-                Err(ProbeError::Native(_)) => return Ok(SessionEnd::Reconnect),
+                Err(SimConnectError::Native(_)) => return Ok(SessionEnd::Reconnect),
                 Err(error) => return Err(error),
             }
         }
         if last_packet.elapsed() >= Duration::from_secs(15) {
             journal.record(
                 "connection_lost",
-                json!({ "reason": "diagnostic_watchdog_no_packets_for_15_seconds",
-                "interpretation_verified": false }),
+                || {
+                    json!(
+                        json!({ "reason": "diagnostic_watchdog_no_packets_for_15_seconds",
+                "interpretation_verified": false })
+                    )
+                },
                 true,
-            )?;
+            );
             return Ok(SessionEnd::Reconnect);
         }
         match stop.wait(Some(notification), 50)? {
@@ -608,6 +733,41 @@ fn session(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn missing_dll() -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "missing-simconnect-{}-{}.dll",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ))
+    }
+
+    #[test]
+    fn dll_selection_uses_executable_directory_and_never_requires_existing_override() {
+        let executable = Path::new(r"C:\application\horizon.exe");
+        assert_eq!(
+            adjacent_dll(executable).unwrap(),
+            Path::new(r"C:\application\SimConnect.dll")
+        );
+        let explicit = Path::new(r"D:\runtime\chosen.dll");
+        assert_eq!(resolve_dll(Some(explicit)).unwrap(), explicit);
+        assert!(matches!(
+            resolve_dll(Some(Path::new("relative.dll"))),
+            Err(SimConnectError::Configuration(_))
+        ));
+        assert_eq!(
+            resolve_dll(None).unwrap(),
+            std::env::current_exe()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .join("SimConnect.dll")
+        );
+    }
+
     #[test]
     fn reconnect_backoff_is_bounded_and_cannot_overflow() {
         assert_eq!(
@@ -616,48 +776,84 @@ mod tests {
         );
         assert_eq!(retry_seconds(u32::MAX), 10);
     }
-    #[tokio::test]
-    async fn invalid_configuration_does_not_load_native_code() {
-        let error = run_probe(
-            ProbeConfig {
-                dll: "relative.dll".into(),
-                scenario: "level".into(),
-                log_dir: ".local/probe-tests".into(),
-            },
-            std::future::pending(),
-        )
-        .await
-        .unwrap_err();
-        assert!(matches!(error, ProbeError::Configuration(_)));
-    }
 
     #[tokio::test]
-    async fn missing_dll_records_failure_and_joins_worker_without_demo_fallback() {
-        let directory = std::env::temp_dir().join(format!(
-            "simconnect-worker-{}-{}",
-            std::process::id(),
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos()
-        ));
-        let result = run_probe(
-            ProbeConfig {
-                dll: directory.join("missing.dll"),
-                scenario: "missing-dll".into(),
-                log_dir: directory.clone(),
-            },
+    async fn wrong_channel_source_is_rejected_before_files_or_native_code() {
+        let (publisher, subscription) = telemetry::channel(Source::Demo);
+        let report = run(
+            SimConnectConfig::default(),
+            publisher,
             std::future::pending(),
         )
         .await;
-        assert!(matches!(result, Err(ProbeError::Native(_))));
-        let path = std::fs::read_dir(&directory)
-            .unwrap()
-            .next()
-            .unwrap()
-            .unwrap()
-            .path();
-        let records: Vec<Value> = std::fs::read_to_string(path)
+        assert!(matches!(
+            report.result,
+            Err(SimConnectError::Configuration(_))
+        ));
+        assert_eq!(report.diagnostics, DiagnosticStatus::Disabled);
+        assert_eq!(
+            serde_json::to_value(subscription.snapshot()).unwrap()["sequence"],
+            0
+        );
+    }
+
+    #[test]
+    fn logging_failure_does_not_stop_publication_to_the_callers_channel() {
+        let (publisher, subscription) = telemetry::channel(Source::SimConnect);
+        let mut output = Output {
+            publisher,
+            transition: None,
+        };
+        let mut journal = Journal::failing_for_test();
+        let mut lifecycle = Lifecycle::default();
+        output
+            .update(&lifecycle, &mut journal, Instant::now())
+            .unwrap();
+        assert!(matches!(journal.status(), DiagnosticStatus::Failed { .. }));
+        assert_eq!(
+            serde_json::to_value(subscription.snapshot()).unwrap()["state"],
+            "disconnected"
+        );
+        lifecycle.connect();
+        output
+            .update(&lifecycle, &mut journal, Instant::now())
+            .unwrap();
+        let snapshot = serde_json::to_value(subscription.snapshot()).unwrap();
+        assert_eq!(snapshot["state"], "waiting");
+        assert_eq!(snapshot["sequence"], 2);
+        assert_eq!(snapshot["source"], "simconnect");
+    }
+
+    #[test]
+    fn failed_diagnostics_do_not_hide_a_native_failure() {
+        let (publisher, _subscription) = telemetry::channel(Source::SimConnect);
+        let mut journal = Journal::failing_for_test();
+        let stop = Event::new(true).unwrap();
+        let error = worker(&missing_dll(), publisher, &mut journal, &stop).unwrap_err();
+        assert!(matches!(error, SimConnectError::Native(_)));
+        assert!(matches!(journal.status(), DiagnosticStatus::Failed { .. }));
+    }
+
+    #[tokio::test]
+    async fn missing_dll_keeps_a_complete_diagnostic_failure_session() {
+        let dll = missing_dll();
+        let log = dll.with_extension("jsonl");
+        let (publisher, _subscription) = telemetry::channel(Source::SimConnect);
+        let report = run(
+            SimConnectConfig {
+                dll: Some(dll),
+                log: Some(log.clone()),
+            },
+            publisher,
+            std::future::pending(),
+        )
+        .await;
+        assert!(matches!(report.result, Err(SimConnectError::Native(_))));
+        assert!(matches!(
+            report.diagnostics,
+            DiagnosticStatus::Completed { .. }
+        ));
+        let records: Vec<Value> = std::fs::read_to_string(&log)
             .unwrap()
             .lines()
             .map(|line| serde_json::from_str(line).unwrap())
@@ -668,13 +864,12 @@ mod tests {
                 .any(|record| record["kind"] == "native_error")
         );
         assert!(
-            records
+            !records
                 .iter()
-                .all(|record| record["kind"] != "connection_attempt")
+                .any(|record| record["kind"] == "connection_attempt")
         );
-        let ending = records.last().unwrap();
-        assert_eq!(ending["kind"], "session_end");
-        assert_eq!(ending["data"]["success"], false);
-        std::fs::remove_dir_all(directory).unwrap();
+        assert_eq!(records.last().unwrap()["kind"], "session_end");
+        assert_eq!(records.last().unwrap()["data"]["success"], false);
+        std::fs::remove_file(log).unwrap();
     }
 }

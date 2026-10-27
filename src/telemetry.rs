@@ -511,6 +511,16 @@ pub fn channel(source: Source) -> (Publisher, Subscription) {
     (Publisher { sender, current }, Subscription { receiver })
 }
 impl Publisher {
+    /// Source identity is fixed when the caller creates the channel.
+    pub fn source(&self) -> Source {
+        self.current.source
+    }
+
+    /// Inspect the same latest state sent to subscribers, without another channel.
+    pub fn snapshot(&self) -> Snapshot {
+        self.current.snapshot()
+    }
+
     /// Live means a fresh callback from an active, unpaused source, not cached data.
     pub fn publish(&mut self, state: State) -> Result<(), TelemetryError> {
         self.publish_values(state, None)

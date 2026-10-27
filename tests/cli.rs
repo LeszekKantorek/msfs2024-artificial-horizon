@@ -33,6 +33,8 @@ fn help_and_version_work_without_starting_the_server() {
         "--source",
         "--listen-address",
         "--port",
+        "--dll",
+        "--log",
         "--help",
         "--version",
     ] {
@@ -48,14 +50,13 @@ fn help_and_version_work_without_starting_the_server() {
 }
 
 #[test]
-fn invalid_arguments_and_unavailable_source_are_actionable() {
+fn invalid_arguments_are_actionable() {
     for (args, expected) in [
         (vec!["--port", "0"], "--port"),
         (vec!["--port", "65536"], "--port"),
         (vec!["--listen-address", "not-an-ip"], "--listen-address"),
         (vec!["--listen-address", "224.0.0.1"], "multicast"),
         (vec!["--source", "unknown"], "--source"),
-        (vec!["--source", "simconnect"], "not implemented"),
     ] {
         let result = cli(&args);
         assert!(!result.status.success());

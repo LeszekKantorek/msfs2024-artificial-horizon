@@ -274,7 +274,7 @@ impl Library {
         result("SimConnect_Open", unsafe {
             (self.api.open)(
                 &mut handle,
-                c"Artificial Horizon SimConnect Probe".as_ptr(),
+                c"Artificial Horizon SimConnect".as_ptr(),
                 ptr::null_mut(),
                 0,
                 notification,
