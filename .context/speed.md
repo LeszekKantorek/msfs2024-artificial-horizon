@@ -1,7 +1,9 @@
 ---
-description: Extend or validate IAS/GS, ranges, references, trend, rolling digits, or the synthetic profile.
+description: Select speed instrument contracts, implementation, rationale, and checks.
 status: active
 ---
+
+## IAS, GS, and speed indications
 
 Use the canonical sources for the contract being extended:
 
@@ -14,3 +16,12 @@ Use the canonical sources for the contract being extended:
 | IAS/GS implementation and acceptance | [IAS and GS](../docs/efi/airspeed.md#implementation), [tests](../docs/efi/airspeed.md#testing) |
 | Range/reference implementation and acceptance | [Speed indications](../docs/efi/airspeed-indications.md#implementation), [tests](../docs/efi/airspeed-indications.md#testing) |
 | Accepted choices, glyph measurements, and evidence limits | [IAS/GS lessons](../docs/efi/airspeed.md#rationale-and-regression-lessons), [range/trend lessons](../docs/efi/airspeed-indications.md#rationale-and-regression-lessons) |
+
+## True airspeed
+
+| Need | Source |
+| --- | --- |
+| Requirements and presentation | [Feature contract](../docs/efi/true-airspeed.md#requirements) |
+| Object ownership and calculations | [Implementation](../docs/efi/true-airspeed.md#implementation) |
+| Automated, visual, and device acceptance | [Testing](../docs/efi/true-airspeed.md#testing) |
+| Decision rationale, regression lessons, and evidence limits | [Rationale](../docs/efi/true-airspeed.md#rationale-and-regression-lessons) |

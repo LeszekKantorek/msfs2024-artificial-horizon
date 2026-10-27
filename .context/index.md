@@ -13,7 +13,6 @@
 | [PR acceptance control](pr-acceptance.md) | Diagnosing acceptance status, changing the validator, or activating its required check. |
 | [Task guidance selection](task-guidance.md) | The direct route is unclear, a task crosses several areas, or routing guidance itself needs maintenance. |
 | [Implementation planning](implementation-planning.md) | Finding planning rationale and evidence limits, or the owning project-plan-change skill. |
-| [Validation and review](validation-and-review.md) | Designing tests, resolving evidence limits, or finding the owning project-review-change skill; use the testing scope matrix for routine check selection. |
 | [Error diagnosis](error-diagnosis.md) | Selecting symptom-specific boundaries and restrictions, or the owning project-diagnose-failure skill. |
 | [Security review](security-review.md) | Reviewing changes to network exposure, input handling, dependencies, secrets, permissions, or CI trust boundaries. |
 | [Changes across components](component-changes.md) | Selecting contracts and checks for behavior changes across providers, telemetry, HTTP, and the browser. |
@@ -23,15 +22,10 @@
 | [Build validation](build-validation.md) | Changing Cargo features, local build commands, workflow checks, or required statuses. |
 | [Local validation environment](local-validation-environment.md) | Diagnosing error 5 when replacing a running executable, browser launch failures, or local fixture reachability. |
 | [Browser presentation](browser-presentation.md) | Changing shared display behavior, unavailable-state presentation, opacity, or preparing real-phone acceptance. |
-| [PFD layout validation](pfd-layout-validation.md) | Changing PFD geometry, clipping, or paint order, or adding the next instrument. |
+| [PFD presentation](pfd-presentation.md) | Changing composition, frame scheduling, geometry, clipping, paint order, or visual validation. |
 | [PFD demo scope](pfd-demo-scope.md) | Planning or implementing PFD demo features. |
-| [PFD composition](pfd-module-plan.md) | Changing visual-object ownership, frame scheduling, shared layers or clips, or calculation boundaries. |
-| [Airspeed and ground speed](airspeed-ground-speed.md) | Extending or validating speed telemetry, tape-unit margins, GS frame, ranges, references, trend, rolling digits, or the demo profile. |
-| [True airspeed](true-airspeed.md) | Extending or validating TAS telemetry, its top-left white frame, or TAS acceptance. |
-| [Altitude and pressure](altitude-baro.md) | Extending or validating altitude, source-formatted BARO text, signed drums, or the right-side PFD layout. |
-| [Altitude trend](altitude-trend.md) | Extending or validating six-second altitude prediction, left-side tick overlap, or notched-bug geometry. |
-| [Selected altitude](selected-altitude.md) | Extending or validating targets, alert history, timed panel updates, or the longer altitude demo. |
-| [Vertical speed](vertical-speed.md) | Extending or validating source-supplied VSI, the compact altitude/VSI composition, or the shared altitude scenario. |
+| [Speed instruments](speed.md) | Extending or validating IAS, GS, TAS, speed ranges, references, or trend. |
+| [Altitude instruments](altitude.md) | Extending or validating altitude, BARO, selected altitude, vertical speed, or altitude trend. |
 | [Heading](heading.md) | Extending or validating magnetic headings, numeric readout formatting, north wrapping, selected-bug capture, or top-strip geometry. |
 | [Writing style](writing-style.md) | Editing project prose or Markdown structure, or choosing which document owns a requirement. |
 | [Context tooling maintenance](agent-maintenance.md) | Maintaining upstream skills, project procedure skills, procedure ownership, or CSV session hooks. |
