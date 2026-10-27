@@ -1,8 +1,6 @@
 # ADR 0002: Pull-driven SSE with socket lifecycle deadlines
 
-| Date | Status |
-| --- | --- |
-| 2026-10-08 | Accepted |
+Decision status: Accepted.
 
 ## Context
 

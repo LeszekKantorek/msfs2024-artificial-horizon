@@ -9,7 +9,7 @@ Use [project-plan-change](../.agents/skills/project-plan-change/SKILL.md) to tur
 * Keep speculative frameworks and later issues outside current scope.
 * Do not postpone useful structural changes solely because the current skeleton works.
 * Keep the [separate altitude tape](../docs/efi/altitude.md#rationale-and-regression-lessons) unless actual shared requirements justify reconsidering its scale, sign, digit, selection, and alert boundaries.
-* Use the implemented [internal seams](../docs/efi/composition.md#internal-module-seams) first instead of inferring shared rules from a planned instrument.
+* Use the [internal seams](../docs/efi/composition.md#internal-module-seams) first instead of inferring shared rules from a planned instrument.
 * Apply the [PFD composition rules](../docs/efi/composition.md#rationale-and-regression-lessons) for calculation ownership and extraction to actual shared consumers.
 
 ## Accepted plans and handoffs
@@ -26,18 +26,4 @@ Use [project-plan-change](../.agents/skills/project-plan-change/SKILL.md) to tur
 * Read the complete plan and applicable amendments before edits or delegated work, including all invariants.
 * Preserve prior-stage evidence when an amendment changes later implementation boundaries.
 
-Source: accepted development approach from issue #1 review, 2026-10-06.
-
-Source: conscious generic-tape deferral in maintenance [#54](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/54), 2026-10-10.
-
-Source: accepted full-plan preservation correction, 2026-10-10, and the separate calculation-ownership amendment for [#56](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/56), 2026-10-11.
-
-Source: approved context cleanup, 2026-10-11, after a later asset-registration amendment was missing from the earlier handoff navigation.
-
-Source: accepted correction for #23, 2026-10-11, to remove `docs/plans/23-altitude-baro` from the repository and PR and keep future implementation plans local.
-
-Source: accepted detailed-plan correction for #63, 2026-10-11.
-
-Source: explicit user reporting correction during SimConnect #5 testing, 2026-10-27. This changes progress reporting, not authorization to publish a requested final result.
-
-Evidence limit: no verified causal link connects plan abbreviation with earlier defects.
+The local progress reporting rule does not restrict publication of a requested final result.

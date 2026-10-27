@@ -43,7 +43,7 @@ Instruments share the frame under these rules:
 
 > The frame is an internal presentation value, not a new SSE schema.
 
-The [module composition](composition.md#module-composition) shows the implemented instrument hierarchy.
+The [module composition](composition.md#module-composition) shows the instrument hierarchy.
 `composePanel` delegates optional acceptance and invalidation operations to those instruments.
 During rendering, it delegates instrument updates before rendering status.
 Panel rendering returns the earliest visual deadline from its instruments.
@@ -52,7 +52,7 @@ Panel rendering returns the earliest visual deadline from its instruments.
 | --- | --- | --- | --- |
 | Instruments | Create SVG nodes once | Update geometry attributes on existing nodes | Apply pure calculations to SVG using the complete frame |
 | Fixed symbols | Create references once | Update reference geometry | No per-frame render method |
-| Panel | Compose implemented modules | Assign shared attitude clip, then delegate geometry updates | Delegate the same frame without scale formulas or path construction |
+| Panel | Compose instrument modules | Assign shared attitude clip, then delegate geometry updates | Delegate the same frame without scale formulas or path construction |
 
 * Adding a data dependency inside an instrument does not change its call in the panel.
 * Adding an instrument requires explicit composition in the panel.

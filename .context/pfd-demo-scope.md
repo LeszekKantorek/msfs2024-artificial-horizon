@@ -7,17 +7,14 @@ status: active
 | --- | --- |
 | Coverage, exclusions, units, mobile acceptance responsibilities | [Project brief](../docs/project-brief.md) |
 | Feature order and technical prerequisites | [Roadmap](../docs/roadmap.md) |
-| Implemented modules, layers, and future instruments | [Panel presentation](../docs/efi/index.md), [ADR 0004](../docs/adr/0004-modular-pfd-presentation.md) |
+| Modules, layers, and instrument scope | [Panel presentation](../docs/efi/index.md), [ADR 0004](../docs/adr/0004-modular-pfd-presentation.md) |
 | Additive fields and preserved attitude-only provider | [ADR 0003](../docs/adr/0003-responsive-pfd-demo.md), [contract](../docs/telemetry-contract.md) |
 
 * Preserve #5-#8 scope instead of adding live PFD integration.
-* Apply the accepted scope corrections: no battery, HSI, or navigation guidance, and responsive layout instead of fixed 4:3.
+* Apply the scope: no battery, HSI, or navigation guidance, and responsive layout instead of fixed 4:3.
 * Treat scope as planned until source and implementation evidence establish that it exists.
 * Describe implemented behavior separately from device acceptance, which requires its own recorded evidence.
 * Scope approval does not establish hardware acceptance.
-* Apply the #26 amendment: current magnetic heading and selected-heading bug only, excluding ground-track item 19 and a separate numeric selected-heading readout.
+* For heading: current magnetic heading and selected-heading bug only, excluding ground-track item 19 and a separate numeric selected-heading readout.
 
-Sources: approved scope, 2026-10-08, recorded in [#19](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/19).
 The locally supplied `190-01112-12_02.pdf`, section 3.3, was visually inspected during scope review: printed page 8/25 is PDF page 13.
-
-Source: accepted #26 implementation plan, 2026-10-11, and amended [#26](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/26).

@@ -111,8 +111,4 @@ The [project-review-change skill](../../.agents/skills/project-review-change/SKI
 
 ## Sources and limits
 
-* Source: [#63 implementation in PR #70](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/pull/70), tested at `f7f0bc82889fbc46e1346c7c8430e8b840106bf2`.
-* Independent subagent code review and actual iOS Safari/Android Chrome acceptance were not performed for that evidence record.
-* Source: request to preserve testing lessons and a subagent review procedure, 2026-10-11.
-* The review procedure guides subsequent authorized work; it does not establish that PR #70 received an independent review.
-* Source: validation scope and rendering guidance consolidated during the full context review, 2026-10-11.
+Independent review and real-device acceptance require separate evidence. A review procedure alone does not establish that either was performed.

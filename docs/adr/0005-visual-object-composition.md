@@ -1,8 +1,6 @@
 # ADR 0005: Compose instruments from visual objects
 
-| Date | Status |
-| --- | --- |
-| 2026-10-11 | Accepted |
+Decision status: Accepted.
 
 ## Context
 
@@ -12,7 +10,7 @@ The visual-object decision addresses these internal boundaries:
 * Large internal creation, resize, and update operations still combine several visual responsibilities.
 * The next boundary follows concrete visual objects while preserving appearance, accessibility, telemetry, and lifecycle.
 * An initial split placed pure calculations in separate files.
-* The accepted correction places object-specific functions with their implementing visual objects.
+* Object-specific functions belong to their visual objects.
 * Pure behavior and direct tests do not require a separate file.
 
 ## Decision
@@ -70,12 +68,5 @@ The decision limits abstraction and preserves compatibility:
 | Factory composition around existing visual objects | Select for explicit ownership and small operations without a technology migration |
 | Base classes, a control framework, or a plugin registry | Defer because current composition requires none |
 | Generic IAS/altitude tape | Defer until altitude supplies concrete scale, sign, digit, selection, and alert rules |
-
-The decision and its evidence have separate scopes:
-
-| Record | Scope |
-| --- | --- |
-| Approved [#56](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/56) continuation of [PR #55](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/pull/55) | Visual-object composition, including the calculation-ownership correction of 2026-10-11 |
-| ADR 0004 | Historical instrument-level decision |
 
 > Acceptance of this decision does not establish final validation or real-device acceptance.

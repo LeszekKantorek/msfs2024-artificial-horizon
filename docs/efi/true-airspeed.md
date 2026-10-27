@@ -91,8 +91,4 @@ Check continuous backgrounds and readable TAS labels throughout the shared rotat
 * Exercise browser omission and malformed input after a valid TAS reading so an existing X cannot satisfy the transition check.
 * Reconnect can finish after the demo's initial zero-speed segment; verify the recovered sample instead of assuming zero.
 
-Source: accepted #66 implementation plan and formatting choices, 2026-10-11.
-
-Source: release-runtime restart check on 2026-10-11 demonstrated a nonzero fresh TAS after reconnect.
-
 Evidence limit: actual iOS Safari and Android Chrome acceptance remains separate from desktop checks.

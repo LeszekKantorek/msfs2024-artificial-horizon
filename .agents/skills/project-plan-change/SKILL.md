@@ -52,5 +52,5 @@ Check the plan before presenting it.
 ## Supporting knowledge
 
 Read the [planning rationale](../../../.context/implementation-planning.md#why-these-details-matter) when choosing planning detail or explaining a trade-off.
-The [source record and limits](../../../.context/implementation-planning.md#sources-and-limits) distinguish accepted lessons from unverified historical explanations.
+The [planning guidance](../../../.context/implementation-planning.md#sources-and-limits) describes evidence and review limits.
 Planning does not authorize implementation or publication of a local plan. Finish with the plan and any material unresolved decisions.

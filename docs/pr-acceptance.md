@@ -9,7 +9,7 @@ The acceptance control uses this workflow configuration:
 | PR scope | Open PRs targeting `main` |
 | Published commit status | `Acceptance criteria` |
 
-> The main ruleset must require `Acceptance criteria` to block merge. The retired `Build & Test` status must not remain required.
+> The main ruleset must require `Acceptance criteria` to block merge. The `Build & Test` status must not be required.
 
 ## Prepare an issue and PR
 
@@ -105,7 +105,7 @@ After API access recovers:
 1. Keep the trusted [acceptance workflow](../.github/workflows/acceptance.yml) and validator on `main`.
 2. Open **Actions → PR acceptance → Run workflow**, using `main`.
 3. In **Settings → Rules → Rulesets → main**, edit the existing required status checks.
-4. Remove the retired `Build & Test` requirement when removing the build/test workflows. Remove an obsolete `check` requirement if present.
+4. Remove `Build & Test` if required. Remove `check` only if it is obsolete.
 5. Retain or add `Acceptance criteria`, with GitHub Actions as its source. Preserve every unrelated protection and valid status requirement.
 6. Save the ruleset.
 7. Check that it remains active, targets `main`, and has no unintended bypass actors.
@@ -113,7 +113,7 @@ After API access recovers:
 9. Complete the remaining verification in the issue or linked validation record and update its criteria.
 10. Confirm a successful acceptance status.
 
-> For initial setup, activate `Acceptance criteria` after the trusted workflow reaches `main`. Earlier activation would block the bootstrap PR that installs it.
+> Activate `Acceptance criteria` after the trusted workflow reaches `main` so the workflow can publish the required status.
 
 ## Validate changes to the control
 

@@ -6,14 +6,14 @@ status: active
 * Retain decisions, explanations, findings, and rules that help a future task, with their rationale and conditions of use.
 * Link to canonical documents instead of copying their content.
 * Remove session progress and expired task-specific permissions from reusable knowledge.
-* Preserve conditions, uncertainty, evidence limits, and source provenance.
+* Preserve conditions, uncertainty, and evidence limits. Omit the history and provenance of documentation changes.
 * Use concise technical English and the [writing style](writing-style.md).
 * Use tables or diagrams only when they reduce reading effort.
 * Keep independent topics separate so agents can read only relevant entries.
 * Put direct routes in the index and conditional routes in [task guidance](task-guidance.md).
 * Keep procedures in their owning sources.
 * For compiled procedures, follow the [skill ownership table](agent-maintenance.md#project-procedure-skills). Keep publicly required rationale and evidence in documentation; edit steps only in their designated owner.
-* Retain historical source pointers and scoped evidence limits when consolidating duplicate guidance.
+* Retain scoped evidence limits when consolidating duplicate guidance.
 * Select the appropriate [context skill](../AGENTS.md#project-knowledge) for preservation, maintenance, mapping, diagnosis, or session review.
 
 ## Local entry and index convention
@@ -35,13 +35,7 @@ Exclude session metadata and transcripts under [AGENTS](../AGENTS.md#project-kno
 When moving knowledge, update incoming links, index rows, and replacement paths.
 Check that representative tasks still reach the applicable requirements, rationale, and evidence limits.
 
-Source: accepted requirement, 2026-10-09, to reduce recurring context cost without losing actionable knowledge.
-
-Source: accepted context and documentation review, 2026-10-17, preserving local metadata and navigation after the context-skills replacement.
-
 ## Documentation boundary
 
 Follow [documentation ownership](../AGENTS.md#documentation-ownership) for the boundary between agent knowledge and project/user documentation.
 Use the [PFD content ownership map](../docs/efi/index.md#content-ownership) to place feature and shared information.
-
-Source: accepted documentation migration and link ownership rule, 2026-10-17.

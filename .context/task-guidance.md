@@ -27,17 +27,5 @@ Use this table for tasks that need more than one source or a condition-dependent
 
 ## Working approach
 
-The expert-skill selection workflow retired on 2026-10-11 remains replaced by project procedures.
-Do not restore that former set as a prerequisite for project work.
 Select the currently installed skills through [AGENTS](../AGENTS.md#project-knowledge).
 Planning scope is defined by [implementation planning](implementation-planning.md#scope-and-authorization); verification scope is defined by the [validation matrix](../docs/testing/index.md#validation-by-change-scope).
-This replacement was confirmed by the full consistency review on 2026-10-11.
-
-## Sources
-
-* Source: accepted planning scope and evidence-reuse adaptations, 2026-10-11.
-* Source: planning and testing knowledge request after #63, 2026-10-11, including the missing independent subagent review.
-* Source: explicit migration from optional expert skills to project context and existing Markdown documentation, 2026-10-11.
-* The migration replaces the skill recommendations and plan skill annotations accepted on 2026-10-10.
-* Source: request to create diagnostic, security review, and architecture decision entries from existing repository sources, 2026-10-11.
-* Source: accepted conditional routing proposal and five-scenario validation request, 2026-10-11.

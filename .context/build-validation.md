@@ -11,7 +11,5 @@ status: active
 * Cargo explicitly names the executable `msfs2024-artificial-horizon`, with its entry point at `src/bin/main.rs`.
 * Passing checks without a simulator does not establish SDK or simulator compatibility.
 * Application compilation, Rust/JavaScript tests, and acceptance-validator tests run locally; local validation remains mandatory for the selected scope.
-* Keep [PR acceptance](../.github/workflows/acceptance.yml) and its trusted-code boundary. Remove the retired `Build & Test` required status from the `main` ruleset while preserving `Acceptance criteria` and unrelated protections.
+* Keep [PR acceptance](../.github/workflows/acceptance.yml) and its trusted-code boundary. Remove the `Build & Test` required status from the `main` ruleset while preserving `Acceptance criteria` and unrelated protections.
 * Record actual validation evidence in the owning issue or a linked validation record. PR descriptions explain the change, rationale, and consequences without mandatory test-status sections, command lists, or testing checklists.
-
-Sources: accepted build optimization scope, 2026-10-10; accepted local-validation and workflow change for #5, 2026-10-26; [automated checks](../docs/testing/automated.md#automated-checks), [acceptance control](../docs/pr-acceptance.md), and [architecture](../docs/architecture.md#boundaries).

@@ -1,8 +1,6 @@
 # ADR 0004: Compose the PFD from instrument modules
 
-| Date | Status |
-| --- | --- |
-| 2026-10-10 | Accepted |
+Decision status: Accepted.
 
 ## Context
 

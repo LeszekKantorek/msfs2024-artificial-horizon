@@ -124,10 +124,9 @@ Apply the [shared phone procedure](../testing/devices.md#real-phone-acceptance-p
 
 Check heading wrap at 359/0 during full-panel acceptance.
 
-### Clipping and scope provenance
+### Clipping and scope
 
-Source: #66 browser check correction, 2026-10-11; retained hidden heading labels had nonzero bounds outside their painted clip.
-Source: accepted #26 scope amendment, 2026-10-11. Scope excludes ground-track item 19. The full fixture contains 17 elements and uses production heading SVG.
+Hidden heading labels can retain nonzero bounds outside their painted clip. Validate painted visibility rather than bounds alone.
 
 ## Rationale and regression lessons
 
@@ -136,11 +135,5 @@ Preserve these validation lessons and decision boundaries:
 * North displays as `360`, but raw 360 is invalid. Distinguish source validation from display formatting.
 * The 359/1-degree capture case and 180-degree left tie detect wrap and direction errors.
 * Check actual cyan paint at capture and whole-label hiding at both the current window and clip edges.
-* The accepted #26 scope excludes ground-track fallback and a separate numeric selected heading.
+* The heading scope excludes ground-track fallback and a separate numeric selected heading.
 * Use the full 17-element fixture for accumulated acceptance. Keep real-phone evidence separate from desktop checks.
-
-Source: accepted #26 plan and Garmin section 3.3.8, 2026-10-11.
-
-Source: accepted #65 correction, 2026-10-11, removing the degree symbol from the current heading window.
-
-Source: #63 reclaimed four pixels for the central allocation, as reflected in `web/layout.js`, reviewed 2026-10-11.

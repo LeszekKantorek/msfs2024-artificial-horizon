@@ -25,15 +25,10 @@ The project-plan-change skill owns the [planning steps](../.agents/skills/projec
 | Baseline and matched captures | Make before/after comparisons attributable to the change | Repeat the same values, viewports, routes, and browser |
 | Review and acceptance limits | Expose work that test results alone cannot establish | Separate independent review and actual phone checks from desktop validation |
 
+## Sources and limits
+
+Select evidence appropriate to the change, and distinguish independent review from validation.
+
 ## Plan quality checks
 
 The project-plan-change skill owns the [completion checks](../.agents/skills/project-plan-change/SKILL.md#completion-checks).
-
-## Sources and limits
-
-* Source: detailed-plan correction and accepted implementation plan for [#63](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/63), 2026-10-11.
-* Source: request to preserve planning rationale and testing/review lessons in project knowledge, 2026-10-11.
-* The accepted #63 plan omitted independent subagent review despite including extensive validation.
-* The review step above addresses that omission rather than describing a completed historical review.
-* No verified evidence attributes the initial abbreviated plan to the removal of optional skills.
-* Source: scope and authorization rules consolidated from task guidance during the full context review, 2026-10-11.

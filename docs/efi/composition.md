@@ -2,18 +2,12 @@
 
 Instrument ownership, shared helpers, public operations, and delivery boundaries.
 
-## Current implementation and planned changes
+## Panel composition
 
-The panel implements attitude, slip/skid, and turn rate from #20, IAS and GS from #21, and ranges/trend from #22.
-TAS above the left tape implements #66.
-It also implements altitude/pressure from #23, selected-altitude alerts from #24, and vertical speed from #25.
-Current heading and the selected-heading bug implement #26.
+The panel presents attitude, slip/skid, turn rate, IAS, GS, TAS, speed ranges and trend, altitude, pressure, selected-altitude alerts, vertical speed, heading, and the selected-heading bug.
+Rendering and scheduling have separate responsibilities. Visual objects own their object-specific calculations:
 
-#36 separates rendering from scheduling. #37 implements layers and full-panel background coverage.
-Maintenance [#54](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/54) introduced internal calculation and validation seams.
-[#56](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/56) composes visual objects and places object-specific calculations with their implementing modules:
-
-| Module | Implemented responsibility |
+| Module | Responsibility |
 | --- | --- |
 | `app.js` | Assemble telemetry, status, panel, resize observation, and page lifecycle |
 | `telemetry/client.js` | Own EventSource, sequence handling, retries, expiry, status, and start/stop lifecycle |
@@ -113,22 +107,13 @@ Delivery preserves production scope and asset integration:
 
 ## Rationale and regression lessons
 
-The refactor and earlier regressions establish these decision checks:
+Apply these composition and regression checks:
 
 * Keep object-specific calculations with their visual owner because pure behavior and DOM-free tests do not require a separate file.
 * Extract shared rules only for actual independent consumers, not a planned instrument or a test-only file boundary.
 * Preserve coherent resize and fresh readings in one animation callback, including pending geometry under the unavailable cover.
 * Check background clipping with browser hit testing and a narrowed-clip negative check because path geometry excludes ancestor clips.
 * Distinguish intentional background overlap from collisions between painted indications.
-* Keep implemented layers and composition separate from the real-device acceptance evidence in their feature issues.
+* Keep real-device acceptance evidence separate from desktop checks.
 
-Source: approved documentation and backlog plan for [#35](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/35), 2026-10-10.
-
-Source: verified resize and clipping regressions and accepted maintenance scope in [#45](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/45), 2026-10-10.
-
-Source: historical internal seams in [#54](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/54), reviewed on 2026-10-10, followed by visual-object composition in [#56](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/56).
-
-Source: accepted calculation-ownership correction, 2026-10-11, and stage3b/R3b source review at `c2393379927c2cd5882ea7e0810bba56f81fd656`.
-
-Evidence limit: stage reviews establish the reviewed source scope.
-Final validation and real iOS Safari/Android Chrome acceptance remain separate.
+Evidence limit: a source review does not establish final validation or real iOS Safari and Android Chrome acceptance.

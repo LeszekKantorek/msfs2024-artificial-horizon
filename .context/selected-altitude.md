@@ -11,4 +11,4 @@ Select the source for the affected boundary:
 | Capture, bug geometry, thresholds, flashing, and deviation | [Selected-altitude presentation](../docs/efi/selected-altitude.md#presentation-and-alert-behavior) |
 | Per-sample acceptance and timed rendering | [Panel lifecycle](../docs/efi/lifecycle.md#panel-interface-and-frame-lifecycle) |
 | Automated and actual-device checks | [Selected-altitude acceptance](../docs/efi/selected-altitude.md#selected-altitude-and-alert-acceptance) |
-| Alert history, regression lessons, and accepted amendments | [Implementation](../docs/efi/selected-altitude.md#implementation), [rationale](../docs/efi/selected-altitude.md#rationale-and-regression-lessons) |
+| Alert behavior, regression lessons, and decisions | [Implementation](../docs/efi/selected-altitude.md#implementation), [rationale](../docs/efi/selected-altitude.md#rationale-and-regression-lessons) |

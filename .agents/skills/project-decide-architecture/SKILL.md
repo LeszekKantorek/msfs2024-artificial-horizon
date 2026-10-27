@@ -58,4 +58,4 @@ Check that the ADR identifies the problem, viable options including the current 
 Retain uncertainties, unavailable experiments, superseded portions of earlier decisions, and conditions for reconsideration.
 Use the [change map](../../../.context/component-changes.md) to identify affected contracts and validation without duplicating their contents in the ADR.
 An accepted ADR does not establish implementation, simulator compatibility, or real-device acceptance.
-The [source record](../../../.context/architecture-decisions.md#sources-and-limits) retains the procedure's rationale and historical limits.
+The [decision guidance](../../../.context/architecture-decisions.md#sources-and-limits) explains applicable boundaries and evidence limits.

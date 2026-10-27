@@ -40,8 +40,6 @@ Review the choice of structure independently from the wording:
 * Do not substitute one sentence per source line for a list or table. Single newlines remain one rendered paragraph.
 * Retain prose when it explains a necessary relationship. Do not convert connected reasoning into arbitrary bullet fragments.
 
-Source: explicit documentation-format and review corrections for SimConnect #5, 2026-10-27.
-
 ## Impersonal project records
 
 * Describe results, decisions, procedures, and evidence without personal narration.
@@ -49,10 +47,8 @@ Source: explicit documentation-format and review corrections for SimConnect #5, 
 * Avoid references such as "the owner", "owner-assisted", "the user reported", or "the assistant verified".
 * Use wording such as "Tested on...", "Confirmed using...", "Based on documentation...", and "Accepted for this iteration...".
 * Use "Reported..." for supplied observations and "Verified..." only for checks directly performed.
-* Preserve sources, dates, environments, missing details, uncertainty, and approval requirements.
+* Preserve sources, relevant environments, missing details, uncertainty, and approval requirements. Keep change dates and work status in the owning issue or evidence record.
 * Keep technical ownership terms when they describe resource management or responsibilities.
-
-Source: writing requirement recorded in [issue #31](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/31), 2026-10-09.
 
 ## Document responsibilities
 
@@ -69,17 +65,7 @@ Source: writing requirement recorded in [issue #31](https://github.com/LeszekKan
 | [ADRs](../docs/adr/) | Decisions and decision lifecycle, not implementation status |
 | GitHub Issues / PRs | Task status, execution results, acceptance evidence |
 
-Source: accepted writing style, document responsibilities, and setup decisions, 2026-10-09.
-
-Source: accepted documentation correction, 2026-10-10, to introduce long bullet groups with short sentences that explain their scope.
-
-Source: documentation structure correction for #56 and PR #55, 2026-10-11, separating Markdown checks from language checks.
-
-Source: formatting correction for the testing guide in PR #60, 2026-10-11, to group independent checks instead of stacking prose lines.
-
 ## Instrument terminology
 
 Use [project terminology](../docs/project-brief.md#terminology): EFI for the complete instrument, artificial horizon for the attitude indication.
-Retain historical ADR wording and existing technical identifiers until a separate rename updates their consumers.
-
-Source: accepted terminology clarification, 2026-10-17.
+Keep technical identifiers consistent with their consumers.

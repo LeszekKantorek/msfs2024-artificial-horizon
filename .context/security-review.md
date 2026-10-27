@@ -48,9 +48,7 @@ Select checks for actual changes rather than adding unrelated security work.
 
 ## Sources and limits
 
-* Sources: the linked repository rules, deployment contract, telemetry lifecycle, and privileged CI boundary.
 * Implementation example: [BARO rendering](../web/altitude/baro.js) assigns source-formatted text through `textContent` rather than HTML parsing.
-* Source: request to create project-based security review guidance, 2026-10-11.
 * This entry defines a review procedure rather than a completed security audit or a vulnerability assessment.
 * A private-network restriction does not add authentication or encryption.
 * Report current dependency security claims only with evidence for the actual versions and review date.

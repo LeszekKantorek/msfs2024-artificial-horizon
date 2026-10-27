@@ -1,10 +1,6 @@
 # ADR 0006: Minimal manual SimConnect FFI with runtime loading
 
-| Date | Status |
-| --- | --- |
-| 2026-10-26 | Accepted manual bindings, runtime loading, and one native worker |
-| 2026-10-27 | Amended application entry point, DLL selection, and diagnostics |
-| 2026-10-27 | Accepted bounded live publication after evidence assessment |
+Decision status: Accepted.
 
 ## Context
 
@@ -69,7 +65,7 @@ Integration constraints preserve the existing architecture:
 
 The [feature guide](../simconnect.md#diagnostic-logging) owns operational details and record formats.
 
-### Live-publication amendment, 2026-10-27
+### Live-publication amendment
 
 The [accepted evidence in #5](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) supports removing the provisional live-to-`waiting` gate within the tested setup:
 

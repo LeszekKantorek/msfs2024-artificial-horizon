@@ -60,7 +60,6 @@ The current client has these limits when a callback changes its lifecycle:
 These limits remain outside the cancellation guarantee:
 
 * An acceptance operation already executing a callback may continue after `stop()`.
-* The #56 stage-1 review preserved these legacy behaviors for refactor equivalence.
 * Future callers must not rely on these limitations as stable behavior guarantees.
 * Changes require separate behavior scope and regression checks for callback-triggered stop, restart, and nested acceptance.
 

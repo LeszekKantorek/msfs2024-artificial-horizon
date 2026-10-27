@@ -9,7 +9,7 @@
 | [Validation scope](../docs/testing/index.md#validation-by-change-scope) | Selecting required checks for a change. |
 | [Contribution workflow](../CONTRIBUTING.md#workflow) | Preparing an issue, branch, or PR. |
 | [Acceptance tracking](../CONTRIBUTING.md#acceptance-criteria-and-additional-verification) | Recording verified criteria, evidence, and pending checks. |
-| [Repository rule history](repository-instructions.md) | Tracing the origins of contribution constraints, completion criteria, or follow-up rules. |
+| [Repository rules](repository-instructions.md) | Finding contribution constraints, acceptance criteria, or follow-up rules. |
 | [PR acceptance control](pr-acceptance.md) | Diagnosing acceptance status, changing the validator, or activating its required check. |
 | [Task guidance selection](task-guidance.md) | The direct route is unclear, a task crosses several areas, or routing guidance itself needs maintenance. |
 | [Implementation planning](implementation-planning.md) | Finding planning rationale and evidence limits, or the owning project-plan-change skill. |

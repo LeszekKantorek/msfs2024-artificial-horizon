@@ -8,7 +8,7 @@ status: active
 | Run presentation validation | [project-validate-presentation](../.agents/skills/project-validate-presentation/SKILL.md) |
 | Check responsive geometry and painted bounds | [Geometry and paint regression checks](../docs/testing/pfd.md#geometry-and-paint-regression-checks) |
 | Trace bank-zero clipping evidence | [Attitude geometry provenance](../docs/efi/attitude.md#geometry-evidence-provenance) |
-| Trace hidden-label clipping and full-fixture scope | [Heading provenance](../docs/efi/heading.md#clipping-and-scope-provenance) |
+| Check hidden-label clipping and full-fixture scope | [Heading clipping and scope](../docs/efi/heading.md#clipping-and-scope) |
 
 ## Paint order checks
 
