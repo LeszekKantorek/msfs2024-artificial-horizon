@@ -268,7 +268,11 @@ impl Library {
         }
     }
 
-    pub fn open(&self, notification: HANDLE) -> Result<Connection<'_>, NativeError> {
+    pub fn open(
+        &self,
+        notification: HANDLE,
+        unit_probes: bool,
+    ) -> Result<Connection<'_>, NativeError> {
         let mut handle = ptr::null_mut();
         // SAFETY: valid resolved function, writable handle output, static name.
         // The worker keeps its event alive until the returned connection closes.
@@ -292,6 +296,7 @@ impl Library {
             library: self,
             handle,
             dispatch_hresult: 0,
+            unit_probes,
             _thread_bound: PhantomData,
         })
     }
@@ -310,23 +315,36 @@ pub(super) struct Connection<'library> {
     library: &'library Library,
     handle: HANDLE,
     dispatch_hresult: i32,
+    // Fixed when opened, including if optional logging later fails.
+    unit_probes: bool,
     _thread_bound: PhantomData<Rc<()>>,
 }
 
 impl Connection<'_> {
+    pub fn attitude_field_count(&self) -> usize {
+        if self.unit_probes { 6 } else { 4 }
+    }
+
     pub fn add_attitude_field(&mut self, index: usize) -> Result<(), NativeError> {
         let fields = [
             (c"PLANE PITCH DEGREES", c"radians"),
             (c"PLANE PITCH DEGREES", c"degrees"),
             (c"PLANE BANK DEGREES", c"radians"),
             (c"PLANE BANK DEGREES", c"degrees"),
+            (c"PLANE PITCH DEGREES", c"radians"),
+            (c"PLANE BANK DEGREES", c"radians"),
         ];
-        let (name, units) = fields.get(index).ok_or_else(|| {
-            NativeError::detail(
-                "SimConnect_AddToDataDefinition",
-                "attitude field index must be 0..4",
-            )
-        })?;
+        let (name, units) = fields[..self.attitude_field_count()]
+            .get(index)
+            .ok_or_else(|| {
+                NativeError::detail(
+                    "SimConnect_AddToDataDefinition",
+                    format!(
+                        "attitude field index must be 0..{}",
+                        self.attitude_field_count()
+                    ),
+                )
+            })?;
         // SAFETY: self owns the live handle, and names live through this call.
         result("SimConnect_AddToDataDefinition", unsafe {
             (self.library.api.add_definition)(
@@ -400,7 +418,7 @@ impl Connection<'_> {
         result("SimConnect_GetNextDispatch", hr)?;
         // SAFETY: the SDK owns length bytes until the next dispatch. Decode now
         // into owned Rust values; no reference crosses the next native call.
-        unsafe { decode_received(data, length) }.map(Some)
+        unsafe { decode_received(data, length, self.attitude_field_count()) }.map(Some)
     }
 
     pub fn close(mut self) -> Result<(), NativeError> {
@@ -498,6 +516,9 @@ pub(super) enum Message {
         define_count: u32,
         /// Pitch radians, pitch degrees, bank radians, bank degrees.
         values: [f64; 4],
+        /// Optional repeated pitch radians and bank radians at the end of the definition.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        repeated_radians: Option<[f64; 2]>,
     },
     Unknown,
 }
@@ -507,7 +528,11 @@ fn malformed(detail: impl Into<String>) -> NativeError {
 }
 
 /// `data` must denote `length` readable bytes unless null or shorter than a header.
-unsafe fn decode_received(data: *mut Recv, length: u32) -> Result<Packet, NativeError> {
+unsafe fn decode_received(
+    data: *mut Recv,
+    length: u32,
+    attitude_field_count: usize,
+) -> Result<Packet, NativeError> {
     if data.is_null() || length < size_of::<Recv>() as u32 {
         return Err(NativeError::detail(
             "SimConnect_GetNextDispatch",
@@ -516,7 +541,7 @@ unsafe fn decode_received(data: *mut Recv, length: u32) -> Result<Packet, Native
     }
     // SAFETY: caller guarantees readable bytes; alignment is irrelevant for u8.
     let bytes = unsafe { std::slice::from_raw_parts(data.cast::<u8>(), length as usize) };
-    decode(bytes).map_err(|mut error| {
+    decode_with_attitude_count(bytes, attitude_field_count).map_err(|mut error| {
         error.detail.push_str(&format!(
             "; receive_id={}, receive_size={}, buffer_size={length}",
             word(bytes, 8).expect("validated receive header"),
@@ -554,7 +579,15 @@ fn string(bytes: &[u8]) -> String {
     String::from_utf8_lossy(&bytes[..end]).into_owned()
 }
 
+#[cfg(test)]
 fn decode(bytes: &[u8]) -> Result<Packet, NativeError> {
+    decode_with_attitude_count(bytes, 4)
+}
+
+fn decode_with_attitude_count(
+    bytes: &[u8],
+    attitude_field_count: usize,
+) -> Result<Packet, NativeError> {
     require(bytes, size_of::<Recv>())?;
     let size = word(bytes, 0)?;
     if size < size_of::<Recv>() as u32 || size as usize > bytes.len() {
@@ -647,14 +680,20 @@ fn decode(bytes: &[u8]) -> Result<Packet, NativeError> {
             } else {
                 let define_count = word(bytes, 36)?;
                 let flags = word(bytes, 24)?;
-                if define_count != 4 || flags != 0 {
+                if !matches!(attitude_field_count, 4 | 6)
+                    || define_count as usize != attitude_field_count
+                    || flags != 0
+                {
                     return Err(malformed(format!(
-                        "attitude requires four untagged FLOAT64 data items; define_count={define_count}, flags={flags}",
+                        "attitude requires {attitude_field_count} untagged FLOAT64 data items; define_count={define_count}, flags={flags}",
                     )));
                 }
-                require(bytes, DATA_OFFSET + 4 * size_of::<f64>())?;
-                let mut values = [0.0; 4];
-                for (index, value) in values.iter_mut().enumerate() {
+                require(bytes, DATA_OFFSET + attitude_field_count * size_of::<f64>())?;
+                let mut decoded_values = [0.0; 6];
+                for (index, value) in decoded_values[..attitude_field_count]
+                    .iter_mut()
+                    .enumerate()
+                {
                     let offset = DATA_OFFSET + index * 8;
                     *value = f64::from_le_bytes(
                         bytes[offset..offset + 8]
@@ -669,7 +708,9 @@ fn decode(bytes: &[u8]) -> Result<Packet, NativeError> {
                     entry_number: word(bytes, 28)?,
                     out_of: word(bytes, 32)?,
                     define_count,
-                    values,
+                    values: decoded_values[..4].try_into().expect("four main fields"),
+                    repeated_radians: (attitude_field_count == 6)
+                        .then_some([decoded_values[4], decoded_values[5]]),
                 }
             }
         }
@@ -713,16 +754,16 @@ mod tests {
     fn dispatch_pointer_invariants_are_checked_before_creating_a_slice() {
         for length in [0, 11, 12, u32::MAX] {
             // SAFETY: a null pointer is rejected before accessing any bytes.
-            assert!(unsafe { decode_received(ptr::null_mut(), length) }.is_err());
+            assert!(unsafe { decode_received(ptr::null_mut(), length, 4) }.is_err());
         }
         let mut bytes = packet(RECV_QUIT, 12);
         for length in 0..12 {
             // SAFETY: the helper rejects short lengths before accessing bytes.
-            assert!(unsafe { decode_received(bytes.as_mut_ptr().cast(), length) }.is_err());
+            assert!(unsafe { decode_received(bytes.as_mut_ptr().cast(), length, 4) }.is_err());
         }
         // SAFETY: bytes contains a complete readable receive header.
         assert!(matches!(
-            unsafe { decode_received(bytes.as_mut_ptr().cast(), 12) }
+            unsafe { decode_received(bytes.as_mut_ptr().cast(), 12, 4) }
                 .unwrap()
                 .message,
             Message::Quit
@@ -733,6 +774,8 @@ mod tests {
         static CLOSE_RESULT: Cell<i32> = const { Cell::new(0) };
         static CLOSE_CALLS: Cell<u32> = const { Cell::new(0) };
         static NEXT_RESULT: Cell<i32> = const { Cell::new(E_FAIL) };
+        static NEXT_PACKET: std::cell::RefCell<Vec<u8>> = const { std::cell::RefCell::new(Vec::new()) };
+        static ADD_FIELDS: std::cell::RefCell<Vec<(String, String)>> = const { std::cell::RefCell::new(Vec::new()) };
     }
 
     unsafe extern "C" fn mock_close(_: HANDLE) -> i32 {
@@ -740,27 +783,52 @@ mod tests {
         CLOSE_RESULT.with(Cell::get)
     }
     unsafe extern "C" fn mock_open(
-        _: *mut HANDLE,
+        handle: *mut HANDLE,
         _: *const c_char,
         _: HWND,
         _: u32,
         _: HANDLE,
         _: u32,
     ) -> i32 {
+        // SAFETY: Library::open supplies its writable handle output.
+        unsafe { *handle = ptr::without_provenance_mut(1) };
         0
     }
-    unsafe extern "C" fn mock_next(_: HANDLE, _: *mut *mut Recv, _: *mut u32) -> i32 {
+    unsafe extern "C" fn mock_next(_: HANDLE, data: *mut *mut Recv, length: *mut u32) -> i32 {
+        NEXT_PACKET.with(|packet| {
+            let mut packet = packet.borrow_mut();
+            if !packet.is_empty() {
+                // SAFETY: Connection::next supplies valid writable outputs;
+                // the thread-local buffer is retained until after decoding.
+                unsafe {
+                    *data = packet.as_mut_ptr().cast();
+                    *length = packet.len() as u32;
+                }
+            }
+        });
         NEXT_RESULT.with(Cell::get)
     }
     unsafe extern "C" fn mock_add(
         _: HANDLE,
-        _: u32,
-        _: *const c_char,
-        _: *const c_char,
-        _: i32,
-        _: f32,
-        _: u32,
+        definition: u32,
+        name: *const c_char,
+        units: *const c_char,
+        datatype: i32,
+        epsilon: f32,
+        datum_id: u32,
     ) -> i32 {
+        assert_eq!(definition, ATTITUDE_DEFINITION);
+        assert_eq!(datatype, DATATYPE_FLOAT64);
+        assert_eq!(epsilon, 0.0);
+        assert_eq!(datum_id, UNUSED);
+        // SAFETY: add_attitude_field supplies static NUL-terminated strings.
+        let (name, units) = unsafe { (CStr::from_ptr(name), CStr::from_ptr(units)) };
+        ADD_FIELDS.with(|fields| {
+            fields.borrow_mut().push((
+                name.to_str().unwrap().to_owned(),
+                units.to_str().unwrap().to_owned(),
+            ));
+        });
         0
     }
     unsafe extern "C" fn mock_request(
@@ -790,6 +858,8 @@ mod tests {
         CLOSE_CALLS.with(|value| value.set(0));
         CLOSE_RESULT.with(|value| value.set(0));
         NEXT_RESULT.with(|value| value.set(E_FAIL));
+        NEXT_PACKET.with(|packet| packet.borrow_mut().clear());
+        ADD_FIELDS.with(|fields| fields.borrow_mut().clear());
         Library {
             module: ptr::null_mut(),
             api: Api {
@@ -813,6 +883,7 @@ mod tests {
             library,
             handle: ptr::without_provenance_mut(1),
             dispatch_hresult: 0,
+            unit_probes: false,
             _thread_bound: PhantomData,
         }
     }
@@ -852,6 +923,66 @@ mod tests {
         // A successful dispatch without a buffer remains a controlled error.
         NEXT_RESULT.with(|value| value.set(0));
         assert!(connection.next().is_err());
+    }
+
+    #[test]
+    fn connection_mode_fixes_field_order_count_and_index_bounds() {
+        for unit_probes in [false, true] {
+            let library = mock_library();
+            let mut connection = library.open(ptr::null_mut(), unit_probes).unwrap();
+            let count = if unit_probes { 6 } else { 4 };
+            assert_eq!(connection.attitude_field_count(), count);
+            for index in 0..count {
+                connection.add_attitude_field(index).unwrap();
+            }
+            for index in [count, usize::MAX] {
+                let error = connection.add_attitude_field(index).unwrap_err();
+                assert_eq!(error.operation, "SimConnect_AddToDataDefinition");
+            }
+            let expected = [
+                ("PLANE PITCH DEGREES", "radians"),
+                ("PLANE PITCH DEGREES", "degrees"),
+                ("PLANE BANK DEGREES", "radians"),
+                ("PLANE BANK DEGREES", "degrees"),
+                ("PLANE PITCH DEGREES", "radians"),
+                ("PLANE BANK DEGREES", "radians"),
+            ];
+            ADD_FIELDS.with(|fields| {
+                let fields = fields.borrow();
+                let borrowed: Vec<_> = fields
+                    .iter()
+                    .map(|(name, units)| (name.as_str(), units.as_str()))
+                    .collect();
+                assert_eq!(borrowed, expected[..count]);
+            });
+        }
+    }
+
+    #[test]
+    fn dispatch_decoding_uses_the_mode_fixed_at_connection_open() {
+        for unit_probes in [false, true] {
+            let library = mock_library();
+            let mut connection = library.open(ptr::null_mut(), unit_probes).unwrap();
+            NEXT_RESULT.with(|value| value.set(0));
+            let matching = if unit_probes {
+                attitude_with_repeats([0.25, -0.5])
+            } else {
+                attitude()
+            };
+            NEXT_PACKET.with(|packet| *packet.borrow_mut() = matching);
+            assert!(matches!(
+                connection.next().unwrap().unwrap().message,
+                Message::Attitude { repeated_radians, .. }
+                    if repeated_radians.is_some() == unit_probes
+            ));
+            let mismatch = if unit_probes {
+                attitude()
+            } else {
+                attitude_with_repeats([0.25, -0.5])
+            };
+            NEXT_PACKET.with(|packet| *packet.borrow_mut() = mismatch);
+            assert!(connection.next().is_err());
+        }
     }
 
     #[test]
@@ -924,6 +1055,16 @@ mod tests {
         bytes
     }
 
+    fn attitude_with_repeats(repeated_radians: [f64; 2]) -> Vec<u8> {
+        let mut bytes = attitude();
+        bytes[..4].copy_from_slice(&88_u32.to_le_bytes());
+        bytes[36..40].copy_from_slice(&6_u32.to_le_bytes());
+        for value in repeated_radians {
+            bytes.extend_from_slice(&value.to_le_bytes());
+        }
+        bytes
+    }
+
     #[test]
     fn copies_unaligned_payload_from_offset_40() {
         let bytes = attitude();
@@ -936,13 +1077,119 @@ mod tests {
                 values,
                 entry_number,
                 out_of,
+                repeated_radians,
                 ..
             } => {
                 assert_eq!(values, [0.25, 14.32, -0.5, -28.64]);
                 assert_eq!((entry_number, out_of), (1, 1));
+                assert!(repeated_radians.is_none());
             }
             message => panic!("unexpected {message:?}"),
         }
+    }
+
+    #[test]
+    fn repeated_radians_preserve_six_field_offset_order_and_bits() {
+        let probes = [
+            [0.250_123_456_789_f64, -0.500_987_654_321],
+            [f64::INFINITY, f64::NEG_INFINITY],
+            [f64::from_bits(0x7ff8_1234_5678_9abc), -0.0],
+        ];
+        for repeated in probes {
+            let mut bytes = attitude_with_repeats(repeated);
+            // All six fields must remain raw copies, including non-finite bits.
+            let expected = [repeated[0], repeated[1], -0.5, -28.64];
+            for (index, value) in expected.iter().enumerate() {
+                bytes[40 + index * 8..48 + index * 8].copy_from_slice(&value.to_le_bytes());
+            }
+            let mut unaligned = vec![0];
+            unaligned.extend_from_slice(&bytes);
+            let decoded = decode_with_attitude_count(&unaligned[1..], 6).unwrap();
+            assert_eq!((decoded.id, decoded.size, decoded.version), (8, 88, 7));
+            match decoded.message {
+                Message::Attitude {
+                    values,
+                    repeated_radians: Some(actual),
+                    define_count,
+                    ..
+                } => {
+                    assert_eq!(define_count, 6);
+                    assert_eq!(values.map(f64::to_bits), expected.map(f64::to_bits));
+                    assert_eq!(actual.map(f64::to_bits), repeated.map(f64::to_bits));
+                }
+                message => panic!("unexpected {message:?}"),
+            }
+        }
+        let four = serde_json::to_value(decode(&attitude()).unwrap()).unwrap();
+        assert!(
+            four["message"]["Attitude"]
+                .get("repeated_radians")
+                .is_none()
+        );
+        let six = serde_json::to_value(
+            decode_with_attitude_count(&attitude_with_repeats([0.25, -0.5]), 6).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            six["message"]["Attitude"]["repeated_radians"],
+            serde_json::json!([0.25, -0.5])
+        );
+    }
+
+    #[test]
+    fn rejects_every_truncated_six_field_payload_and_both_mode_mismatches() {
+        let bytes = attitude_with_repeats([0.25, -0.5]);
+        for length in 0..bytes.len() {
+            assert!(
+                decode_with_attitude_count(&bytes[..length], 6).is_err(),
+                "buffer length={length}"
+            );
+            if length >= 12 {
+                let mut short = bytes[..length].to_vec();
+                short[..4].copy_from_slice(&(length as u32).to_le_bytes());
+                assert!(
+                    decode_with_attitude_count(&short, 6).is_err(),
+                    "declared length={length}"
+                );
+            }
+        }
+        assert!(decode_with_attitude_count(&bytes, 4).is_err());
+        assert!(decode_with_attitude_count(&attitude(), 6).is_err());
+        for count in [0, 3, 4, 5, 7, u32::MAX] {
+            let mut wrong_count = bytes.clone();
+            wrong_count[36..40].copy_from_slice(&count.to_le_bytes());
+            assert!(decode_with_attitude_count(&wrong_count, 6).is_err());
+        }
+        let mut tagged = bytes.clone();
+        tagged[24..28].copy_from_slice(&2_u32.to_le_bytes());
+        assert!(decode_with_attitude_count(&tagged, 6).is_err());
+    }
+
+    #[test]
+    fn six_field_mode_keeps_request_correlation_and_unknown_packet_behavior() {
+        let mut bytes = attitude_with_repeats([0.25, -0.5]);
+        bytes[16..20].copy_from_slice(&540_672_u32.to_le_bytes());
+        assert!(matches!(
+            decode_with_attitude_count(&bytes, 6).unwrap().message,
+            Message::Attitude {
+                object_id: 540_672,
+                ..
+            }
+        ));
+        for offset in [12, 20] {
+            let mut unknown = bytes[..40].to_vec();
+            unknown[..4].copy_from_slice(&40_u32.to_le_bytes());
+            unknown[offset..offset + 4].copy_from_slice(&99_u32.to_le_bytes());
+            let decoded = decode_with_attitude_count(&unknown, 6).unwrap();
+            assert!(matches!(decoded.message, Message::Unknown));
+            assert!(decoded.rejected_simobject_data.is_some());
+        }
+        assert!(matches!(
+            decode_with_attitude_count(&packet(0xf000, 12), 6)
+                .unwrap()
+                .message,
+            Message::Unknown
+        ));
     }
 
     #[test]

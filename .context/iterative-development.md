@@ -19,6 +19,7 @@ Use [project-plan-change](../.agents/skills/project-plan-change/SKILL.md) to tur
 * Store implementation plans, amendments, and handoff indexes under Git-ignored `.local/plans/<issue>-<topic>/`.
 * Do not commit implementation plans or publish them in GitHub issues or PRs unless explicitly requested.
 * Keep abbreviated execution notes as supplements, never replacements for the accepted plan.
+* Keep session progress and diagnostic work logs local. Use them to prepare the final summary; do not use GitHub Issues as a running progress notebook.
 * Record subsequent corrections as separate dated amendments that identify the superseded requirements.
 * Keep a local handoff index that links the original plan, all amendments in application order, and the latest delivery evidence.
 * Record public acceptance evidence in the issue or PR without publishing the implementation plan.
@@ -36,5 +37,7 @@ Source: approved context cleanup, 2026-10-11, after a later asset-registration a
 Source: accepted correction for #23, 2026-10-11, to remove `docs/plans/23-altitude-baro` from the repository and PR and keep future implementation plans local.
 
 Source: accepted detailed-plan correction for #63, 2026-10-11.
+
+Source: explicit user reporting correction during SimConnect #5 testing, 2026-10-27. This changes progress reporting, not authorization to publish a requested final result.
 
 Evidence limit: no verified causal link connects plan abbreviation with earlier defects.

@@ -83,7 +83,8 @@ There is no automatic switch to demo.
 
 ## What the records mean
 
-The worker requests four `FLOAT64` values in one definition for the user aircraft, once per simulator frame, without `CHANGED`:
+The worker requests `FLOAT64` values in one definition for the user aircraft, once per simulator frame, without `CHANGED`.
+The first four fields always retain this order:
 
 | Index | Variable | Requested unit |
 | --- | --- | --- |
@@ -92,7 +93,23 @@ The worker requests four `FLOAT64` values in one definition for the user aircraf
 | 2 | `PLANE BANK DEGREES` | radians |
 | 3 | `PLANE BANK DEGREES` | degrees |
 
-With diagnostics enabled, each sample records all four raw values before normalization and publication.
+If logging is enabled when the connection opens, two diagnostic fields are appended:
+
+| Index | Variable | Requested unit |
+| --- | --- | --- |
+| 4 | `PLANE PITCH DEGREES` | radians, repeated |
+| 5 | `PLANE BANK DEGREES` | radians, repeated |
+
+The connection retains its selected four- or six-field definition until it closes.
+A later logging failure does not change an active definition; a subsequent connection can use four fields after diagnostics have been disabled.
+The decoder requires the configured field count and enough bytes for its untagged payload.
+The six-field packet contains 48 payload bytes, or 88 bytes including its receive header.
+An unsupported duplicate definition or asynchronous exception follows the controlled error path; it does not silently fall back to four fields.
+The `attitude_definition` record identifies the actual connection profile.
+
+With diagnostics enabled, each sample records the original four raw values before normalization and publication.
+`attitude_raw.data.sample_index` counts samples within the connection.
+For a six-field definition, `data.repeated_radians` records `pitch` and `bank` using the same numeric representation as the original raw values.
 Nonfinite numbers use JSON-compatible value/classification/bit records.
 The candidate conversion checks radians/degrees agreement within `0.00001` degrees, negates pitch and bank, and wraps bank into `[-180, 180)`.
 It validates finite pitch in `[-90, 90]` under the existing [telemetry contract](telemetry-contract.md#fields-and-conventions).
@@ -106,7 +123,7 @@ request and definition IDs. Their `object_id` is retained as reported; it must n
 be required to equal that request-side proxy. A live MSFS2024 session returned
 `object_id=540672` for request/definition 1, and requiring zero discarded every
 attitude packet. The runtime ID is not hard-coded or pinned across flights.
-Payload length, four untagged values, numeric validation and the availability guard
+Payload length, the configured untagged field count, numeric validation and the availability guard
 still apply. See the official [request API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_requestdataonsimobject/)
 and [response structure](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/structures-and-enumerations/simconnect_recv_simobject_data/).
 
@@ -139,7 +156,9 @@ The records provide these diagnostic groups:
 | `session_start`, `environment`, `dll_identity` | Session identity, timing, configuration and selected DLL, executable/DLL SHA-256, runtime Rust/Git/Windows context, optional nearby SDK metadata |
 | `dispatch` with an Open message | Application and SimConnect versions reported by the simulator |
 | `connection_attempt`, `api_result`, `native_error` | Connection generation, HRESULT/Windows errors, requests, sent packet IDs, and exception correlation |
+| `attitude_definition` | Actual four- or six-field connection profile and requested field order |
 | `dispatch`, `attitude_raw`, `attitude_sample` | Message ID/size and owned decoded data; raw units and sample intervals before conversion; then candidate normalization |
+| `attitude_unit_check` | Original unit mismatch, changed repeated-radian bits, or nonfinite probe values; per-axis numeric comparisons for the focused experiment |
 | `state_transition`, `connection_lost`, `reconnect_wait` | Hypothesized lifecycle, actual publication, reason, and retry timing |
 | `dispatch_summary` | Packet/empty-dispatch counts, notification/timeout wakes, last HRESULT, and packet silence |
 | `notification_release`, `library_release`, `session_end` | Cleanup attempts and session outcome |
@@ -164,6 +183,30 @@ Logs flush at significant lifecycle/error records and at least once per second w
 Normal cleanup closes the connection, releases its notification handle, and unloads the DLL after native use ends.
 A failed native close is an error and retains both the DLL mapping and its notification handle until process exit rather than recycling resources that may still be in use.
 A release record describes the attempted path; inspect errors and the final process outcome as well.
+
+### Paired-unit diagnostic limits
+
+The repeated-radian fields investigate sparse disagreements between requested radians and degrees.
+They do not change the original four-field conversion or its tolerance.
+`attitude_unit_check` is emitted when an original unit pair disagrees, repeated radians change bits, or a probe value is nonfinite.
+For each axis, it retains original radians converted to degrees, requested degrees and their signed difference, repeated radians and their conversion, bit equality, and comparisons against the original degree value.
+The bounds comparison includes the existing `0.00001`-degree tolerance.
+These comparisons are observations, not an automatic classification of atomic or non-atomic simulator behavior.
+
+The official [definition API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_addtodatadefinition/)
+permits compatible alternative units but does not explicitly document repeated identical SimVar/unit entries.
+The [period documentation](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/structures-and-enumerations/simconnect_period/)
+specifies frame-based transmission; it does not establish simultaneous acquisition of every field.
+Repeated fields are therefore an experimental observation, not an SDK atomicity guarantee.
+
+In the 2026-10-27 local `pause-menu.jsonl` session, raw sample index 9550
+(zero-based analysis index, record 29119, elapsed 159465059 microseconds)
+retained exactly the preceding sample's bank radians while bank degrees advanced.
+The bank difference was about `0.002556` degrees; pitch agreed within ordinary floating-point rounding in the same packet.
+This is compatible with values acquired or cached at different times and is not explained by conversion rounding alone.
+The exact origin within the simulator, transport, or DLL remains unresolved.
+One earlier direction session contained one inconsistent packet among 11,462 samples;
+the pause/menu session contained four among 10,264. No tolerance change is justified by those counts.
 
 ## Record observations alongside the log
 
@@ -235,6 +278,28 @@ owns the input identity, observation evidence and remaining acceptance.
 Quantitative cockpit agreement, full combined-attitude/repetition coverage,
 availability, pause/menu behavior and broader compatibility are not certified
 by this basic direction confirmation.
+
+### `attitude-unit-probe`
+
+1. Start a logged session in a loaded, unpaused flight. Confirm that `attitude_definition` records the six-field profile.
+2. Hold a calm, nearly steady attitude for about 30 seconds. Record the aircraft, conditions, and cockpit behavior.
+3. Make gentle pitch and bank changes for about 90 seconds. Record their start/end times; avoid pause or menu transitions during this focused phase.
+4. Stop with `Ctrl+C`. Retain the complete log and local observations, including every `attitude_unit_check` record and neighboring samples.
+5. If no inconsistent sample recurs, repeat or extend this short scenario. Compare original unit errors, repeated-radian bits, recurrence counts, and any asynchronous exceptions across runs.
+
+The durations increase the opportunity to observe the sparse failures; a clean run does not establish their absence.
+Interpret the comparisons within these limits:
+
+| Observation | Supported interpretation and limit |
+| --- | --- |
+| Repeated radians change and agree with the original degrees | Supports values changing during acquisition or assembly; does not identify the component responsible |
+| Repeated radians change and original degrees lie between both converted values | Compatible with an intermediate attitude; bounds alone do not prove acquisition order or atomicity |
+| Repeated radians match bit-for-bit while the original unit pair disagrees | Compatible with caching by variable/unit or a conversion-path difference; matching duplicates do not prove atomicity |
+| Duplicate fields are rejected or the returned count differs | The configured probe was not accepted; retain the controlled error and do not infer the cause of the earlier four-field failures |
+| No probe anomaly recurs | Insufficient evidence for a fix because the original failures were intermittent |
+
+Keep the original unit-pair validation and conservative publication guard throughout the experiment.
+Select a correction only after evidence distinguishes its mechanism from the remaining alternatives.
 
 ### `pause-modes`
 
@@ -308,7 +373,8 @@ A hung native call, missing exit, failed Close, or unexplained CPU load is a fai
 ## Evaluate and retain evidence
 
 Compare logs with the sidecar observations and the questions in each scenario.
-Preserve raw evidence locally and publish only a suitable summary against the tested revision in #5 or its linked validation record.
+Preserve raw evidence and diagnostic progress locally.
+When publication is requested, use a suitable acceptance summary against the tested revision in #5 or its linked validation record.
 Include actual versions, repetitions, confirmed results, contradictions, missing checks, and the next focused experiment.
 Logs may contain local paths and flight filenames; inspect them before sharing.
 

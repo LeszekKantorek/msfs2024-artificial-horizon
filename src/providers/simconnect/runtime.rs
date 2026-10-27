@@ -3,6 +3,7 @@ use super::{
     journal::{DiagnosticStatus, Journal, fingerprint, number},
     lifecycle::{self, Lifecycle, candidate_attitude, state_name},
     native::{Connection, Library, Message, NativeError},
+    unit_check,
 };
 use crate::{
     Source,
@@ -249,7 +250,8 @@ fn worker(
         "git_changes_at_run": command_record("git", &["status", "--porcelain", "--untracked-files=no"]),
         "windows": command_record("cmd", &["/d", "/c", "ver"]),
         "sdk": sdk_version(dll), "dll": dll,
-        "requested_fields": ["pitch radians", "pitch degrees", "bank radians", "bank degrees"],
+        "base_requested_fields": ["pitch radians", "pitch degrees", "bank radians", "bank degrees"],
+        "unit_probe_profile": "append repeated pitch/bank radians if logging is enabled at connection open",
         "sign_hypothesis": "negate pitch and bank; normalize bank to [-180,180)",
         "note": "runtime toolchain/git metadata is contextual; executable SHA-256 identifies the tested bytes",
     }), true);
@@ -319,7 +321,7 @@ fn connections(
             || json!({ "generation": generation }),
             true,
         );
-        let mut connection = match library.open(notification.event().handle()) {
+        let mut connection = match library.open(notification.event().handle(), journal.enabled()) {
             Ok(connection) => connection,
             Err(error) => {
                 eprintln!("SimConnect connection unavailable: {error}");
@@ -498,7 +500,22 @@ fn configure(
     connection: &mut Connection<'_>,
     journal: &mut Journal,
 ) -> Result<(), SimConnectError> {
-    for index in 0..4 {
+    let field_count = connection.attitude_field_count();
+    journal.record(
+        "attitude_definition",
+        || {
+            json!({
+                "field_count": field_count,
+                "fields": &[
+                    "pitch radians", "pitch degrees", "bank radians", "bank degrees",
+                    "pitch radians repeated", "bank radians repeated",
+                ][..field_count],
+                "atomicity_verified": false,
+            })
+        },
+        true,
+    );
+    for index in 0..field_count {
         let result = connection.add_attitude_field(index);
         api_result(
             connection,
@@ -569,6 +586,9 @@ struct Counters {
     efail_dispatch: u64,
     notification_wakes: u64,
     timeout_wakes: u64,
+    unit_pair_mismatches: u64,
+    repeated_radian_changes: u64,
+    repeated_nonfinite: u64,
 }
 
 fn session(
@@ -583,6 +603,7 @@ fn session(
     let mut counters = Counters::default();
     let mut last_packet = Instant::now();
     let mut last_sample: Option<Instant> = None;
+    let mut sample_index = 0_u64;
     let mut summary = Instant::now();
     let mut query = Instant::now();
     loop {
@@ -668,15 +689,43 @@ fn session(
                         _ => {}
                     }
                 }
-                Message::Attitude { values, .. } => {
+                Message::Attitude {
+                    values,
+                    repeated_radians,
+                    ..
+                } => {
                     let now = Instant::now();
+                    sample_index += 1;
                     journal.record("attitude_raw", || json!({
+                        "sample_index": sample_index,
                         "raw": { "pitch_radians": number(values[0]), "pitch_degrees": number(values[1]),
                             "bank_radians": number(values[2]), "bank_degrees": number(values[3]) },
+                        "repeated_radians": repeated_radians.map(|[pitch, bank]| json!({
+                            "pitch": number(pitch), "bank": number(bank),
+                        })),
                         "interval_us": last_sample.map(|at| now.saturating_duration_since(at).as_micros().to_string()),
                     }), false);
+                    if journal.enabled() {
+                        let observation = unit_check::observe(values, repeated_radians);
+                        counters.unit_pair_mismatches += u64::from(observation.primary_mismatch);
+                        counters.repeated_radian_changes += u64::from(observation.repeats_changed);
+                        counters.repeated_nonfinite += u64::from(observation.repeats_nonfinite);
+                        if observation.anomalous() {
+                            journal.record(
+                                "attitude_unit_check",
+                                || {
+                                    json!({
+                                        "sample_index": sample_index,
+                                        "comparison": unit_check::details(values, repeated_radians),
+                                    })
+                                },
+                                true,
+                            );
+                        }
+                    }
                     let candidate = candidate_attitude(values);
                     journal.record("attitude_sample", || json!({
+                        "sample_index": sample_index,
                         "candidate_attitude": candidate.as_ref().ok(), "candidate_is_hypothesis": true,
                         "validation_error": candidate.as_ref().err().map(ToString::to_string),
                     }), false);

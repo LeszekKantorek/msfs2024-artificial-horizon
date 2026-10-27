@@ -8,6 +8,7 @@ pub(super) const EVENT_PAUSE: u32 = 11;
 pub(super) const EVENT_FLIGHT: u32 = 12;
 pub(super) const STATE_SIM: u32 = 20;
 pub(super) const STATE_FLIGHT: u32 = 21;
+pub(super) const UNIT_TOLERANCE_DEG: f64 = 1e-5;
 
 #[derive(Default)]
 pub(super) struct Lifecycle {
@@ -122,8 +123,8 @@ impl Lifecycle {
 pub(super) fn candidate_attitude(values: [f64; 4]) -> Result<Attitude, TelemetryError> {
     let [pitch_rad, pitch_deg, bank_rad, bank_deg] = values;
     if !values.iter().all(|number| number.is_finite())
-        || (pitch_rad.to_degrees() - pitch_deg).abs() > 1e-5
-        || (bank_rad.to_degrees() - bank_deg).abs() > 1e-5
+        || (pitch_rad.to_degrees() - pitch_deg).abs() > UNIT_TOLERANCE_DEG
+        || (bank_rad.to_degrees() - bank_deg).abs() > UNIT_TOLERANCE_DEG
     {
         return Err(TelemetryError::InvalidAttitude);
     }
