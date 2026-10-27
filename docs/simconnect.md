@@ -258,6 +258,23 @@ Expected evidence: retained samples are invalidated across flight transitions an
 A retained filename or a successful state query must not be accepted as proof of flight availability.
 Any menu candidate live is a failed hypothesis requiring a follow-up experiment.
 
+#### Pause and menu evidence
+
+In a 2026-10-27 session recorded in #5, the operator confirmed ordinary pause
+at about 38–63 seconds, Active Pause at about 82–101 seconds, then a main-menu
+exit and another flight. The observed pause flags were respectively 8 and 4;
+both intervals remained `paused` despite continued identical attitude samples.
+Each resume required a new sample before candidate live returned.
+
+The menu interval also reported flag 8 and remained unavailable. Subsequent
+Sim/FlightLoaded transitions cleared retained state, and candidate live returned
+only after a new sample. Thus flag 8 is not a unique ordinary-pause or menu
+discriminator, and a retained FlightLoaded filename or Sim query is insufficient
+to identify the UI phase. Exact cockpit-ready timing and complete lifecycle
+acceptance remain unverified. Four isolated paired-unit inconsistencies were
+rejected in this session; their cause remains unresolved. Keep raw evidence and
+the conservative availability guard.
+
 ### `shutdown-restart-interruption`
 
 1. Record 20 seconds in an active flight. Close MSFS2024 while leaving the application running.
