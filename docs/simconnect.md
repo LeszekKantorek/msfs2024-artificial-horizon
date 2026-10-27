@@ -84,35 +84,45 @@ There is no automatic switch to demo.
 ## What the records mean
 
 The worker requests `FLOAT64` values in one definition for the user aircraft, once per simulator frame, without `CHANGED`.
-The first four fields always retain this order:
+Native radians are the authoritative input for pitch and bank.
+The official [aircraft SimVar reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simvars/aircraft-simvars/aircraft-miscellaneous-variables/)
+lists both variables in radians despite their names.
+Without logging, the definition contains only these two fields:
 
 | Index | Variable | Requested unit |
 | --- | --- | --- |
 | 0 | `PLANE PITCH DEGREES` | radians |
-| 1 | `PLANE PITCH DEGREES` | degrees |
-| 2 | `PLANE BANK DEGREES` | radians |
-| 3 | `PLANE BANK DEGREES` | degrees |
+| 1 | `PLANE BANK DEGREES` | radians |
 
-If logging is enabled when the connection opens, two diagnostic fields are appended:
+If logging is enabled when the connection opens, the six-field diagnostic definition retains its established order:
 
 | Index | Variable | Requested unit |
 | --- | --- | --- |
+| 0 | `PLANE PITCH DEGREES` | radians, authoritative |
+| 1 | `PLANE PITCH DEGREES` | degrees, diagnostic |
+| 2 | `PLANE BANK DEGREES` | radians, authoritative |
+| 3 | `PLANE BANK DEGREES` | degrees, diagnostic |
 | 4 | `PLANE PITCH DEGREES` | radians, repeated |
 | 5 | `PLANE BANK DEGREES` | radians, repeated |
 
-The connection retains its selected four- or six-field definition until it closes.
-A later logging failure does not change an active definition; a subsequent connection can use four fields after diagnostics have been disabled.
+The connection retains its selected two- or six-field definition until it closes.
+A later logging failure does not change an active definition; a subsequent connection can use two fields after diagnostics have been disabled.
 The decoder requires the configured field count and enough bytes for its untagged payload.
+The two-field packet contains 16 payload bytes, or 56 bytes including its receive header.
 The six-field packet contains 48 payload bytes, or 88 bytes including its receive header.
-An unsupported duplicate definition or asynchronous exception follows the controlled error path; it does not silently fall back to four fields.
+An unsupported duplicate definition or asynchronous exception follows the controlled error path; it does not silently fall back to two fields.
 The `attitude_definition` record identifies the actual connection profile.
 
-With diagnostics enabled, each sample records the original four raw values before normalization and publication.
+With diagnostics enabled, each sample records the primary radians and requested degrees before normalization and publication.
 `attitude_raw.data.sample_index` counts samples within the connection.
 For a six-field definition, `data.repeated_radians` records `pitch` and `bank` using the same numeric representation as the original raw values.
 Nonfinite numbers use JSON-compatible value/classification/bit records.
-The candidate conversion checks radians/degrees agreement within `0.00001` degrees, negates pitch and bank, and wraps bank into `[-180, 180)`.
-It validates finite pitch in `[-90, 90]` under the existing [telemetry contract](telemetry-contract.md#fields-and-conventions).
+The candidate conversion converts the primary radians to degrees locally, negates pitch and bank, and wraps bank into `[-180, 180)`.
+Primary radians and their converted values must be finite, and pitch must remain in `[-90, 90]` under the existing [telemetry contract](telemetry-contract.md#fields-and-conventions).
+Requested degrees and repeated radians are diagnostic values only.
+Their disagreement or nonfinite values do not invalidate an otherwise valid primary-radian attitude.
+The cross-unit diagnostic comparison retains its `0.00001`-degree tolerance.
+This separates native input validity from an unsupported assumption that two requested units represent one atomic observation.
 Negating both signs is supported by a recorded live session and operator-confirmed
 nose-up/nose-down and left/right maneuvers; see [direction evidence](#direction-evidence).
 The variable names and agreement between two requested units do not establish the correct physical sign.
@@ -156,7 +166,7 @@ The records provide these diagnostic groups:
 | `session_start`, `environment`, `dll_identity` | Session identity, timing, configuration and selected DLL, executable/DLL SHA-256, runtime Rust/Git/Windows context, optional nearby SDK metadata |
 | `dispatch` with an Open message | Application and SimConnect versions reported by the simulator |
 | `connection_attempt`, `api_result`, `native_error` | Connection generation, HRESULT/Windows errors, requests, sent packet IDs, and exception correlation |
-| `attitude_definition` | Actual four- or six-field connection profile and requested field order |
+| `attitude_definition` | Actual two- or six-field connection profile and requested field order |
 | `dispatch`, `attitude_raw`, `attitude_sample` | Message ID/size and owned decoded data; raw units and sample intervals before conversion; then candidate normalization |
 | `attitude_unit_check` | Original unit mismatch, changed repeated-radian bits, or nonfinite probe values; per-axis numeric comparisons for the focused experiment |
 | `state_transition`, `connection_lost`, `reconnect_wait` | Hypothesized lifecycle, actual publication, reason, and retry timing |
@@ -187,10 +197,12 @@ A release record describes the attempted path; inspect errors and the final proc
 ### Paired-unit diagnostic limits
 
 The repeated-radian fields investigate sparse disagreements between requested radians and degrees.
-They do not change the original four-field conversion or its tolerance.
+The diagnostic comparison does not control primary-radian validity or sample freshness.
 `attitude_unit_check` is emitted when an original unit pair disagrees, repeated radians change bits, or a probe value is nonfinite.
 For each axis, it retains original radians converted to degrees, requested degrees and their signed difference, repeated radians and their conversion, bit equality, and comparisons against the original degree value.
 The bounds comparison includes the existing `0.00001`-degree tolerance.
+Schema-3 check records explicitly set `affects_sample_validity` to false.
+Dispatch summaries retain separate counts for unit-pair mismatches, repeated-radian changes, and nonfinite repeats.
 These comparisons are observations, not an automatic classification of atomic or non-atomic simulator behavior.
 
 The official [definition API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_addtodatadefinition/)
@@ -206,7 +218,21 @@ The bank difference was about `0.002556` degrees; pitch agreed within ordinary f
 This is compatible with values acquired or cached at different times and is not explained by conversion rounding alone.
 The exact origin within the simulator, transport, or DLL remains unresolved.
 One earlier direction session contained one inconsistent packet among 11,462 samples;
-the pause/menu session contained four among 10,264. No tolerance change is justified by those counts.
+the pause/menu session contained four among 10,264. These historical schema-2 sessions rejected such samples under the earlier cross-unit gate.
+
+The later schema-2 `unit-check.jsonl` session contained 11,897 six-field samples.
+Original and repeated radians were bit-identical for both axes in every sample, and all six fields remained finite.
+Two pitch unit differences occurred at about 18.7928 and 182.2505 seconds:
+local radian conversion minus requested degrees was approximately `-0.001726` and `-0.001388` degrees.
+Bank remained consistent. Both differences occurred with pause flags zero;
+confirmed pauses bounded the session at about 0.13–8.22 and 193.12–195.46 seconds.
+The old consumer rejected both samples and recovered on the next sample.
+Identical repeats do not distinguish caching by variable/unit from SDK field assembly, establish pitch/bank atomicity, or prove which representation was closer to the cockpit attitude.
+
+The consumer therefore selects the documented native unit and performs one local conversion.
+This removes false rejection caused solely by a diagnostic cross-unit disagreement; it does not claim to repair the simulator's internal acquisition mechanism.
+Journal schema 3 records this policy and the two- or six-field profiles.
+Older schema-2 records retain their earlier conversion and rejection semantics.
 
 ## Record observations alongside the log
 
@@ -257,7 +283,8 @@ If menu produces candidate live, mark the availability hypothesis contradicted; 
 4. Hold one combined pitch/bank attitude for 10 seconds, then a combination with the opposite bank for 10 seconds.
 5. Return near level for 15 seconds and stop the application.
 
-Expected evidence: radians/degrees pairs agree, both observed physical signs match the application conventions after candidate conversion, and combined attitudes remain consistent.
+Expected evidence: both observed physical signs match the application conventions after local radian conversion, and combined attitudes remain consistent.
+Inspect radians/degrees agreement separately as diagnostic evidence.
 The application requires positive nose-up pitch and positive right-wing-down roll.
 If observations contradict either sign, retain the raw data and identify which conversion needs revision before any live publication is enabled.
 
@@ -281,13 +308,14 @@ by this basic direction confirmation.
 
 ### `attitude-unit-probe`
 
-1. Start a logged session in a loaded, unpaused flight. Confirm that `attitude_definition` records the six-field profile.
-2. Hold a calm, nearly steady attitude for about 30 seconds. Record the aircraft, conditions, and cockpit behavior.
-3. Make gentle pitch and bank changes for about 90 seconds. Record their start/end times; avoid pause or menu transitions during this focused phase.
-4. Stop with `Ctrl+C`. Retain the complete log and local observations, including every `attitude_unit_check` record and neighboring samples.
-5. If no inconsistent sample recurs, repeat or extend this short scenario. Compare original unit errors, repeated-radian bits, recurrence counts, and any asynchronous exceptions across runs.
+1. Start a logged session in a loaded flight with ordinary pause active. Confirm that `attitude_definition` records the six-field profile. Record the pause action and allow about 5 seconds of paused samples.
+2. Resume and hold a calm, nearly steady attitude for about 30 seconds. Record the aircraft, conditions, and cockpit behavior.
+3. Make gentle pitch and bank changes for about 90 seconds. Record their start/end times; avoid menu transitions during this focused phase.
+4. Pause again for about 5 seconds and stop with `Ctrl+C`. Retain the complete log and local observations, including every `attitude_unit_check` record and neighboring samples.
+5. Check that each finite, in-range primary-radian sample produces the local conversion. A diagnostic unit disagreement must remain recorded without causing `attitude_validation_failed`. Both pause intervals must remain unavailable, and resume must require a new sample.
+6. Repeat or extend when more recurrence evidence is needed. Compare original unit errors, repeated-radian bits, recurrence counts, and any asynchronous exceptions across runs.
 
-The durations increase the opportunity to observe the sparse failures; a clean run does not establish their absence.
+The duration gives an opportunity to observe the sparse disagreements; a clean run does not establish their absence or complete live acceptance.
 Interpret the comparisons within these limits:
 
 | Observation | Supported interpretation and limit |
@@ -296,10 +324,10 @@ Interpret the comparisons within these limits:
 | Repeated radians change and original degrees lie between both converted values | Compatible with an intermediate attitude; bounds alone do not prove acquisition order or atomicity |
 | Repeated radians match bit-for-bit while the original unit pair disagrees | Compatible with caching by variable/unit or a conversion-path difference; matching duplicates do not prove atomicity |
 | Duplicate fields are rejected or the returned count differs | The configured probe was not accepted; retain the controlled error and do not infer the cause of the earlier four-field failures |
-| No probe anomaly recurs | Insufficient evidence for a fix because the original failures were intermittent |
+| No probe anomaly recurs | Verifies the exercised conversion and lifecycle path, but provides no new recurrence evidence because the original disagreements were intermittent |
 
-Keep the original unit-pair validation and conservative publication guard throughout the experiment.
-Select a correction only after evidence distinguishes its mechanism from the remaining alternatives.
+Keep strict primary-radian validity and the conservative publication guard throughout the experiment.
+The consumer correction addresses the cross-unit rejection policy; the simulator's internal cause remains unresolved.
 
 ### `pause-modes`
 

@@ -104,7 +104,7 @@ impl Journal {
             session_id,
         };
         if let Err(error) = active.record("session_start", json!({
-            "schema_version": 2, "started_unix_ms": (started_unix_ns / 1_000_000).to_string(),
+            "schema_version": 3, "started_unix_ms": (started_unix_ns / 1_000_000).to_string(),
             "clock": "UTC Unix epoch milliseconds", "process_id": std::process::id(),
             "diagnostic_only": true, "availability_mapping_verified": false, "attitude_signs_verified": false,
         }), true) {

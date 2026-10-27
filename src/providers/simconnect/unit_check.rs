@@ -1,7 +1,9 @@
 //! Diagnostic observations only; repeated reads never decide telemetry validity.
-use super::{journal::number, lifecycle::UNIT_TOLERANCE_DEG};
+use super::journal::number;
 use serde::Serialize;
 use serde_json::{Value, json};
+
+const UNIT_TOLERANCE_DEG: f64 = 1e-5;
 
 #[derive(Debug, Serialize)]
 pub(super) struct Observation {
@@ -147,7 +149,20 @@ mod tests {
                 < 1e-14
         );
         assert_eq!(d["bank"]["repeat"]["original_repeat_bits_equal"], true);
-        // Diagnostic changes cannot authorize the original inconsistent four fields.
-        assert!(super::super::lifecycle::candidate_attitude(values).is_err());
+        // This inconsistency stays visible without vetoing finite canonical radians.
+        let value = super::super::lifecycle::candidate_attitude([values[0], values[2]]).unwrap();
+        assert!((value.roll_deg() - 0.2991831039773354).abs() < 1e-12);
+    }
+
+    #[test]
+    fn unusable_degree_probe_is_reported_without_replacing_canonical_inputs() {
+        let radians = [-0.1, 0.2];
+        for probe_degrees in [f64::NAN, f64::INFINITY, 10_000.0] {
+            let values = [radians[0], probe_degrees, radians[1], probe_degrees];
+            assert!(observe(values, Some(radians)).primary_mismatch);
+            let attitude = super::super::lifecycle::candidate_attitude(radians).unwrap();
+            assert!((attitude.pitch_deg() - 5.729577951308233).abs() < 1e-12);
+            assert!((attitude.roll_deg() + 11.459155902616466).abs() < 1e-12);
+        }
     }
 }

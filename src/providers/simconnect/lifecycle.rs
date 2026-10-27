@@ -8,7 +8,6 @@ pub(super) const EVENT_PAUSE: u32 = 11;
 pub(super) const EVENT_FLIGHT: u32 = 12;
 pub(super) const STATE_SIM: u32 = 20;
 pub(super) const STATE_FLIGHT: u32 = 21;
-pub(super) const UNIT_TOLERANCE_DEG: f64 = 1e-5;
 
 #[derive(Default)]
 pub(super) struct Lifecycle {
@@ -118,16 +117,15 @@ impl Lifecycle {
     }
 }
 
-/// Candidate only: both signs must be verified against cockpit maneuvers. Angular
-/// unit agreement is checked within the same native packet, never by its name.
-pub(super) fn candidate_attitude(values: [f64; 4]) -> Result<Attitude, TelemetryError> {
-    let [pitch_rad, pitch_deg, bank_rad, bank_deg] = values;
-    if !values.iter().all(|number| number.is_finite())
-        || (pitch_rad.to_degrees() - pitch_deg).abs() > UNIT_TOLERANCE_DEG
-        || (bank_rad.to_degrees() - bank_deg).abs() > UNIT_TOLERANCE_DEG
-    {
+/// Native radians are the only angular input; convert locally and preserve the
+/// operator-confirmed signs. Separate SDK degree reads are diagnostic observations.
+pub(super) fn candidate_attitude(radians: [f64; 2]) -> Result<Attitude, TelemetryError> {
+    let [pitch_rad, bank_rad] = radians;
+    if !radians.iter().all(|number| number.is_finite()) {
         return Err(TelemetryError::InvalidAttitude);
     }
+    let pitch_deg = pitch_rad.to_degrees();
+    let bank_deg = bank_rad.to_degrees();
     Attitude::new(-pitch_deg, (-bank_deg + 180.0).rem_euclid(360.0) - 180.0)
 }
 
@@ -232,19 +230,50 @@ mod tests {
     }
 
     #[test]
-    fn candidate_conversion_preserves_contract_and_rejects_unit_mismatch() {
-        let value =
-            candidate_attitude([-15_f64.to_radians(), -15.0, -30_f64.to_radians(), -30.0]).unwrap();
-        assert_eq!(value.pitch_deg(), 15.0);
-        assert_eq!(value.roll_deg(), 30.0);
+    fn canonical_radians_preserve_signs_ranges_and_finite_validation() {
+        let value = candidate_attitude([-15_f64.to_radians(), -30_f64.to_radians()]).unwrap();
+        assert!((value.pitch_deg() - 15.).abs() < 1e-12);
+        assert!((value.roll_deg() - 30.).abs() < 1e-12);
         assert_eq!(
-            candidate_attitude([0.0, 0.0, -std::f64::consts::PI, -180.0])
+            candidate_attitude([0.0, -std::f64::consts::PI])
                 .unwrap()
                 .roll_deg(),
             -180.0
         );
-        assert!(candidate_attitude([0.0, 10.0, 0.0, 0.0]).is_err());
-        assert!(candidate_attitude([f64::NAN, 0.0, 0.0, 0.0]).is_err());
-        assert!(candidate_attitude([91_f64.to_radians(), 91.0, 0.0, 0.0]).is_err());
+        for radians in [
+            [f64::NAN, 0.],
+            [0., f64::INFINITY],
+            [f64::NEG_INFINITY, 0.],
+            [91_f64.to_radians(), 0.],
+            [-91_f64.to_radians(), 0.],
+            [0., f64::MAX],
+        ] {
+            assert!(candidate_attitude(radians).is_err());
+        }
+    }
+
+    #[test]
+    fn live_unit_check_failures_have_valid_canonical_radians() {
+        for (radians, expected_pitch, expected_roll) in [
+            (
+                [-0.029813224462023905, 0.005893836994290791],
+                1.7081719353501539,
+                -0.337691984910933,
+            ),
+            (
+                [0.04284653517251412, -0.14671478319603343],
+                -2.4549256321438957,
+                8.406137869309607,
+            ),
+        ] {
+            let value = candidate_attitude(radians).unwrap();
+            assert!((value.pitch_deg() - expected_pitch).abs() < 1e-12);
+            assert!((value.roll_deg() - expected_roll).abs() < 1e-12);
+            let mut lifecycle = active();
+            let now = Instant::now();
+            lifecycle.sample(Ok(value), now);
+            assert!(matches!(lifecycle.evaluate(now).candidate, State::Live(_)));
+            assert!(matches!(lifecycle.evaluate(now).published, State::Waiting));
+        }
     }
 }

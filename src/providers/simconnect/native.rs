@@ -322,11 +322,11 @@ pub(super) struct Connection<'library> {
 
 impl Connection<'_> {
     pub fn attitude_field_count(&self) -> usize {
-        if self.unit_probes { 6 } else { 4 }
+        if self.unit_probes { 6 } else { 2 }
     }
 
     pub fn add_attitude_field(&mut self, index: usize) -> Result<(), NativeError> {
-        let fields = [
+        let diagnostic_fields = [
             (c"PLANE PITCH DEGREES", c"radians"),
             (c"PLANE PITCH DEGREES", c"degrees"),
             (c"PLANE BANK DEGREES", c"radians"),
@@ -334,17 +334,24 @@ impl Connection<'_> {
             (c"PLANE PITCH DEGREES", c"radians"),
             (c"PLANE BANK DEGREES", c"radians"),
         ];
-        let (name, units) = fields[..self.attitude_field_count()]
-            .get(index)
-            .ok_or_else(|| {
-                NativeError::detail(
-                    "SimConnect_AddToDataDefinition",
-                    format!(
-                        "attitude field index must be 0..{}",
-                        self.attitude_field_count()
-                    ),
-                )
-            })?;
+        let canonical_fields = [
+            (c"PLANE PITCH DEGREES", c"radians"),
+            (c"PLANE BANK DEGREES", c"radians"),
+        ];
+        let fields: &[_] = if self.unit_probes {
+            &diagnostic_fields
+        } else {
+            &canonical_fields
+        };
+        let (name, units) = fields.get(index).ok_or_else(|| {
+            NativeError::detail(
+                "SimConnect_AddToDataDefinition",
+                format!(
+                    "attitude field index must be 0..{}",
+                    self.attitude_field_count()
+                ),
+            )
+        })?;
         // SAFETY: self owns the live handle, and names live through this call.
         result("SimConnect_AddToDataDefinition", unsafe {
             (self.library.api.add_definition)(
@@ -479,6 +486,14 @@ pub(super) struct RejectedSimobjectData {
 }
 
 #[derive(Debug, Serialize)]
+pub(super) struct UnitProbe {
+    /// SDK degree values, pitch followed by bank; diagnostic only.
+    pub degrees: [f64; 2],
+    /// Repeated SDK radians, pitch followed by bank; diagnostic only.
+    pub repeated_radians: [f64; 2],
+}
+
+#[derive(Debug, Serialize)]
 pub(super) enum Message {
     Open {
         application_name: String,
@@ -514,11 +529,10 @@ pub(super) enum Message {
         entry_number: u32,
         out_of: u32,
         define_count: u32,
-        /// Pitch radians, pitch degrees, bank radians, bank degrees.
-        values: [f64; 4],
-        /// Optional repeated pitch radians and bank radians at the end of the definition.
+        /// Canonical pitch radians followed by bank radians.
+        radians: [f64; 2],
         #[serde(skip_serializing_if = "Option::is_none")]
-        repeated_radians: Option<[f64; 2]>,
+        unit_probe: Option<UnitProbe>,
     },
     Unknown,
 }
@@ -581,7 +595,7 @@ fn string(bytes: &[u8]) -> String {
 
 #[cfg(test)]
 fn decode(bytes: &[u8]) -> Result<Packet, NativeError> {
-    decode_with_attitude_count(bytes, 4)
+    decode_with_attitude_count(bytes, 2)
 }
 
 fn decode_with_attitude_count(
@@ -680,7 +694,7 @@ fn decode_with_attitude_count(
             } else {
                 let define_count = word(bytes, 36)?;
                 let flags = word(bytes, 24)?;
-                if !matches!(attitude_field_count, 4 | 6)
+                if !matches!(attitude_field_count, 2 | 6)
                     || define_count as usize != attitude_field_count
                     || flags != 0
                 {
@@ -701,6 +715,17 @@ fn decode_with_attitude_count(
                             .expect("eight-byte range"),
                     );
                 }
+                let (radians, unit_probe) = if attitude_field_count == 6 {
+                    (
+                        [decoded_values[0], decoded_values[2]],
+                        Some(UnitProbe {
+                            degrees: [decoded_values[1], decoded_values[3]],
+                            repeated_radians: [decoded_values[4], decoded_values[5]],
+                        }),
+                    )
+                } else {
+                    ([decoded_values[0], decoded_values[1]], None)
+                };
                 Message::Attitude {
                     request_id,
                     define_id,
@@ -708,9 +733,8 @@ fn decode_with_attitude_count(
                     entry_number: word(bytes, 28)?,
                     out_of: word(bytes, 32)?,
                     define_count,
-                    values: decoded_values[..4].try_into().expect("four main fields"),
-                    repeated_radians: (attitude_field_count == 6)
-                        .then_some([decoded_values[4], decoded_values[5]]),
+                    radians,
+                    unit_probe,
                 }
             }
         }
@@ -754,16 +778,16 @@ mod tests {
     fn dispatch_pointer_invariants_are_checked_before_creating_a_slice() {
         for length in [0, 11, 12, u32::MAX] {
             // SAFETY: a null pointer is rejected before accessing any bytes.
-            assert!(unsafe { decode_received(ptr::null_mut(), length, 4) }.is_err());
+            assert!(unsafe { decode_received(ptr::null_mut(), length, 2) }.is_err());
         }
         let mut bytes = packet(RECV_QUIT, 12);
         for length in 0..12 {
             // SAFETY: the helper rejects short lengths before accessing bytes.
-            assert!(unsafe { decode_received(bytes.as_mut_ptr().cast(), length, 4) }.is_err());
+            assert!(unsafe { decode_received(bytes.as_mut_ptr().cast(), length, 2) }.is_err());
         }
         // SAFETY: bytes contains a complete readable receive header.
         assert!(matches!(
-            unsafe { decode_received(bytes.as_mut_ptr().cast(), 12, 4) }
+            unsafe { decode_received(bytes.as_mut_ptr().cast(), 12, 2) }
                 .unwrap()
                 .message,
             Message::Quit
@@ -930,7 +954,7 @@ mod tests {
         for unit_probes in [false, true] {
             let library = mock_library();
             let mut connection = library.open(ptr::null_mut(), unit_probes).unwrap();
-            let count = if unit_probes { 6 } else { 4 };
+            let count = if unit_probes { 6 } else { 2 };
             assert_eq!(connection.attitude_field_count(), count);
             for index in 0..count {
                 connection.add_attitude_field(index).unwrap();
@@ -939,7 +963,7 @@ mod tests {
                 let error = connection.add_attitude_field(index).unwrap_err();
                 assert_eq!(error.operation, "SimConnect_AddToDataDefinition");
             }
-            let expected = [
+            let diagnostic_fields = [
                 ("PLANE PITCH DEGREES", "radians"),
                 ("PLANE PITCH DEGREES", "degrees"),
                 ("PLANE BANK DEGREES", "radians"),
@@ -947,13 +971,22 @@ mod tests {
                 ("PLANE PITCH DEGREES", "radians"),
                 ("PLANE BANK DEGREES", "radians"),
             ];
+            let canonical_fields = [
+                ("PLANE PITCH DEGREES", "radians"),
+                ("PLANE BANK DEGREES", "radians"),
+            ];
+            let expected: &[_] = if unit_probes {
+                &diagnostic_fields
+            } else {
+                &canonical_fields
+            };
             ADD_FIELDS.with(|fields| {
                 let fields = fields.borrow();
                 let borrowed: Vec<_> = fields
                     .iter()
                     .map(|(name, units)| (name.as_str(), units.as_str()))
                     .collect();
-                assert_eq!(borrowed, expected[..count]);
+                assert_eq!(borrowed, expected);
             });
         }
     }
@@ -972,8 +1005,8 @@ mod tests {
             NEXT_PACKET.with(|packet| *packet.borrow_mut() = matching);
             assert!(matches!(
                 connection.next().unwrap().unwrap().message,
-                Message::Attitude { repeated_radians, .. }
-                    if repeated_radians.is_some() == unit_probes
+                Message::Attitude { radians: [0.25, -0.5], unit_probe, .. }
+                    if unit_probe.is_some() == unit_probes
             ));
             let mismatch = if unit_probes {
                 attitude()
@@ -1043,13 +1076,13 @@ mod tests {
     }
 
     fn attitude() -> Vec<u8> {
-        let mut bytes = packet(RECV_SIMOBJECT_DATA, 72);
+        let mut bytes = packet(RECV_SIMOBJECT_DATA, 56);
         bytes[12..16].copy_from_slice(&ATTITUDE_REQUEST.to_le_bytes());
         bytes[20..24].copy_from_slice(&ATTITUDE_DEFINITION.to_le_bytes());
         bytes[28..32].copy_from_slice(&1_u32.to_le_bytes());
         bytes[32..36].copy_from_slice(&1_u32.to_le_bytes());
-        bytes[36..40].copy_from_slice(&4_u32.to_le_bytes());
-        for (index, value) in [0.25_f64, 14.32, -0.5, -28.64].iter().enumerate() {
+        bytes[36..40].copy_from_slice(&2_u32.to_le_bytes());
+        for (index, value) in [0.25_f64, -0.5].iter().enumerate() {
             bytes[40 + index * 8..48 + index * 8].copy_from_slice(&value.to_le_bytes());
         }
         bytes
@@ -1057,10 +1090,19 @@ mod tests {
 
     fn attitude_with_repeats(repeated_radians: [f64; 2]) -> Vec<u8> {
         let mut bytes = attitude();
+        bytes.resize(88, 0);
         bytes[..4].copy_from_slice(&88_u32.to_le_bytes());
         bytes[36..40].copy_from_slice(&6_u32.to_le_bytes());
-        for value in repeated_radians {
-            bytes.extend_from_slice(&value.to_le_bytes());
+        let values = [
+            0.25_f64,
+            14.32,
+            -0.5,
+            -28.64,
+            repeated_radians[0],
+            repeated_radians[1],
+        ];
+        for (index, value) in values.iter().enumerate() {
+            bytes[40 + index * 8..48 + index * 8].copy_from_slice(&value.to_le_bytes());
         }
         bytes
     }
@@ -1071,20 +1113,45 @@ mod tests {
         let mut unaligned = vec![0];
         unaligned.extend_from_slice(&bytes);
         let decoded = decode(&unaligned[1..]).unwrap();
-        assert_eq!((decoded.id, decoded.size, decoded.version), (8, 72, 7));
+        assert_eq!((decoded.id, decoded.size, decoded.version), (8, 56, 7));
         match decoded.message {
             Message::Attitude {
-                values,
+                radians,
                 entry_number,
                 out_of,
-                repeated_radians,
+                unit_probe,
                 ..
             } => {
-                assert_eq!(values, [0.25, 14.32, -0.5, -28.64]);
+                assert_eq!(radians, [0.25, -0.5]);
                 assert_eq!((entry_number, out_of), (1, 1));
-                assert!(repeated_radians.is_none());
+                assert!(unit_probe.is_none());
             }
             message => panic!("unexpected {message:?}"),
+        }
+    }
+
+    #[test]
+    fn canonical_two_field_profile_preserves_raw_radian_bits() {
+        for radians in [
+            [0.250_123_456_789_f64, -0.500_987_654_321],
+            [f64::INFINITY, f64::NEG_INFINITY],
+            [f64::from_bits(0x7ff8_1234_5678_9abc), -0.0],
+        ] {
+            let mut bytes = attitude();
+            for (index, value) in radians.iter().enumerate() {
+                bytes[40 + index * 8..48 + index * 8].copy_from_slice(&value.to_le_bytes());
+            }
+            match decode(&bytes).unwrap().message {
+                Message::Attitude {
+                    radians: actual,
+                    unit_probe: None,
+                    define_count: 2,
+                    ..
+                } => {
+                    assert_eq!(actual.map(f64::to_bits), radians.map(f64::to_bits));
+                }
+                message => panic!("unexpected {message:?}"),
+            }
         }
     }
 
@@ -1108,31 +1175,46 @@ mod tests {
             assert_eq!((decoded.id, decoded.size, decoded.version), (8, 88, 7));
             match decoded.message {
                 Message::Attitude {
-                    values,
-                    repeated_radians: Some(actual),
+                    radians,
+                    unit_probe:
+                        Some(UnitProbe {
+                            degrees,
+                            repeated_radians: actual,
+                        }),
                     define_count,
                     ..
                 } => {
                     assert_eq!(define_count, 6);
-                    assert_eq!(values.map(f64::to_bits), expected.map(f64::to_bits));
+                    assert_eq!(
+                        radians.map(f64::to_bits),
+                        [expected[0], expected[2]].map(f64::to_bits)
+                    );
+                    assert_eq!(
+                        degrees.map(f64::to_bits),
+                        [expected[1], expected[3]].map(f64::to_bits)
+                    );
                     assert_eq!(actual.map(f64::to_bits), repeated.map(f64::to_bits));
                 }
                 message => panic!("unexpected {message:?}"),
             }
         }
-        let four = serde_json::to_value(decode(&attitude()).unwrap()).unwrap();
-        assert!(
-            four["message"]["Attitude"]
-                .get("repeated_radians")
-                .is_none()
-        );
+        let two = serde_json::to_value(decode(&attitude()).unwrap()).unwrap();
+        assert!(two["message"]["Attitude"].get("unit_probe").is_none());
         let six = serde_json::to_value(
             decode_with_attitude_count(&attitude_with_repeats([0.25, -0.5]), 6).unwrap(),
         )
         .unwrap();
         assert_eq!(
-            six["message"]["Attitude"]["repeated_radians"],
+            six["message"]["Attitude"]["unit_probe"]["repeated_radians"],
             serde_json::json!([0.25, -0.5])
+        );
+        assert_eq!(
+            six["message"]["Attitude"]["radians"],
+            serde_json::json!([0.25, -0.5])
+        );
+        assert_eq!(
+            six["message"]["Attitude"]["unit_probe"]["degrees"],
+            serde_json::json!([14.32, -28.64])
         );
     }
 
@@ -1153,9 +1235,9 @@ mod tests {
                 );
             }
         }
-        assert!(decode_with_attitude_count(&bytes, 4).is_err());
+        assert!(decode_with_attitude_count(&bytes, 2).is_err());
         assert!(decode_with_attitude_count(&attitude(), 6).is_err());
-        for count in [0, 3, 4, 5, 7, u32::MAX] {
+        for count in [0, 2, 3, 4, 5, 7, u32::MAX] {
             let mut wrong_count = bytes.clone();
             wrong_count[36..40].copy_from_slice(&count.to_le_bytes());
             assert!(decode_with_attitude_count(&wrong_count, 6).is_err());
@@ -1168,14 +1250,13 @@ mod tests {
     #[test]
     fn six_field_mode_keeps_request_correlation_and_unknown_packet_behavior() {
         let mut bytes = attitude_with_repeats([0.25, -0.5]);
-        bytes[16..20].copy_from_slice(&540_672_u32.to_le_bytes());
-        assert!(matches!(
-            decode_with_attitude_count(&bytes, 6).unwrap().message,
-            Message::Attitude {
-                object_id: 540_672,
-                ..
-            }
-        ));
+        for runtime_id in [0_u32, 540_672, 540_673, u32::MAX] {
+            bytes[16..20].copy_from_slice(&runtime_id.to_le_bytes());
+            assert!(matches!(
+                decode_with_attitude_count(&bytes, 6).unwrap().message,
+                Message::Attitude { object_id, .. } if object_id == runtime_id
+            ));
+        }
         for offset in [12, 20] {
             let mut unknown = bytes[..40].to_vec();
             unknown[..4].copy_from_slice(&40_u32.to_le_bytes());
@@ -1197,10 +1278,12 @@ mod tests {
         let bytes = attitude();
         for length in 0..bytes.len() {
             assert!(decode(&bytes[..length]).is_err(), "length={length}");
+            if length >= 12 {
+                let mut short = bytes[..length].to_vec();
+                short[..4].copy_from_slice(&(length as u32).to_le_bytes());
+                assert!(decode(&short).is_err(), "declared length={length}");
+            }
         }
-        let mut short = bytes[..71].to_vec();
-        short[..4].copy_from_slice(&71_u32.to_le_bytes());
-        assert!(decode(&short).is_err());
     }
 
     #[test]
@@ -1226,7 +1309,16 @@ mod tests {
             assert_eq!(rejected["define_id_matches"], offset != 20);
             assert!(rejected.get("object_id_matches").is_none());
         }
-        for (offset, value) in [(36, 3_u32), (36, 5), (24, 2)] {
+        for (offset, value) in [
+            (36, 0_u32),
+            (36, 1),
+            (36, 3),
+            (36, 4),
+            (36, 5),
+            (36, 6),
+            (36, u32::MAX),
+            (24, 2),
+        ] {
             let mut bytes = attitude();
             bytes[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
             assert!(decode(&bytes).is_err());
@@ -1236,9 +1328,9 @@ mod tests {
     #[test]
     fn user_aircraft_request_accepts_the_runtime_object_id_observed_in_live_logs() {
         // rejected-ids.jsonl records 37..1438: matching request/definition 1,
-        // runtime object 540672, four untagged values and one returned object.
+        // runtime object 540672 and one returned object.
         // Payload values here are synthetic; the old log did not retain them.
-        for runtime_id in [0_u32, 540_672, 540_673] {
+        for runtime_id in [0_u32, 540_672, 540_673, u32::MAX] {
             let mut bytes = attitude();
             bytes[16..20].copy_from_slice(&runtime_id.to_le_bytes());
             let decoded = decode(&bytes).unwrap();
@@ -1247,11 +1339,11 @@ mod tests {
                     request_id,
                     define_id,
                     object_id,
-                    values,
+                    radians,
                     ..
                 } => {
                     assert_eq!((request_id, define_id, object_id), (1, 1, runtime_id));
-                    assert_eq!(values, [0.25, 14.32, -0.5, -28.64]);
+                    assert_eq!(radians, [0.25, -0.5]);
                 }
                 message => panic!("user-aircraft response was rejected: {message:?}"),
             }
@@ -1262,8 +1354,8 @@ mod tests {
                 malformed[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
                 assert!(decode(&malformed).is_err());
             }
-            bytes.truncate(71);
-            bytes[..4].copy_from_slice(&71_u32.to_le_bytes());
+            bytes.truncate(55);
+            bytes[..4].copy_from_slice(&55_u32.to_le_bytes());
             assert!(decode(&bytes).is_err());
         }
     }
@@ -1275,7 +1367,7 @@ mod tests {
         bytes[16..20].copy_from_slice(&42_u32.to_le_bytes());
         let decoded = decode(&bytes).unwrap();
         assert!(matches!(decoded.message, Message::Unknown));
-        assert_eq!((decoded.id, decoded.size, decoded.version), (8, 72, 7));
+        assert_eq!((decoded.id, decoded.size, decoded.version), (8, 56, 7));
         let diagnostic = serde_json::to_value(&decoded).unwrap();
         let rejected = &diagnostic["rejected_simobject_data"];
         assert_eq!(diagnostic["message"], "Unknown");
@@ -1285,7 +1377,7 @@ mod tests {
         assert_eq!(rejected["request_id_matches"], false);
         assert_eq!(rejected["define_id_matches"], true);
         assert_eq!(rejected["flags"], 0);
-        assert_eq!(rejected["define_count"], 4);
+        assert_eq!(rejected["define_count"], 2);
         assert_eq!(rejected["entry_number"], 1);
         assert_eq!(rejected["out_of"], 1);
 

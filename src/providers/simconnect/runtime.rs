@@ -250,8 +250,9 @@ fn worker(
         "git_changes_at_run": command_record("git", &["status", "--porcelain", "--untracked-files=no"]),
         "windows": command_record("cmd", &["/d", "/c", "ver"]),
         "sdk": sdk_version(dll), "dll": dll,
-        "base_requested_fields": ["pitch radians", "pitch degrees", "bank radians", "bank degrees"],
-        "unit_probe_profile": "append repeated pitch/bank radians if logging is enabled at connection open",
+        "base_requested_fields": ["pitch radians", "bank radians"],
+        "angular_input": "native radians; convert to degrees locally",
+        "unit_probe_profile": "SDK degrees and repeated radians are diagnostics only; six fields if logging is enabled at connection open",
         "sign_hypothesis": "negate pitch and bank; normalize bank to [-180,180)",
         "note": "runtime toolchain/git metadata is contextual; executable SHA-256 identifies the tested bytes",
     }), true);
@@ -506,10 +507,13 @@ fn configure(
         || {
             json!({
                 "field_count": field_count,
-                "fields": &[
+                "fields": if field_count == 2 { &[
+                    "pitch radians", "bank radians",
+                ][..] } else { &[
                     "pitch radians", "pitch degrees", "bank radians", "bank degrees",
                     "pitch radians repeated", "bank radians repeated",
-                ][..field_count],
+                ][..] },
+                "angular_input": "native radians; degree probes never determine sample validity",
                 "atomicity_verified": false,
             })
         },
@@ -690,22 +694,28 @@ fn session(
                     }
                 }
                 Message::Attitude {
-                    values,
-                    repeated_radians,
+                    radians,
+                    unit_probe,
                     ..
                 } => {
                     let now = Instant::now();
                     sample_index += 1;
                     journal.record("attitude_raw", || json!({
                         "sample_index": sample_index,
-                        "raw": { "pitch_radians": number(values[0]), "pitch_degrees": number(values[1]),
-                            "bank_radians": number(values[2]), "bank_degrees": number(values[3]) },
-                        "repeated_radians": repeated_radians.map(|[pitch, bank]| json!({
-                            "pitch": number(pitch), "bank": number(bank),
+                        "raw": { "pitch_radians": number(radians[0]),
+                            "pitch_degrees": unit_probe.as_ref().map(|p| number(p.degrees[0])),
+                            "bank_radians": number(radians[1]),
+                            "bank_degrees": unit_probe.as_ref().map(|p| number(p.degrees[1])) },
+                        "repeated_radians": unit_probe.as_ref().map(|p| json!({
+                            "pitch": number(p.repeated_radians[0]), "bank": number(p.repeated_radians[1]),
                         })),
                         "interval_us": last_sample.map(|at| now.saturating_duration_since(at).as_micros().to_string()),
                     }), false);
-                    if journal.enabled() {
+                    if journal.enabled()
+                        && let Some(probe) = &unit_probe
+                    {
+                        let values = [radians[0], probe.degrees[0], radians[1], probe.degrees[1]];
+                        let repeated_radians = Some(probe.repeated_radians);
                         let observation = unit_check::observe(values, repeated_radians);
                         counters.unit_pair_mismatches += u64::from(observation.primary_mismatch);
                         counters.repeated_radian_changes += u64::from(observation.repeats_changed);
@@ -716,6 +726,7 @@ fn session(
                                 || {
                                     json!({
                                         "sample_index": sample_index,
+                                        "affects_sample_validity": false,
                                         "comparison": unit_check::details(values, repeated_radians),
                                     })
                                 },
@@ -723,7 +734,7 @@ fn session(
                             );
                         }
                     }
-                    let candidate = candidate_attitude(values);
+                    let candidate = candidate_attitude(radians);
                     journal.record("attitude_sample", || json!({
                         "sample_index": sample_index,
                         "candidate_attitude": candidate.as_ref().ok(), "candidate_is_hypothesis": true,
