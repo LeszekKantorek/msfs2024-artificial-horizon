@@ -20,7 +20,7 @@
 | [Architecture decisions](architecture-decisions.md) | Finding governing decisions, their scope and history, or the owning project-decide-architecture skill. |
 | [Iterative development](iterative-development.md) | Choosing module boundaries or preserving accepted plans, handoffs, and amendments locally without publishing them. |
 | [Windows validation](windows-validation.md) | Diagnosing SAC blocking, error 4551, or Rust E0463. |
-| [Build validation](build-validation.md) | Changing Cargo features, build commands, CI caching, or the build status name. |
+| [Build validation](build-validation.md) | Changing Cargo features, local build commands, workflow checks, or required statuses. |
 | [Local validation environment](local-validation-environment.md) | Diagnosing error 5 when replacing a running executable, browser launch failures, or local fixture reachability. |
 | [Browser presentation](browser-presentation.md) | Changing shared display behavior, unavailable-state presentation, opacity, or preparing real-phone acceptance. |
 | [PFD layout validation](pfd-layout-validation.md) | Changing PFD geometry, clipping, or paint order, or adding the next instrument. |

@@ -1,7 +1,7 @@
 # Testing guide
 
 Select shared checks by the changed boundary, then add the affected feature's acceptance scenarios.
-Record results and acceptance progress in the related GitHub issue or PR.
+Record results and acceptance progress in the owning GitHub issue or a linked validation record.
 
 ## Find the required procedure
 
@@ -17,7 +17,7 @@ Record results and acceptance progress in the related GitHub issue or PR.
 | Validate heading | [Heading](../efi/heading.md#testing) | Heading or full-panel acceptance |
 | Validate phones or supply controlled inputs | [Device procedure and fixtures](devices.md) | Device behavior or feature acceptance |
 | Record binary, visual, or performance evidence | [Evidence](evidence.md) | Results depend on a build, capture, or measurement |
-| Change acceptance CI | [Validator checks](../pr-acceptance.md#validate-changes-to-the-control) | Acceptance parser or workflow changes |
+| Change acceptance control | [Validator checks](../pr-acceptance.md#validate-changes-to-the-control) | Acceptance parser or workflow changes |
 
 ## Validation by change scope
 
@@ -35,7 +35,8 @@ Use the changed behavior and acceptance criteria to select local checks:
 Apply these scope rules:
 
 * Use every applicable row when a change crosses boundaries.
-* Preserve CI triggers and required GitHub statuses independently of this local matrix.
+* Local validation remains mandatory. Application builds and test suites do not run in GitHub Actions.
+* Preserve the acceptance workflow's triggers, required `Acceptance criteria` status, and unrelated repository protections. The retired `Build & Test` status must not remain required.
 * Report checks prevented by explicit task restrictions.
 * Leave the corresponding acceptance criteria unconfirmed when required evidence is missing.
 

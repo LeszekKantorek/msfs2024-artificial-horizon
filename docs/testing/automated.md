@@ -5,7 +5,7 @@ Windows/MSVC commands and cross-component coverage boundaries.
 ## Automated checks
 
 Run these commands from the repository root on Windows x64 MSVC.
-They match the checks in [CI](../../.github/workflows/ci.yml).
+Application builds and test suites run locally; GitHub Actions retains only the [PR acceptance control](../pr-acceptance.md).
 
 Complete the [environment setup](../../CONTRIBUTING.md#environment-setup) first.
 Use committed `Cargo.lock` with `--locked`.
@@ -23,16 +23,16 @@ node --test tests/*.test.mjs
 cargo build --locked --release
 ```
 
-CI runs these checks in the `Build & Test` job without restoring artifacts from previous workflow runs.
-Cargo commands reuse artifacts in `target` within the job and during local development.
+Local validation is mandatory for changes selected by the [validation scope matrix](index.md#validation-by-change-scope).
+Cargo commands reuse artifacts in `target` during local development.
 The final step builds the release executable at `target/x86_64-pc-windows-msvc/release/msfs2024-artificial-horizon.exe`.
 Tests use the debug profile.
 The release build compiles optimized artifacts separately.
 
-> The Windows SimConnect module contains no SDK integration. Passing these checks does not establish simulator compatibility.
-> Future SDK-dependent checks require documented prerequisites and distribution constraints.
+> Passing checks without a simulator does not establish simulator compatibility.
+> Simulator-dependent checks require documented prerequisites and distribution constraints.
 
-The [PR acceptance control](../pr-acceptance.md#validate-changes-to-the-control) has a separate Node suite and runs on Linux.
+The [PR acceptance control](../pr-acceptance.md#validate-changes-to-the-control) has a separate Node suite that also runs locally.
 Its tooling dependencies do not affect browser controller checks or the application build.
 
 ### Coverage boundaries

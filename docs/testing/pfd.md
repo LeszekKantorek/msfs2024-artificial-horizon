@@ -70,7 +70,7 @@ Browser tests are grouped under `tests/browser/`:
 * `helpers/` contains the fixture server and layout fixture module.
 
 Shared input data remains in `tests/fixtures/` for both Rust and JavaScript tests.
-Run the browser scripts separately from the Node `tests/*.test.mjs` suite in CI.
+Run the browser scripts separately from the local Node `tests/*.test.mjs` suite.
 Run all commands below from the repository root.
 
 Install the test tool in ignored local storage if it is not already available:
@@ -181,7 +181,7 @@ Record refactor validation against the final revision:
 3. Describe and assess each [screenshot difference](evidence.md#screenshot-comparisons) without inventing an unverified cause.
 4. Run required final checks on the combined revision, following the [evidence reuse rules](index.md#evidence-reuse).
 5. Keep actual iOS Safari and Android Chrome acceptance unchecked until passing device evidence exists.
-6. Record remaining checks under the issue and PR `Additional verification`.
+6. Record remaining checks in the owning issue or a linked validation record.
 
 Apply the [shared phone procedure](devices.md#real-phone-acceptance-procedure) for #37 and compare opacity with [phone fixtures](devices.md#phone-fixture-setup):
 

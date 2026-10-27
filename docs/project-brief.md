@@ -23,7 +23,7 @@ Their names do not expand the product scope. Use EFI in new descriptions of the 
 | Area | Requirement |
 | --- | --- |
 | Server | Rust, HTTP, server-to-browser Server-Sent Events (SSE) |
-| Platform | Windows x64 MSVC for library, CLI, server, and CI |
+| Platform | Windows x64 MSVC for library, CLI, server, and local builds and tests |
 | Package | Reusable library, executables under `src/bin/`, clap CLI |
 | Client | HTML, CSS, JavaScript, SVG. No application framework or build pipeline |
 | Browsers | iOS Safari and Android Chrome, portrait and landscape |
@@ -149,7 +149,7 @@ Proposed targets require measurements on real equipment:
 
 ## Decisions still requiring evidence
 
-* Rust SimConnect wrapper versus isolated FFI, including SDK/runtime distribution.
+* Manual SimConnect FFI compatibility under [ADR 0006](adr/0006-simconnect-manual-ffi.md), including SDK/runtime distribution conditions.
 * Simulator sign/unit conversion and lifecycle behavior.
 * Mobile performance and the need for interpolation.
 * First tested aircraft, phones, and browser versions.

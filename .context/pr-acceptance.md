@@ -5,10 +5,10 @@ status: active
 
 | Situation | Source |
 | --- | --- |
-| Prepare a PR with evidence and pending checks | [project-prepare-pr](../.agents/skills/project-prepare-pr/SKILL.md); [author responsibilities](../CONTRIBUTING.md#acceptance-criteria-and-additional-verification) define acceptance tracking |
+| Prepare a PR and maintain issue acceptance evidence | [project-prepare-pr](../.agents/skills/project-prepare-pr/SKILL.md); [author responsibilities](../CONTRIBUTING.md#acceptance-criteria-and-additional-verification) define acceptance tracking |
 | Diagnose rejected references or unchecked tasks | [Issue references](../docs/pr-acceptance.md#issue-references), [checklist scope](../docs/pr-acceptance.md#checklist-scope) |
 | Diagnose status refresh or API failures | [Status meanings](../docs/pr-acceptance.md#understand-the-result), [refresh events](../docs/pr-acceptance.md#validation-triggers), [API recovery](../docs/pr-acceptance.md#api-failures-and-recovery) |
 | Activate the required check | [Activation order](../docs/pr-acceptance.md#activate-merge-blocking) |
 | Change the acceptance workflow | [Validator checks](../docs/pr-acceptance.md#validate-changes-to-the-control), [trust boundary](../docs/pr-acceptance.md#trust-boundary) |
 
-Source: accepted dynamic PR checklist control and its simplified scope, 2026-10-10, prepared for [#48](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/48). Live enforcement requires activation after merge.
+Sources: accepted dynamic PR checklist control and its simplified scope, 2026-10-10, prepared for [#48](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/48); accepted #5 workflow change, 2026-10-26, retaining acceptance control while moving test suites and builds to mandatory local validation. Evidence belongs to the issue or a linked record; PR checklists are optional.

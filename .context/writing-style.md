@@ -6,19 +6,41 @@ status: active
 * Apply these writing rules to documentation, knowledge entries, code comments, commit messages, and GitHub issues, comments, and PRs.
 * Use short English sentences and consistent terms.
 * Keep supplied accepted plans local and verbatim in their original language under the [plan-preservation rule](iterative-development.md#accepted-plans-and-handoffs).
-* Use `*` bullets for parallel rules and numbered steps for sequences.
+* Select lists, tables, steps, and prose through [Markdown structure](#markdown-structure).
 * Introduce long lists or distinct groups of bullets with one short sentence that states their topic or purpose.
 * A heading can introduce a list when its scope is clear, but a short lead-in can add useful context.
 * Separate groups by subject instead of creating one uninterrupted list or repeating the heading in a filler sentence.
-* Use tables for comparisons, `>` notes for constraints, and diagrams for flows.
+* Use `>` notes for constraints and diagrams for flows.
 * Format identifiers as inline code and commands as fenced code blocks.
 * Use `[ ]` checklists for procedures or criteria, not duplicate task status.
 * Preserve requirements, units, limits, uncertainty, and the distinction between plans, implementation, and device acceptance.
 * Before removing moved or shortened text, verify where each requirement, constraint, and caveat remains in the canonical documentation.
 * Check sentence length, ambiguity, and consistent terminology directly using these project rules.
-* Check Markdown grouping, procedures, and tables separately from sentence clarity.
-* Check rendered paragraph boundaries because single newlines do not separate Markdown paragraphs.
+* Check [Markdown structure](#markdown-structure) separately from sentence clarity and technical accuracy.
 * Link to the canonical source instead of repeating commands or rules.
+
+## Markdown structure
+
+* For feature pages, follow the section structure and Markdown conventions of one representative page of the same type.
+
+Choose the construct by the information it carries:
+
+| Information | Markdown structure |
+| --- | --- |
+| Independent requirements, rules, or constraints | `*` bullets, grouped by subject |
+| Parameters, states, variants, comparisons, or mappings | A table with consistent fields |
+| Actions that must occur in order | A numbered list with one main action per step |
+| An introduction, mechanism, or rationale that needs connected reasoning | A short paragraph |
+
+Review the choice of structure independently from the wording:
+
+* For feature pages, compare the document with the representative page, including lists, tables, steps, and paragraph grouping.
+* Keep reference facts and independent rules in lists or tables instead of narrative blocks.
+* Inspect rendered Markdown. Headings and short sentences alone do not establish format consistency.
+* Do not substitute one sentence per source line for a list or table. Single newlines remain one rendered paragraph.
+* Retain prose when it explains a necessary relationship. Do not convert connected reasoning into arbitrary bullet fragments.
+
+Source: explicit documentation-format and review corrections for SimConnect #5, 2026-10-27.
 
 ## Impersonal project records
 

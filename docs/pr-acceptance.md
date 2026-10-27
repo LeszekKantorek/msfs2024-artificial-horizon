@@ -9,7 +9,7 @@ The acceptance control uses this workflow configuration:
 | PR scope | Open PRs targeting `main` |
 | Published commit status | `Acceptance criteria` |
 
-> The main ruleset must require `Acceptance criteria` to block merge.
+> The main ruleset must require `Acceptance criteria` to block merge. The retired `Build & Test` status must not remain required.
 
 ## Prepare an issue and PR
 
@@ -49,7 +49,8 @@ Checklist parsing and wording follow these rules:
 * The control checks issue and PR checkboxes independently.
 * PR wording may reflect the PR context without matching or copying issue text.
 * A PR without task items needs no dummy checkbox to satisfy the validator.
-* New features still require the [manual checklist](../CONTRIBUTING.md#workflow).
+* Track required automated and manual acceptance evidence in the owning issue or a linked validation record under [CONTRIBUTING](../CONTRIBUTING.md#acceptance-criteria-and-additional-verification).
+* PR descriptions explain the change, rationale, and consequences; they need no test-status section, command list, or testing checklist.
 
 > A checked box records a verification claim. The workflow cannot establish whether a physical-device test occurred.
 
@@ -60,7 +61,7 @@ Checklist parsing and wording follow these rules:
 | `pending` | A PR event started fresh validation | Wait for the result |
 | `failure` | References, issue Acceptance criteria or PR tasks are incomplete | Read the workflow log and correct the listed items |
 | `error` | Current GitHub data could not be read or validation failed | Resolve the API failure and rerun the workflow |
-| `success` | Linked criteria and the PR verification checklist satisfy the control | Other required checks still apply |
+| `success` | Linked issue criteria and any PR task items satisfy the control | Mandatory local validation and other repository protections still apply |
 
 ### Validation triggers
 
@@ -101,19 +102,18 @@ After API access recovers:
 
 ## Activate merge blocking
 
-1. Merge the workflow and validator into `main` through the existing required checks.
+1. Keep the trusted [acceptance workflow](../.github/workflows/acceptance.yml) and validator on `main`.
 2. Open **Actions → PR acceptance → Run workflow**, using `main`.
 3. In **Settings → Rules → Rulesets → main**, edit the existing required status checks.
-4. Compare required checks with names published by the current workflows, including [Windows CI](../.github/workflows/ci.yml) status `Build & Test`.
-5. Replace an obsolete `check` requirement if present while preserving other valid requirements.
-6. Add `Acceptance criteria`, with GitHub Actions as its source.
-7. Save the ruleset.
-8. Check that it remains active, targets `main`, and has no unintended bypass actors.
-9. Confirm that a PR with missing or unchecked verification cannot merge.
-10. Complete the remaining verification and check its items.
-11. Confirm a successful acceptance status.
+4. Remove the retired `Build & Test` requirement when removing the build/test workflows. Remove an obsolete `check` requirement if present.
+5. Retain or add `Acceptance criteria`, with GitHub Actions as its source. Preserve every unrelated protection and valid status requirement.
+6. Save the ruleset.
+7. Check that it remains active, targets `main`, and has no unintended bypass actors.
+8. Confirm that missing or unchecked issue criteria, or a visible unchecked PR task, block acceptance.
+9. Complete the remaining verification in the issue or linked validation record and update its criteria.
+10. Confirm a successful acceptance status.
 
-> Activate the requirement after the trusted workflow reaches `main`. Earlier activation would block the bootstrap PR that installs it.
+> For initial setup, activate `Acceptance criteria` after the trusted workflow reaches `main`. Earlier activation would block the bootstrap PR that installs it.
 
 ## Validate changes to the control
 
@@ -133,10 +133,8 @@ The suite covers these boundaries:
 | Concurrent changes | Metadata edits, new heads, and shared commits |
 | Repeated execution | Repeated runs |
 
-CI keeps acceptance tooling separate from application checks:
-
-* `Acceptance validator tests` runs this suite on `ubuntu-latest` with read-only permissions.
-* Browser controller tests and Rust checks remain in Windows CI.
+Run this suite locally when changing the validator or its workflow.
+The `PR acceptance` workflow remains active to validate GitHub issue criteria and optional PR tasks; it does not run this suite, application tests, or builds.
 
 ### Trust boundary
 
@@ -149,7 +147,7 @@ Preserve these workflow permissions and execution limits:
 | Read permissions | Repository contents, issues, and PRs |
 | Write permissions | Commit statuses |
 | Dependencies | Locked and installed with `--ignore-scripts` |
-| Dependency use | CI tooling only, without bundling into the application |
+| Dependency use | Acceptance tooling only, without bundling into the application |
 
 The acceptance workflow must never:
 

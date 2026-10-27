@@ -21,25 +21,29 @@ flowchart LR
 * Put reusable logic in one library package and thin executables in `src/bin/`.
 * Add packages or services only for a concrete need.
 
+This diagram is the target integrated path.
+In #5, the main executable runs SimConnect acquisition into a caller-owned telemetry channel without HTTP/SSE.
+Demo retains the existing server path; #6 connects that same SimConnect module to it.
+
 > A provider failure must never select demo automatically.
 
 ## Boundaries
 
 | Component | Owns |
 | --- | --- |
-| CLI | clap parsing, help/version, conversion to typed configuration, process signals |
+| CLI | clap parsing, help/version, typed configuration, source-mode dispatch, process signals and exit status |
 | Configuration | Source selection, listen address/port validation, sampling settings |
 | Telemetry | Normalized attitude, validity, sequence, freshness |
 | Demo provider | Repeatable synthetic scenarios with explicit telemetry source identity |
-| SimConnect provider | SDK types, callbacks, units/signs, simulator lifecycle |
+| SimConnect provider | SDK types, dispatch, units/signs, simulator lifecycle |
 | State distribution | One latest snapshot, bounded memory, shared clients |
 | HTTP | Static assets, health, SSE framing, subscriptions, graceful shutdown |
 | Browser | Message validation, instrument/status display, receive timeout |
 
 * Keep SDK types outside telemetry and HTTP.
-* Give a dedicated worker ownership of blocking SimConnect callbacks.
+* Give a dedicated worker ownership of native SimConnect calls and message processing.
 * Send normalized state from that worker to the async runtime.
-* Support Rust builds, runtime, and CI on Windows x64 MSVC only.
+* Support Rust builds and runtime on Windows x64 MSVC only. Run application builds and test suites locally; retain the GitHub PR acceptance control.
 * Reject other targets at the library root.
 * Provider modules do not need separate platform gates.
 * Expose no Cargo features from this package.
@@ -73,7 +77,8 @@ src/
   providers/
     mod.rs                  # source boundary
     demo.rs
-    simconnect.rs           # Windows SDK integration
+    simconnect/             # minimal native ABI, worker, lifecycle validation, journal
+      mod.rs                # Windows SDK integration boundary
   http/
     mod.rs                  # asset/health composition, telemetry routes, application state
     assets.rs               # explicit compile-time asset table and registration loop
@@ -122,7 +127,7 @@ web/
 tests/
   http_sse.rs
   fixtures/                 # known attitudes and lifecycle states
-.github/workflows/ci.yml
+.github/workflows/acceptance.yml # issue criteria and optional PR tasks; no build/test suites
 ```
 
 ### Application API
@@ -131,7 +136,7 @@ The `msfs2024_artificial_horizon` library exposes `Config`, `Source`, and `Serve
 
 | Interface | Contract |
 | --- | --- |
-| CLI | Use clap derive for source, address/port, help, and version |
+| CLI | Use clap derive for source, demo address/port, optional SimConnect DLL/log, help, and version |
 | Library configuration | Accept typed `Config`/`Source`. Never read process arguments |
 | `Server::bind` | Validate configuration before acquiring the listener |
 | `Server::local_address` | Return the bound address |
@@ -141,8 +146,14 @@ The `msfs2024_artificial_horizon` library exposes `Config`, `Source`, and `Serve
 | Provider types | Providers own `Source` and `SourceError` |
 | Configuration errors | Wrap source availability errors in `ConfigError::Source` |
 | Public types | Re-export provider types from the library |
+| `SimConnectConfig` | Optional absolute DLL override and optional exact log file; no scenario, process arguments, or HTTP configuration |
+| `simconnect::run(config, publisher, shutdown)` | Use the supplied `Publisher` and caller-owned shutdown; return acquisition outcome and independent diagnostic status |
 
 Providers must not depend on application configuration.
+The main executable creates and retains a SimConnect `Publisher`/subscription channel in #5.
+The integration module creates no hidden channel or telemetry queue.
+Its DLL resolver applies the same executable-relative default to CLI and library calls before opening a log or loading native code.
+The server API continues to reject SimConnect until #6; this never selects demo.
 
 Run the application with the [README procedure](../README.md#start-the-demo).
 Future executables use their own binary names.
@@ -182,17 +193,38 @@ Its entry point remains `src/bin/main.rs`.
 
 ## Integration uncertainty
 
-The official [SimConnect SDK](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/simconnect-sdk/) supports add-on communication with MSFS2024.
+The official [SimConnect SDK](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/simconnect-sdk/) supplies the native API.
+[ADR 0006](adr/0006-simconnect-manual-ffi.md) accepts minimal manual bindings inside the existing package, runtime DLL loading, one native worker, and existing telemetry publication.
+No third-party wrapper, binding generator, Cargo feature, separate crate, C++ helper, or telemetry queue is introduced.
+SDK headers and binaries are not build/link dependencies.
+Demo never loads SimConnect, and SimConnect failure never selects demo.
 
-[#5](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) must establish:
+The main executable's [SimConnect mode](simconnect.md) implements reception for [#5](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5).
+Select it only through `--source simconnect`; omitted source or `--source demo` retains the HTTP/SSE demo.
+The default DLL is `SimConnect.dll` beside the running executable, independent of the working directory.
+An optional absolute `--dll` override has precedence, with no fallback or search through `PATH`, the working directory, or SDK installations.
+Dependency search is restricted to the selected DLL directory and Windows system directory.
+These choices do not establish release packaging or redistribution permission.
+SDK 1.8.1, build 2603316, identifies the inspected declarations; recorded live evidence is bounded to the tested setup, without a general version-compatibility claim.
 
-* Rust binding choice and exact SDK prerequisites.
-* Simulator signs and units.
-* Redistribution requirements.
+Optional `--log` appends to exactly the supplied file, with one session ID on every record.
+Scenario names belong to filenames and observations, not module configuration or journal metadata.
+Initial diagnostic failure aborts before DLL loading; later write/flush failure disables diagnostics while acquisition and cleanup continue.
+Acquisition outcome and disabled, complete, or failed diagnostics remain separately visible to callers.
+The [SimConnect reference](simconnect.md#run-a-session) owns the file, failure, and observation requirements.
 
-Do not select a wrapper solely because it supported an earlier simulator.
+The [acceptance record in #5](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) supports native-radian conversion, pitch/bank signs, observed pause/menu unavailability, fresh-sample recovery and reconnect within the [documented limits](simconnect.md#live-publication-evidence).
+The 2026-10-27 gate-release decision permits `live` through the existing `Publisher` when the simulator is running, a flight is loaded, pause flags are zero, and a fresh finite, in-range sample is available.
+Pause, invalid data, disconnect and flight transitions clear retained attitude; resume requires a new sample.
+Every new valid sample, including an equal attitude, refreshes publication; queries and cached data do not.
+The 1000 ms freshness limit is unchanged.
+Historical schema 1–3 logs retain the earlier candidate-live-to-`waiting` guard; schema 4 identifies enabled live publication.
+Exact cockpit-readiness timing, quantitative angle agreement, broader compatibility and complete performance coverage remain evidence limits.
+The [wire contract](telemetry-contract.md) retains its normalized units and freshness rules.
 
-See [ADR 0001](adr/0001-rust-http-sse.md) and the [wire contract](telemetry-contract.md).
+Issue #5 owns completed reception acceptance and its recorded evidence.
+HTTP/SSE, multiple clients, and browser integration of the same acquisition module remain in [#6](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/6).
+SDK/DLL distribution conditions and packaging remain to be established before release in [#8](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/8); dynamic loading establishes no redistribution permission.
 
 ## EFI demo extension
 

@@ -26,6 +26,11 @@ __pycache__/
 
 # Local work and additional skills
 /.local/
+# Microsoft SDK artifacts are obtained separately, never versioned.
+SimConnect.h
+SimConnect*.lib
+SimConnect*.dll
+Microsoft.FlightSimulator.SimConnect.dll
 /.agents/skills/*/
 !/.agents/skills/context-preserve/
 !/.agents/skills/context-review-sessions/
@@ -40,6 +45,7 @@ __pycache__/
 !/.agents/skills/project-prepare-pr/
 !/.agents/skills/project-review-change/
 !/.agents/skills/project-decide-architecture/
+!/.agents/skills/technical-writing-rules/
 
 # RustRover
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
