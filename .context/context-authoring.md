@@ -14,7 +14,7 @@ status: active
 * Keep procedures in their owning sources.
 * For compiled procedures, follow the [skill ownership table](agent-maintenance.md#project-procedure-skills). Keep publicly required rationale and evidence in documentation; edit steps only in their designated owner.
 * Retain scoped evidence limits when consolidating duplicate guidance.
-* Select the appropriate [context skill](../AGENTS.md#project-knowledge) for preservation, maintenance, mapping, diagnosis, or session review.
+* Select the available context skill matching preservation, maintenance, mapping, diagnosis, or session review.
 
 ## Local entry and index convention
 
@@ -31,7 +31,7 @@ These formats are project conventions. The installed context skills do not presc
 | `.context/index.md` | Keep a table-only map with each active entry once and concrete selection conditions |
 | Direct documentation routes | Include recurring tasks that can go directly to a canonical document or section |
 
-Exclude session metadata and transcripts under [AGENTS](../AGENTS.md#project-knowledge).
+Exclude the session registry, its lock, and legacy session metadata from knowledge retrieval; see [session tooling](agent-maintenance.md#hook-maintenance).
 When moving knowledge, update incoming links, index rows, and replacement paths.
 Check that representative tasks still reach the applicable requirements, rationale, and evidence limits.
 

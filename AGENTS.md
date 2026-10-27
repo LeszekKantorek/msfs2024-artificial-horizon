@@ -1,14 +1,22 @@
 # Agent instructions
 
+## Working with the user
+
+* Treat analysis, discussion, and review as separate from authorization to implement or change GitHub. Complete explicitly requested work without confirming routine steps.
+* Keep to the requested scope. Do not start unrelated work or add speculative abstractions or documentation.
+* Present options and trade-offs for material project decisions; do not treat discussion as approval.
+* Distinguish facts, hypotheses, proposals, and accepted decisions. Question assumptions when evidence warrants it, and surface unresolved conflicts between sources.
+* Check the current repository and relevant remote state when they may have changed; do not rely on conversation memory as the current state.
+
 ## Context selection
 
 Use these maps whenever a task needs project knowledge. Select rows by the requested outcome, affected behavior, or unresolved question.
 
 | Need | Map |
 | --- | --- |
-| Change behavior across providers, telemetry, HTTP, or the browser | [Changes across components](.context/component-changes.md) |
+| Change behavior across component boundaries, such as providers, telemetry, HTTP, or the browser | [Changes across components](.context/component-changes.md) |
 | Understand or reconsider an accepted architecture choice | [Governing decisions](.context/architecture-decisions.md#find-the-governing-decision) |
-| Select procedures for implementation, diagnosis, validation, review, documentation, or delivery | [Task guidance](.context/task-guidance.md#practical-selection) |
+| Find instrument sources or additional guidance for implementation, diagnosis, validation, review, documentation, or delivery | [Task guidance](.context/task-guidance.md#practical-selection) |
 
 1. Follow the applicable map rows and their conditions to the relevant sources.
 2. Read only the source sections needed for the task.
@@ -26,6 +34,7 @@ Use these maps whenever a task needs project knowledge. Select rows by the reque
 
 Agent-facing technical materials, including `.context/`, `AGENTS.md`, `SKILL.md`, and skill reference files, may link into `.context/`.
 Project documentation, user instructions, and other non-agent documentation must not link into `.context/`.
+Before creating documentation, check whether an existing document owns the subject. Avoid duplicating implementation details that are clear from code.
 Keep agent procedures and supporting knowledge in their agent-facing sources. When project or user documentation needs that content, publish the relevant information in `docs/` or its appropriate documentation owner.
 Keep feature requirements, presentation, implementation details, and acceptance scenarios on the owning feature page; shared pages contain only shared contracts and procedures.
 
@@ -39,7 +48,11 @@ Keep feature requirements, presentation, implementation details, and acceptance 
 
 ## Project knowledge
 
-Select a project procedure directly when its outcome matches the task. Maintain each procedure in its owning `SKILL.md` under the [source ownership rules](.context/agent-maintenance.md#project-procedure-skills):
+Select a project procedure directly when its outcome matches the task. Use [task guidance](.context/task-guidance.md#practical-selection) to select additional sources when their conditions apply.
+
+### Project procedures
+
+Maintain each procedure in its owning `SKILL.md` under the [source ownership rules](.context/agent-maintenance.md#project-procedure-skills):
 
 | Skill | Use |
 | --- | --- |
@@ -49,20 +62,3 @@ Select a project procedure directly when its outcome matches the task. Maintain 
 | [project-prepare-pr](.agents/skills/project-prepare-pr/SKILL.md) | Prepare a local PR description or publish the requested PR with accurate acceptance evidence |
 | [project-review-change](.agents/skills/project-review-change/SKILL.md) | Obtain and assess an independent diff review when delegation is authorized |
 | [project-decide-architecture](.agents/skills/project-decide-architecture/SKILL.md) | Compare architecture options and record an ADR with its actual decision status |
-
-Use the context skills to maintain project knowledge:
-
-| Skill | Use |
-| --- | --- |
-| `context-preserve` | Preserve decisions and findings with rationale and evidence |
-| `context-review-sessions` | Review pending sessions through `context-preserve` |
-| `context-map` | Connect tasks and questions to relevant sources |
-| `context-maintain` | Improve knowledge coherence and organization |
-| `context-diagnose` | Investigate agent mistakes and check corrections |
-| `context-compile` | Turn established project procedures into skills |
-| `procedural-skill-creator` | Create or revise executable skill procedures |
-
-* Follow each skill's instructions.
-* Choose the skill that fits the task; no skill sequence is required.
-* Exclude `.context/sessions.log`, `.context/.sessions.lock`, and legacy `.context/sessions/` from knowledge retrieval.
-* Use `context-review-sessions` to review registered sessions.
