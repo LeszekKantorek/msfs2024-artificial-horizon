@@ -191,40 +191,19 @@ Its entry point remains `src/bin/main.rs`.
 
 > `localhost` on a phone refers to the phone. Port forwarding and public hosting are outside MVP scope.
 
-## Integration uncertainty
+## SimConnect integration
 
-The official [SimConnect SDK](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/simconnect-sdk/) supplies the native API.
-[ADR 0006](adr/0006-simconnect-manual-ffi.md) accepts minimal manual bindings inside the existing package, runtime DLL loading, one native worker, and existing telemetry publication.
-No third-party wrapper, binding generator, Cargo feature, separate crate, C++ helper, or telemetry queue is introduced.
-SDK headers and binaries are not build/link dependencies.
-Demo never loads SimConnect, and SimConnect failure never selects demo.
+The SimConnect provider uses minimal manual bindings and runtime DLL loading within the existing Rust package.
+One native worker owns acquisition and publishes normalized telemetry through the caller-owned channel.
+[ADR 0006](adr/0006-simconnect-manual-ffi.md) defines the binding, loading, and publication decisions.
+The demo does not load SimConnect, and a SimConnect failure never selects the demo.
+Windows builds do not require SDK headers or binaries.
 
-The main executable's [SimConnect mode](simconnect.md) implements reception for [#5](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5).
-Select it only through `--source simconnect`; omitted source or `--source demo` retains the HTTP/SSE demo.
-The default DLL is `SimConnect.dll` beside the running executable, independent of the working directory.
-An optional absolute `--dll` override has precedence, with no fallback or search through `PATH`, the working directory, or SDK installations.
-Dependency search is restricted to the selected DLL directory and Windows system directory.
-These choices do not establish release packaging or redistribution permission.
-SDK 1.8.1, build 2603316, identifies the inspected declarations; recorded live evidence is bounded to the tested setup, without a general version-compatibility claim.
-
-Optional `--log` appends to exactly the supplied file, with one session ID on every record.
-Scenario names belong to filenames and observations, not module configuration or journal metadata.
-Initial diagnostic failure aborts before DLL loading; later write/flush failure disables diagnostics while acquisition and cleanup continue.
-Acquisition outcome and disabled, complete, or failed diagnostics remain separately visible to callers.
-The [SimConnect reference](simconnect.md#run-a-session) owns the file, failure, and observation requirements.
-
-The [acceptance record in #5](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) supports native-radian conversion, pitch/bank signs, observed pause/menu unavailability, fresh-sample recovery and reconnect within the [documented limits](simconnect.md#live-publication-evidence).
-The gate-release decision permits `live` through the existing `Publisher` when the simulator is running, a flight is loaded, pause flags are zero, and a fresh finite, in-range sample is available.
-Pause, invalid data, disconnect and flight transitions clear retained attitude; resume requires a new sample.
-Every new valid sample, including an equal attitude, refreshes publication; queries and cached data do not.
-The 1000 ms freshness limit is unchanged.
-Historical schema 1–3 logs retain the earlier candidate-live-to-`waiting` guard; schema 4 identifies enabled live publication.
-Exact cockpit-readiness timing, quantitative angle agreement, broader compatibility and complete performance coverage remain evidence limits.
-The [wire contract](telemetry-contract.md) retains its normalized units and freshness rules.
-
-The [reception acceptance record](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) contains the evidence and its limits.
-HTTP/SSE, multiple clients, and browser integration of the same acquisition module remain in [#6](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/6).
-SDK/DLL distribution conditions and packaging remain to be established before release in [#8](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/8); dynamic loading establishes no redistribution permission.
+The current [SimConnect mode](simconnect.md) receives and publishes attitude without HTTP or SSE.
+[Issue #6](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/6) covers integration with the server and browser.
+The [SimConnect guide](simconnect.md#live-publication-evidence) describes the tested scope and evidence limits.
+[Issue #8](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/8) covers packaging and DLL distribution conditions.
+Runtime loading does not establish redistribution permission.
 
 ## EFI demo extension
 

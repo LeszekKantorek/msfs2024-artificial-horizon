@@ -19,7 +19,7 @@ An accepted decision does not establish implementation, simulator compatibility,
 | Change SimConnect bindings, native ownership, loading, or diagnostic assumptions | [ADR 0006 decision](../docs/adr/0006-simconnect-manual-ffi.md#decision), [alternatives](../docs/adr/0006-simconnect-manual-ffi.md#alternatives-and-consequences) | [SimConnect scope and evidence](#simconnect-scope-and-evidence); [evidence limits](../docs/adr/0006-simconnect-manual-ffi.md#evidence-limits). |
 | Remove a wire field or change its meaning or units | [Compatibility rule and accepted BARO exception](../docs/telemetry-contract.md#compatibility), [BARO decision provenance](../docs/efi/altitude.md#rationale-and-regression-lessons) | The #65 exception applies only to that replacement. It does not authorize future breaking changes within v1. |
 
-For current SimConnect implementation boundaries and remaining evidence, use [integration uncertainty](../docs/architecture.md#integration-uncertainty).
+For current SimConnect implementation boundaries and remaining evidence, use [SimConnect integration](../docs/architecture.md#simconnect-integration).
 ADR 0006 separates the original structural acceptance and guard origin from the later bounded live-publication decision and remaining evidence limits in #5.
 Use the [change map](component-changes.md) to locate affected contracts and validation after selecting the decision.
 
