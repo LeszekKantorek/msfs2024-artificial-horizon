@@ -6,7 +6,7 @@ Optional JSONL diagnostics retain native messages, raw values, and lifecycle hyp
 This mode does not start HTTP or display telemetry in the browser.
 [#6](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/6) will connect the same module to HTTP/SSE and validate the complete path to EFI.
 
-No live simulator session is claimed by this document.
+Live-session results and their limits are tracked in #5.
 Issue #5 remains open until repeated simulator observations confirm units, signs, availability, dispatch, freshness, reconnection, and cleanup.
 The accepted integration boundaries are recorded in [ADR 0006](adr/0006-simconnect-manual-ffi.md).
 
@@ -96,7 +96,8 @@ With diagnostics enabled, each sample records all four raw values before normali
 Nonfinite numbers use JSON-compatible value/classification/bit records.
 The candidate conversion checks radians/degrees agreement within `0.00001` degrees, negates pitch and bank, and wraps bank into `[-180, 180)`.
 It validates finite pitch in `[-90, 90]` under the existing [telemetry contract](telemetry-contract.md#fields-and-conventions).
-Negating both signs is an experimental hypothesis requiring cockpit observations.
+Negating both signs is supported by a recorded live session and operator-confirmed
+nose-up/nose-down and left/right maneuvers; see [direction evidence](#direction-evidence).
 The variable names and agreement between two requested units do not establish the correct physical sign.
 
 The attitude request uses `SIMCONNECT_OBJECT_ID_USER_AIRCRAFT` (proxy value zero)
@@ -118,7 +119,8 @@ New identical samples refresh candidate age; cached values, connection events, a
 The freshness limit remains 1000 ms with a 50 ms control interval.
 
 **A candidate `live` is published as `waiting`.**
-The integration deliberately withholds live application telemetry while flight availability and signs are unverified.
+The integration deliberately withholds live application telemetry while flight availability remains unverified.
+The conservative runtime labels and metadata do not automatically change when external operator evidence is recorded.
 Other unavailable candidate states use the existing `Publisher` and latest-value watch channel.
 The log is diagnostic output, not another telemetry queue or distribution mechanism.
 A `candidate_state: live` record is neither live acceptance nor evidence that menu detection works.
@@ -215,6 +217,24 @@ If menu produces candidate live, mark the availability hypothesis contradicted; 
 Expected evidence: radians/degrees pairs agree, both observed physical signs match the application conventions after candidate conversion, and combined attitudes remain consistent.
 The application requires positive nose-up pitch and positive right-wing-down roll.
 If observations contradict either sign, retain the raw data and identify which conversion needs revision before any live publication is enabled.
+
+#### Direction evidence
+
+On 2026-10-27, the operator confirmed the maneuver order in the recorded
+`attiude-signs.jsonl` session (actual filename). Around 45–55 seconds, observed
+nose-up corresponded to normalized pitch +7.4 degrees; around 65–80 seconds,
+nose-down corresponded to -3.6 degrees. The first long left bank corresponded
+to about -19.0 degrees, followed by a right bank around +31.6 degrees.
+These values are log-window medians; the operator confirmed directions and order,
+not exact cockpit angles. Retain the current negation of native pitch and bank.
+
+The session contained 11,461 valid samples and one rejected radians/degrees pair;
+the cause of that isolated inconsistency is unresolved. It does not establish
+a sign error. [#5](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5)
+owns the input identity, observation evidence and remaining acceptance.
+Quantitative cockpit agreement, full combined-attitude/repetition coverage,
+availability, pause/menu behavior and broader compatibility are not certified
+by this basic direction confirmation.
 
 ### `pause-modes`
 

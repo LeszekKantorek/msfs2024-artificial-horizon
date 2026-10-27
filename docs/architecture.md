@@ -213,7 +213,8 @@ Initial diagnostic failure aborts before DLL loading; later write/flush failure 
 Acquisition outcome and disabled, complete, or failed diagnostics remain separately visible to callers.
 The [SimConnect reference](simconnect.md#run-a-session) owns the file, failure, and observation requirements.
 
-The experiment must still establish physical signs and units, active-flight/menu/pause detection, dispatch/wait behavior, freshness, reconnect, CPU use, and cleanup from repeated simulator sessions.
+Live logs and operator observations support the [basic pitch/bank directions](simconnect.md#direction-evidence).
+The experiment must still complete combined-attitude and quantitative cockpit checks, active-flight/menu/pause detection, dispatch/wait behavior, freshness, reconnect, CPU use, and cleanup acceptance from repeated simulator sessions.
 Raw values and candidate states are diagnostic hypotheses.
 Candidate live is published as `waiting` until availability and signs are verified.
 The [wire contract](telemetry-contract.md) retains its normalized units and freshness rules.

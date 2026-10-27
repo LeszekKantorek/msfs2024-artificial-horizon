@@ -97,7 +97,8 @@ The default DLL location is independent of the working directory.
 Optional `--log` appends sessions to exactly the supplied file; distinguish scenarios by filename.
 See [SimConnect setup and scenarios](docs/simconnect.md) for requirements and observation procedures.
 This mode starts no HTTP/SSE listener in #5; browser integration belongs to #6.
-Live signs, availability, dispatch, reconnect, and cleanup remain unverified.
+Basic pitch/bank directions have paired live-log and operator support; see the linked reference for evidence limits.
+Full availability, dispatch, reconnect and cleanup acceptance remains incomplete.
 
 ## Project guide
 

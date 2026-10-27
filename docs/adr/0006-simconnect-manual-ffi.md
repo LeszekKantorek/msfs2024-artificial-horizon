@@ -87,7 +87,11 @@ These choices remain hypotheses:
 * `GetNextDispatch` with a Windows notification event, separate cancellation event, bounded batches, and 50 ms waits provides reliable reception with acceptable CPU use and shutdown.
 * Five-second state queries and a 15-second packet-silence watchdog provide useful connection diagnostics.
 * `Sim`, `Pause_EX1`, and `FlightLoaded`, combined with fresh samples, can distinguish active flight from menu/loading and both pause modes.
-* Negating pitch and bank, with bank wrapping, matches the existing positive nose-up/right-wing-down contract.
+
+Negating pitch and bank, with bank wrapping, now has [basic direction evidence](../simconnect.md#direction-evidence)
+from a recorded live session paired with operator-confirmed nose-up/down and left/right maneuvers.
+That supports retaining the conversion in the tested setup; it does not certify
+exact cockpit angles, all combined attitudes or compatibility with other versions.
 
 The integration requests each attitude variable in both radians and degrees and, when diagnostics are enabled, records raw values before normalization and publication.
 The existing 1000 ms freshness limit remains unchanged.
