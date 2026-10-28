@@ -8,37 +8,40 @@ import { normalizeAirspeedProfile, normalizeOptionalIndications } from '../web/t
 
 const profile = JSON.parse(readFileSync(new URL('./fixtures/airspeed-profile.json', import.meta.url)));
 
-test('profile validation preserves known knots and rejects malformed or incoherent configuration locally', () => {
+test('partial profile validation isolates each malformed field and preserves independent references', () => {
   assert.deepEqual(normalizeAirspeedProfile(profile), profile);
-  for (const bad of [undefined, null, [], false, 'profile', {},
-    { ...profile, vs0_kt: 0 }, { ...profile, vs1_kt: 39 },
-    { ...profile, vfe_kt: 49 }, { ...profile, vno_kt: 85 },
-    { ...profile, vne_kt: 110 }, { ...profile, references: null },
-    { ...profile, references: { ...profile.references, vr_kt: '55' } },
-    { ...profile, references: { ...profile.references, vy_kt: 0 } },
-    { ...profile, references: { ...profile.references, vg_kt: 141 } }]) {
+  for (const bad of [undefined, null, [], false, 'profile', {}])
     assert.equal(normalizeAirspeedProfile(bad), null);
-    const sample = normalizeOptionalIndications({ airspeed_profile: bad, ias_kt: 123, gs_kt: 137, ias_acceleration_ktps: 2 });
-    assert.equal(sample.airspeed_profile, null);
-    assert.equal(sample.ias_kt, 123);
-    assert.equal(sample.ias_acceleration_ktps, 2);
-  }
-  for (const key of ['vs0_kt', 'vs1_kt', 'vfe_kt', 'vno_kt', 'vne_kt']) {
-    for (const bad of [undefined, null, false, '40', NaN, Infinity, -Infinity, -1])
-      assert.equal(normalizeAirspeedProfile({ ...profile, [key]: bad }), null);
+  for (const key of ['vs0_kt', 'vs1_kt', 'vfe_kt', 'vno_kt', 'vne_kt', 'redline_kt']) {
+    for (const bad of [undefined, null, false, '40', NaN, Infinity, -Infinity, -1, 0]) {
+      const expected = structuredClone(profile); delete expected[key];
+      assert.deepEqual(normalizeAirspeedProfile({ ...profile, [key]: bad }), expected);
+    }
   }
   for (const key of ['vr_kt', 'vx_kt', 'vy_kt', 'vg_kt']) {
-    for (const bad of [undefined, null, false, '55', NaN, Infinity, -Infinity, -1])
-      assert.equal(normalizeAirspeedProfile({ ...profile, references: { ...profile.references, [key]: bad } }), null);
+    const expected = structuredClone(profile); delete expected.references[key];
+    assert.deepEqual(normalizeAirspeedProfile({ ...profile, references: { ...profile.references, [key]: NaN } }), expected);
   }
-  // Unknown additive fields are ignored, and normalized data does not share mutable input objects.
+  assert.deepEqual(normalizeAirspeedProfile({ references: { vr_kt: 55 } }), { references: { vr_kt: 55 } });
+  assert.deepEqual(normalizeAirspeedProfile({ redline_kt: 130 }), { redline_kt: 130 });
+  assert.deepEqual(normalizeAirspeedProfile({ vs0_kt: 40, references: null }), { vs0_kt: 40 });
   const input = structuredClone(profile); input.extra = 123;
   const normalized = normalizeAirspeedProfile(input);
-  assert.notStrictEqual(normalized, input);
-  assert.notStrictEqual(normalized.references, input.references);
-  input.vne_kt = 999;
-  input.references.vr_kt = 1;
+  input.vne_kt = 999; input.references.vr_kt = 1;
   assert.deepEqual(normalized, profile);
+});
+
+test('range dependencies and redline warnings survive partial loss', () => {
+  const partial = normalizeAirspeedProfile({ ...profile, vfe_kt: null, references: { vr_kt: 55 } });
+  assert.deepEqual(speedRanges(partial).map(r => r.name), ['low', 'normal', 'caution', 'overspeed']);
+  assert.deepEqual(speedRanges({ vs0_kt: 40 }), [{ name: 'low', min: 0, max: 40 }]);
+  assert.deepEqual(speedRanges({ references: { vr_kt: 55 } }), []);
+  assert.deepEqual(speedRanges({ vs0_kt: 40, vfe_kt: 30, vs1_kt: 50, vno_kt: 110 }).map(r => r.name), ['low', 'normal']);
+  assert.deepEqual(speedRanges({ ...profile, redline_kt: 100 }).find(r => r.name === 'normal'), { name: 'normal', min: 50, max: 100 });
+  assert.equal(speedRanges({ ...profile, redline_kt: 100 }).some(r => r.name === 'caution'), false);
+  assert.deepEqual(speedIndications(95, 1, { redline_kt: 100 }), { prediction: 101, overspeed: false, approaching: true });
+  assert.equal(speedIndications(100, 0, { redline_kt: 100 }).overspeed, true);
+  assert.equal(speedIndications(139, 1, { vne_kt: 140, redline_kt: 150 }).approaching, true);
 });
 
 test('five configured ranges include parallel flap and normal ranges at independent thresholds', () => {

@@ -1,6 +1,6 @@
 # SimConnect integration
 
-User-aircraft pitch and bank reception with optional diagnostics.
+User-aircraft flight instrument reception with optional diagnostics.
 
 ## Requirements
 
@@ -11,7 +11,7 @@ User-aircraft pitch and bank reception with optional diagnostics.
 | Build | No SDK headers, import library, or installed simulator required |
 | Acquisition | One module and the caller-owned telemetry channel |
 | Telemetry | Existing [states, validity, and freshness](telemetry-contract.md#freshness-and-status) |
-| Scope | Local publication in #5. HTTP/SSE and EFI integration in [#6](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/6) |
+| Scope | Available standard aircraft data through HTTP/SSE and EFI; each optional indication is independent |
 | Distribution | Packaging and DLL redistribution conditions in [#8](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/8) |
 | Repository | No SDK files, installation paths, or generated diagnostics in Git |
 
@@ -21,7 +21,7 @@ User-aircraft pitch and bank reception with optional diagnostics.
 
 1. Place the official `SimConnect.dll` beside the executable.
    For Cargo runs, use the applicable Cargo output directory.
-2. From the repository root, start reception:
+2. From the repository root, start the application:
 
    ```powershell
    cargo run --locked --release --bin msfs2024-artificial-horizon -- --source simconnect --log ".local\simconnect-sessions\flight.jsonl"
@@ -29,7 +29,8 @@ User-aircraft pitch and bank reception with optional diagnostics.
 
 3. Check the console for the selected DLL and connection status.
    An active, unpaused flight produces `State: live` after a new sample passes availability checks.
-4. Press `Ctrl+C` to stop reception and close the connection.
+4. Open the printed HTTP URL. For phone access, use the [private LAN setup](../README.md#use-your-phone) with `--source simconnect`.
+5. Press `Ctrl+C` to close HTTP clients and wait for native reception to stop.
 
 For a DLL in another directory, provide its absolute path:
 
@@ -43,7 +44,8 @@ cargo run --locked --release --bin msfs2024-artificial-horizon -- --source simco
 | Option | Behavior |
 | --- | --- |
 | No source option or `--source demo` | Demo with HTTP/SSE, without loading SimConnect |
-| `--source simconnect` | Native acquisition and local publication, without HTTP |
+| `--source simconnect` | Native acquisition with HTTP/SSE and available flight instruments |
+| `--listen-address`, `--port` | HTTP settings for either source; defaults `127.0.0.1` and `8080` |
 | `--dll <file>` | Optional absolute override. Default: `SimConnect.dll` beside the running EXE |
 | `--log <file>` | Optional exact JSONL destination, absolute or relative to the working directory |
 | `--help`, `--version` | Information without opening a DLL or log |
@@ -52,7 +54,7 @@ cargo run --locked --release --bin msfs2024-artificial-horizon -- --source simco
 The CLI applies these restrictions:
 
 * `--dll` and `--log` require SimConnect.
-* Explicit HTTP address and port options are rejected in SimConnect mode.
+* Invalid HTTP settings and a relative DLL override are rejected before starting components.
 * `--simconnect` and `--scenario` are unsupported.
 * Log filenames distinguish scenarios. The application does not interpret them as metadata.
 
@@ -63,11 +65,36 @@ The CLI applies these restrictions:
 | Default location | Beside the EXE, independent of the working directory |
 | Search | No `PATH`, working-directory, or SDK search. No fallback after explicit selection |
 | Dependencies | Selected DLL directory and Windows system directory only |
-| Errors | Missing DLL, incompatible architecture, or missing exports |
+| Errors | Missing DLL, incompatible architecture, or missing exports stop the producer; HTTP remains available |
 | Missing default DLL | Place it beside the EXE or select an absolute `--dll` path |
 | Console | DLL selection, connections, state changes, errors, and shutdown, including without logging |
 
 ## Implementation
+
+### Application availability
+
+The application validates configuration, creates the waiting telemetry channel, and binds HTTP before starting the producer.
+A busy port prevents acquisition from starting. HTTP does not wait for DLL loading or simulator readiness.
+
+| Condition | Application behavior |
+| --- | --- |
+| Simulator absent or disconnected | HTTP serves unavailable data while the existing provider retries |
+| Producer exits or panics | Existing SSE streams stay open; new clients receive `disconnected` |
+| DLL load or export failure | HTTP stays available; console diagnostics identify the failure without Demo fallback |
+| Ctrl+C or HTTP failure | Signal both components and wait for their results; HTTP failure returns an application error |
+
+Detailed source errors stay in console diagnostics and the optional log. The SSE schema is unchanged.
+`/health` reports HTTP liveness, independently of simulator availability.
+
+### Optional instrument observations
+
+The same native worker requests IAS/TAS/GS in knots, indicated altitude in feet, pilot KOHLSMAN in inHg, VSI in feet/minute, magnetic heading in degrees, ball position, and turn rate in degrees/second. Standard autopilot targets follow active slot 0; target visibility does not require the autopilot master to be engaged. Radio-referenced altitude targets are omitted.
+
+Each optional request has its own definition and exception boundary. Failed fields become unavailable without stopping attitude or HTTP. Last observations expire independently after 1000 ms. Pauses, flight changes and reconnect clear cached values. Additional observations and expiry publications preserve the attitude receive time.
+
+Speed profiles contain independently available VS0, VS1, project minimum rotation and current redline. Other thresholds and references remain absent unless their exact standard source is established. Minimum rotation is a project reference, not a weight/flap-dependent Vr calculated by an FMS. General climb speed is not substituted for Vy; current flap limits are not substituted for fixed VFE. Dynamic redline is not fixed VNE. No aircraft configuration reader or addon-specific avionics bridge is provided.
+
+IAS trend uses consecutive valid worker acquisitions and their monotonic receive times. It resets after invalid input, a stale gap, pause or flight change. It describes knots per real second, including when simulation speed differs from real time.
 
 ### Data and availability
 
@@ -147,7 +174,7 @@ Diagnostic failures remain independent of acquisition:
 
 | Condition | Result |
 | --- | --- |
-| Open or initial write failure | Abort startup before DLL loading |
+| Open or initial write failure | Abort producer startup before DLL loading; HTTP remains available |
 | Later write or flush failure | Disable diagnostics, continue acquisition and cleanup, warn immediately and at shutdown |
 | Missing `session_end` | Unconfirmed termination |
 | Final result | `DiagnosticStatus` distinguishes disabled, completed, and failed logging independently of the native outcome |
@@ -205,7 +232,8 @@ Use the [validation scope matrix](testing/index.md#validation-by-change-scope), 
 
 | Boundary | Coverage |
 | --- | --- |
-| Configuration | Source selection, DLL paths, CLI errors, demo independence, no HTTP listener in SimConnect mode |
+| Configuration | Source selection, DLL paths, CLI errors, Demo independence, HTTP settings for both sources |
+| Application integration | Startup ordering, source-failure isolation, retained SSE, shutdown, multiple clients and attitude-only publication |
 | Native data | ABI layout, payload decoding, normalization, rejected packets |
 | Telemetry | New and equal acquisitions, original receive time, stale data, invalid input, lifecycle invalidation |
 | Diagnostics and resources | Append sessions, writer exclusion, protected destinations, diagnostic failures, retry bounds, cancellation, cleanup |
@@ -246,7 +274,32 @@ Use these evidence rules:
 * Divide process CPU time by elapsed wall time for one logical CPU. State normalization across all logical CPUs.
 * Use console observations without logging for connection, availability, and shutdown claims. Do not infer numerical angles.
 
+### Integrated HTTP/SSE and device acceptance
+
+Use the final release artifact and the [real-device procedure](testing/devices.md#real-phone-acceptance-procedure).
+Run the following scenarios separately on actual iOS Safari and Android Chrome.
+Keep the receiver's #5 evidence separate from these end-to-end results.
+
+| Scenario | Expected result |
+| --- | --- |
+| Missing DLL or exports | Page and health remain available; SSE reports unavailable SimConnect without Demo fallback |
+| Level, nose up/down, left/right bank, combined poses | EFI orientation agrees with cockpit observations; do not infer a precise angular accuracy claim |
+| Ordinary pause, Active Pause, flight exit, restart | Unavailable attitude during loss; recovery requires a new valid active sample |
+| Two clients and a slow receiver | Both use one acquisition connection; a slow client does not delay the other or block reception |
+| Producer termination after live data | Existing SSE stays open; old attitude clears; a new client receives the current unavailable state |
+| Silence and invalid samples | `stale` or `invalid`, without frozen valid-looking attitude; heartbeat does not renew freshness |
+| Attitude-only live sample | Other EFI indications remain unavailable |
+| Rotation, background, lock/resume, Wi-Fi recovery | Readable status and fresh-data recovery without reload or duplicate subscriptions |
+| Ctrl+C with active clients | Client connections end and the port is reusable; record native cleanup outcome separately |
+
+Use controlled producers for deterministic fault tests without changing the production source choices.
+Record the tested revision, binary and DLL identities, environment, exact inputs, observed behavior, and missing checks.
+Desktop fixture tests cannot certify the real simulator path or either mobile browser.
+
 ### Live-publication evidence
+
+The #5 records cover the receiver and local publication. They do not establish the integrated HTTP/SSE-to-EFI path or actual iOS/Android behavior.
+Integrated simulator and mobile acceptance require separate runs against the final application artifact.
 
 Acceptance and rationale have separate sources:
 

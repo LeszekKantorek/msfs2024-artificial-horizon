@@ -87,12 +87,124 @@ fn output(binary: &Path, cwd: &Path, arguments: &[&str]) -> Output {
     }
 }
 
+/// Cleanup uses process termination only as a test fallback. These process tests
+/// establish continued service after a source fault, not graceful shutdown.
+struct Application {
+    child: RunningChild,
+    address: std::net::SocketAddr,
+    stdout: PathBuf,
+    stderr: PathBuf,
+}
+impl Application {
+    fn start(binary: &Path, cwd: &Path, arguments: &[&str]) -> Self {
+        let reservation = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = reservation.local_addr().unwrap();
+        drop(reservation);
+        let tag = NEXT_DIRECTORY.fetch_add(1, Ordering::Relaxed);
+        let stdout = binary.parent().unwrap().join(format!("stdout-{tag}.txt"));
+        let stderr = binary.parent().unwrap().join(format!("stderr-{tag}.txt"));
+        let child = RunningChild(
+            Command::new(binary)
+                .current_dir(cwd)
+                .args(arguments)
+                .args([
+                    "--listen-address",
+                    "127.0.0.1",
+                    "--port",
+                    &address.port().to_string(),
+                ])
+                .stdout(fs::File::create(&stdout).unwrap())
+                .stderr(fs::File::create(&stderr).unwrap())
+                .spawn()
+                .unwrap(),
+        );
+        let mut app = Self {
+            child,
+            address,
+            stdout,
+            stderr,
+        };
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            if TcpStream::connect_timeout(&address, Duration::from_millis(100)).is_ok() {
+                break;
+            }
+            assert!(
+                app.child.0.try_wait().unwrap().is_none(),
+                "app exited: {}",
+                app.messages()
+            );
+            assert!(
+                Instant::now() < deadline,
+                "HTTP did not start: {}",
+                app.messages()
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        app
+    }
+    fn messages(&self) -> String {
+        format!(
+            "{}{}",
+            fs::read_to_string(&self.stdout).unwrap_or_default(),
+            fs::read_to_string(&self.stderr).unwrap_or_default()
+        )
+    }
+    fn request(&self, path: &str) -> TcpStream {
+        let mut socket = TcpStream::connect_timeout(&self.address, Duration::from_secs(2)).unwrap();
+        socket
+            .set_read_timeout(Some(Duration::from_secs(2)))
+            .unwrap();
+        write!(
+            socket,
+            "GET {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
+        )
+        .unwrap();
+        socket
+    }
+    fn assert_health(&mut self) {
+        assert!(self.child.0.try_wait().unwrap().is_none());
+        let mut response = String::new();
+        self.request("/health")
+            .read_to_string(&mut response)
+            .unwrap();
+        assert!(response.starts_with("HTTP/1.1 200"), "{response}");
+        assert!(response.contains("{\"status\":\"ok\"}"), "{response}");
+    }
+    fn unavailable_stream(&self) -> TcpStream {
+        let mut socket = self.request("/api/v1/events");
+        let mut response = String::new();
+        let deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            let mut bytes = [0; 4096];
+            let count = socket.read(&mut bytes).expect("SSE must remain readable");
+            assert!(count > 0, "SSE closed after source failure: {response}");
+            response.push_str(&String::from_utf8_lossy(&bytes[..count]));
+            for line in response.lines() {
+                if let Some(json) = line.strip_prefix("data: ")
+                    && let Ok(snapshot) = serde_json::from_str::<serde_json::Value>(json)
+                    && snapshot["state"] == "disconnected"
+                {
+                    assert_eq!(snapshot["source"], "simconnect");
+                    assert!(snapshot["attitude"].is_null());
+                    assert!(snapshot["sample_age_ms"].is_null());
+                    assert!(snapshot["sequence"].as_u64().unwrap() > 0);
+                    return socket;
+                }
+            }
+            assert!(
+                Instant::now() < deadline,
+                "no disconnected snapshot: {response}"
+            );
+        }
+    }
+}
+
 #[test]
 fn default_dll_is_beside_executable_and_explicit_missing_dll_does_not_fall_back() {
     let fixture = Fixture::new();
     let cwd = fixture.0.join("working-directory");
     fs::create_dir(&cwd).unwrap();
-    // A file in the working directory must not influence default selection.
     fs::write(
         cwd.join("SimConnect.dll"),
         "invalid DLL in working directory",
@@ -100,25 +212,44 @@ fn default_dll_is_beside_executable_and_explicit_missing_dll_does_not_fall_back(
     .unwrap();
     let binary = fixture.binary();
     let expected = fixture.0.join("SimConnect.dll");
-    let result = output(&binary, &cwd, &["--source", "simconnect"]);
-    assert!(!result.status.success());
-    let messages = format!(
-        "{}{}",
-        String::from_utf8_lossy(&result.stdout),
-        String::from_utf8_lossy(&result.stderr)
-    );
-    assert!(messages.contains(expected.to_str().unwrap()), "{messages}");
-    assert!(messages.contains("--dll"), "{messages}");
-    assert!(!messages.contains("Listening on"));
-    assert_eq!(
-        fs::read_dir(&cwd).unwrap().count(),
-        1,
-        "no implicit diagnostic files"
-    );
-
-    fs::write(&expected, "invalid DLL beside executable").unwrap();
+    {
+        let mut app = Application::start(&binary, &cwd, &["--source", "simconnect"]);
+        let mut first = app.unavailable_stream();
+        app.assert_health();
+        let mut second = app.unavailable_stream();
+        for stream in [&mut first, &mut second] {
+            stream
+                .set_read_timeout(Some(Duration::from_millis(150)))
+                .unwrap();
+            let mut bytes = [0; 4096];
+            loop {
+                match stream.read(&mut bytes) {
+                    Ok(0) => panic!("existing SSE closed after producer failure"),
+                    Ok(_) => continue, // Permit trailing chunk framing already in flight.
+                    Err(error) => {
+                        assert!(matches!(
+                            error.kind(),
+                            std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
+                        ));
+                        break;
+                    }
+                }
+            }
+        }
+        app.assert_health();
+        let messages = app.messages();
+        assert!(messages.contains(expected.to_str().unwrap()), "{messages}");
+        assert!(messages.contains("--dll"), "{messages}");
+        assert!(messages.contains("Listening on"), "{messages}");
+        assert_eq!(
+            fs::read_dir(&cwd).unwrap().count(),
+            1,
+            "no implicit diagnostics"
+        );
+    }
+    fs::write(&expected, "invalid sibling DLL").unwrap();
     let override_path = fixture.0.join("missing-override.dll");
-    let result = output(
+    let mut app = Application::start(
         &binary,
         &cwd,
         &[
@@ -128,13 +259,40 @@ fn default_dll_is_beside_executable_and_explicit_missing_dll_does_not_fall_back(
             override_path.to_str().unwrap(),
         ],
     );
-    assert!(!result.status.success());
-    let error = String::from_utf8_lossy(&result.stderr);
-    assert!(error.contains(override_path.to_str().unwrap()), "{error}");
+    let _stream = app.unavailable_stream();
+    app.assert_health();
+    let messages = app.messages();
     assert!(
-        !error.contains(expected.to_str().unwrap()),
-        "must not try sibling DLL: {error}"
+        messages.contains(override_path.to_str().unwrap()),
+        "{messages}"
     );
+    assert!(
+        !messages.contains(expected.to_str().unwrap()),
+        "must not try sibling DLL: {messages}"
+    );
+}
+
+#[test]
+fn invalid_library_and_missing_exports_preserve_http_and_report_distinct_errors() {
+    let fixture = Fixture::new();
+    let binary = fixture.binary();
+    let invalid = fixture.0.join("invalid.dll");
+    fs::write(&invalid, "not a native library").unwrap();
+    let system =
+        PathBuf::from(std::env::var_os("SystemRoot").unwrap()).join("System32/kernel32.dll");
+    for (dll, expected) in [
+        (&invalid, "LoadLibrary"),
+        (&system, "missing export SimConnect_Open"),
+    ] {
+        let mut app = Application::start(
+            &binary,
+            &fixture.0,
+            &["--source", "simconnect", "--dll", dll.to_str().unwrap()],
+        );
+        let _stream = app.unavailable_stream();
+        app.assert_health();
+        assert!(app.messages().contains(expected), "{}", app.messages());
+    }
 }
 
 #[test]
@@ -171,7 +329,7 @@ fn explicit_log_appends_distinct_complete_sessions_when_native_loading_fails() {
     let dll = fixture.0.join("missing.dll");
     let log = fixture.0.join("sessions/loader-failure.jsonl");
     for _ in 0..2 {
-        let result = output(
+        let mut app = Application::start(
             &binary,
             &fixture.0,
             &[
@@ -183,8 +341,9 @@ fn explicit_log_appends_distinct_complete_sessions_when_native_loading_fails() {
                 "sessions/loader-failure.jsonl",
             ],
         );
-        assert!(!result.status.success());
-        assert!(String::from_utf8_lossy(&result.stdout).contains("Diagnostic session completed"));
+        let _stream = app.unavailable_stream();
+        app.assert_health();
+        assert!(app.messages().contains("Diagnostic session completed"));
     }
     let records: Vec<serde_json::Value> = fs::read_to_string(log)
         .unwrap()
@@ -193,29 +352,26 @@ fn explicit_log_appends_distinct_complete_sessions_when_native_loading_fails() {
         .collect();
     let starts: Vec<_> = records
         .iter()
-        .filter(|record| record["kind"] == "session_start")
+        .filter(|r| r["kind"] == "session_start")
         .collect();
     let ends: Vec<_> = records
         .iter()
-        .filter(|record| record["kind"] == "session_end")
+        .filter(|r| r["kind"] == "session_end")
         .collect();
     assert_eq!(starts.len(), 2);
     assert_eq!(ends.len(), 2);
     assert_ne!(starts[0]["session_id"], starts[1]["session_id"]);
-    assert!(
-        starts
-            .iter()
-            .all(|record| record["data"].get("scenario").is_none())
-    );
-    assert!(ends.iter().all(|record| record["data"]["success"] == false));
+    assert!(starts.iter().all(|r| r["data"].get("scenario").is_none()));
+    assert!(ends.iter().all(|r| r["data"]["success"] == false));
 }
 
 #[test]
-fn a_log_open_failure_prevents_the_native_load_attempt() {
+fn a_log_open_failure_prevents_native_load_but_preserves_http() {
     let fixture = Fixture::new();
+    let binary = fixture.binary();
     let dll = fixture.0.join("must-not-load.dll");
-    let result = output(
-        Path::new(env!("CARGO_BIN_EXE_msfs2024-artificial-horizon")),
+    let mut app = Application::start(
+        &binary,
         &fixture.0,
         &[
             "--source",
@@ -226,28 +382,61 @@ fn a_log_open_failure_prevents_the_native_load_attempt() {
             fixture.0.to_str().unwrap(),
         ],
     );
-    assert!(!result.status.success());
-    let error = String::from_utf8_lossy(&result.stderr);
+    let _stream = app.unavailable_stream();
+    app.assert_health();
+    let messages = app.messages();
     assert!(
-        error.contains("log") || error.contains("diagnostic"),
-        "{error}"
+        messages.contains("log") || messages.contains("diagnostic"),
+        "{messages}"
     );
-    assert!(!error.contains("LoadLibrary"), "{error}");
+    assert!(!messages.contains("LoadLibrary"), "{messages}");
 }
 
 #[test]
-fn simconnect_rejects_http_options_even_when_they_equal_demo_defaults() {
+fn occupied_http_port_prevents_producer_and_diagnostics_start() {
     let fixture = Fixture::new();
-    for (option, value) in [("--port", "8080"), ("--listen-address", "127.0.0.1")] {
-        let result = output(
-            Path::new(env!("CARGO_BIN_EXE_msfs2024-artificial-horizon")),
-            &fixture.0,
-            &["--source", "simconnect", option, value],
-        );
+    let reservation = TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = reservation.local_addr().unwrap().port().to_string();
+    let log = fixture.0.join("must-not-exist/session.jsonl");
+    let dll = fixture.0.join("must-not-load.dll");
+    let result = output(
+        Path::new(env!("CARGO_BIN_EXE_msfs2024-artificial-horizon")),
+        &fixture.0,
+        &[
+            "--source",
+            "simconnect",
+            "--port",
+            &port,
+            "--dll",
+            dll.to_str().unwrap(),
+            "--log",
+            log.to_str().unwrap(),
+        ],
+    );
+    assert!(!result.status.success());
+    assert!(!log.parent().unwrap().exists());
+    let messages = format!(
+        "{}{}",
+        String::from_utf8_lossy(&result.stdout),
+        String::from_utf8_lossy(&result.stderr)
+    );
+    assert!(messages.contains("cannot listen"), "{messages}");
+    assert!(!messages.contains("SimConnect DLL:"), "{messages}");
+}
+
+#[test]
+fn invalid_source_specific_arguments_have_no_startup_side_effects() {
+    let fixture = Fixture::new();
+    let binary = fixture.binary();
+    for arguments in [
+        vec!["--source", "simconnect", "--dll", "relative.dll"],
+        vec!["--source", "demo", "--dll", "file.dll"],
+        vec!["--source", "demo", "--log", "must-not-exist/session.jsonl"],
+    ] {
+        let result = output(&binary, &fixture.0, &arguments);
         assert!(!result.status.success());
-        let error = String::from_utf8_lossy(&result.stderr);
-        assert!(error.contains("issue #6"), "{error}");
-        assert!(!error.contains("LoadLibrary"));
+        assert!(!String::from_utf8_lossy(&result.stdout).contains("Listening on"));
+        assert!(!fixture.0.join("must-not-exist").exists());
     }
 }
 
@@ -256,46 +445,10 @@ fn demo_serves_http_with_an_invalid_sibling_dll() {
     let fixture = Fixture::new();
     let binary = fixture.binary();
     fs::write(fixture.0.join("SimConnect.dll"), "not a native library").unwrap();
-    for explicit_source in [false, true] {
-        let reservation = TcpListener::bind("127.0.0.1:0").unwrap();
-        let address = reservation.local_addr().unwrap();
-        drop(reservation);
-        let mut command = Command::new(&binary);
-        command
-            .current_dir(&fixture.0)
-            .arg("--port")
-            .arg(address.port().to_string());
-        if explicit_source {
-            command.args(["--source", "demo"]);
-        }
-        let mut child = RunningChild(
-            command
-                .stdout(Stdio::null())
-                .stderr(Stdio::piped())
-                .spawn()
-                .unwrap(),
-        );
-        let deadline = Instant::now() + Duration::from_secs(10);
-        let mut stream = loop {
-            if let Ok(stream) = TcpStream::connect_timeout(&address, Duration::from_millis(100)) {
-                break stream;
-            }
-            assert!(
-                child.0.try_wait().unwrap().is_none(),
-                "demo exited before serving HTTP"
-            );
-            assert!(Instant::now() < deadline, "demo HTTP did not start");
-            std::thread::sleep(Duration::from_millis(20));
-        };
-        stream
-            .set_read_timeout(Some(Duration::from_secs(2)))
-            .unwrap();
-        stream
-            .write_all(b"GET /health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
-            .unwrap();
-        let mut response = String::new();
-        stream.read_to_string(&mut response).unwrap();
-        assert!(response.starts_with("HTTP/1.1 200"), "{response}");
-        assert!(response.contains("{\"status\":\"ok\"}"), "{response}");
+    for arguments in [&[][..], &["--source", "demo"][..]] {
+        let mut app = Application::start(&binary, &fixture.0, arguments);
+        app.assert_health();
+        let messages = app.messages();
+        assert!(!messages.contains("SimConnect DLL:"), "{messages}");
     }
 }

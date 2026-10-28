@@ -22,8 +22,8 @@ flowchart LR
 * Add packages or services only for a concrete need.
 
 This diagram is the target integrated path.
-In #5, the main executable runs SimConnect acquisition into a caller-owned telemetry channel without HTTP/SSE.
-Demo retains the existing server path; #6 connects that same SimConnect module to it.
+Application composition connects either Demo or the existing SimConnect receiver to the same HTTP/SSE server.
+The server receives a prepared subscription and does not select or start providers.
 
 > A provider failure must never select demo automatically.
 
@@ -31,8 +31,9 @@ Demo retains the existing server path; #6 connects that same SimConnect module t
 
 | Component | Owns |
 | --- | --- |
-| CLI | clap parsing, help/version, typed configuration, source-mode dispatch, process signals and exit status |
-| Configuration | Source selection, listen address/port validation, sampling settings |
+| CLI | clap parsing, help/version, typed configuration, process signals and exit status |
+| Application | Source selection, channel ownership, HTTP preparation, producer startup and coordinated shutdown |
+| Configuration | HTTP listen address and port validation |
 | Telemetry | Normalized attitude, validity, sequence, freshness |
 | Demo provider | Repeatable synthetic scenarios with explicit telemetry source identity |
 | SimConnect provider | SDK types, dispatch, units/signs, simulator lifecycle |
@@ -136,24 +137,26 @@ The `msfs2024_artificial_horizon` library exposes `Config`, `Source`, and `Serve
 
 | Interface | Contract |
 | --- | --- |
-| CLI | Use clap derive for source, demo address/port, optional SimConnect DLL/log, help, and version |
-| Library configuration | Accept typed `Config`/`Source`. Never read process arguments |
-| `Server::bind` | Validate configuration before acquiring the listener |
+| CLI | Parse source, HTTP address/port for both sources, optional SimConnect DLL/log, help, and version |
+| Library configuration | `Config` contains only `listen_address` and `port`. Never read process arguments |
+| `application::SourceSelection` | Select `Demo` or `SimConnect(SimConnectConfig)` explicitly |
+| `application::run(config, source, shutdown)` | Validate, create the channel, bind HTTP, run components and collect results. Shutdown returns `io::Result<()>` |
+| `Server::bind(config, subscription)` | Validate HTTP configuration and acquire the listener with the supplied subscription |
 | `Server::local_address` | Return the bound address |
 | `Server::run(shutdown)` | Accept caller-owned shutdown. Only the CLI handles process signals |
 | `http::router()` | Build static routes only |
 | `http::router_with_telemetry(subscription)` | Add SSE with a caller-supplied channel, without starting acquisition |
-| Provider types | Providers own `Source` and `SourceError` |
-| Configuration errors | Wrap source availability errors in `ConfigError::Source` |
+| Provider identity | `Source` identifies the channel source; it does not configure HTTP |
+| Configuration errors | Reject invalid HTTP settings before acquiring the listener |
 | Public types | Re-export provider types from the library |
 | `SimConnectConfig` | Optional absolute DLL override and optional exact log file; no scenario, process arguments, or HTTP configuration |
 | `simconnect::run(config, publisher, shutdown)` | Use the supplied `Publisher` and caller-owned shutdown; return acquisition outcome and independent diagnostic status |
 
 Providers must not depend on application configuration.
-The main executable creates and retains a SimConnect `Publisher`/subscription channel in #5.
-The integration module creates no hidden channel or telemetry queue.
+Application composition creates and retains the selected source's `Publisher`/subscription channel.
+The provider creates no hidden channel or telemetry queue.
 Its DLL resolver applies the same executable-relative default to CLI and library calls before opening a log or loading native code.
-The server API continues to reject SimConnect until #6; this never selects demo.
+HTTP availability does not depend on DLL loading, simulator connection, or flight readiness.
 
 Run the application with the [README procedure](../README.md#start-the-demo).
 Future executables use their own binary names.
@@ -199,8 +202,8 @@ One native worker owns acquisition and publishes normalized telemetry through th
 The demo does not load SimConnect, and a SimConnect failure never selects the demo.
 Windows builds do not require SDK headers or binaries.
 
-The current [SimConnect mode](simconnect.md) receives and publishes attitude without HTTP or SSE.
-[Issue #6](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/6) covers integration with the server and browser.
+The [SimConnect mode](simconnect.md) publishes attitude through the same HTTP/SSE and browser contract as Demo.
+[ADR 0007](adr/0007-application-composition.md) defines composition, source-failure isolation and shutdown.
 The [SimConnect guide](simconnect.md#live-publication-evidence) describes the tested scope and evidence limits.
 [Issue #8](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/8) covers packaging and DLL distribution conditions.
 Runtime loading does not establish redistribution permission.
@@ -224,7 +227,7 @@ The server owns validated samples and deterministic demo scenarios:
 
 * `FlightSample` combines validated attitude with optional `SlipSkid` and `TurnRate` values.
 * `IndicatedAirspeed` and `GroundSpeed` validate optional nonnegative knots. `FlightSample::with_speeds` adds them without changing its existing constructor.
-* `AirspeedProfile` validates speed thresholds and named `VSpeedReferences`. `IasAcceleration` validates source-supplied kt/s independently.
+* `AirspeedProfile` validates independently optional speed thresholds, current redline and named `VSpeedReferences`. `IasAcceleration` validates source-supplied kt/s independently.
 * `FlightSample::with_airspeed_indications` adds optional configuration and acceleration. Demo configuration is fictional and shared by all clients.
 * `BarometricAltitude` validates finite signed feet. BARO is producer-formatted display text stored as an optional owned string.
 * `FlightSample::with_altitude` adds independently optional altitude and BARO text without changing the constructor or attitude-only path.
@@ -322,20 +325,21 @@ Browser: SSE -> validate -> latest sample -> animation frame -> SVG/DOM
 
 ### Server and browser ownership
 
-The server owns acquisition and its shutdown lifecycle:
+Application composition owns acquisition and its shutdown lifecycle:
 
-* `Server::telemetry()` exposes the subscription before `run` starts acquisition.
-* `Server::run` owns one demo task and joins it after shutdown or HTTP failure.
-* Cancelling a polled `Server::run` future signals producer shutdown and starts connection closure without blocking the cancellation.
-* Repeated shutdown signals preserve the first connection deadline.
-* Server shutdown closes subscriptions after pending data.
-* Producer failure shuts HTTP down and returns an error to the caller.
+* Validate configuration and create the `waiting` channel before binding HTTP. Start the provider only after a successful bind.
+* Retain a nonpublishing handle to the same watch channel while the selected provider owns the only active `Publisher`.
+* After the provider releases publication, recover the latest state and publish `disconnected` without renewing the last sample time.
+* Keep existing SSE streams and the latest unavailable state accessible until HTTP ends. Never restart a permanently failed provider or select Demo automatically.
+* Ctrl+C or HTTP failure signals a shared shutdown. Collect HTTP and provider results independently.
+* Wait for the native worker; do not abort it. A permanently blocked native call has no guaranteed completion deadline.
+* The server owns only HTTP shutdown and connection closure. Repeated shutdown signals preserve the first connection deadline.
 
 HTTP exposes telemetry through a bounded connection layer:
 
 * The telemetry model exposes no SSE route.
 * `http::router_with_telemetry(subscription)` adds SSE without starting a provider.
-* Server uses its single acquisition channel.
+* Server uses the supplied subscription to the single acquisition channel.
 * The connection adapter enforces the [socket deadlines](adr/0002-sse-connection-lifecycle.md).
 
 The browser owns connection recovery and presentation scheduling:

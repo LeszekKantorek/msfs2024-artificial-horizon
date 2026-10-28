@@ -14,7 +14,7 @@ fn profile_fixture() -> Value {
 }
 
 #[test]
-fn profile_requires_positive_finite_ordered_thresholds_and_named_references() {
+fn profile_validates_numbers_without_coupling_thresholds_and_references() {
     let valid = [40.0, 50.0, 85.0, 110.0, 140.0];
     let refs = VSpeedReferences::new(55.0, 65.0, 75.0, 90.0).unwrap();
     for index in 0..5 {
@@ -30,7 +30,7 @@ fn profile_requires_positive_finite_ordered_thresholds_and_named_references() {
         [40.0, 50.0, 85.0, 85.0, 140.0],
         [40.0, 50.0, 85.0, 110.0, 110.0],
     ] {
-        assert!(AirspeedProfile::new(v[0], v[1], v[2], v[3], v[4], refs).is_err());
+        assert!(AirspeedProfile::new(v[0], v[1], v[2], v[3], v[4], refs).is_ok());
     }
     for index in 0..4 {
         for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, 0.0, -1.0] {
@@ -48,7 +48,7 @@ fn profile_requires_positive_finite_ordered_thresholds_and_named_references() {
             140.0,
             VSpeedReferences::new(55.0, 65.0, 75.0, 141.0).unwrap()
         )
-        .is_err()
+        .is_ok()
     );
     assert_eq!(
         serde_json::to_value(demo::speed_profile()).unwrap(),

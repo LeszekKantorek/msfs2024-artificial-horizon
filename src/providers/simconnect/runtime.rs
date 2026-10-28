@@ -110,7 +110,7 @@ pub async fn run(
     };
     println!("SimConnect DLL: {}", dll.display());
     println!(
-        "Live telemetry requires an active, unpaused flight and fresh valid samples. No HTTP server in issue #5. Press Ctrl+C to stop."
+        "Live telemetry requires an active, unpaused flight and fresh valid samples. Press Ctrl+C to stop."
     );
     let stop = match Event::new(true) {
         Ok(event) => Arc::new(event),
@@ -303,6 +303,7 @@ fn connections(
     let mut output = Output {
         publisher,
         transition: None,
+        instruments: Default::default(),
     };
     let mut lifecycle = Lifecycle::default();
     output.update(&lifecycle, journal, Instant::now(), None)?;
@@ -419,6 +420,7 @@ impl Drop for Notification<'_> {
 }
 
 struct Output {
+    instruments: super::instruments::Instruments,
     publisher: Publisher,
     transition: Option<(&'static str, &'static str)>,
 }
@@ -430,6 +432,10 @@ impl Output {
         now: Instant,
         received_at: Option<Instant>,
     ) -> Result<(), SimConnectError> {
+        if !lifecycle.active() {
+            self.instruments.clear();
+        }
+        self.instruments.expire(now);
         let evaluation = lifecycle.evaluate(now);
         let transition = (state_name(evaluation.state), evaluation.reason);
         let changed = self.transition != Some(transition);
@@ -437,14 +443,17 @@ impl Output {
             // Publish each new acquisition, including equal angles. Timer ticks
             // and lifecycle queries must never republish a cached live sample.
             telemetry::State::Live(attitude) => {
-                if let Some(received_at) = received_at {
+                if (received_at.is_some() || self.instruments.dirty)
+                    && let Some(at) = lifecycle.sample_time()
+                {
                     self.publisher
-                        .publish_attitude_at(attitude, received_at.into())?;
+                        .publish_sample_at(self.instruments.sample(attitude), at.into())?;
                 }
             }
             state if changed => self.publisher.publish(state)?,
             _ => {}
         }
+        self.instruments.dirty = false;
         if changed {
             journal.record(
                 "state_transition",
@@ -612,6 +621,34 @@ fn session(
     output: &mut Output,
 ) -> Result<SessionEnd, SimConnectError> {
     configure(connection, journal)?;
+    output.instruments.clear();
+    let mut optional_packets = Vec::new();
+    for (index, (name, units)) in super::native::INSTRUMENT_FIELDS.iter().enumerate() {
+        let added = connection.add_instrument(index);
+        if added.is_ok()
+            && let Ok(id) = connection.last_sent_packet_id()
+        {
+            optional_packets.push((id, index));
+        }
+        let requested = if added.is_ok() {
+            connection.request_instrument(index)
+        } else {
+            added
+        };
+        if requested.is_ok()
+            && let Ok(id) = connection.last_sent_packet_id()
+        {
+            optional_packets.push((id, index));
+        }
+        journal.record(
+            "instrument_request",
+            || {
+                json!({"index":index, "name":name.to_string_lossy(),
+            "units":units.to_string_lossy(), "error":requested.err().map(|e| e.to_string())})
+            },
+            true,
+        );
+    }
     let mut counters = Counters::default();
     let mut last_packet = Instant::now();
     let mut last_sample: Option<Instant> = None;
@@ -666,6 +703,16 @@ fn session(
                     send_id,
                     index,
                 } => {
+                    if let Some((_, field)) = optional_packets.iter().find(|(id, _)| *id == send_id)
+                    {
+                        output.instruments.remove(*field);
+                        journal.record(
+                            "instrument_unavailable",
+                            || json!({"index":field,"exception":exception,"send_id":send_id}),
+                            true,
+                        );
+                        continue;
+                    }
                     return Err(SimConnectError::Native(format!(
                         "Asynchronous SimConnect exception {exception}, send_id {send_id}, index {index}"
                     )));
@@ -682,7 +729,10 @@ fn session(
                     event_id: lifecycle::EVENT_FLIGHT,
                     filename,
                     ..
-                } => lifecycle.flight(&filename, true),
+                } => {
+                    output.instruments.clear();
+                    lifecycle.flight(&filename, true);
+                }
                 Message::SystemState {
                     request_id,
                     integer,
@@ -699,8 +749,27 @@ fn session(
                     );
                     match request_id {
                         lifecycle::STATE_SIM => lifecycle.sim(integer != 0),
-                        lifecycle::STATE_FLIGHT => lifecycle.flight(&string, false),
+                        lifecycle::STATE_FLIGHT => {
+                            if lifecycle.flight_id() != Some(string.as_str()) {
+                                output.instruments.clear();
+                            }
+                            lifecycle.flight(&string, false);
+                        }
                         _ => {}
+                    }
+                }
+                Message::Instrument { index, value } => {
+                    journal.record(
+                        "instrument_sample",
+                        || {
+                            json!({"index":index,
+                        "name":super::native::INSTRUMENT_FIELDS[index].0.to_string_lossy(),
+                        "value":number(value),"active":lifecycle.active()})
+                        },
+                        false,
+                    );
+                    if lifecycle.active() {
+                        output.instruments.receive(index, value, packet_received_at);
                     }
                 }
                 Message::Attitude {
@@ -874,6 +943,7 @@ mod tests {
         let mut output = Output {
             publisher,
             transition: None,
+            instruments: Default::default(),
         };
         let mut journal = Journal::failing_for_test();
         let mut lifecycle = Lifecycle::default();
@@ -913,6 +983,7 @@ mod tests {
         let mut output = Output {
             publisher,
             transition: None,
+            instruments: Default::default(),
         };
         let mut journal = Journal::open(None, &[]).unwrap();
         let mut lifecycle = Lifecycle::default();
@@ -993,6 +1064,7 @@ mod tests {
         let mut output = Output {
             publisher,
             transition: None,
+            instruments: Default::default(),
         };
         let mut journal = Journal::open(None, &[]).unwrap();
         let mut lifecycle = Lifecycle::default();
@@ -1064,6 +1136,7 @@ mod tests {
         let mut output = Output {
             publisher,
             transition: None,
+            instruments: Default::default(),
         };
         let mut journal = Journal::open(None, &[]).unwrap();
         let mut lifecycle = Lifecycle::default();
@@ -1088,6 +1161,59 @@ mod tests {
         let snapshot = serde_json::to_value(subscription.snapshot()).unwrap();
         assert_eq!(snapshot["state"], "invalid");
         assert!(snapshot["attitude"].is_null());
+    }
+
+    #[test]
+    fn optional_expiry_does_not_renew_attitude_and_pause_clears_extensions() {
+        let (publisher, subscription) = telemetry::channel(Source::SimConnect);
+        let mut output = Output {
+            publisher,
+            transition: None,
+            instruments: Default::default(),
+        };
+        let mut journal = Journal::open(None, &[]).unwrap();
+        let mut lifecycle = Lifecycle::default();
+        lifecycle.connect();
+        lifecycle.sim(true);
+        lifecycle.pause(0);
+        lifecycle.flight("test.flt", true);
+        let now = Instant::now();
+        output
+            .instruments
+            .receive(0, 120.0, now - Duration::from_millis(900));
+        lifecycle.sample(Ok(telemetry::Attitude::new(0.0, 0.0).unwrap()), now);
+        output
+            .update(&lifecycle, &mut journal, now, Some(now))
+            .unwrap();
+        assert_eq!(
+            serde_json::to_value(subscription.snapshot()).unwrap()["ias_kt"],
+            120.0
+        );
+        output
+            .update(
+                &lifecycle,
+                &mut journal,
+                now + Duration::from_millis(200),
+                None,
+            )
+            .unwrap();
+        let state = serde_json::to_value(subscription.snapshot()).unwrap();
+        assert!(state.get("ias_kt").is_none());
+        assert_eq!(state["state"], "live");
+        output.instruments.receive(0, 130.0, now);
+        lifecycle.pause(4);
+        output.update(&lifecycle, &mut journal, now, None).unwrap();
+        lifecycle.pause(0);
+        lifecycle.sample(Ok(telemetry::Attitude::new(0.0, 0.0).unwrap()), now);
+        output
+            .update(&lifecycle, &mut journal, now, Some(now))
+            .unwrap();
+        assert!(
+            serde_json::to_value(subscription.snapshot())
+                .unwrap()
+                .get("ias_kt")
+                .is_none()
+        );
     }
 
     #[test]

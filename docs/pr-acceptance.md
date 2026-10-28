@@ -81,6 +81,7 @@ These events refresh acceptance status:
 The control applies these consistency rules:
 
 * Status belongs to the current PR head commit.
+* After an issue edit, check the current `Acceptance criteria` status; older failed runs can remain visible after success.
 * All open PRs sharing that commit must satisfy acceptance before its shared status succeeds.
 * Runs execute serially.
 * Validation reads current PR and issue bodies instead of an old event payload.

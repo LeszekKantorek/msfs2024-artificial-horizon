@@ -39,8 +39,9 @@ Automated lifecycle tests cover normal shutdown and cancellation:
 
 * Library tests signal shutdown independently and rebind within a five-second completion timeout.
 * Cancellation tests abort a task or drop a polled server future after publication with two active SSE clients.
-* Check producer/subscription closure, client EOF, and port reuse after cancellation.
-* Permit the final pending sample before subscription closure.
+* Server cancellation closes clients and releases the port without stopping externally owned publication.
+* Application cancellation signals both components. Normal application shutdown also joins their tasks and waits for native cleanup.
+* Permit the final pending sample before actual channel closure. Provider completion alone does not close the application channel.
 * Public configuration rejects port zero.
 * Internal listener tests use OS-assigned ports to avoid collisions.
 

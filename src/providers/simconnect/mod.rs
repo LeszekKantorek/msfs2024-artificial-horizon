@@ -2,6 +2,7 @@
 //!
 //! Only explicit SimConnect selection loads native code. HTTP integration is #6.
 mod event;
+mod instruments;
 mod journal;
 mod lifecycle;
 mod native;

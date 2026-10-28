@@ -14,7 +14,7 @@ Wire definitions: [telemetry contract](../telemetry-contract.md#optional-airspee
 
 The same module consumes the optional profile and acceleration from the complete frame.
 It creates all new SVG nodes once. Resize and render retain the existing panel lifecycle.
-An unavailable profile hides ranges, references, and VNE warnings while preserving valid IAS, GS, attitude, and acceleration-based trend.
+Each threshold and reference is independently optional. A range requires only its own valid ordered bounds. Each R/X/Y/G marker requires only its corresponding reference. Missing members clear their previous indications without affecting unrelated content. An unavailable profile hides ranges, references, and maximum-speed warnings while preserving valid IAS, GS, attitude, and acceleration-based trend.
 Unavailable acceleration hides the trend and predictive warning while preserving valid ranges, references, and actual overspeed.
 
 | Range | Bounds in configured knots | Demo bounds |
@@ -57,7 +57,7 @@ Tape references preserve their anchors and readable labels:
 
 Fallback references preserve configured values when IAS is unavailable:
 
-* Missing or invalid IAS shows a local `X` and the configured references in four rows above GS, with the persistent `[KT]` footer label.
+* Missing or invalid IAS shows a local `X` and the configured references in four rows above GS, with the persistent `[KT]` footer label. Only available references occupy their assigned R/X/Y/G rows; missing values never become zero.
 * Bottom reference values round to 0.1 kt.
 * Positive values below 0.1 show `<0.1`.
 * Values above 999 show `OVR`.
@@ -76,12 +76,14 @@ Trend uses source-supplied acceleration:
 * Missing configuration does not prevent a valid trend calculation.
 * The prediction never replaces or extrapolates the current IAS reading.
 
-VNE changes the current-speed window and digits independently:
+The effective maximum is the lower available value of fixed VNE and current redline. Current redline does not supply the upper bound of the yellow caution range. Normal ranges are clipped at the effective maximum.
 
-* At or above VNE, the pointer window becomes red, including when the readout shows `OVR`.
-* Below VNE, a rising prediction at or above VNE makes the actual-speed digits yellow.
+The effective maximum changes the current-speed window and digits independently:
+
+* At or above the effective maximum, the pointer window becomes red, including when the readout shows `OVR`.
+* Below VNE, a rising prediction at or above the effective maximum makes the actual-speed digits yellow.
 * A new frame resets colors when the corresponding condition or required data is absent.
-* Profile loss removes both VNE warnings.
+* Loss of both VNE and redline removes both maximum-speed warnings.
 * Acceleration loss removes only the predictive warning.
 
 All range and trend content stays inside the IAS allocation.
@@ -138,7 +140,7 @@ The [contract](../telemetry-contract.md#optional-airspeed-ranges-and-trend) defi
 
 | Area | Expected behavior |
 | --- | --- |
-| Profile | Five positive, strictly increasing thresholds and four named positive references at or below VNE. Invalid configuration affects only its indications |
+| Profile | Independently optional positive thresholds and references. Invalid bounds hide only dependent intervals; redline supports warnings without VNE |
 | Ranges | Red below 40, white 40-85, green 50-110, yellow 110-140, red/white from 140 kt. White overlays the left half of green where their intervals overlap |
 | Range clipping | Unbounded overspeed ranges clip to the tape. Literal expectations cover infinite bounds and preserve `NaN` coordinates without zero substitution |
 | Range lane (#64) | Red, green, yellow, and striped bands share `x = tape width - 18` and 6 CSS px width. White uses the same left edge and 3 CSS px width, painted above green |
@@ -240,3 +242,9 @@ Check the six-second speed trend during full-panel acceptance.
 * The airspeed column, including TAS and GS, uses `clamp(width × 0.16, 50, 84) + 1` CSS px. The additional pixel contains three-digit scale labels after the 2 px shift. The altitude allocation remains independent, and the horizon uses the remaining width. Scale labels use a 12 px font.
 
 Evidence limit: desktop validation does not establish real iOS Safari or Android Chrome acceptance.
+
+### Live trend and visibility findings
+
+[Issue #87](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/87): replay showed acceleration spikes, reduced by a one-second derivative experiment. Receipt timing is a possible cause, not a confirmed diagnosis. The estimator remains undecided; preserve six-second prediction semantics. Replay does not establish rendered behavior.
+
+[Issue #90](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/90): distinguish missing inputs from valid indications outside the clipped tape. Missing thresholds hide only dependent bands; never fabricate references. Logs do not establish screen visibility, and the session did not reach redline. Edge markers or persistent readouts remain proposals.

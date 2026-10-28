@@ -6,7 +6,7 @@ use axum::{Json, Router, routing::get};
 use serde::Serialize;
 use tokio::net::TcpListener;
 
-use crate::telemetry::{self, Publisher, Subscription};
+use crate::telemetry::Subscription;
 use crate::{Config, ConfigError};
 
 mod assets;
@@ -15,7 +15,6 @@ mod sse;
 
 pub struct Server {
     listener: TcpListener,
-    publisher: Publisher,
     subscription: Subscription,
 }
 
@@ -23,7 +22,6 @@ pub struct Server {
 // Clones share the first deadline; repeated shutdown never extends the grace period.
 #[derive(Clone)]
 struct ShutdownGuard {
-    stop: tokio::sync::watch::Sender<bool>,
     closing: tokio::sync::watch::Sender<Option<tokio::time::Instant>>,
 }
 
@@ -36,7 +34,6 @@ impl ShutdownGuard {
             *started = Some(tokio::time::Instant::now());
             true
         });
-        self.stop.send_replace(true);
     }
 }
 
@@ -47,16 +44,14 @@ impl Drop for ShutdownGuard {
 }
 
 impl Server {
-    pub async fn bind(config: Config) -> Result<Self, ServerError> {
+    pub async fn bind(config: Config, subscription: Subscription) -> Result<Self, ServerError> {
         config.validate()?;
         let address = config.socket_address();
         let listener = TcpListener::bind(address)
             .await
             .map_err(|source| ServerError::Bind { address, source })?;
-        let (publisher, subscription) = telemetry::channel(config.source);
         Ok(Self {
             listener,
-            publisher,
             subscription,
         })
     }
@@ -65,37 +60,19 @@ impl Server {
         self.listener.local_addr()
     }
 
-    /// All subscribers share the same producer and retain only the latest state.
-    pub fn telemetry(&self) -> Subscription {
-        self.subscription.clone()
-    }
-
     /// Stop accepting requests on shutdown and finish requests already in flight.
     pub async fn run(self, shutdown: impl Future<Output = ()> + Send + 'static) -> io::Result<()> {
-        let (stop, stopped) = tokio::sync::watch::channel(false);
         let (closing, closed) = tokio::sync::watch::channel(None);
-        let shutdown_guard = ShutdownGuard { stop, closing };
-        let (finished, completion) = tokio::sync::oneshot::channel();
-        let producer = tokio::spawn(async move {
-            let result = crate::providers::demo::run(self.publisher, async move {
-                let mut stopped = stopped;
-                let _ = stopped.wait_for(|stop| *stop).await;
-            })
-            .await;
-            let _ = finished.send(());
-            result
-        });
+        let shutdown_guard = ShutdownGuard { closing };
         let stop_on_shutdown = shutdown_guard.clone();
         let listener = connection::DeadlineListener::new(self.listener, closed);
         let http_result = axum::serve(listener, router_with_telemetry(self.subscription))
             .with_graceful_shutdown(async move {
-                tokio::select! { _ = shutdown => {}, _ = completion => {} }
+                shutdown.await;
                 stop_on_shutdown.signal();
             })
             .await;
         shutdown_guard.signal();
-        let producer_result = producer.await.map_err(io::Error::other)?;
-        producer_result.map_err(io::Error::other)?;
         http_result
     }
 }
@@ -133,6 +110,7 @@ pub enum ServerError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::telemetry::{self, State};
     use tokio::{
         io::{AsyncReadExt, AsyncWriteExt},
         net::TcpStream,
@@ -142,9 +120,8 @@ mod tests {
 
     #[tokio::test(start_paused = true)]
     async fn repeated_shutdown_preserves_the_first_deadline() {
-        let (stop, stopped) = tokio::sync::watch::channel(false);
         let (closing, closed) = tokio::sync::watch::channel(None);
-        let guard = ShutdownGuard { stop, closing };
+        let guard = ShutdownGuard { closing };
         let other = guard.clone();
         guard.signal();
         let first = closed.borrow().unwrap();
@@ -152,19 +129,17 @@ mod tests {
         drop(other);
         guard.signal();
         assert_eq!(*closed.borrow(), Some(first));
-        assert!(*stopped.borrow());
     }
 
     async fn check_cancelled_server(abort: bool) {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = listener.local_addr().unwrap();
-        let (publisher, subscription) = telemetry::channel(crate::Source::Demo);
+        let (mut publisher, subscription) = telemetry::channel(crate::Source::Demo);
+        let mut telemetry = subscription.clone();
         let server = Server {
             listener,
-            publisher,
             subscription,
         };
-        let mut telemetry = server.telemetry();
         let (drop_run, dropped) = oneshot::channel();
         let task = tokio::spawn(async move {
             tokio::select! {
@@ -192,6 +167,7 @@ mod tests {
             .unwrap();
             clients.push(client);
         }
+        publisher.publish(State::Paused).unwrap();
         timeout(Duration::from_secs(5), telemetry.changed())
             .await
             .unwrap()
@@ -203,11 +179,13 @@ mod tests {
             drop_run.send(()).unwrap();
             task.await.unwrap().unwrap();
         }
-        timeout(Duration::from_secs(1), async {
-            while telemetry.changed().await.is_ok() {}
-        })
-        .await
-        .expect("cancelling the server must stop its producer");
+        // HTTP cancellation must not stop or own externally supplied publication.
+        publisher.publish(State::Disconnected).unwrap();
+        let snapshot = telemetry.changed().await.unwrap();
+        assert_eq!(
+            serde_json::to_value(snapshot).unwrap()["state"],
+            "disconnected"
+        );
         for mut client in clients {
             timeout(Duration::from_secs(7), client.read_to_end(&mut Vec::new()))
                 .await
@@ -219,12 +197,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn aborting_server_stops_producer_and_closes_clients() {
+    async fn aborting_server_closes_clients_without_stopping_publication() {
         check_cancelled_server(true).await;
     }
 
     #[tokio::test]
-    async fn dropping_polled_server_stops_producer_and_closes_clients() {
+    async fn dropping_polled_server_closes_clients_without_stopping_publication() {
         check_cancelled_server(false).await;
     }
 
@@ -232,10 +210,9 @@ mod tests {
     async fn shutdown_closes_active_sse_and_releases_port() {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = listener.local_addr().unwrap();
-        let (publisher, subscription) = telemetry::channel(crate::Source::Demo);
+        let (_publisher, subscription) = telemetry::channel(crate::Source::Demo);
         let server = Server {
             listener,
-            publisher,
             subscription,
         };
         let (stop, stopped) = oneshot::channel();
@@ -285,13 +262,12 @@ mod tests {
         // Port zero is confined to the listener-owning test, not public configuration.
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = listener.local_addr().unwrap();
-        let (publisher, subscription) = telemetry::channel(crate::Source::Demo);
+        let (mut publisher, subscription) = telemetry::channel(crate::Source::Demo);
+        let mut telemetry = subscription.clone();
         let server = Server {
             listener,
-            publisher,
             subscription,
         };
-        let mut telemetry = server.telemetry();
         let (stop, stopped) = oneshot::channel();
         let task = tokio::spawn(server.run(async {
             let _ = stopped.await;
@@ -310,6 +286,7 @@ mod tests {
         .unwrap();
         assert!(response.starts_with("HTTP/1.1 200 OK"));
         assert!(response.contains("{\"status\":\"ok\"}"));
+        publisher.publish(State::Paused).unwrap();
         let sample = timeout(Duration::from_secs(5), telemetry.changed())
             .await
             .unwrap()
@@ -326,11 +303,8 @@ mod tests {
             .unwrap()
             .unwrap()
             .unwrap();
-        timeout(Duration::from_secs(5), async {
-            while telemetry.changed().await.is_ok() {}
-        })
-        .await
-        .unwrap();
+        publisher.publish(State::Disconnected).unwrap();
+        assert!(telemetry.changed().await.is_ok());
         let rebound = TcpListener::bind(address).await.unwrap();
         assert_eq!(rebound.local_addr().unwrap(), address);
     }
@@ -343,14 +317,21 @@ mod tests {
             port: address.port(),
             ..Config::default()
         };
-        let error = Server::bind(config).await.err().unwrap();
+        let (_publisher, subscription) = telemetry::channel(crate::Source::SimConnect);
+        let error = Server::bind(config, subscription.clone())
+            .await
+            .err()
+            .unwrap();
         assert!(matches!(error, ServerError::Bind { .. }));
         assert!(error.to_string().contains(&address.to_string()));
         assert!(matches!(
-            Server::bind(Config {
-                port: 0,
-                ..Config::default()
-            })
+            Server::bind(
+                Config {
+                    port: 0,
+                    ..Config::default()
+                },
+                subscription
+            )
             .await
             .err()
             .unwrap(),

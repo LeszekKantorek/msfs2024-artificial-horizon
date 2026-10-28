@@ -29,7 +29,7 @@ export function placeReferenceLabels(ias, values, tape) {
 export function createReferences(tapeHost, bottomHost) {
   const group = svgElement('g', { id: 'airspeed-references' });
   const records = [
-    { key: 'vr_kt', symbol: 'R', accessibleName: 'VR' },
+    { key: 'vr_kt', symbol: 'R', accessibleName: 'Rotation reference' },
     { key: 'vx_kt', symbol: 'X', accessibleName: 'VX' },
     { key: 'vy_kt', symbol: 'Y', accessibleName: 'VY' },
     { key: 'vg_kt', symbol: 'G', accessibleName: 'VG' },
@@ -57,20 +57,22 @@ export function createReferences(tapeHost, bottomHost) {
       bottomGroup.dataset.visible = String(showBottomReferences);
       bottomGroup.style.display = showBottomReferences ? '' : 'none';
       if (!profile) return;
-      const values = records.map(reference => profile.references[reference.key]);
+      const values = records.map(reference => profile.references?.[reference.key]);
       const positions = placeReferenceLabels(ias.value, values, geometry);
       records.forEach((reference, index) => {
         const value = values[index];
         const { marker, leader, fallbackLabel, symbol, accessibleName } = reference;
-        fallbackLabel.textContent = `${symbol} ${referenceReadout(value)}`;
+        const available = Number.isFinite(value) && value > 0;
+        fallbackLabel.style.display = available ? '' : 'none';
+        fallbackLabel.textContent = available ? `${symbol} ${referenceReadout(value)}` : '';
         const { position, labelPosition, visible } = positions[index];
-        marker.style.display = ias.state === 'available' && visible ? '' : 'none';
+        marker.style.display = available && ias.state === 'available' && visible ? '' : 'none';
         marker.setAttribute('y', Number.isFinite(labelPosition) ? labelPosition : 0);
         const displaced = ias.state === 'available' && visible && labelPosition !== position;
         leader.setAttribute('d', displaced ? `M ${geometry.width - 7} ${position} V ${labelPosition} H ${geometry.width - 5}` : '');
-        marker.setAttribute('aria-label', `${accessibleName} ${value} knots`);
+        marker.setAttribute('aria-label', available ? `${accessibleName} ${value} knots` : `${accessibleName} unavailable`);
       });
-      bottomGroup.setAttribute('aria-label', `Configured reference speeds in knots: ${records.map(reference => `${reference.accessibleName} ${profile.references[reference.key]}`).join(', ')}`);
+      bottomGroup.setAttribute('aria-label', `Configured reference speeds in knots: ${records.filter(reference => Number.isFinite(profile.references?.[reference.key])).map(reference => `${reference.accessibleName} ${profile.references?.[reference.key]}`).join(', ')}`);
     },
   };
 }

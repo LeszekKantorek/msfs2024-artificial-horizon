@@ -7,7 +7,8 @@ then open its address in a browser on the same network.
 **Windows x64** · **Read-only browser display** · **No phone app or account**
 
 > **Try the demo today.** The executable displays synthetic attitude, IAS, TAS, GS, altitude, selected-altitude alerts, vertical speed, pressure, magnetic heading, slip/skid, and turn rate.
-> SimConnect publishes live attitude locally within the [recorded MSFS2024 evidence scope](docs/simconnect.md#live-publication-evidence), without the browser display. This is not a real-flight instrument.
+> SimConnect feeds available live flight instruments to the same browser display. Speed ranges and references remain independently available; unsupported aircraft data is hidden.
+> See the [recorded evidence and limits](docs/simconnect.md#live-publication-evidence). This is not a real-flight instrument.
 
 [Start the demo](#start-the-demo) · [Use your phone](#use-your-phone) · [Development](CONTRIBUTING.md)
 
@@ -96,10 +97,13 @@ Place `SimConnect.dll` beside the running executable, or add `--dll` with its ab
 The default DLL location is independent of the working directory.
 Optional `--log` appends sessions to exactly the supplied file; distinguish scenarios by filename.
 See [SimConnect setup and scenarios](docs/simconnect.md) for requirements and observation procedures.
-This mode starts no HTTP/SSE listener in #5; browser integration belongs to #6.
+This mode starts HTTP/SSE with the same address and port options as Demo.
+Add `--listen-address 0.0.0.0 --port 8080` for access from the trusted private network.
+Open the printed URL on the PC or phone.
+HTTP remains available if SimConnect cannot start; the display shows unavailable data and the console explains the source failure.
 Live publication requires a running simulator, a loaded flight, zero pause flags, and a fresh valid sample.
 Recorded sessions support signs, pause/menu unavailability, fresh-sample recovery and reconnect in the tested setup; see [evidence and limits](docs/simconnect.md#live-publication-evidence).
-Issue #5 remains open; broader compatibility and complete performance coverage are not established.
+The #5 receiver evidence does not establish integrated live-browser or mobile acceptance. Broader compatibility and complete performance coverage are not established.
 
 ## Project guide
 

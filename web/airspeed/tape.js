@@ -1,5 +1,5 @@
 import { clamp, svgElement, setAttributes } from '../helpers.js';
-import { MAX_SPEED, tapeOffset } from './helpers.js';
+import { MAX_SPEED, tapeOffset, maximumSpeed } from './helpers.js';
 
 const MINOR_TICK_STEP_KT = 2;
 const MAJOR_TICK_STEP_KT = 10;
@@ -7,13 +7,18 @@ const RANGE_LANE_RIGHT_INSET = 12;
 const RANGE_LANE_WIDTH = 6;
 
 export function speedRanges(profile) {
-  return [
+  if (!profile) return [];
+  const maximum = maximumSpeed(profile);
+  const ranges = [
     { name: 'low', min: 0, max: profile.vs0_kt },
     { name: 'flaps', min: profile.vs0_kt, max: profile.vfe_kt },
     { name: 'normal', min: profile.vs1_kt, max: profile.vno_kt },
     { name: 'caution', min: profile.vno_kt, max: profile.vne_kt },
-    { name: 'overspeed', min: profile.vne_kt, max: Infinity },
-  ];
+  ].filter(range => Number.isFinite(range.min) && Number.isFinite(range.max) && range.min >= 0 && range.max > range.min)
+    .map(range => ({ ...range, max: maximum === null ? range.max : Math.min(range.max, maximum) }))
+    .filter(range => range.max > range.min);
+  if (maximum !== null) ranges.push({ name: 'overspeed', min: maximum, max: Infinity });
+  return ranges;
 }
 
 export function rangeBounds(iasKt, range, tape) {
@@ -45,7 +50,9 @@ export function createTape(defs, parent) {
   function renderRanges(ias, profile) {
     ranges.style.display = profile && ias.state === 'available' ? '' : 'none';
     if (!profile || ias.state !== 'available') return;
+    for (const rect of Object.values(rangeRects)) rect.style.display = 'none';
     for (const range of speedRanges(profile)) {
+      rangeRects[range.name].style.display = '';
       setAttributes(rangeRects[range.name], { x: geometry.width - RANGE_LANE_RIGHT_INSET - RANGE_LANE_WIDTH,
         width: range.name === 'flaps' ? RANGE_LANE_WIDTH / 2 : RANGE_LANE_WIDTH, ...rangeBounds(ias.value, range, geometry) });
     }

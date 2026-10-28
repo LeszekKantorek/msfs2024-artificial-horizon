@@ -18,8 +18,8 @@ const address = `http://127.0.0.1:${port}`;
 const executable = resolve(process.argv[2] ?? 'target/x86_64-pc-windows-msvc/debug/msfs2024-artificial-horizon.exe');
 let server;
 let browser;
-async function start() {
-  server = spawn(executable, ['--source', 'demo', '--port', String(port)], { stdio: ['ignore', 'pipe', 'pipe'] });
+async function start(sourceArguments = ['--source', 'demo']) {
+  server = spawn(executable, [...sourceArguments, '--port', String(port)], { stdio: ['ignore', 'pipe', 'pipe'] });
   let failure;
   server.once('error', error => { failure = error; });
   const deadline = performance.now() + 5000;
@@ -259,8 +259,38 @@ try {
   await checkSourceLoss(page);
   await start();
   await checkRecovery(page);
+  // A failed real provider keeps HTTP connected and invalidates prior demo values.
+  await stop();
+  await start(['--source', 'simconnect', '--dll', resolve('.local/missing-browser-test/SimConnect.dll')]);
+  await page.waitForFunction(() => {
+    const instrument = document.querySelector('.instrument');
+    return instrument.dataset.source === 'simconnect' && instrument.dataset.state === 'disconnected' &&
+      instrument.dataset.transport === 'connected' && instrument.dataset.available === 'false';
+  });
+  await checkSourceLoss(page);
+  const optionalIndicators = ['#airspeed', '#ground-speed', '#true-airspeed', '#altitude', '#barometric-setting', '#selected-altitude'];
+  // Global invalidation masks retained DOM; local data-state changes on fresh frames.
+  for (const selector of optionalIndicators) {
+    assert.equal(await page.locator(selector).evaluate(node => getComputedStyle(node).visibility), 'hidden', selector);
+  }
+  await page.locator('#unavailable').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#unavailable').textContent(), 'Source disconnected');
+  assert.equal(await page.locator('.unavailable-panel').evaluate(node => getComputedStyle(node).opacity), '1');
+  const unavailable = await currentSnapshot();
+  assert.equal(unavailable.source, 'simconnect');
+  assert.equal(unavailable.state, 'disconnected');
+  assert.equal(unavailable.attitude, null);
+  await page.screenshot({ path: '.local/pfd-runtime-simconnect-unavailable.png' });
+  assert.deepEqual(await (await fetch(`${address}/health`)).json(), { status: 'ok' });
+  assert.equal(server.exitCode, null);
+  // A new client starts unavailable without inheriting the previous Demo frame.
+  await page.reload();
+  await page.locator('.instrument[data-source="simconnect"][data-state="disconnected"][data-transport="connected"]').waitFor();
+  for (const selector of optionalIndicators) {
+    assert.equal(await page.locator(selector).getAttribute('data-state'), 'unavailable', selector);
+  }
   assert.deepEqual(errors, []);
-  console.log(`Rust-to-browser PFD checks passed on ${await browser.version()}: embedded assets, heading/north capture, selected-altitude and VSI SSE/SVG, standard-rate turn, source loss and restart without page reload.`);
+  console.log(`Rust-to-browser PFD checks passed on ${await browser.version()}: embedded assets, heading/north capture, selected-altitude and VSI SSE/SVG, standard-rate turn, source loss, restart without page reload and failed SimConnect with connected HTTP/unavailable EFI.`);
 } finally {
   if (browser) await browser.close();
   await stop();

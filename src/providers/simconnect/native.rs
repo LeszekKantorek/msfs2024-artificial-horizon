@@ -25,6 +25,27 @@ use windows_sys::Win32::{
 
 pub(super) const ATTITUDE_REQUEST: u32 = 1;
 pub(super) const ATTITUDE_DEFINITION: u32 = 1;
+// Independent single-value requests keep unsupported optional fields isolated.
+pub(super) const INSTRUMENT_BASE: u32 = 100;
+pub(super) const INSTRUMENT_FIELDS: &[(&CStr, &CStr)] = &[
+    (c"AIRSPEED INDICATED", c"knots"),
+    (c"AIRSPEED TRUE", c"knots"),
+    (c"GROUND VELOCITY", c"knots"),
+    (c"INDICATED ALTITUDE:1", c"feet"),
+    (c"KOHLSMAN SETTING HG:1", c"inHg"),
+    (c"VERTICAL SPEED", c"feet per minute"),
+    (c"PLANE HEADING DEGREES MAGNETIC", c"degrees"),
+    (c"TURN COORDINATOR BALL", c"position 128"),
+    (c"TURN INDICATOR RATE", c"degrees per second"),
+    (c"DESIGN SPEED VS0", c"knots"),
+    (c"DESIGN SPEED VS1", c"knots"),
+    (c"DESIGN SPEED MIN ROTATION", c"knots"),
+    (c"AIRSPEED BARBER POLE", c"knots"),
+    (c"AUTOPILOT AVAILABLE", c"bool"),
+    (c"AUTOPILOT HEADING LOCK DIR:0", c"degrees"),
+    (c"AUTOPILOT ALTITUDE LOCK VAR:0", c"feet"),
+    (c"AUTOPILOT ALT RADIO MODE", c"bool"),
+];
 // Request-side proxy; received dwObjectID may be the aircraft's runtime ID.
 const OBJECT_ID_USER_AIRCRAFT: u32 = 0;
 const OPEN_CONFIGINDEX_LOCAL: u32 = u32::MAX;
@@ -383,6 +404,40 @@ impl Connection<'_> {
         })
     }
 
+    pub fn add_instrument(&mut self, index: usize) -> Result<(), NativeError> {
+        let (name, units) = INSTRUMENT_FIELDS[index];
+        // SAFETY: owned live connection and static NUL-terminated strings.
+        result("SimConnect_AddToDataDefinition", unsafe {
+            (self.library.api.add_definition)(
+                self.handle,
+                INSTRUMENT_BASE + index as u32,
+                name.as_ptr(),
+                units.as_ptr(),
+                DATATYPE_FLOAT64,
+                0.0,
+                UNUSED,
+            )
+        })
+    }
+
+    pub fn request_instrument(&mut self, index: usize) -> Result<(), NativeError> {
+        let id = INSTRUMENT_BASE + index as u32;
+        // SAFETY: owned live connection; untagged SIM_FRAME preserves equal samples.
+        result("SimConnect_RequestDataOnSimObject", unsafe {
+            (self.library.api.request_data)(
+                self.handle,
+                id,
+                id,
+                OBJECT_ID_USER_AIRCRAFT,
+                PERIOD_SIM_FRAME,
+                0,
+                0,
+                0,
+                0,
+            )
+        })
+    }
+
     pub fn subscribe(&mut self, event_id: u32, name: &CStr) -> Result<(), NativeError> {
         // SAFETY: resolved function, owned handle and borrowed NUL-terminated name.
         result("SimConnect_SubscribeToSystemEvent", unsafe {
@@ -534,6 +589,10 @@ pub(super) enum Message {
         #[serde(skip_serializing_if = "Option::is_none")]
         unit_probe: Option<UnitProbe>,
     },
+    Instrument {
+        index: usize,
+        value: f64,
+    },
     Unknown,
 }
 
@@ -674,7 +733,21 @@ fn decode_with_attitude_count(
             let define_id = word(bytes, 20)?;
             // This connection owns one request sent for USER_AIRCRAFT (proxy 0).
             // Responses carry a runtime object ID; correlate by request/definition.
-            if request_id != ATTITUDE_REQUEST || define_id != ATTITUDE_DEFINITION {
+            if request_id >= INSTRUMENT_BASE
+                && (request_id - INSTRUMENT_BASE) < INSTRUMENT_FIELDS.len() as u32
+                && define_id == request_id
+            {
+                if word(bytes, 36)? != 1 || word(bytes, 24)? != 0 {
+                    return Err(malformed("instrument requires one untagged FLOAT64"));
+                }
+                require(bytes, DATA_OFFSET + 8)?;
+                Message::Instrument {
+                    index: (request_id - INSTRUMENT_BASE) as usize,
+                    value: f64::from_le_bytes(
+                        bytes[DATA_OFFSET..DATA_OFFSET + 8].try_into().unwrap(),
+                    ),
+                }
+            } else if request_id != ATTITUDE_REQUEST || define_id != ATTITUDE_DEFINITION {
                 rejected_simobject_data = Some(RejectedSimobjectData {
                     reason: "attitude_request_or_definition_mismatch",
                     request_id,
@@ -1073,6 +1146,24 @@ mod tests {
         bytes[4..8].copy_from_slice(&7_u32.to_le_bytes());
         bytes[8..12].copy_from_slice(&id.to_le_bytes());
         bytes
+    }
+
+    #[test]
+    fn optional_instrument_packet_checks_shape_and_correlation() {
+        let mut bytes = packet(RECV_SIMOBJECT_DATA, 48);
+        bytes[12..16].copy_from_slice(&INSTRUMENT_BASE.to_le_bytes());
+        bytes[20..24].copy_from_slice(&INSTRUMENT_BASE.to_le_bytes());
+        bytes[36..40].copy_from_slice(&1_u32.to_le_bytes());
+        bytes[40..48].copy_from_slice(&123.5_f64.to_le_bytes());
+        assert!(
+            matches!(decode_with_attitude_count(&bytes,2).unwrap().message,
+            Message::Instrument {index:0,value} if value == 123.5)
+        );
+        bytes[36..40].copy_from_slice(&2_u32.to_le_bytes());
+        assert!(decode_with_attitude_count(&bytes, 2).is_err());
+        bytes[36..40].copy_from_slice(&1_u32.to_le_bytes());
+        bytes[24..28].copy_from_slice(&1_u32.to_le_bytes());
+        assert!(decode_with_attitude_count(&bytes, 2).is_err());
     }
 
     fn attitude() -> Vec<u8> {

@@ -144,3 +144,7 @@ Retain these reasons and validation lessons when changing the presentation:
 * The #65 BARO replacement deliberately ships server and embedded Web together. Its [versioning exception](../telemetry-contract.md#compatibility) is limited to that replacement.
 
 Evidence limit: real iOS Safari and Android Chrome acceptance remains separate.
+
+### Live BARO follow-up
+
+[Issue #89](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/89): pilot `KOHLSMAN SETTING HG:1` supplies only formatted inHg text. Logged pressure changes do not prove cockpit or display synchronization. Check altimeter index and STD mode first. Universal unit-preference detection remains unverified; numeric conversion and a local unit toggle are proposals, without simulator writes.
