@@ -242,3 +242,9 @@ Check the six-second speed trend during full-panel acceptance.
 * The airspeed column, including TAS and GS, uses `clamp(width × 0.16, 50, 84) + 1` CSS px. The additional pixel contains three-digit scale labels after the 2 px shift. The altitude allocation remains independent, and the horizon uses the remaining width. Scale labels use a 12 px font.
 
 Evidence limit: desktop validation does not establish real iOS Safari or Android Chrome acceptance.
+
+### Live trend and visibility findings
+
+[Issue #87](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/87): replay showed acceleration spikes, reduced by a one-second derivative experiment. Receipt timing is a possible cause, not a confirmed diagnosis. The estimator remains undecided; preserve six-second prediction semantics. Replay does not establish rendered behavior.
+
+[Issue #90](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/90): distinguish missing inputs from valid indications outside the clipped tape. Missing thresholds hide only dependent bands; never fabricate references. Logs do not establish screen visibility, and the session did not reach redline. Edge markers or persistent readouts remain proposals.

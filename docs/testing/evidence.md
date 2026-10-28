@@ -6,26 +6,26 @@ Measurement limits, build provenance, and matched screenshot comparisons.
 
 | Owner | Scope |
 | --- | --- |
-| #7 | Original simulator reliability/performance |
+| #7 | Original simulator reliability and performance |
 | #20-#26 | Planned EFI demo acceptance, without expanding #7 or #8 |
 
-Record:
+Record the measurement environment and observations:
 
 * OS, CPU, phone models, and browser versions.
 * Simulator, SDK, and aircraft versions.
 * Build commit, source rate, network conditions, duration, and failures.
-* Memory/subscriber trends with two phones for at least 30 minutes.
+* Memory and subscriber trends with two phones for at least 30 minutes.
 
 | Measurement | Method |
 | --- | --- |
 | Receipt-to-render | Browser monotonic clock and frame callbacks |
-| Total latency | Instrumented source with measured clock offset/uncertainty, or synchronized/high-frame-rate recording of source and phone |
-| Report | Method uncertainty and p50/p95. Never subtract unrelated device timestamps |
+| Total latency | Instrumented source with measured clock offset and uncertainty, or synchronized or high-frame-rate recording of source and phone |
+| Report | Method uncertainty, p50, and p95. Never subtract unrelated device timestamps |
 | Proposed target | p95 <= 150 ms from source acquisition through visible rendering on healthy LAN |
 
-Attach results to the validation issue.
-Keep hardware-dependent tasks open until observations support acceptance.
-Unit tests cannot certify simulator or phone behavior.
+* Attach results to the validation issue.
+* Keep hardware-dependent tasks open until observations support acceptance. Apply the [manual acceptance rules](#sources-and-limits).
+* Unit tests cannot certify simulator or phone behavior.
 
 ### Build provenance
 
@@ -39,7 +39,7 @@ Record these fields with binary-dependent validation:
 | Field | Required evidence |
 | --- | --- |
 | Source | Commit, relevant uncommitted changes, and source checkout path |
-| Build | Exact command, target/profile, toolchain, target directory, complete output, and native exit code |
+| Build | Exact command, target, profile, toolchain, target directory, complete output, and native exit code |
 | Artifact | Absolute executable path, size, timestamp, and structured SHA-256 value |
 | Runtime check | Exact command, artifact path, environment, output, and native exit code |
 
@@ -59,7 +59,15 @@ If a copied checkout and build cache leave artifact provenance uncertain:
 
 ### Screenshot comparisons
 
-Compare captures only after recording viewport, scale, browser, fonts, input state, capture method, and source/artifact identity.
+Record comparison conditions before inspecting differences:
+
+| Area | Required metadata |
+| --- | --- |
+| Display | Viewport, scale, browser, and fonts |
+| Scene | Input state and capture method |
+| Build | Source and artifact identity |
+
+Compare the recorded captures:
 
 1. Preserve baseline and candidate captures with their metadata.
 2. Record the difference extent and location, including raw comparison output.
@@ -85,7 +93,7 @@ Report uncertainty explicitly:
 7. Run applicable checks on the combined implementation and inspect the required visual evidence.
 8. Record the tested revision, environment, inputs, artifact identity where relevant, results, and missing evidence.
 
-Choose complementary evidence rather than treating one successful check as proof of every requirement.
+Use complementary evidence for different requirements:
 
 | Evidence | Establishes | Limit |
 | --- | --- | --- |
@@ -96,19 +104,41 @@ Choose complementary evidence rather than treating one successful check as proof
 | Actual phone checks | Device, browser bars, safe areas, rotation, and recovery | Cover only the recorded devices and versions |
 | Independent code review | Assessed defects, unintended changes, and test gaps in a specified diff | Does not replace tests or establish absence of defects |
 
-Use [EFI layout validation](pfd.md#geometry-and-paint-regression-checks) for rendering checks and [screenshot comparisons](#screenshot-comparisons) for visual evidence.
+* Use [EFI layout validation](pfd.md#geometry-and-paint-regression-checks) for rendering checks.
+* Use [screenshot comparisons](#screenshot-comparisons) for visual evidence.
 
 ## Validation scope
 
-Use the [validation matrix](index.md#validation-by-change-scope) and [evidence reuse](index.md#evidence-reuse).
-Preserve explicit requirements for fresh final runs and restrictions on execution.
-Report unperformed checks and evidence limits without claiming a pass.
+* Select checks from the [validation matrix](index.md#validation-by-change-scope).
+* Apply the [evidence reuse rules](index.md#evidence-reuse) to earlier results.
+* Preserve explicit requirements for fresh final runs and restrictions on execution.
+* Report unperformed checks and evidence limits without claiming a pass.
 
 ## Independent subagent review
 
-Include this stage in code-change plans before delivery completion.
-The [project-review-change skill](../../.agents/skills/project-review-change/SKILL.md) owns the procedure, delegation conditions, and completion checks.
+* Include independent review in code-change plans before delivery completion.
+* Follow [project-review-change](../../.agents/skills/project-review-change/SKILL.md) for the procedure, delegation conditions, and completion checks.
+* Record the independent review result separately from manual acceptance.
 
 ## Sources and limits
 
-Independent review and real-device acceptance require separate evidence. A review procedure alone does not establish that either was performed.
+### Manual acceptance
+
+* Explicit operator confirmation is sufficient within its stated scope.
+* Record it as reported acceptance and continue delivery.
+* Missing logs, screenshots, device metadata, or direct phone access alone do not block completion or require another test.
+* Use available logs and automated results as supporting evidence.
+* Do not invent unreported details.
+
+### Repeat tests and follow-up tasks
+
+Request another manual test only for one of these reasons:
+
+| Reason | Explain before requesting the test |
+| --- | --- |
+| Concrete unresolved failure | Which failure the test would resolve |
+| Relevant change after acceptance | Which changed behavior needs verification |
+| Explicitly required criterion outside the confirmed scope | Which criterion remains unconfirmed |
+
+* Later usability findings can become separate follow-up tasks.
+* Reopen accepted work only when findings establish a failure of its requirements.
