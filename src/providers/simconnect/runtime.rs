@@ -110,7 +110,7 @@ pub async fn run(
     };
     println!("SimConnect DLL: {}", dll.display());
     println!(
-        "Live telemetry requires an active, unpaused flight and fresh valid samples. No HTTP server in issue #5. Press Ctrl+C to stop."
+        "Live telemetry requires an active, unpaused flight and fresh valid samples. Press Ctrl+C to stop."
     );
     let stop = match Event::new(true) {
         Ok(event) => Arc::new(event),

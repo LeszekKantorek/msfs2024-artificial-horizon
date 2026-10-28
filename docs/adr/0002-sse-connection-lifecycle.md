@@ -1,6 +1,6 @@
 # ADR 0002: Pull-driven SSE with socket lifecycle deadlines
 
-Decision status: Accepted.
+Decision status: Accepted. Producer ownership, joining, and fatal-source-failure behavior are superseded by [ADR 0007](0007-application-composition.md).
 
 ## Context
 

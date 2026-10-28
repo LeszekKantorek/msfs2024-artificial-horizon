@@ -431,3 +431,35 @@ test('attitude callback accepts only fresh new live samples with a monotonic dea
   h.connections[1].send(live(1));
   assert.equal(h.attitudes.length, 3);
 });
+
+
+test('SimConnect attitude-only live clears demo extensions and source loss retains connected transport', () => {
+  const h = harness(); h.client.start();
+  const connection = h.connections[0]; connection.onopen();
+  connection.send({ ...live(1), ias_kt: 100, gs_kt: 110, tas_kt: 120,
+    altitude_ft: 10000, baro_text: '29.92 inHg', heading_deg: 90,
+    selected_heading_deg: 120, selected_altitude_ft: 11000,
+    vertical_speed_fpm: 500, slip_skid: 0.5, turn_rate_dps: 3,
+    airspeed_profile: profile, ias_acceleration_ktps: 1 });
+  connection.send({ ...live(2), source: 'simconnect' });
+  const sample = h.samples.at(-1);
+  assert.deepEqual(sample.attitude, live().attitude);
+  for (const field of ['ias_kt', 'gs_kt', 'tas_kt', 'altitude_ft', 'baro_text',
+    'heading_deg', 'selected_heading_deg', 'selected_altitude_ft',
+    'vertical_speed_fpm', 'slip_skid', 'turn_rate_dps', 'airspeed_profile', 'ias_acceleration_ktps']) {
+    assert.equal(sample[field], null, field);
+  }
+  const count = h.samples.length;
+  for (const [index, state] of ['waiting', 'paused', 'stale', 'disconnected', 'invalid'].entries()) {
+    connection.send({ ...live(index + 3), source: 'simconnect', state, attitude: null });
+    assert.equal(h.status.source, 'simconnect');
+    assert.equal(h.status.state, state);
+    assert.equal(h.status.transport, 'connected');
+    assert.equal(h.samples.length, count);
+    assert.equal(h.connections.length, 1);
+  }
+  connection.send({ ...live(8), source: 'simconnect' });
+  assert.equal(h.status.state, 'live');
+  assert.equal(h.samples.length, count + 1);
+  h.client.stop();
+});

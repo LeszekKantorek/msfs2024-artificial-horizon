@@ -2,11 +2,8 @@
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
-use crate::providers::{Source, SourceError};
-
 #[derive(Clone, Debug)]
 pub struct Config {
-    pub source: Source,
     pub listen_address: IpAddr,
     pub port: u16,
 }
@@ -14,7 +11,6 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            source: Source::Demo,
             listen_address: Ipv4Addr::LOCALHOST.into(),
             port: 8080,
         }
@@ -31,7 +27,6 @@ impl Config {
         {
             return Err(ConfigError::InvalidAddress(self.listen_address));
         }
-        crate::providers::validate_source(self.source)?;
         Ok(())
     }
 
@@ -48,8 +43,6 @@ pub enum ConfigError {
         "listen address {0} is multicast or broadcast; choose a local interface or wildcard address"
     )]
     InvalidAddress(IpAddr),
-    #[error(transparent)]
-    Source(#[from] SourceError),
 }
 
 #[cfg(test)]
@@ -59,7 +52,6 @@ mod tests {
     #[test]
     fn default_and_explicit_lan_configurations_are_valid() {
         let default = Config::default();
-        assert_eq!(default.source, Source::Demo);
         assert_eq!(default.socket_address(), "127.0.0.1:8080".parse().unwrap());
         default.validate().unwrap();
         for address in ["0.0.0.0", "192.168.1.20", "::", "::1"] {
@@ -92,13 +84,5 @@ mod tests {
                 Err(ConfigError::InvalidAddress(_))
             ));
         }
-        assert!(matches!(
-            Config {
-                source: Source::SimConnect,
-                ..Config::default()
-            }
-            .validate(),
-            Err(ConfigError::Source(SourceError::SimConnectUnavailable))
-        ));
     }
 }

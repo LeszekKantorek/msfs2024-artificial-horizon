@@ -483,6 +483,24 @@ pub struct Publisher {
     sender: watch::Sender<Current>,
     current: Current,
 }
+/// Keeps the existing channel open without granting a second publication owner.
+pub(crate) struct ChannelLifetime {
+    sender: watch::Sender<Current>,
+}
+impl ChannelLifetime {
+    pub(crate) async fn recover(self) -> Publisher {
+        // A cancelled SimConnect future signals its native worker, which may still
+        // own the publisher until native cleanup returns. Never race that owner.
+        while self.sender.sender_count() != 1 {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        let current = self.sender.borrow().clone();
+        Publisher {
+            sender: self.sender,
+            current,
+        }
+    }
+}
 #[derive(Clone)]
 pub struct Subscription {
     receiver: watch::Receiver<Current>,
@@ -511,6 +529,12 @@ pub fn channel(source: Source) -> (Publisher, Subscription) {
     (Publisher { sender, current }, Subscription { receiver })
 }
 impl Publisher {
+    pub(crate) fn retain_channel(&self) -> ChannelLifetime {
+        ChannelLifetime {
+            sender: self.sender.clone(),
+        }
+    }
+
     /// Source identity is fixed when the caller creates the channel.
     pub fn source(&self) -> Source {
         self.current.source
@@ -634,6 +658,54 @@ pub enum TelemetryError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test(start_paused = true)]
+    async fn retained_channel_recovers_latest_sequence_age_and_clears_extensions() {
+        let (mut publisher, mut subscription) = channel(Source::SimConnect);
+        let lifetime = publisher.retain_channel();
+        publisher
+            .publish_sample(
+                FlightSample::new(Attitude::new(12.0, -23.0).unwrap(), None, None)
+                    .with_speeds(Some(IndicatedAirspeed::new(140.0).unwrap()), None),
+            )
+            .unwrap();
+        subscription.snapshot_and_update();
+        tokio::time::advance(Duration::from_millis(300)).await;
+        drop(publisher);
+        let mut recovered = lifetime.recover().await;
+        recovered.publish(State::Disconnected).unwrap();
+        let snapshot = subscription.changed().await.unwrap();
+        assert_eq!(snapshot.sequence, 2);
+        assert_eq!(snapshot.source, Source::SimConnect);
+        assert_eq!(snapshot.sample_age_ms, Some(300));
+        assert_eq!(snapshot.state, "disconnected");
+        assert!(snapshot.attitude.is_none());
+        assert!(snapshot.ias_kt.is_none());
+        assert!(
+            tokio::time::timeout(Duration::from_millis(1), subscription.changed())
+                .await
+                .is_err()
+        );
+        drop(recovered);
+        assert!(subscription.changed().await.is_err());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn recovery_waits_for_the_only_active_publisher() {
+        let (publisher, mut subscription) = channel(Source::SimConnect);
+        let lifetime = publisher.retain_channel();
+        let mut recovery = Box::pin(lifetime.recover());
+        assert!(
+            tokio::time::timeout(Duration::from_millis(50), &mut recovery)
+                .await
+                .is_err()
+        );
+        assert_eq!(subscription.snapshot().state, "waiting");
+        drop(publisher);
+        let mut recovered = recovery.await;
+        recovered.publish(State::Disconnected).unwrap();
+        assert_eq!(subscription.changed().await.unwrap().sequence, 1);
+    }
+
     #[tokio::test]
     async fn closing_sse_body_releases_its_subscription() {
         use axum::{body::Body, http::Request};

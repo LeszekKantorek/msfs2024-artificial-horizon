@@ -10,19 +10,4 @@ pub enum Source {
     SimConnect,
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum SourceError {
-    #[error(
-        "SimConnect HTTP/SSE integration belongs to issue #6; use the application's --source simconnect mode for acquisition without HTTP, or --source demo for the server"
-    )]
-    SimConnectUnavailable,
-}
-
 pub mod simconnect;
-
-pub(crate) fn validate_source(source: Source) -> Result<(), SourceError> {
-    match source {
-        Source::Demo => Ok(()),
-        Source::SimConnect => Err(SourceError::SimConnectUnavailable),
-    }
-}
