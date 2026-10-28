@@ -202,36 +202,63 @@ impl IasAcceleration {
     }
 }
 
-/// Four configured references in knots. Names remain explicit on the wire.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+/// Independently available configured references in knots.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize)]
 pub struct VSpeedReferences {
-    vr_kt: f64,
-    vx_kt: f64,
-    vy_kt: f64,
-    vg_kt: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    vr_kt: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    vx_kt: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    vy_kt: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    vg_kt: Option<f64>,
+}
+fn positive_speed(value: Option<f64>) -> Option<f64> {
+    value.filter(|v| v.is_finite() && *v > 0.0)
 }
 impl VSpeedReferences {
     pub fn new(vr: f64, vx: f64, vy: f64, vg: f64) -> Result<Self, TelemetryError> {
-        if [vr, vx, vy, vg].iter().any(|v| !v.is_finite() || *v <= 0.0) {
+        if [vr, vx, vy, vg]
+            .iter()
+            .any(|v| positive_speed(Some(*v)).is_none())
+        {
             return Err(TelemetryError::InvalidAirspeedProfile);
         }
-        Ok(Self {
-            vr_kt: vr,
-            vx_kt: vx,
-            vy_kt: vy,
-            vg_kt: vg,
-        })
+        Ok(Self::partial(Some(vr), Some(vx), Some(vy), Some(vg)))
+    }
+    /// Discard an invalid reference without losing the other references.
+    pub fn partial(vr: Option<f64>, vx: Option<f64>, vy: Option<f64>, vg: Option<f64>) -> Self {
+        Self {
+            vr_kt: positive_speed(vr),
+            vx_kt: positive_speed(vx),
+            vy_kt: positive_speed(vy),
+            vg_kt: positive_speed(vg),
+        }
+    }
+    fn is_empty(&self) -> bool {
+        [self.vr_kt, self.vx_kt, self.vy_kt, self.vg_kt]
+            .iter()
+            .all(Option::is_none)
     }
 }
 
-/// Validated speed configuration. This type does not establish aircraft performance.
+/// Independent speed configuration. Range relationships are checked by each consumer.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 pub struct AirspeedProfile {
-    vs0_kt: f64,
-    vs1_kt: f64,
-    vfe_kt: f64,
-    vno_kt: f64,
-    vne_kt: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    vs0_kt: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    vs1_kt: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    vfe_kt: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    vno_kt: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    vne_kt: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    redline_kt: Option<f64>,
+    #[serde(skip_serializing_if = "VSpeedReferences::is_empty")]
     references: VSpeedReferences,
 }
 impl AirspeedProfile {
@@ -244,25 +271,36 @@ impl AirspeedProfile {
         references: VSpeedReferences,
     ) -> Result<Self, TelemetryError> {
         let thresholds = [vs0, vs1, vfe, vno, vne];
-        if thresholds.iter().any(|v| !v.is_finite() || *v <= 0.0)
-            || thresholds.windows(2).any(|pair| pair[0] >= pair[1])
-            || [
-                references.vr_kt,
-                references.vx_kt,
-                references.vy_kt,
-                references.vg_kt,
-            ]
+        if thresholds
             .iter()
-            .any(|v| *v > vne)
+            .any(|v| positive_speed(Some(*v)).is_none())
         {
             return Err(TelemetryError::InvalidAirspeedProfile);
         }
-        Ok(Self {
-            vs0_kt: vs0,
-            vs1_kt: vs1,
-            vfe_kt: vfe,
-            vno_kt: vno,
-            vne_kt: vne,
+        Ok(Self::partial(thresholds.map(Some), references, None).expect("validated thresholds"))
+    }
+    /// Threshold order is VS0, VS1, VFE, VNO, VNE. Invalid fields are omitted.
+    pub fn partial(
+        thresholds: [Option<f64>; 5],
+        references: VSpeedReferences,
+        redline: Option<f64>,
+    ) -> Option<Self> {
+        let [vs0_kt, vs1_kt, vfe_kt, vno_kt, vne_kt] = thresholds.map(positive_speed);
+        let redline_kt = positive_speed(redline);
+        if [vs0_kt, vs1_kt, vfe_kt, vno_kt, vne_kt, redline_kt]
+            .iter()
+            .all(Option::is_none)
+            && references.is_empty()
+        {
+            return None;
+        }
+        Some(Self {
+            vs0_kt,
+            vs1_kt,
+            vfe_kt,
+            vno_kt,
+            vne_kt,
+            redline_kt,
             references,
         })
     }
@@ -549,17 +587,17 @@ impl Publisher {
     pub fn publish(&mut self, state: State) -> Result<(), TelemetryError> {
         self.publish_values(state, None, Instant::now())
     }
-    /// Preserve the adapter's receive time across normalization and diagnostics.
-    pub(crate) fn publish_attitude_at(
-        &mut self,
-        attitude: Attitude,
-        received_at: Instant,
-    ) -> Result<(), TelemetryError> {
-        self.publish_values(State::Live(attitude), None, received_at)
-    }
     /// Publish one fresh acquisition atomically, sharing sequence and age with attitude.
     pub fn publish_sample(&mut self, sample: FlightSample) -> Result<(), TelemetryError> {
-        self.publish_values(State::Live(sample.attitude), Some(sample), Instant::now())
+        self.publish_sample_at(sample, Instant::now())
+    }
+    /// Preserve acquisition time when optional indications change or expire.
+    pub(crate) fn publish_sample_at(
+        &mut self,
+        sample: FlightSample,
+        received_at: Instant,
+    ) -> Result<(), TelemetryError> {
+        self.publish_values(State::Live(sample.attitude), Some(sample), received_at)
     }
     fn publish_values(
         &mut self,
@@ -634,9 +672,7 @@ pub enum TelemetryError {
     InvalidBarometricAltitude,
     #[error("IAS acceleration must be finite knots per second")]
     InvalidIasAcceleration,
-    #[error(
-        "airspeed profile requires increasing positive finite thresholds and positive references at or below VNE, in knots"
-    )]
+    #[error("airspeed profile values must be positive finite speeds in knots")]
     InvalidAirspeedProfile,
     #[error("indicated airspeed must be finite nonnegative knots")]
     InvalidIndicatedAirspeed,
@@ -727,6 +763,69 @@ mod tests {
         drop(body);
         assert_eq!(publisher.sender.receiver_count(), 1);
     }
+    #[test]
+    fn partial_profile_keeps_independent_values_and_omits_invalid_members() {
+        let profile = AirspeedProfile::partial(
+            [Some(40.0), Some(f64::NAN), None, Some(-1.0), None],
+            VSpeedReferences::partial(Some(55.0), None, Some(f64::INFINITY), Some(90.0)),
+            Some(140.0),
+        )
+        .unwrap();
+        assert_eq!(
+            serde_json::to_value(profile).unwrap(),
+            serde_json::json!({
+                "vs0_kt": 40.0, "redline_kt": 140.0,
+                "references": {"vr_kt": 55.0, "vg_kt": 90.0}
+            })
+        );
+        assert!(
+            AirspeedProfile::partial([None; 5], VSpeedReferences::default(), Some(0.0)).is_none()
+        );
+        // An incoherent pair is retained for the affected range's consumer;
+        // unrelated references must not disappear with it.
+        assert!(
+            AirspeedProfile::new(
+                90.0,
+                40.0,
+                80.0,
+                70.0,
+                60.0,
+                VSpeedReferences::partial(Some(100.0), None, None, None)
+            )
+            .is_ok()
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn replacing_partial_profile_preserves_original_acquisition_deadline() {
+        let (mut publisher, subscription) = channel(Source::SimConnect);
+        let received_at = Instant::now();
+        let attitude = Attitude::new(0.0, 0.0).unwrap();
+        publisher
+            .publish_sample_at(
+                FlightSample::new(attitude, None, None).with_airspeed_indications(
+                    AirspeedProfile::partial(
+                        [Some(40.0), None, None, None, None],
+                        VSpeedReferences::default(),
+                        None,
+                    ),
+                    None,
+                ),
+                received_at,
+            )
+            .unwrap();
+        tokio::time::advance(Duration::from_millis(900)).await;
+        publisher
+            .publish_sample_at(FlightSample::new(attitude, None, None), received_at)
+            .unwrap();
+        let value = serde_json::to_value(subscription.snapshot()).unwrap();
+        assert!(value.get("airspeed_profile").is_none());
+        assert_eq!(value["sample_age_ms"], 900);
+        tokio::time::advance(Duration::from_millis(100)).await;
+        publisher.expire().unwrap();
+        assert_eq!(subscription.snapshot().state, "stale");
+    }
+
     #[test]
     fn sequence_exhaustion_does_not_publish_or_wrap() {
         let (mut publisher, subscription) = channel(Source::Demo);

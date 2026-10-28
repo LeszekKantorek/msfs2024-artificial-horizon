@@ -1,6 +1,6 @@
 # SimConnect integration
 
-User-aircraft pitch and bank reception with optional diagnostics.
+User-aircraft flight instrument reception with optional diagnostics.
 
 ## Requirements
 
@@ -11,7 +11,7 @@ User-aircraft pitch and bank reception with optional diagnostics.
 | Build | No SDK headers, import library, or installed simulator required |
 | Acquisition | One module and the caller-owned telemetry channel |
 | Telemetry | Existing [states, validity, and freshness](telemetry-contract.md#freshness-and-status) |
-| Scope | Pitch/bank through HTTP/SSE and EFI in [#6](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/6); other instruments remain unavailable |
+| Scope | Available standard aircraft data through HTTP/SSE and EFI; each optional indication is independent |
 | Distribution | Packaging and DLL redistribution conditions in [#8](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/8) |
 | Repository | No SDK files, installation paths, or generated diagnostics in Git |
 
@@ -44,7 +44,7 @@ cargo run --locked --release --bin msfs2024-artificial-horizon -- --source simco
 | Option | Behavior |
 | --- | --- |
 | No source option or `--source demo` | Demo with HTTP/SSE, without loading SimConnect |
-| `--source simconnect` | Native acquisition with HTTP/SSE and pitch/bank display |
+| `--source simconnect` | Native acquisition with HTTP/SSE and available flight instruments |
 | `--listen-address`, `--port` | HTTP settings for either source; defaults `127.0.0.1` and `8080` |
 | `--dll <file>` | Optional absolute override. Default: `SimConnect.dll` beside the running EXE |
 | `--log <file>` | Optional exact JSONL destination, absolute or relative to the working directory |
@@ -85,6 +85,16 @@ A busy port prevents acquisition from starting. HTTP does not wait for DLL loadi
 
 Detailed source errors stay in console diagnostics and the optional log. The SSE schema is unchanged.
 `/health` reports HTTP liveness, independently of simulator availability.
+
+### Optional instrument observations
+
+The same native worker requests IAS/TAS/GS in knots, indicated altitude in feet, pilot KOHLSMAN in inHg, VSI in feet/minute, magnetic heading in degrees, ball position, and turn rate in degrees/second. Standard autopilot targets follow active slot 0; target visibility does not require the autopilot master to be engaged. Radio-referenced altitude targets are omitted.
+
+Each optional request has its own definition and exception boundary. Failed fields become unavailable without stopping attitude or HTTP. Last observations expire independently after 1000 ms. Pauses, flight changes and reconnect clear cached values. Additional observations and expiry publications preserve the attitude receive time.
+
+Speed profiles contain independently available VS0, VS1, project minimum rotation and current redline. Other thresholds and references remain absent unless their exact standard source is established. Minimum rotation is a project reference, not a weight/flap-dependent Vr calculated by an FMS. General climb speed is not substituted for Vy; current flap limits are not substituted for fixed VFE. Dynamic redline is not fixed VNE. No aircraft configuration reader or addon-specific avionics bridge is provided.
+
+IAS trend uses consecutive valid worker acquisitions and their monotonic receive times. It resets after invalid input, a stale gap, pause or flight change. It describes knots per real second, including when simulation speed differs from real time.
 
 ### Data and availability
 

@@ -16,15 +16,13 @@ export function isValidSnapshot(value) {
 // Optional instruments fail independently of the envelope and attitude.
 export function normalizeAirspeedProfile(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const keys = ['vs0_kt', 'vs1_kt', 'vfe_kt', 'vno_kt', 'vne_kt'];
-  const thresholds = keys.map(key => value[key]);
-  if (thresholds.some((v, i) => !Number.isFinite(v) || v <= 0 || (i > 0 && v <= thresholds[i - 1]))) return null;
-  const references = value.references;
-  if (!references || typeof references !== 'object' || Array.isArray(references)) return null;
+  const valid = object => Object.fromEntries(Object.entries(object).filter(([, v]) => Number.isFinite(v) && v > 0));
+  const keys = ['vs0_kt', 'vs1_kt', 'vfe_kt', 'vno_kt', 'vne_kt', 'redline_kt'];
+  const thresholds = valid(Object.fromEntries(keys.map(key => [key, value[key]])));
   const refKeys = ['vr_kt', 'vx_kt', 'vy_kt', 'vg_kt'];
-  if (refKeys.some(key => !Number.isFinite(references[key]) || references[key] <= 0 || references[key] > value.vne_kt)) return null;
-  return { ...Object.fromEntries(keys.map(key => [key, value[key]])),
-    references: Object.fromEntries(refKeys.map(key => [key, references[key]])) };
+  const references = valid(Object.fromEntries(refKeys.map(key => [key, value.references?.[key]])));
+  if (!Object.keys(thresholds).length && !Object.keys(references).length) return null;
+  return { ...thresholds, ...(Object.keys(references).length ? { references } : {}) };
 }
 
 export function normalizeOptionalIndications(value) {

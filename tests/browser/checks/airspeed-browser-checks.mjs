@@ -4,10 +4,10 @@ import assert from 'node:assert/strict';
 export async function checkAirspeedAvailabilityTransitions(page, setFixture, profile) {
   const recoveredProfile = { ...profile,
     references: { vr_kt: 60.123456789, vx_kt: 65.2, vy_kt: 75.3, vg_kt: 90.4 } };
-  const originalReferences = ['VR 55 knots', 'VX 65 knots', 'VY 75 knots', 'VG 90 knots'];
-  const recoveredReferences = ['VR 60.123456789 knots', 'VX 65.2 knots', 'VY 75.3 knots', 'VG 90.4 knots'];
-  const configuredOriginal = 'Configured reference speeds in knots: VR 55, VX 65, VY 75, VG 90';
-  const configuredRecovered = 'Configured reference speeds in knots: VR 60.123456789, VX 65.2, VY 75.3, VG 90.4';
+  const originalReferences = ['Rotation reference 55 knots', 'VX 65 knots', 'VY 75 knots', 'VG 90 knots'];
+  const recoveredReferences = ['Rotation reference 60.123456789 knots', 'VX 65.2 knots', 'VY 75.3 knots', 'VG 90.4 knots'];
+  const configuredOriginal = 'Configured reference speeds in knots: Rotation reference 55, VX 65, VY 75, VG 90';
+  const configuredRecovered = 'Configured reference speeds in knots: Rotation reference 60.123456789, VX 65.2, VY 75.3, VG 90.4';
   const freshIas = { ias_kt: 65.123456789, ias_acceleration_ktps: 0 };
   const scenarios = [
     { name: 'IAS loss', steps: [
@@ -425,7 +425,7 @@ export async function checkAirspeedIndications(page, setFixture, profile) {
     [{ ias_kt: 110, ias_acceleration_ktps: null }, null, true, false],
     [{ ias_kt: 150, ias_acceleration_ktps: '5' }, null, true, true],
     [{ ias_kt: 110, ias_acceleration_ktps: 5, airspeed_profile: null }, 140, false, false],
-    [{ ias_kt: 150, ias_acceleration_ktps: 5, airspeed_profile: { ...profile, vne_kt: 0 } }, 180, false, false],
+    [{ ias_kt: 150, ias_acceleration_ktps: 5, airspeed_profile: { ...profile, vne_kt: 0 } }, 180, true, false],
     [{ ias_kt: 999.01, ias_acceleration_ktps: 5, airspeed_profile: profile }, null, false, true],
   ]) {
     setFixture(fields);
@@ -437,6 +437,26 @@ export async function checkAirspeedIndications(page, setFixture, profile) {
     }, { prediction, ranges, overspeed });
     assert.equal(await page.locator('.instrument').getAttribute('data-available'), 'true');
   }
+  // Partial profiles replace the previous complete profile through the real fixture SSE path.
+  setFixture({ ias_kt: 65, ias_acceleration_ktps: 1,
+    airspeed_profile: { vs0_kt: 40, vs1_kt: 50, vno_kt: 110, redline_kt: 70, references: { vr_kt: 55, vy_kt: 75 } } });
+  await page.waitForFunction(() => document.querySelector('#airspeed').dataset.approaching === 'true' &&
+    document.querySelector('#airspeed-references .airspeed-reference[data-reference="X"]').style.display === 'none');
+  assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('#airspeed-ranges rect')]
+    .filter(node => getComputedStyle(node).display !== 'none').map(node => node.dataset.range)), ['low', 'normal', 'overspeed']);
+  assert.equal(await page.locator('#airspeed-references [data-reference="G"]').last().getAttribute('aria-label'), 'VG unavailable');
+  setFixture({ ias_kt: null });
+  await page.waitForFunction(() => document.querySelector('#airspeed-references-bottom').dataset.visible === 'true');
+  const fallback = await page.evaluate(() => [...document.querySelectorAll('#airspeed-references-bottom text')].map(node =>
+    ({ text: node.textContent, visible: getComputedStyle(node).display !== 'none', y: Number(node.getAttribute('y')) })));
+  assert.deepEqual(fallback.map(row => row.visible), [true, false, true, false]);
+  assert.equal(fallback[2].y - fallback[0].y, 32, 'Missing X retains its fixed fallback slot');
+  await page.screenshot({ path: '.local/pfd-browser/speed-partial-references.png' });
+  setFixture({ ias_kt: 65, airspeed_profile: { redline_kt: 60 } });
+  await page.waitForFunction(() => document.querySelector('#airspeed').dataset.overspeed === 'true' &&
+    document.querySelector('#airspeed-references-bottom').dataset.visible === 'false');
+  assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('#airspeed-ranges rect')]
+    .filter(node => getComputedStyle(node).display !== 'none').map(node => node.dataset.range)), ['overspeed']);
   setFixture({ ias_kt: 110, ias_acceleration_ktps: 5, airspeed_profile: profile });
   await page.locator('#airspeed[data-approaching="true"]').waitFor();
   await page.screenshot({ path: '.local/pfd-browser/speed-approaching-vne.png' });

@@ -24,6 +24,18 @@ pub(super) struct Evaluation {
 }
 
 impl Lifecycle {
+    pub(super) fn active(&self) -> bool {
+        self.connected
+            && self.sim_running == Some(true)
+            && self.pause == Some(0)
+            && self.flight.as_ref().is_some_and(|f| !f.is_empty())
+    }
+    pub(super) fn flight_id(&self) -> Option<&str> {
+        self.flight.as_deref()
+    }
+    pub(super) fn sample_time(&self) -> Option<Instant> {
+        self.sample.map(|(at, _)| at)
+    }
     pub(super) fn connect(&mut self) {
         *self = Self {
             connected: true,

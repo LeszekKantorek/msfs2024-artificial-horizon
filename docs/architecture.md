@@ -227,7 +227,7 @@ The server owns validated samples and deterministic demo scenarios:
 
 * `FlightSample` combines validated attitude with optional `SlipSkid` and `TurnRate` values.
 * `IndicatedAirspeed` and `GroundSpeed` validate optional nonnegative knots. `FlightSample::with_speeds` adds them without changing its existing constructor.
-* `AirspeedProfile` validates speed thresholds and named `VSpeedReferences`. `IasAcceleration` validates source-supplied kt/s independently.
+* `AirspeedProfile` validates independently optional speed thresholds, current redline and named `VSpeedReferences`. `IasAcceleration` validates source-supplied kt/s independently.
 * `FlightSample::with_airspeed_indications` adds optional configuration and acceleration. Demo configuration is fictional and shared by all clients.
 * `BarometricAltitude` validates finite signed feet. BARO is producer-formatted display text stored as an optional owned string.
 * `FlightSample::with_altitude` adds independently optional altitude and BARO text without changing the constructor or attitude-only path.

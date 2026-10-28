@@ -7,7 +7,7 @@ then open its address in a browser on the same network.
 **Windows x64** · **Read-only browser display** · **No phone app or account**
 
 > **Try the demo today.** The executable displays synthetic attitude, IAS, TAS, GS, altitude, selected-altitude alerts, vertical speed, pressure, magnetic heading, slip/skid, and turn rate.
-> SimConnect feeds live pitch and bank to the same browser display; other live indications remain unavailable.
+> SimConnect feeds available live flight instruments to the same browser display. Speed ranges and references remain independently available; unsupported aircraft data is hidden.
 > See the [recorded evidence and limits](docs/simconnect.md#live-publication-evidence). This is not a real-flight instrument.
 
 [Start the demo](#start-the-demo) · [Use your phone](#use-your-phone) · [Development](CONTRIBUTING.md)

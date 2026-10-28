@@ -322,7 +322,8 @@ test('profile and source acceleration retain their own availability through irre
   assert.equal(h.samples.at(-1).ias_acceleration_ktps, null);
   assert.deepEqual(h.samples.at(-1).airspeed_profile, profile);
   connection.send({ ...extended(5), airspeed_profile: { ...profile, vne_kt: 0 } });
-  assert.equal(h.samples.at(-1).airspeed_profile, null);
+  const withoutVne = structuredClone(profile); delete withoutVne.vne_kt;
+  assert.deepEqual(h.samples.at(-1).airspeed_profile, withoutVne);
   assert.equal(h.samples.at(-1).ias_kt, 110);
   assert.equal(h.samples.at(-1).ias_acceleration_ktps, 5);
   connection.send({ ...extended(6), ias_kt: null, ias_acceleration_ktps: -5 });

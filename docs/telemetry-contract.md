@@ -304,8 +304,9 @@ The profile contains these fields:
 
 | Field | Validation / meaning |
 | --- | --- |
-| `vs0_kt`, `vs1_kt`, `vfe_kt`, `vno_kt`, `vne_kt` | Finite positive knots, strictly increasing in this order |
-| `references.vr_kt`, `references.vx_kt`, `references.vy_kt`, `references.vg_kt` | Four finite positive configured references, each at or below VNE |
+| `vs0_kt`, `vs1_kt`, `vfe_kt`, `vno_kt`, `vne_kt` | Independently optional finite positive knots; each rendered interval requires ordered bounds |
+| `references.vr_kt`, `references.vx_kt`, `references.vy_kt`, `references.vg_kt` | Independently optional finite positive references; availability does not require VNE |
+| `redline_kt` (inside profile) | Optional finite positive current maximum speed in knots, independent of fixed VNE |
 | `ias_acceleration_ktps` | Finite kt/s, including negative and zero. Optional independently of the profile |
 
 Rust types expose validated constructors. Profile fields remain private. The wire names identify their units and reference meanings.
@@ -328,9 +329,9 @@ These extensions follow the existing sample lifecycle:
 * Both fields share the sample sequence, monotonic age, and expiry deadline. Providers must supply acceleration from the same fresh acquisition as IAS.
 * Rust omits absent fields and all extensions outside `live`. Attitude-only publication clears both fields.
 * A new browser sample replaces the previous configuration and acceleration. Missing values never select a demo default.
-* Missing, null, or malformed profiles become unavailable independently of valid IAS, GS, attitude, and acceleration.
+* Missing, null, or non-object profiles become unavailable independently of valid IAS, GS, attitude, and acceleration. Malformed members affect only dependent indications.
 * Missing, null, or malformed acceleration becomes unavailable independently of the profile and current readings.
-* Unknown additive profile fields are ignored. All five known thresholds and four named references are required when a profile is supplied.
+* Unknown additive profile fields are ignored. Each known threshold and reference is independently optional. Missing, null, or invalid members are omitted independently; an empty profile is unavailable. No global ordering or reference-to-VNE constraint applies.
 * Source/transport loss invalidates the panel. Local IAS loss does not invalidate a valid profile.
 
 The browser never computes acceleration from browser receipt intervals.

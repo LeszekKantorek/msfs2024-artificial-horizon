@@ -1,17 +1,18 @@
 import { svgElement, setAttributes } from '../helpers.js';
-import { speedState } from './helpers.js';
+import { speedState, maximumSpeed } from './helpers.js';
 import { createTape } from './tape.js';
 import { createReadout } from './readout.js';
 import { createReferences } from './references.js';
 
 export function speedIndications(ias, acceleration, profile) {
   const state = speedState(ias);
-  const overspeed = state !== 'unavailable' && !!profile && ias >= profile.vne_kt;
+  const maximum = maximumSpeed(profile);
+  const overspeed = state !== 'unavailable' && maximum !== null && ias >= maximum;
   if (state !== 'available') return { prediction: null, overspeed, approaching: false };
   const predicted = Number.isFinite(acceleration) && acceleration !== 0 ? ias + 6 * acceleration : NaN;
   const prediction = Number.isFinite(predicted) ? predicted : null;
   return { prediction, overspeed,
-    approaching: !!profile && prediction !== null && ias < profile.vne_kt && prediction >= profile.vne_kt };
+    approaching: maximum !== null && prediction !== null && ias < maximum && prediction >= maximum };
 }
 
 function deriveIasReadings(value, profile, acceleration) {
@@ -19,7 +20,7 @@ function deriveIasReadings(value, profile, acceleration) {
   return {
     ias: { value, state }, profile,
     ...speedIndications(value, acceleration, profile),
-    showBottomReferences: !!profile && state === 'unavailable',
+    showBottomReferences: Object.values(profile?.references ?? {}).some(value => Number.isFinite(value) && value > 0) && state === 'unavailable',
   };
 }
 
