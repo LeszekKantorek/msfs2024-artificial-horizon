@@ -17,6 +17,8 @@ Use the canonical sources for the contract being extended:
 | Range/reference implementation and acceptance | [Speed indications](../docs/efi/airspeed-indications.md#implementation), [tests](../docs/efi/airspeed-indications.md#testing) |
 | Accepted choices, glyph measurements, and evidence limits | [IAS/GS lessons](../docs/efi/airspeed.md#rationale-and-regression-lessons), [range/trend lessons](../docs/efi/airspeed-indications.md#rationale-and-regression-lessons) |
 
+IAS history expires independently of IAS availability: the [SimConnect policy](../docs/simconnect.md#optional-instrument-observations) uses a 0.5-second measurement horizon and a one-second IAS freshness deadline. When changing this boundary, check both receipt-before-expiry and expiry-before-receipt at exactly 0.5 seconds, as well as equal timestamps; otherwise an expired history can seed a new trend. [Issue #87](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/87) records the implementation and acceptance evidence.
+
 ## True airspeed
 
 | Need | Source |

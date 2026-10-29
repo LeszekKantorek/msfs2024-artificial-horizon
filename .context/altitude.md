@@ -15,6 +15,14 @@ Select the source for the affected boundary:
 | Public evidence and accepted scope | [Issue #23](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/23), [PR #59](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/pull/59), [footer revision #65](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/65) |
 | Implementation and accepted tape/BARO refinements | [Implementation](../docs/efi/altitude.md#implementation), [rationale and regression lessons](../docs/efi/altitude.md#rationale-and-regression-lessons) |
 
+### G1000 STD source limitation
+
+For [#89](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/89), an operator switched G1000 STD during a recorded session while `KOHLSMAN SETTING STD:1` remained false. Microsoft's [G1000 altimeter source](https://github.com/microsoft/msfs-avionics-mirror/blob/main/src/workingtitle-instruments-g1000/html_ui/PFD/Components/FlightInstruments/Altimeter.tsx) handles `std_baro_switch` as an avionics event and maintains its own standard-mode state. This is consistent with the observation, but does not establish the installed avionics version or prove that all aircraft behave the same way. Pressure near 29.92 inHg alone does not establish STD mode.
+
+The accepted [BARO presentation](../docs/efi/altitude.md#presentation) therefore uses a local inHg/hPa/STD cycle; local STD does not report or change cockpit mode. Reconsider simulator synchronization only with evidence for the selected aircraft and an accessible source of its mode.
+
+For #89, controlled browser checks covered touch emulation and the text-selection style; the operator separately confirmed BARO switching and absence of text selection on Android. The confirmation does not establish behavior on other devices. Apply the shared [evidence limits](../docs/testing/evidence.md#select-evidence-by-failure-risk) when assessing desktop and actual-phone results.
+
 ## Altitude trend
 
 | Need | Source |
