@@ -88,15 +88,37 @@ Detailed source errors stay in console diagnostics and the optional log. The SSE
 
 ### Optional instrument observations
 
-The native worker requests IAS, TAS, and GS in knots. It requests KOHLSMAN pressure in inHg and indicated altitude in feet from altimeter index 1. It also requests VSI in feet per minute, magnetic heading in degrees, ball position, and turn rate in degrees per second.
+The native worker requests these optional observations:
 
-The cockpit control corresponding to index 1 depends on the aircraft and requires live verification. Standard autopilot targets follow active slot 0. Target visibility does not require the autopilot master to be engaged. Radio-referenced altitude targets are omitted.
+| Observation | Source units or selection |
+| --- | --- |
+| IAS, TAS, GS | Knots |
+| KOHLSMAN pressure, indicated altitude | inHg and feet, respectively, from altimeter index 1 |
+| VSI | Feet per minute |
+| Magnetic heading | Degrees |
+| Slip/skid ball position | Position |
+| Turn rate | Degrees per second |
+| Autopilot targets | Active slot 0. Target visibility does not require the autopilot master to be engaged. Radio-referenced altitude targets are omitted |
 
-Each optional request has its own definition and exception boundary. Failed fields become unavailable without stopping attitude or HTTP. Last observations expire independently after 1000 ms. Pauses, flight changes and reconnect clear cached values. Additional observations and expiry publications preserve the attitude receive time.
+The cockpit control corresponding to altimeter index 1 depends on the aircraft and requires live verification.
 
-Speed profiles contain independently available VS0, VS1, project minimum rotation and current redline. Other thresholds and references remain absent unless their exact standard source is established. Minimum rotation is a project reference, not a weight/flap-dependent Vr calculated by an FMS. General climb speed is not substituted for Vy; current flap limits are not substituted for fixed VFE. Dynamic redline is not fixed VNE. No aircraft configuration reader or addon-specific avionics bridge is provided.
+Optional fields follow these availability rules:
 
-IAS trend uses a bounded 0.5-second window of valid worker acquisitions and their monotonic receive times. Acceleration expires after 0.5 seconds without a new IAS sample. IAS retains its independent one-second freshness. The history resets after invalid input, a stale gap, pause, or flight change. The trend describes knots per real second, including when simulation speed differs from real time.
+* Each request has its own definition and exception boundary. Failed fields become unavailable without stopping attitude or HTTP.
+* Last observations expire independently after 1000 ms. Pauses, flight changes, and reconnect clear cached values.
+* Additional observations and expiry publications preserve the attitude receive time.
+
+Speed profiles have these source limits:
+
+* VS0, VS1, project minimum rotation, and current redline are independently available. Other thresholds and references remain absent unless their exact standard source is established.
+* Minimum rotation is a project reference, not a weight/flap-dependent Vr calculated by an FMS.
+* General climb speed is not substituted for Vy. Current flap limits are not substituted for fixed VFE. Dynamic redline is not fixed VNE.
+* No aircraft configuration reader or addon-specific avionics bridge is provided.
+
+IAS trend uses a bounded 0.5-second window of valid worker acquisitions and their monotonic receive times. The trend describes knots per real second, including when simulation speed differs from real time.
+
+* Acceleration expires after 0.5 seconds without a new IAS sample. IAS retains its independent one-second freshness.
+* The history resets after invalid input, a stale gap, pause, or flight change.
 
 ### Data and availability
 
