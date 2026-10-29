@@ -5,9 +5,9 @@ export function baroReading(value) {
 }
 
 export function numericBaroReading(setting, unit) {
-  if (!setting || !Number.isFinite(setting.pressure_hpa) || setting.pressure_hpa <= 0 ||
-      typeof setting.standard !== 'boolean') return { state: 'unavailable', text: 'X' };
-  if (setting.standard) return { state: 'available', text: 'STD' };
+  if (!setting || !Number.isFinite(setting.pressure_hpa) || setting.pressure_hpa <= 0)
+    return { state: 'unavailable', text: 'X' };
+  if (unit === 'STD') return { state: 'available', text: 'STD' };
   const converted = unit === 'hPa' ? setting.pressure_hpa : setting.pressure_hpa / 33.8638866667;
   if (!Number.isFinite(converted) || converted >= 1e21) return { state: 'unavailable', text: 'X' };
   return { state: 'available', text: unit === 'hPa' ? `${Math.round(converted)} hPa` : `${converted.toFixed(2)} inHg` };
@@ -24,11 +24,11 @@ export function createBaro(parent, redraw = () => {}) {
   let availableWidth = 0;
   try {
     const saved = localStorage.getItem('efi.baro.unit');
-    if (saved === 'inHg' || saved === 'hPa') unit = saved;
+    if (saved === 'inHg' || saved === 'hPa' || saved === 'STD') unit = saved;
   } catch { /* The in-memory preference still works. */ }
   group.addEventListener('click', () => {
     if (!enabled) return;
-    unit = unit === 'inHg' ? 'hPa' : 'inHg';
+    unit = unit === 'inHg' ? 'hPa' : unit === 'hPa' ? 'STD' : 'inHg';
     try { localStorage.setItem('efi.baro.unit', unit); } catch { /* Storage is optional. */ }
     redraw();
   });
@@ -47,12 +47,11 @@ export function createBaro(parent, redraw = () => {}) {
       if (present && reading.state === 'available' && availableWidth > 0 && value.getBBox().width > availableWidth - 2) {
         reading = { state: 'unavailable', text: 'X' };
       }
-      enabled = present && numeric && Number.isFinite(numeric.pressure_hpa) && numeric.pressure_hpa > 0 &&
-        typeof numeric.standard === 'boolean';
+      enabled = present && numeric && Number.isFinite(numeric.pressure_hpa) && numeric.pressure_hpa > 0;
       group.style.cursor = enabled ? 'pointer' : '';
       group.dataset.state = reading.state;
       value.textContent = reading.text;
-      group.setAttribute('aria-label', `Barometric setting ${reading.state === 'available' ? reading.text : reading.state}${enabled ? ', click or tap to switch units' : ''}`);
+      group.setAttribute('aria-label', `Barometric setting ${reading.state === 'available' ? reading.text : reading.state}${enabled ? ', click or tap to switch display' : ''}`);
     },
   };
 }

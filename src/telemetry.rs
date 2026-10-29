@@ -309,27 +309,20 @@ impl AirspeedProfile {
 /// Conversion from inches of mercury to hectopascals.
 pub const HPA_PER_INHG: f64 = 33.8638866667;
 
-/// Active barometric pressure and the simulator's explicit standard mode.
+/// Active barometric pressure.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 pub struct BaroSetting {
     pressure_hpa: f64,
-    standard: bool,
 }
 impl BaroSetting {
-    pub fn new(pressure_hpa: f64, standard: bool) -> Result<Self, TelemetryError> {
+    pub fn new(pressure_hpa: f64) -> Result<Self, TelemetryError> {
         if !pressure_hpa.is_finite() || pressure_hpa <= 0.0 {
             return Err(TelemetryError::InvalidBaroSetting);
         }
-        Ok(Self {
-            pressure_hpa,
-            standard,
-        })
+        Ok(Self { pressure_hpa })
     }
     pub fn pressure_hpa(&self) -> f64 {
         self.pressure_hpa
-    }
-    pub fn is_standard(&self) -> bool {
-        self.standard
     }
 }
 

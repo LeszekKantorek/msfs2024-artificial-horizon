@@ -92,6 +92,7 @@ try {
       await page.setViewportSize({ width, height });
       await page.goto(url + path);
       await page.locator('.instrument[data-available="true"]').waitFor();
+      assert.equal(await page.locator('#barometric-value').evaluate(node => getComputedStyle(node).userSelect), 'none');
       if (path === '/layout.html') await page.locator('#layout-fixtures[data-items]').waitFor({ state: 'attached' });
       if (path === '/layout.html') {
         assert.equal(await page.locator('#layout-fixtures').getAttribute('data-items'), '1,2,3,4,5,7,8,9,10,11,12,13,15,16,18,20,21');
@@ -469,7 +470,7 @@ try {
   assert.equal(activeClients, 1);
   // A local unit choice must not write to the simulator and persists through STD.
   setFixture({ state: 'live', attitude_only: false, hold: false, omit_baro_setting: false,
-    baro_setting: { pressure_hpa: 1013.25, standard: false }, baro_text: 'legacy' });
+    baro_setting: { pressure_hpa: 1013.25 }, baro_text: 'legacy' });
   await page.evaluate(() => localStorage.removeItem('efi.baro.unit'));
   await page.reload();
   await page.waitForFunction(() => document.querySelector('#barometric-value').textContent === '29.92 inHg');
@@ -478,23 +479,27 @@ try {
   assert.equal(await page.evaluate(() => localStorage.getItem('efi.baro.unit')), 'hPa');
   await page.reload();
   await page.waitForFunction(() => document.querySelector('#barometric-value').textContent === '1013 hPa');
-  setFixture({ baro_setting: { pressure_hpa: 1013.25, standard: true } });
+  await page.locator('#barometric-setting').click();
+  await page.waitForFunction(() => document.querySelector('#barometric-value').textContent === 'STD');
+  await page.reload();
+  await page.waitForFunction(() => document.querySelector('#barometric-value').textContent === 'STD');
+  setFixture({ baro_setting: { pressure_hpa: 1000 } });
   await page.waitForFunction(() => document.querySelector('#barometric-value').textContent === 'STD');
   await page.locator('#barometric-setting').click();
-  assert.equal(await page.locator('#barometric-value').textContent(), 'STD');
-  setFixture({ baro_setting: { pressure_hpa: 1013.25, standard: false } });
-  await page.waitForFunction(() => document.querySelector('#barometric-value').textContent === '29.92 inHg');
+  await page.waitForFunction(() => document.querySelector('#barometric-value').textContent === '29.53 inHg');
   setFixture({ baro_setting: null });
   await page.waitForFunction(() => document.querySelector('#barometric-value').textContent === 'X');
-  setFixture({ baro_setting: { pressure_hpa: 1000, standard: false } });
+  setFixture({ baro_setting: { pressure_hpa: 1000 } });
   await page.waitForFunction(() => document.querySelector('#barometric-value').textContent === '29.53 inHg');
-  setFixture({ baro_setting: { pressure_hpa: 10000, standard: false } });
+  setFixture({ baro_setting: { pressure_hpa: 10000 } });
   await page.waitForFunction(() => document.querySelector('#barometric-value').textContent === 'X');
   await page.locator('#barometric-setting').click();
   await page.waitForFunction(() => document.querySelector('#barometric-value').textContent === '10000 hPa');
   await page.locator('#barometric-setting').click();
+  await page.waitForFunction(() => document.querySelector('#barometric-value').textContent === 'STD');
+  await page.locator('#barometric-setting').click();
   await page.waitForFunction(() => document.querySelector('#barometric-value').textContent === 'X');
-  setFixture({ baro_setting: { pressure_hpa: 1e20, standard: false } });
+  setFixture({ baro_setting: { pressure_hpa: 1e20 } });
   await page.waitForFunction(() => document.querySelector('#barometric-value').textContent === 'X');
   assert.equal(await page.locator('#barometric-setting').getAttribute('data-state'), 'unavailable');
   await page.locator('#barometric-setting').click();
@@ -503,7 +508,7 @@ try {
   await page.waitForFunction(() => document.querySelector('#barometric-value').textContent === 'legacy');
   await page.locator('#barometric-setting').click();
   assert.equal(await page.locator('#barometric-value').textContent(), 'legacy');
-  setFixture({ omit_baro_setting: false, baro_setting: { pressure_hpa: 1013.25, standard: false } });
+  setFixture({ omit_baro_setting: false, baro_setting: { pressure_hpa: 1013.25 } });
   const touchContext = await browser.newContext({ hasTouch: true, viewport: { width: 320, height: 480 } });
   await touchContext.addInitScript(() => {
     Object.defineProperty(window, 'localStorage', { get() { throw new Error('storage denied'); } });

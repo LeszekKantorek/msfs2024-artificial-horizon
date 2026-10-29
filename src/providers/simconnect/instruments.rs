@@ -91,14 +91,7 @@ impl Instruments {
             get(12),
         );
         let ap = get(13) == Some(1.0);
-        let baro = get(4).and_then(|pressure| {
-            let standard = match get(super::native::BARO_STD_INDEX) {
-                Some(0.0) => false,
-                Some(1.0) => true,
-                _ => return None,
-            };
-            BaroSetting::new(pressure * HPA_PER_INHG, standard).ok()
-        });
+        let baro = get(4).and_then(|pressure| BaroSetting::new(pressure * HPA_PER_INHG).ok());
         FlightSample::new(
             attitude,
             get(7).and_then(|v| SlipSkid::new(v / 127.0).ok()),
@@ -298,39 +291,18 @@ mod tests {
         assert!(reversal_90.unwrap() <= 0.6);
     }
     #[test]
-    fn baro_requires_fresh_pressure_and_explicit_valid_mode() {
+    fn baro_requires_fresh_valid_pressure() {
         let now = Instant::now();
-        for pressure_first in [true, false] {
-            let mut cache = Instruments::default();
-            let first = if pressure_first {
-                (4, 29.92)
-            } else {
-                (17, 0.0)
-            };
-            let second = if pressure_first {
-                (17, 0.0)
-            } else {
-                (4, 29.92)
-            };
-            cache.receive(first.0, first.1, now);
-            assert!(snapshot(&cache).get("baro_setting").is_none());
-            assert!(snapshot(&cache).get("baro_text").is_none());
-            cache.receive(second.0, second.1, now);
-            let reading = snapshot(&cache);
-            assert_eq!(reading["baro_setting"]["standard"], false);
-            assert!(
-                (reading["baro_setting"]["pressure_hpa"].as_f64().unwrap() - 1013.2075).abs()
-                    < 0.001
-            );
-            cache.receive(17, 1.0, now + Duration::from_millis(1));
-            assert_eq!(snapshot(&cache)["baro_setting"]["standard"], true);
-            cache.receive(17, 2.0, now + Duration::from_millis(2));
-            assert!(snapshot(&cache).get("baro_setting").is_none());
-            assert!(snapshot(&cache).get("baro_text").is_none());
-            cache.receive(17, 0.0, now + Duration::from_millis(3));
-            cache.expire(now + STALE_AFTER);
-            assert!(snapshot(&cache).get("baro_setting").is_none());
-        }
+        let mut cache = Instruments::default();
+        cache.receive(4, 29.92, now);
+        let reading = snapshot(&cache);
+        assert!(
+            (reading["baro_setting"]["pressure_hpa"].as_f64().unwrap() - 1013.2075).abs() < 0.001
+        );
+        cache.expire(now + STALE_AFTER);
+        assert!(snapshot(&cache).get("baro_setting").is_none());
+        cache.receive(4, 0.0, now + STALE_AFTER);
+        assert!(snapshot(&cache).get("baro_setting").is_none());
     }
     #[test]
     #[ignore = "requires an explicitly supplied local IAS replay projection"]

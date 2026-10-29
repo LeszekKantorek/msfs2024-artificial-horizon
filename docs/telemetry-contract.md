@@ -15,7 +15,7 @@
 | `Heading`, `SelectedHeading` | Finite magnetic degrees in `[0, 360)`, with `new` and `degrees` methods |
 | `FlightSample::with_heading(heading, selected)` | Add independently optional current and selected magnetic heading |
 | `FlightSample::with_altitude(altitude, baro_text)` | Add independently optional altitude and ready-to-display BARO text (`Option<String>`) |
-| `BaroSetting`, `FlightSample::with_baro_setting` | Add independently optional positive finite hPa pressure and explicit standard mode |
+| `BaroSetting`, `FlightSample::with_baro_setting` | Add independently optional positive finite hPa pressure |
 | `FlightSample` | One acquisition with attitude and independently optional indications |
 | `FlightSample::with_speeds(ias, gs)` | Add independently optional speeds. The existing `new` constructor remains attitude/turn-only |
 | `AirspeedProfile`, `VSpeedReferences` | Validated positive speed thresholds and four named references in knots |
@@ -100,7 +100,7 @@ These durations are initial tuning values.
 | `ias_acceleration_ktps` | Optional finite source-supplied IAS acceleration in knots per second |
 | `altitude_ft` | Optional finite signed barometric altitude in feet for the source pressure setting |
 | `baro_text` | Optional source-formatted BARO display string, including any unit text |
-| `baro_setting` | Optional object with positive finite `pressure_hpa` and boolean `standard` |
+| `baro_setting` | Optional object with positive finite `pressure_hpa` |
 | `selected_altitude_ft` | Optional finite signed selected altitude in feet, supplied by the source and read-only |
 | `vertical_speed_fpm` | Optional finite signed feet per minute. Positive means climb, negative means descent, zero means level |
 | `heading_deg` | Optional finite magnetic heading in `[0, 360)`. Zero means north |
@@ -169,8 +169,8 @@ Speed fields extend the live example above:
 * Missing, null, nonnumeric, or non-finite altitude becomes unavailable independently of pressure and other indications.
 * Missing, null, or non-string BARO text becomes unavailable independently of altitude.
 * Every string is preserved verbatim, including an empty string, spaces, `23.83 inHg`, `1026 hPa`, or `BARO`.
-* The optional `baro_setting` contains positive finite `pressure_hpa` and an explicit boolean `standard` mode. Its presence takes precedence over legacy text; invalid present data is unavailable.
-* The SimConnect provider omits both BARO fields if its pressure or explicit mode is unavailable. String-only producers remain supported.
+* The optional `baro_setting` contains positive finite `pressure_hpa`. Its presence takes precedence over legacy text; invalid present data is unavailable.
+* The SimConnect provider omits both BARO fields if pressure is unavailable. String-only producers remain supported.
 * When `baro_setting` is absent, the producer owns legacy text formatting and unit identification; `BARO` has no appended unit.
 * Each sample replaces both previous values; missing values never become zero or retain a previous reading.
 * Finite altitude values outside the presentation limits remain valid telemetry.
@@ -179,13 +179,13 @@ Speed fields extend the live example above:
 Example additions to a live v1 snapshot:
 
 ```json
-{"altitude_ft": -120.0, "baro_text": "29.92 inHg", "baro_setting": {"pressure_hpa": 1013.25, "standard": false}}
+{"altitude_ft": -120.0, "baro_text": "29.92 inHg", "baro_setting": {"pressure_hpa": 1013.25}}
 ```
 
 The first 18 seconds of the shared 198-second Rust altitude demo contain six three-second sweeps.
 Their endpoints are -120/120, 980/1020, 9980/10020, 10020/9980, 1020/980, and 120/-120 ft.
 Each sweep includes both endpoints over 60 samples.
-The producer cycles through `29.92 inHg`, `30.12 inHg`, and `29.72 inHg` at six-second intervals. During its two-second standard-mode phase, it overrides the current pressure with `29.92 inHg` and sets the explicit mode.
+The producer cycles through `29.92 inHg`, `30.12 inHg`, and `29.72 inHg` at six-second intervals.
 Transitions between sweeps are synthetic test cases, not a physical flight trajectory or a pressure-response model.
 
 `tests/fixtures/altitude-samples.json` contains independent checkpoints and cycle boundaries.

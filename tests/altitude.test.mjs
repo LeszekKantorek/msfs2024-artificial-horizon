@@ -39,19 +39,18 @@ test('BARO forwards every string unchanged and rejects only non-string data', ()
 });
 
 test('numeric BARO validates presence, converts units and uses explicit STD', () => {
-  const normal = { pressure_hpa: 1013.25, standard: false };
+  const normal = { pressure_hpa: 1013.25 };
   assert.deepEqual(numericBaroReading(normal, 'inHg'), { state: 'available', text: '29.92 inHg' });
   assert.deepEqual(numericBaroReading(normal, 'hPa'), { state: 'available', text: '1013 hPa' });
-  assert.deepEqual(numericBaroReading({ ...normal, standard: true }, 'hPa'), { state: 'available', text: 'STD' });
+  assert.deepEqual(numericBaroReading(normal, 'STD'), { state: 'available', text: 'STD' });
   assert.equal(Object.hasOwn(normalizeOptionalIndications({ baro_text: '' }), 'baro_setting'), false);
-  for (const bad of [null, {}, { pressure_hpa: 1013 }, { pressure_hpa: 0, standard: false },
-    { pressure_hpa: Infinity, standard: false }, { pressure_hpa: 1013, standard: 0 }]) {
+  for (const bad of [null, {}, { pressure_hpa: 0 }, { pressure_hpa: Infinity }, { pressure_hpa: '1013' }]) {
     const result = normalizeOptionalIndications({ baro_text: 'old', baro_setting: bad });
     assert.equal(Object.hasOwn(result, 'baro_setting'), true);
     assert.equal(result.baro_setting, null);
     assert.equal(numericBaroReading(result.baro_setting, 'hPa').text, 'X');
   }
-  assert.equal(numericBaroReading({ pressure_hpa: Number.MAX_VALUE, standard: false }, 'hPa').text, 'X');
+  assert.equal(numericBaroReading({ pressure_hpa: Number.MAX_VALUE }, 'hPa').text, 'X');
 });
 
 test('altitude tape keeps fixed pixel spacing with independent tick positions and signed labels', () => {

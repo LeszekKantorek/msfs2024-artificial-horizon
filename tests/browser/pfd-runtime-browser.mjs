@@ -65,7 +65,7 @@ function verifyAltitude(reading) {
   assert.equal(reading.drums, Math.floor(Math.abs(reading.feet) / 20) * 20);
   assert.equal(reading.sign, reading.feet < 0 ? '−' : '');
   assert.match(reading.pressureText, /^(\d+\.\d{2} inHg|STD)$/);
-  assert.equal(reading.pressureLabel, `Barometric setting ${reading.pressureText}, click or tap to switch units`);
+  assert.equal(reading.pressureLabel, `Barometric setting ${reading.pressureText}, click or tap to switch display`);
 }
 
 async function checkInitialDisplay(page) {

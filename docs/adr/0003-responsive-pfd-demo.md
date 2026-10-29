@@ -51,6 +51,6 @@ Revisit for explicitly accepted live PFD data, user controls, interpolation, or 
 
 Decision status: Accepted, 2026-10-29, for [#89](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/89).
 
-The original controls rule is refined to allow a local BARO display-unit preference. Touching or clicking the existing BARO field selects inHg or hPa in the browser. The browser stores the preference locally and redraws the current fresh frame; it sends no setting or control command to the server or simulator. Pressure and standard mode remain simulator-owned.
+The original controls rule is refined to allow a local BARO display preference. Touching or clicking the existing BARO field cycles through inHg, hPa, and STD in the browser. The browser stores the preference locally and redraws the current fresh frame; it sends no setting or control command to the server or simulator. The local STD label does not indicate the simulator's standard mode.
 
 Keeping the original display with no control would not provide the requested unit selection. Reading a cockpit display-unit preference would avoid a local choice, but no supported universal source is established. The local preference adds no transport or simulator dependency and has an in-memory fallback when storage is unavailable. It does not prove cockpit unit synchronization or actual-device usability. Reconsider this boundary if simulator controls or a supported cockpit unit source become part of the accepted scope.

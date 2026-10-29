@@ -30,10 +30,10 @@ The tape and readouts use these presentation rules:
 * BARO occupies the bottom 32 CSS px of the right column, reaching the panel edge.
 * A one-pixel cyan border is inset by half a pixel over an opaque value-window background.
 * One centered, 11 CSS px, weight-600 cyan text node displays BARO.
-* Numeric pressure displays two decimal places in inHg or a whole hPa. Simulator standard mode displays `STD`.
-* A touch or click on the field switches the browser-local unit preference. The choice persists across reloads and does not change the simulator.
+* Numeric pressure displays two decimal places in inHg or a whole hPa. The local `STD` selection displays `STD`.
+* A touch or click on the field cycles through inHg, hPa, and STD. The browser-local choice persists across reloads and does not change the simulator. Local STD does not report the cockpit mode.
 * When numeric data is absent, legacy strings remain verbatim, including empty strings. Legacy strings cannot be converted.
-* Invalid numeric BARO shows a red `X`; a numeric setting never infers STD from pressure.
+* Invalid numeric BARO shows a red `X`; the browser does not infer cockpit STD from pressure.
 * Pressure failure affects only its readout; source/transport loss covers the entire panel.
 * Tape backgrounds use the existing opacity token; BARO, text, ticks, and pointer windows remain opaque.
 * Accessible labels preserve the full received values or the unavailable/overflow state without per-sample live announcements.
@@ -132,9 +132,9 @@ For #65, apply the [shared phone procedure](../testing/devices.md#real-phone-acc
 
 #### Numeric BARO and local unit selection
 
-For [#89](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/89), automated checks cover conversion from one pressure, explicit STD, malformed data, legacy text, both packet orders, expiry, and mode recovery. Browser checks cover a single touch or click, saved preference after reload, unavailable storage, and text fit. A local unit change does not issue simulator commands or renew a sample deadline.
+For [#89](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/89), automated checks cover conversion from one pressure, malformed data, legacy text, expiry, and recovery. Browser checks cover the local inHg/hPa/STD cycle, saved preference after reload, unavailable storage, and text fit. A local selection does not issue simulator commands or renew a sample deadline.
 
-During the combined live acceptance, adjust the cockpit pressure and verify the index 1 indication, enter and leave STD in the simulator, and compare equivalent inHg and hPa after touching the BARO field. Check reload and portrait/landscape readability on available phones using the [shared phone procedure](../testing/devices.md#real-phone-acceptance-procedure). Record which cockpit instrument and devices were actually checked. Desktop and demo results do not establish cockpit synchronization or real-phone acceptance.
+During live acceptance, adjust the cockpit pressure and verify the index 1 indication, then compare equivalent inHg and hPa after touching the BARO field. Verify that the locally selected STD label does not command the cockpit. Check reload and portrait/landscape readability on available phones using the [shared phone procedure](../testing/devices.md#real-phone-acceptance-procedure). Record which cockpit instrument and devices were actually checked. Desktop and demo results do not establish cockpit synchronization or real-phone acceptance.
 
 ### Full-panel geometry
 
@@ -154,4 +154,4 @@ Evidence limit: real iOS Safari and Android Chrome acceptance remains separate.
 
 ### Live BARO follow-up
 
-[Issue #89](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/89): `KOHLSMAN SETTING HG:1` and `KOHLSMAN SETTING STD:1` supply pressure and mode for the same indexed altimeter as indicated altitude. The browser offers local unit selection without simulator writes. Logged pressure does not establish which cockpit control corresponds to this index or prove display synchronization; verify those during live acceptance.
+[Issue #89](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/89): `KOHLSMAN SETTING HG:1` supplies pressure for the same indexed altimeter as indicated altitude. The browser offers a local unit/STD selection without simulator writes. Local STD is not a cockpit-mode indication. Logged pressure does not establish which cockpit control corresponds to this index or prove display synchronization; verify those during live acceptance.

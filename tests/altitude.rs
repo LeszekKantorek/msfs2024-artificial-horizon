@@ -11,14 +11,13 @@ use tokio::time::{Duration, advance};
 #[test]
 fn numeric_baro_is_positive_and_finite() {
     for invalid in [0.0, -1.0, f64::NAN, f64::INFINITY] {
-        assert!(BaroSetting::new(invalid, false).is_err());
+        assert!(BaroSetting::new(invalid).is_err());
     }
-    let setting = BaroSetting::new(1013.25, true).unwrap();
+    let setting = BaroSetting::new(1013.25).unwrap();
     assert_eq!(setting.pressure_hpa(), 1013.25);
-    assert!(setting.is_standard());
     assert_eq!(
         serde_json::to_value(setting).unwrap(),
-        serde_json::json!({"pressure_hpa":1013.25,"standard":true})
+        serde_json::json!({"pressure_hpa":1013.25})
     );
 }
 
@@ -27,7 +26,7 @@ async fn numeric_baro_is_shared_and_cleared_with_the_snapshot() {
     let (mut publisher, first) = telemetry::channel(Source::Demo);
     let second = first.clone();
     let attitude = Attitude::new(0.0, 0.0).unwrap();
-    let setting = BaroSetting::new(1013.25, true).unwrap();
+    let setting = BaroSetting::new(1013.25).unwrap();
     publisher
         .publish_sample(FlightSample::new(attitude, None, None).with_baro_setting(Some(setting)))
         .unwrap();
@@ -35,7 +34,7 @@ async fn numeric_baro_is_shared_and_cleared_with_the_snapshot() {
         let snapshot = serde_json::to_value(subscriber.snapshot()).unwrap();
         assert_eq!(
             snapshot["baro_setting"],
-            serde_json::json!({"pressure_hpa":1013.25,"standard":true})
+            serde_json::json!({"pressure_hpa":1013.25})
         );
     }
     publisher

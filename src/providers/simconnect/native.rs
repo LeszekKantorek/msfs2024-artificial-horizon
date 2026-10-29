@@ -27,7 +27,6 @@ pub(super) const ATTITUDE_REQUEST: u32 = 1;
 pub(super) const ATTITUDE_DEFINITION: u32 = 1;
 // Independent single-value requests keep unsupported optional fields isolated.
 pub(super) const INSTRUMENT_BASE: u32 = 100;
-pub(super) const BARO_STD_INDEX: usize = 17;
 pub(super) const INSTRUMENT_FIELDS: &[(&CStr, &CStr)] = &[
     (c"AIRSPEED INDICATED", c"knots"),
     (c"AIRSPEED TRUE", c"knots"),
@@ -46,7 +45,6 @@ pub(super) const INSTRUMENT_FIELDS: &[(&CStr, &CStr)] = &[
     (c"AUTOPILOT HEADING LOCK DIR:0", c"degrees"),
     (c"AUTOPILOT ALTITUDE LOCK VAR:0", c"feet"),
     (c"AUTOPILOT ALT RADIO MODE", c"bool"),
-    (c"KOHLSMAN SETTING STD:1", c"bool"),
 ];
 // Request-side proxy; received dwObjectID may be the aircraft's runtime ID.
 const OBJECT_ID_USER_AIRCRAFT: u32 = 0;

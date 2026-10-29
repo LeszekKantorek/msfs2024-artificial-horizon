@@ -159,7 +159,6 @@ async fn extended_publication_shares_age_and_clears_absent_or_unavailable_indica
     assert_eq!(full["selected_heading_deg"], 0.0);
     full.as_object_mut().unwrap().remove("heading_deg");
     full.as_object_mut().unwrap().remove("selected_heading_deg");
-    assert_eq!(full["baro_setting"]["standard"], false);
     assert!((full["baro_setting"]["pressure_hpa"].as_f64().unwrap() - 1019.9802664).abs() < 0.0001);
     full.as_object_mut().unwrap().remove("baro_setting");
     assert_eq!(

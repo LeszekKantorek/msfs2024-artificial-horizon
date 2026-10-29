@@ -25,7 +25,7 @@ panel.invalidate(reason);
 | `airspeed_profile`, `ias_acceleration_ktps` | Independently normalized configuration and source acceleration, or `null` |
 | `altitude_ft` | Independently normalized signed altitude, or `null` |
 | `baro_text` | Verbatim source-formatted display string, or `null` for missing/non-string data |
-| `baro_setting` | Omitted when absent on the wire; otherwise normalized pressure and STD mode, or `null` when invalid. Present invalid data takes precedence over legacy text |
+| `baro_setting` | Omitted when absent on the wire; otherwise normalized pressure, or `null` when invalid. Present invalid data takes precedence over legacy text |
 | `selected_altitude_ft` | Independently normalized signed selected altitude, or `null` |
 | `vertical_speed_fpm` | Independently normalized signed ft/min, or `null` |
 | `heading_deg`, `selected_heading_deg` | Independently normalized magnetic degrees in `[0, 360)`, or `null` |

@@ -46,8 +46,8 @@ export function normalizeOptionalIndications(value) {
 
 function normalizeBaro(setting) {
   return setting && typeof setting === 'object' && !Array.isArray(setting) &&
-    Number.isFinite(setting.pressure_hpa) && setting.pressure_hpa > 0 && typeof setting.standard === 'boolean'
-    ? { pressure_hpa: setting.pressure_hpa, standard: setting.standard } : null;
+    Number.isFinite(setting.pressure_hpa) && setting.pressure_hpa > 0
+    ? { pressure_hpa: setting.pressure_hpa } : null;
 }
 
 function validHeading(value) {
