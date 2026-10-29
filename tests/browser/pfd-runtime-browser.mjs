@@ -64,8 +64,8 @@ function verifyAltitude(reading) {
   assert.ok(Number.isFinite(reading.feet));
   assert.equal(reading.drums, Math.floor(Math.abs(reading.feet) / 20) * 20);
   assert.equal(reading.sign, reading.feet < 0 ? '−' : '');
-  assert.match(reading.pressureText, /^\d+\.\d{2} inHg$/);
-  assert.equal(reading.pressureLabel, `Barometric setting ${reading.pressureText}`);
+  assert.match(reading.pressureText, /^(\d+\.\d{2} inHg|STD)$/);
+  assert.equal(reading.pressureLabel, `Barometric setting ${reading.pressureText}, click or tap to switch display`);
 }
 
 async function checkInitialDisplay(page) {
@@ -112,8 +112,8 @@ async function checkInitialTelemetry(page) {
   assert.equal(snapshot.heading_deg, 354);
   assert.ok(Number.isFinite(snapshot.selected_heading_deg));
   assert.equal(await page.locator('#heading-value').textContent(), '354');
-  await page.waitForFunction(() => document.querySelector('#vertical-speed-value').textContent === '+4881');
-  assert.equal(await page.locator('#vertical-speed-value').textContent(), '+4881');
+  await page.waitForFunction(() => document.querySelector('#vertical-speed-value').textContent === '+4880');
+  assert.equal(await page.locator('#vertical-speed-value').textContent(), '+4880');
   assert.ok(Number.isFinite(snapshot.ias_acceleration_ktps));
   assert.equal(snapshot.airspeed_profile.vne_kt, 140);
 }
@@ -225,7 +225,7 @@ async function checkRecovery(page) {
   assert.equal(await page.locator('#heading-value').textContent(), '354');
   assert.equal(await page.locator('#selected-altitude').getAttribute('data-state'), 'unavailable');
   await page.locator('#vertical-speed[data-state="available"]').waitFor();
-  assert.equal(await page.locator('#vertical-speed-value').textContent(), '+4881');
+  assert.equal(await page.locator('#vertical-speed-value').textContent(), '+4880');
 }
 
 try {

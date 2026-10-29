@@ -1,5 +1,5 @@
 ---
-description: Diagnose error 5 when replacing a running executable, or a browser that cannot reach a local fixture.
+description: Diagnose missing browser tooling, sandbox restrictions, executable replacement, or a browser that cannot reach a local fixture.
 status: active
 ---
 
@@ -16,6 +16,10 @@ status: active
 
 > Error 5 alone does not prove a file lock or SAC failure. Do not stop unrelated processes.
 
+## Playwright module is missing
+
+If `PLAYWRIGHT_MODULE` cannot be resolved, check for an existing Playwright installation before installing another copy. In Codex desktop, the workspace dependency runtime can provide a Node packages directory. Set `PLAYWRIGHT_MODULE` to its `playwright` package. Otherwise follow the [browser setup](../docs/testing/pfd.md#responsive-efi-layout-and-desktop-checks). Availability and paths depend on the current environment. Do not assume an earlier cache path still exists.
+
 ## Browser cannot reach a fixture
 
 1. Check the fixture's startup output, listening address, and port.
@@ -25,8 +29,15 @@ status: active
 
 > A browser launch failure and a fixture connection timeout are different symptoms. Do not change security settings to resolve them.
 
+An `EACCES` connection failure to `127.0.0.1` can indicate that the current sandbox blocks loopback, even after Playwright loads successfully. Check the error and fixture environment first. If loopback is blocked, use an approved environment with loopback access. Do not treat a missing module, a browser launch error, and a blocked connection as the same failure.
+
+## Rust tests encounter sandbox restrictions
+
+Local socket or filesystem permission failures can prevent integration tests from exercising their intended behavior. Record the failing tests and native errors. Verify whether the execution environment permits their required loopback and file operations. If those operations are blocked, use an appropriately approved environment. Rerun the affected tests and retain their actual outcomes. Do not infer that every permission error is caused by sandboxing.
+
 ## Evidence
 
 * During #20 validation, error 5 prevented removal of the running debug executable. Checks passed with separate target output.
 * Browser launch and fixture reachability failures occurred across sandbox boundaries. Running the fixture and browser together enabled the checks.
+* During #87–#89, the configured Playwright module was absent, while a bundled workspace copy worked. A separate sandboxed run then failed with loopback `EACCES`. The browser suite and Rust socket and filesystem tests passed in an environment with the necessary access.
 * These observations establish conditional recovery paths, not a universal cause for either symptom.

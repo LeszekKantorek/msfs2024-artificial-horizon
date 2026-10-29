@@ -11,7 +11,7 @@ User-aircraft flight instrument reception with optional diagnostics.
 | Build | No SDK headers, import library, or installed simulator required |
 | Acquisition | One module and the caller-owned telemetry channel |
 | Telemetry | Existing [states, validity, and freshness](telemetry-contract.md#freshness-and-status) |
-| Scope | Available standard aircraft data through HTTP/SSE and EFI; each optional indication is independent |
+| Scope | Available standard aircraft data through HTTP/SSE and EFI. Each optional indication is independent |
 | Distribution | Packaging and DLL redistribution conditions in [#8](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/8) |
 | Repository | No SDK files, installation paths, or generated diagnostics in Git |
 
@@ -45,7 +45,7 @@ cargo run --locked --release --bin msfs2024-artificial-horizon -- --source simco
 | --- | --- |
 | No source option or `--source demo` | Demo with HTTP/SSE, without loading SimConnect |
 | `--source simconnect` | Native acquisition with HTTP/SSE and available flight instruments |
-| `--listen-address`, `--port` | HTTP settings for either source; defaults `127.0.0.1` and `8080` |
+| `--listen-address`, `--port` | HTTP settings for either source. Defaults are `127.0.0.1` and `8080` |
 | `--dll <file>` | Optional absolute override. Default: `SimConnect.dll` beside the running EXE |
 | `--log <file>` | Optional exact JSONL destination, absolute or relative to the working directory |
 | `--help`, `--version` | Information without opening a DLL or log |
@@ -65,7 +65,7 @@ The CLI applies these restrictions:
 | Default location | Beside the EXE, independent of the working directory |
 | Search | No `PATH`, working-directory, or SDK search. No fallback after explicit selection |
 | Dependencies | Selected DLL directory and Windows system directory only |
-| Errors | Missing DLL, incompatible architecture, or missing exports stop the producer; HTTP remains available |
+| Errors | Missing DLL, incompatible architecture, or missing exports stop the producer. HTTP remains available |
 | Missing default DLL | Place it beside the EXE or select an absolute `--dll` path |
 | Console | DLL selection, connections, state changes, errors, and shutdown, including without logging |
 
@@ -79,22 +79,46 @@ A busy port prevents acquisition from starting. HTTP does not wait for DLL loadi
 | Condition | Application behavior |
 | --- | --- |
 | Simulator absent or disconnected | HTTP serves unavailable data while the existing provider retries |
-| Producer exits or panics | Existing SSE streams stay open; new clients receive `disconnected` |
-| DLL load or export failure | HTTP stays available; console diagnostics identify the failure without Demo fallback |
-| Ctrl+C or HTTP failure | Signal both components and wait for their results; HTTP failure returns an application error |
+| Producer exits or panics | Existing SSE streams stay open. New clients receive `disconnected` |
+| DLL load or export failure | HTTP stays available. Console diagnostics identify the failure without Demo fallback |
+| Ctrl+C or HTTP failure | Signal both components and wait for their results. HTTP failure returns an application error |
 
 Detailed source errors stay in console diagnostics and the optional log. The SSE schema is unchanged.
 `/health` reports HTTP liveness, independently of simulator availability.
 
 ### Optional instrument observations
 
-The same native worker requests IAS/TAS/GS in knots, indicated altitude in feet, pilot KOHLSMAN in inHg, VSI in feet/minute, magnetic heading in degrees, ball position, and turn rate in degrees/second. Standard autopilot targets follow active slot 0; target visibility does not require the autopilot master to be engaged. Radio-referenced altitude targets are omitted.
+The native worker requests these optional observations:
 
-Each optional request has its own definition and exception boundary. Failed fields become unavailable without stopping attitude or HTTP. Last observations expire independently after 1000 ms. Pauses, flight changes and reconnect clear cached values. Additional observations and expiry publications preserve the attitude receive time.
+| Observation | Source units or selection |
+| --- | --- |
+| IAS, TAS, GS | Knots |
+| KOHLSMAN pressure, indicated altitude | inHg and feet, respectively, from altimeter index 1 |
+| VSI | Feet per minute |
+| Magnetic heading | Degrees |
+| Slip/skid ball position | Position |
+| Turn rate | Degrees per second |
+| Autopilot targets | Active slot 0. Target visibility does not require the autopilot master to be engaged. Radio-referenced altitude targets are omitted |
 
-Speed profiles contain independently available VS0, VS1, project minimum rotation and current redline. Other thresholds and references remain absent unless their exact standard source is established. Minimum rotation is a project reference, not a weight/flap-dependent Vr calculated by an FMS. General climb speed is not substituted for Vy; current flap limits are not substituted for fixed VFE. Dynamic redline is not fixed VNE. No aircraft configuration reader or addon-specific avionics bridge is provided.
+The cockpit control corresponding to altimeter index 1 depends on the aircraft and requires live verification.
 
-IAS trend uses consecutive valid worker acquisitions and their monotonic receive times. It resets after invalid input, a stale gap, pause or flight change. It describes knots per real second, including when simulation speed differs from real time.
+Optional fields follow these availability rules:
+
+* Each request has its own definition and exception boundary. Failed fields become unavailable without stopping attitude or HTTP.
+* Last observations expire independently after 1000 ms. Pauses, flight changes, and reconnect clear cached values.
+* Additional observations and expiry publications preserve the attitude receive time.
+
+Speed profiles have these source limits:
+
+* VS0, VS1, project minimum rotation, and current redline are independently available. Other thresholds and references remain absent unless their exact standard source is established.
+* Minimum rotation is a project reference, not a Vr calculated by an FMS based on weight and flap position.
+* General climb speed is not substituted for Vy. Current flap limits are not substituted for fixed VFE. Dynamic redline is not fixed VNE.
+* No aircraft configuration reader or addon-specific avionics bridge is provided.
+
+IAS trend uses a bounded 0.5-second window of valid worker acquisitions and their monotonic receive times. The trend describes knots per real second, including when simulation speed differs from real time.
+
+* Acceleration expires after 0.5 seconds without a new IAS sample. IAS retains its independent one-second freshness.
+* The history resets after invalid input, a stale gap, pause, or flight change.
 
 ### Data and availability
 
@@ -174,7 +198,7 @@ Diagnostic failures remain independent of acquisition:
 
 | Condition | Result |
 | --- | --- |
-| Open or initial write failure | Abort producer startup before DLL loading; HTTP remains available |
+| Open or initial write failure | Abort producer startup before DLL loading. HTTP remains available |
 | Later write or flush failure | Disable diagnostics, continue acquisition and cleanup, warn immediately and at shutdown |
 | Missing `session_end` | Unconfirmed termination |
 | Final result | `DiagnosticStatus` distinguishes disabled, completed, and failed logging independently of the native outcome |
@@ -218,7 +242,7 @@ Interpret records with these constraints:
 * `repeated_radians` contains the extra pitch and bank probes.
 * Unit comparisons retain a `0.00001`-degree tolerance, differences, bit equality, and bounds from repeated reads.
 * `affects_sample_validity: false` separates diagnostic observations from primary-radian validation.
-* Rejected attitudes retain `message: "Unknown"` and `rejected_simobject_data`: received headers, expected request and definition IDs, and match results, without interpreting rejected payloads.
+* Rejected attitudes retain `message: "Unknown"` and `rejected_simobject_data`. The latter contains received headers, expected request and definition IDs, and match results. Rejected payloads are not interpreted.
 * Other unsupported message IDs remain `Unknown`.
 * Schema 4 records `live_publication_enabled: true` and bounded `validation_scope`.
 * Retained `candidate_state` and `candidate_attitude` names use `candidate_is_hypothesis: false`.
@@ -282,15 +306,15 @@ Keep the receiver's #5 evidence separate from these end-to-end results.
 
 | Scenario | Expected result |
 | --- | --- |
-| Missing DLL or exports | Page and health remain available; SSE reports unavailable SimConnect without Demo fallback |
-| Level, nose up/down, left/right bank, combined poses | EFI orientation agrees with cockpit observations; do not infer a precise angular accuracy claim |
-| Ordinary pause, Active Pause, flight exit, restart | Unavailable attitude during loss; recovery requires a new valid active sample |
-| Two clients and a slow receiver | Both use one acquisition connection; a slow client does not delay the other or block reception |
-| Producer termination after live data | Existing SSE stays open; old attitude clears; a new client receives the current unavailable state |
-| Silence and invalid samples | `stale` or `invalid`, without frozen valid-looking attitude; heartbeat does not renew freshness |
+| Missing DLL or exports | Page and health remain available. SSE reports unavailable SimConnect without Demo fallback |
+| Level, nose up and down, left and right bank, combined poses | EFI orientation agrees with cockpit observations. Do not infer a precise angular accuracy claim |
+| Ordinary pause, Active Pause, flight exit, restart | Unavailable attitude during loss. Recovery requires a new valid active sample |
+| Two clients and a slow receiver | Both use one acquisition connection. A slow client does not delay the other or block reception |
+| Producer termination after live data | Existing SSE stays open and old attitude clears. A new client receives the current unavailable state |
+| Silence and invalid samples | `stale` or `invalid`, without frozen valid-looking attitude. Heartbeat does not renew freshness |
 | Attitude-only live sample | Other EFI indications remain unavailable |
 | Rotation, background, lock/resume, Wi-Fi recovery | Readable status and fresh-data recovery without reload or duplicate subscriptions |
-| Ctrl+C with active clients | Client connections end and the port is reusable; record native cleanup outcome separately |
+| Ctrl+C with active clients | Client connections end and the port is reusable. Record native cleanup outcome separately |
 
 Use controlled producers for deterministic fault tests without changing the production source choices.
 Record the tested revision, binary and DLL identities, environment, exact inputs, observed behavior, and missing checks.
@@ -298,7 +322,7 @@ Desktop fixture tests cannot certify the real simulator path or either mobile br
 
 ### Live-publication evidence
 
-The #5 records cover the receiver and local publication. They do not establish the integrated HTTP/SSE-to-EFI path or actual iOS/Android behavior.
+The #5 records cover the receiver and local publication. They do not establish the integrated HTTP/SSE-to-EFI path or actual behavior on iOS and Android.
 Integrated simulator and mobile acceptance require separate runs against the final application artifact.
 
 Acceptance and rationale have separate sources:

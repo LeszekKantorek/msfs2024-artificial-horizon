@@ -20,7 +20,7 @@
 | [Iterative development](iterative-development.md) | Choosing module boundaries or preserving accepted plans, handoffs, and amendments locally without publishing them. |
 | [Windows validation](windows-validation.md) | Diagnosing SAC blocking, error 4551, or Rust E0463. |
 | [Build validation](build-validation.md) | Changing Cargo features, local build commands, workflow checks, or required statuses. |
-| [Local validation environment](local-validation-environment.md) | Diagnosing error 5 when replacing a running executable, browser launch failures, or local fixture reachability. |
+| [Local validation environment](local-validation-environment.md) | Diagnosing missing Playwright, blocked local test operations, executable replacement, or fixture reachability. |
 | [Browser presentation](browser-presentation.md) | Changing shared display behavior, unavailable-state presentation, opacity, or preparing real-phone acceptance. |
 | [PFD presentation](pfd-presentation.md) | Changing composition, frame scheduling, geometry, clipping, paint order, or visual validation. |
 | [PFD demo scope](pfd-demo-scope.md) | Planning or implementing PFD demo features. |

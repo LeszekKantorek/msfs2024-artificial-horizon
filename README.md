@@ -65,6 +65,7 @@ Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
 ```
 
 * Use iOS Safari or Android Chrome. Rotate between portrait and landscape.
+* Text selection is disabled on the instrument panel to prevent accidental selection when touching the display.
 * Check the printed interface when a VPN or multiple adapters are active.
 * If address detection fails, use `ipconfig` to find the PC's private IP.
 * You can bind that IP directly with `--listen-address`.

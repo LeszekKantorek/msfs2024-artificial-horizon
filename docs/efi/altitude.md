@@ -5,7 +5,7 @@ Signed altitude tape and rolling drums, independent BARO, and the altitude compo
 ## Requirements
 
 Display source-supplied altitude for its pressure setting without browser pressure correction.
-Altitude and BARO are independently optional. Preserve every BARO string verbatim, including empty strings and supplied units.
+Altitude and BARO are independently optional. Legacy BARO strings remain verbatim when the numeric BARO field is absent.
 Finite altitude outside the display range remains valid telemetry.
 
 Wire definitions: [telemetry contract](../telemetry-contract.md#optional-altitude-and-pressure-setting).
@@ -29,10 +29,13 @@ The tape and readouts use these presentation rules:
 * Missing altitude shows `X` and hides the scale and digits without hiding valid pressure or other instruments.
 * BARO occupies the bottom 32 CSS px of the right column, reaching the panel edge.
 * A one-pixel cyan border is inset by half a pixel over an opaque value-window background.
-* One centered, 11 CSS px, weight-600 cyan text node displays the entire source string, including units when supplied.
-* `23.83 inHg`, `1026 hPa`, and `BARO` share the same style; the browser does not parse, round, convert, or append units.
-* Missing or non-string BARO data shows a red `X`; an empty string remains empty.
-* Accessible BARO text preserves the received string; no numeric overflow state is generated.
+* One centered, 11 CSS px, weight-600 cyan text node displays BARO.
+* Numeric pressure displays two decimal places in inHg or a whole hPa. The local `STD` selection displays `STD`.
+* With valid numeric pressure, a touch or click cycles through inHg, hPa, and STD. Legacy-only readings and missing or invalid numeric pressure cannot be switched.
+* The browser-local choice persists across reloads and does not change the simulator. Local STD does not report the cockpit mode.
+* When `baro_setting` is absent, legacy strings remain verbatim, including empty strings. Legacy strings cannot be converted.
+* A present invalid numeric field shows a red `X`. The browser does not infer cockpit STD from pressure.
+* If valid numeric text does not fit the field, a red `X` appears. The unit control remains active, so another selection can be displayed if it fits.
 * Pressure failure affects only its readout; source/transport loss covers the entire panel.
 * Tape backgrounds use the existing opacity token; BARO, text, ticks, and pointer windows remain opaque.
 * Accessible labels preserve the full received values or the unavailable/overflow state without per-sample live announcements.
@@ -94,7 +97,7 @@ Automated coverage includes these scenarios:
 | Node readouts | 20-ft drums, carries, fractions, signs, and range boundaries |
 | Node client and scheduler | Independent field normalization, old snapshots, unchanged callback shape, reconnect/resume, coalescing, and expiry before resize draw |
 | Browser fixture | Both compositions, fixed pixel spacing through resize, retained nodes, wider portrait coverage, painted clearance, local failures/overflow, and global recovery |
-| Release runtime | Embedded altitude modules with correct MIME, real Rust SSE values in SVG/ARIA, producer-formatted BARO text, and recovery after restart |
+| Release runtime | Embedded altitude modules with correct MIME, Rust SSE values in SVG/ARIA, numeric BARO presentation, and recovery after restart |
 
 The existing [automated commands](../testing/automated.md#automated-checks) include the altitude Rust and Node tests.
 Both [desktop browser scripts](../testing/pfd.md#responsive-efi-layout-and-desktop-checks) are required.
@@ -106,7 +109,7 @@ Inspect narrow portrait and short landscape captures, including long signed read
 Apply the [shared phone procedure](../testing/devices.md#real-phone-acceptance-procedure) for #23, with these altitude-specific checks:
 
 1. Watch a complete cycle for climbing, descending, negative altitude, zero crossing, digit carries, and pressure changes.
-2. Check the 100/20-ft markings, fixed pointer, rolling digits, aligned `[KT]`/`[FT]`, and source-formatted BARO text.
+2. Check the 100/20-ft markings, fixed pointer, rolling digits, aligned `[KT]`/`[FT]`, and BARO presentation.
 3. Compare orientations at the same zoom: tick spacing stays fixed and the taller tape shows more values.
 4. Use [phone fixtures](../testing/devices.md#phone-fixture-setup) for independent missing/invalid altitude and pressure, both overflow boundaries, and long signed digits.
 
@@ -129,6 +132,12 @@ Inspect `.local/pfd-browser/footer-*` screenshots at 320×480, 326×246, and 568
 Run the release-runtime script after building the final embedded Web assets.
 For #65, apply the [shared phone procedure](../testing/devices.md#real-phone-acceptance-procedure) and inspect footer readability and edge seams throughout the layout scenarios.
 
+#### Numeric BARO and local unit selection
+
+For [#89](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/89), automated checks cover conversion from one pressure, malformed data, legacy text, expiry, and recovery. Browser checks cover the local inHg/hPa/STD cycle, saved preference after reload, unavailable storage, and text fit. A local selection does not issue simulator commands or renew a sample deadline.
+
+During live acceptance, adjust the cockpit pressure and verify the index 1 indication, then compare equivalent inHg and hPa after touching the BARO field. Verify that the locally selected STD label does not command the cockpit. Check reload and portrait/landscape readability on available phones using the [shared phone procedure](../testing/devices.md#real-phone-acceptance-procedure). Record which cockpit instrument and devices were actually checked. Desktop and demo results do not establish cockpit synchronization or real-phone acceptance.
+
 ### Full-panel geometry
 
 Check altitude rolling digits during full-panel acceptance.
@@ -147,4 +156,4 @@ Evidence limit: real iOS Safari and Android Chrome acceptance remains separate.
 
 ### Live BARO follow-up
 
-[Issue #89](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/89): pilot `KOHLSMAN SETTING HG:1` supplies only formatted inHg text. Logged pressure changes do not prove cockpit or display synchronization. Check altimeter index and STD mode first. Universal unit-preference detection remains unverified; numeric conversion and a local unit toggle are proposals, without simulator writes.
+[Issue #89](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/89): `KOHLSMAN SETTING HG:1` supplies pressure for the same indexed altimeter as indicated altitude. The browser offers a local unit and STD selection without simulator writes. Local STD is not a cockpit-mode indication. Logged pressure does not establish which cockpit control corresponds to this index or prove display synchronization. Verify those during live acceptance.

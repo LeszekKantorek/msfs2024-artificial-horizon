@@ -2,7 +2,8 @@ import { svgElement, setAttributes } from '../helpers.js';
 
 export function verticalSpeedReading(fpm) {
   if (!Number.isFinite(fpm)) return { state: 'unavailable', text: 'X' };
-  const rounded = Math.round(fpm);
+  const magnitude = Math.round(Math.abs(fpm) / 10) * 10;
+  const rounded = fpm < 0 ? -magnitude : magnitude;
   return {
     state: Math.abs(fpm) > 9999 ? 'overflow' : 'available',
     text: Math.abs(fpm) > 9999 ? `${fpm > 0 ? '+' : '-'}OVR` : rounded > 0 ? `+${rounded}` : rounded < 0 ? String(rounded) : '0',

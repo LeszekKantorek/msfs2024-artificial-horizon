@@ -36,7 +36,7 @@ export function composePanel(svg, instruments, status) {
   };
 }
 
-export function createPanel(instrument, status) {
+export function createPanel(instrument, status, redraw = () => {}) {
   const layers = {
     background: instrument.querySelector('#layer-background'),
     airspeed: instrument.querySelector('#layer-airspeed'),
@@ -47,7 +47,7 @@ export function createPanel(instrument, status) {
   return composePanel(instrument.querySelector('svg'), [
     createHorizon(instrument, layers), createFixedSymbols(instrument, layers.symbols),
     createAirspeed(instrument, layers),
-    createAltitude(instrument, layers),
+    createAltitude(instrument, layers, redraw),
     createHeading(instrument, layers),
     createSlipSkid(instrument, layers), createTurnRate(instrument, layers),
   ], status);

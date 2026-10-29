@@ -7,7 +7,7 @@ import { createStatusView } from './status.js';
 const instrument = document.querySelector('.instrument');
 const svg = instrument.querySelector('svg');
 const statusView = createStatusView(document);
-const panel = createPanel(instrument, statusView);
+const panel = createPanel(instrument, statusView, () => scheduler.redraw());
 const scheduler = createFrameScheduler({ panel });
 let status;
 function resize() {

@@ -6,7 +6,7 @@ import { createSelectedAltitude } from './selected.js';
 import { createVsi, vsiWindow } from './vsi.js';
 import { createAltitudeTrend } from './trend.js';
 
-export function createAltitude(instrument, layers) {
+export function createAltitude(instrument, layers, redraw = () => {}) {
   const defs = instrument.querySelector('defs');
   const group = svgElement('g', { id: 'altitude', 'data-state': 'unavailable' });
   const background = svgElement('rect', { class: 'instrument-background' });
@@ -23,7 +23,7 @@ export function createAltitude(instrument, layers) {
   const vsi = createVsi(group);
   const unit = svgElement('text', { class: 'altitude-unit' }, '[FT]');
   group.append(unit);
-  const baro = createBaro(layers.altitude);
+  const baro = createBaro(layers.altitude, redraw);
   const selected = createSelectedAltitude(layers.altitude, bugHost);
   return {
     resize(layout) {
@@ -41,14 +41,14 @@ export function createAltitude(instrument, layers) {
       baro.resize({ x: allocation.x, y: layout.height - 32, width });
     },
     accept(frame, now) { selected.accept(frame.altitude_ft, frame.selected_altitude_ft, now); },
-    invalidate() { selected.invalidate(); vsi.invalidate(); trend.invalidate(); },
+    invalidate() { selected.invalidate(); vsi.invalidate(); trend.invalidate(); baro.invalidate(); },
     render(frame, now) {
       const state = altitudeState(frame.altitude_ft);
       group.dataset.state = state;
       group.setAttribute('aria-label', `Barometric altitude ${state === 'available' ? `${frame.altitude_ft} feet` : state}`);
       tape.render(state === 'available' ? frame.altitude_ft : null);
       readout.render(frame.altitude_ft, state);
-      baro.render(frame.baro_text);
+      baro.render(frame.baro_text, frame.baro_setting, Object.hasOwn(frame, 'baro_setting'));
       vsi.render(frame.vertical_speed_fpm);
       trend.render(frame.altitude_ft, frame.vertical_speed_fpm);
       return selected.render(frame.altitude_ft, frame.selected_altitude_ft, now);

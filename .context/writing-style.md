@@ -34,6 +34,8 @@ Choose the construct by the information it carries:
 
 Review the choice of structure independently from the wording:
 
+* Review each created or changed section as a whole, including unchanged surrounding text affected by the edit.
+* Classify independent facts, mappings, ordered actions, and connected explanations before choosing their Markdown structure.
 * For feature pages, compare the document with the representative page, including lists, tables, steps, and paragraph grouping.
 * Keep reference facts and independent rules in lists or tables instead of narrative blocks.
 * Inspect rendered Markdown. Headings and short sentences alone do not establish format consistency.

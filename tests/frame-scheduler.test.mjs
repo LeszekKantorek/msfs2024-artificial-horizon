@@ -24,6 +24,17 @@ const sample = (pitch = 0, roll = 0, expiresAt = 1000) => ({
   attitude: { pitch_deg: pitch, roll_deg: roll }, expiresAt,
 });
 
+test('redraw reuses the existing frame and never extends its deadline', () => {
+  const h = harness();
+  const frame = sample(0, 0, 500);
+  h.renderer.accept(frame); h.flush();
+  h.advance(499); h.renderer.redraw(); h.flush();
+  assert.deepEqual(h.drawn, [frame, frame]);
+  h.advance(1); h.renderer.redraw(); h.flush();
+  assert.deepEqual(h.obscured, ['stale']);
+  assert.equal(h.drawn.length, 2);
+});
+
 test('headings draw with the newest attitude and expire before resize can renew them', () => {
   const h = harness();
   h.renderer.accept({ ...sample(0, 0, 500), heading_deg: 359, selected_heading_deg: 1 });

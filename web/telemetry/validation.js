@@ -33,6 +33,7 @@ export function normalizeOptionalIndications(value) {
     selected_altitude_ft: Number.isFinite(value.selected_altitude_ft) ? value.selected_altitude_ft : null,
     vertical_speed_fpm: Number.isFinite(value.vertical_speed_fpm) ? value.vertical_speed_fpm : null,
     baro_text: typeof value.baro_text === 'string' ? value.baro_text : null,
+    ...(Object.hasOwn(value, 'baro_setting') ? { baro_setting: normalizeBaro(value.baro_setting) } : {}),
     slip_skid: Number.isFinite(value.slip_skid) && Math.abs(value.slip_skid) <= 1 ? value.slip_skid : null,
     turn_rate_dps: Number.isFinite(value.turn_rate_dps) ? value.turn_rate_dps : null,
     ias_kt: Number.isFinite(value.ias_kt) && value.ias_kt >= 0 ? value.ias_kt : null,
@@ -41,6 +42,12 @@ export function normalizeOptionalIndications(value) {
     airspeed_profile: normalizeAirspeedProfile(value.airspeed_profile),
     ias_acceleration_ktps: Number.isFinite(value.ias_acceleration_ktps) ? value.ias_acceleration_ktps : null,
   };
+}
+
+function normalizeBaro(setting) {
+  return setting && typeof setting === 'object' && !Array.isArray(setting) &&
+    Number.isFinite(setting.pressure_hpa) && setting.pressure_hpa > 0
+    ? { pressure_hpa: setting.pressure_hpa } : null;
 }
 
 function validHeading(value) {

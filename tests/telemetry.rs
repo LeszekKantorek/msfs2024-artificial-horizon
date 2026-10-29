@@ -117,6 +117,7 @@ fn pfd_demo_matches_independent_fixtures_through_every_segment_and_repeat() {
                     .unwrap()
                     .remove("selected_altitude_ft");
                 actual.as_object_mut().unwrap().remove("baro_text");
+                actual.as_object_mut().unwrap().remove("baro_setting");
                 actual.as_object_mut().unwrap().remove("airspeed_profile");
                 actual
                     .as_object_mut()
@@ -158,6 +159,8 @@ async fn extended_publication_shares_age_and_clears_absent_or_unavailable_indica
     assert_eq!(full["selected_heading_deg"], 0.0);
     full.as_object_mut().unwrap().remove("heading_deg");
     full.as_object_mut().unwrap().remove("selected_heading_deg");
+    assert!((full["baro_setting"]["pressure_hpa"].as_f64().unwrap() - 1019.9802664).abs() < 0.0001);
+    full.as_object_mut().unwrap().remove("baro_setting");
     assert_eq!(
         full,
         json!({"schema_version":1,"sequence":1,"source":"demo","state":"live",

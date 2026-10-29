@@ -13,7 +13,7 @@ export async function checkVerticalSpeed(page, setFixture, url) {
       for (const [fpm, text, state] of [[0, '0', 'available'], [-0.1, '0', 'available'],
         [1500, '+1500', 'available'], [-1500, '-1500', 'available'],
         [2000.01, '+2000', 'available'], [-2000.01, '-2000', 'available'],
-        [4881.36, '+4881', 'available'], [9999, '+9999', 'available'], [-9999, '-9999', 'available'],
+        [4881.36, '+4880', 'available'], [9999, '+10000', 'available'], [-9999, '-10000', 'available'],
         [9999.01, '+OVR', 'overflow'], [-9999.01, '-OVR', 'overflow'],
         [Number.MAX_VALUE, '+OVR', 'overflow'], [-Number.MAX_VALUE, '-OVR', 'overflow']]) {
         setFixture({ vertical_speed_fpm: fpm });
@@ -62,7 +62,7 @@ export async function checkVerticalSpeed(page, setFixture, url) {
         assert.deepEqual([painted.width, painted.height, painted.obsolete, painted.fontSize, painted.fontSizeDifference], [51, 27, 0, 13, 1]);
       }
       setFixture({ vertical_speed_fpm: -9999, altitude_ft: -60, selected_altitude_ft: -100 });
-      await page.waitForFunction(() => document.querySelector('#vertical-speed-value').textContent === '-9999' &&
+      await page.waitForFunction(() => document.querySelector('#vertical-speed-value').textContent === '-10000' &&
         document.querySelector('#altitude-sign').textContent === '−');
       const bugVisible = await page.evaluate(() => {
         const bug = document.querySelector('#selected-altitude-bug');

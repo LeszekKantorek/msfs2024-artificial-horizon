@@ -25,6 +25,7 @@ panel.invalidate(reason);
 | `airspeed_profile`, `ias_acceleration_ktps` | Independently normalized configuration and source acceleration, or `null` |
 | `altitude_ft` | Independently normalized signed altitude, or `null` |
 | `baro_text` | Verbatim source-formatted display string, or `null` for missing/non-string data |
+| `baro_setting` | Omitted when absent on the wire. Otherwise, normalized pressure or `null` when invalid. Present invalid data takes precedence over legacy text |
 | `selected_altitude_ft` | Independently normalized signed selected altitude, or `null` |
 | `vertical_speed_fpm` | Independently normalized signed ft/min, or `null` |
 | `heading_deg`, `selected_heading_deg` | Independently normalized magnetic degrees in `[0, 360)`, or `null` |
@@ -36,7 +37,7 @@ Instruments share the frame under these rules:
 * Every instrument receives the same complete frame and selects its own fields without mutating the frame or another instrument.
 * Nested frame values are also read-only.
 * Instruments consume normalized frames.
-* Missing or invalid optional readings arrive as `null`, without invented zero values.
+* Missing or invalid optional readings arrive as `null`, without invented zero values, except that `baro_setting` preserves wire-field presence for legacy compatibility.
 * `resize(layout)` must run before the first `render(frame)`.
 * Initialization supplies real geometry without substitute defaults.
 * Future feature issues define additions to the frame and wire contract separately.
@@ -61,7 +62,7 @@ The scheduler coordinates samples, layout, and invalidation in this sequence:
 
 1. Create instrument elements once during initialization.
 2. On each fresh accepted sample, delegate `accept(frame, now)` before retaining the newest sample and requesting at most one animation frame.
-3. On resize with a retained sample, keep the newest layout and request at most one animation frame.
+3. On resize with a retained sample, keep the newest layout and request at most one animation frame. A BARO unit change can also request a redraw without accepting a new sample.
 4. Before drawing, check the original deadline, then apply the pending layout and render the fresh frame in the same callback.
 5. On invalidation, cancel pending drawing, discard the sample, and invoke `panel.invalidate(reason)` immediately.
 6. Apply any pending layout under the unavailable cover, updating geometry immediately when no sample remains.
@@ -69,7 +70,7 @@ The scheduler coordinates samples, layout, and invalidation in this sequence:
 
 Freshness and status handling follow these rules:
 
-* Resize never renews the sample deadline.
+* Resize and local preference redraws never renew the sample deadline or advance per-sample history.
 * Transport expiry detection continues even when no new samples arrive.
 * Fresh samples with unchanged numeric values still renew freshness.
 * Optional failures affect only their indications.
