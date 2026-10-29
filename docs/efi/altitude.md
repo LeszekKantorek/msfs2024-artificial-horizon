@@ -31,7 +31,7 @@ The tape and readouts use these presentation rules:
 * A one-pixel cyan border is inset by half a pixel over an opaque value-window background.
 * One centered, 11 CSS px, weight-600 cyan text node displays BARO.
 * Numeric pressure displays two decimal places in inHg or a whole hPa. The local `STD` selection displays `STD`.
-* With valid numeric pressure, a touch or click cycles through inHg, hPa, and STD. Legacy-only and unavailable readings cannot be switched.
+* With valid numeric pressure, a touch or click cycles through inHg, hPa, and STD. Legacy-only readings and missing or invalid numeric pressure cannot be switched.
 * The browser-local choice persists across reloads and does not change the simulator. Local STD does not report the cockpit mode.
 * When `baro_setting` is absent, legacy strings remain verbatim, including empty strings. Legacy strings cannot be converted.
 * A present invalid numeric field shows a red `X`. The browser does not infer cockpit STD from pressure.

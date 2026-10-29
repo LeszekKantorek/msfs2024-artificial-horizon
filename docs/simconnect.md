@@ -88,7 +88,9 @@ Detailed source errors stay in console diagnostics and the optional log. The SSE
 
 ### Optional instrument observations
 
-The native worker requests IAS, TAS, and GS in knots. It requests KOHLSMAN pressure in inHg and indicated altitude in feet from altimeter index 1. It also requests VSI in feet per minute, magnetic heading in degrees, ball position, and turn rate in degrees per second. The cockpit control corresponding to index 1 depends on the aircraft and requires live verification. Standard autopilot targets follow active slot 0. Target visibility does not require the autopilot master to be engaged. Radio-referenced altitude targets are omitted.
+The native worker requests IAS, TAS, and GS in knots. It requests KOHLSMAN pressure in inHg and indicated altitude in feet from altimeter index 1. It also requests VSI in feet per minute, magnetic heading in degrees, ball position, and turn rate in degrees per second.
+
+The cockpit control corresponding to index 1 depends on the aircraft and requires live verification. Standard autopilot targets follow active slot 0. Target visibility does not require the autopilot master to be engaged. Radio-referenced altitude targets are omitted.
 
 Each optional request has its own definition and exception boundary. Failed fields become unavailable without stopping attitude or HTTP. Last observations expire independently after 1000 ms. Pauses, flight changes and reconnect clear cached values. Additional observations and expiry publications preserve the attitude receive time.
 
