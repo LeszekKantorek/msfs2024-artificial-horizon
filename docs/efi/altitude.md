@@ -5,7 +5,7 @@ Signed altitude tape and rolling drums, independent BARO, and the altitude compo
 ## Requirements
 
 Display source-supplied altitude for its pressure setting without browser pressure correction.
-Altitude and BARO are independently optional. Legacy BARO strings remain verbatim when numeric BARO data is absent.
+Altitude and BARO are independently optional. Legacy BARO strings remain verbatim when the numeric BARO field is absent.
 Finite altitude outside the display range remains valid telemetry.
 
 Wire definitions: [telemetry contract](../telemetry-contract.md#optional-altitude-and-pressure-setting).
@@ -31,9 +31,11 @@ The tape and readouts use these presentation rules:
 * A one-pixel cyan border is inset by half a pixel over an opaque value-window background.
 * One centered, 11 CSS px, weight-600 cyan text node displays BARO.
 * Numeric pressure displays two decimal places in inHg or a whole hPa. The local `STD` selection displays `STD`.
-* A touch or click on the field cycles through inHg, hPa, and STD. The browser-local choice persists across reloads and does not change the simulator. Local STD does not report the cockpit mode.
-* When numeric data is absent, legacy strings remain verbatim, including empty strings. Legacy strings cannot be converted.
-* Invalid numeric BARO shows a red `X`; the browser does not infer cockpit STD from pressure.
+* With valid numeric pressure, a touch or click cycles through inHg, hPa, and STD. Legacy-only and unavailable readings cannot be switched.
+* The browser-local choice persists across reloads and does not change the simulator. Local STD does not report the cockpit mode.
+* When `baro_setting` is absent, legacy strings remain verbatim, including empty strings. Legacy strings cannot be converted.
+* A present invalid numeric field shows a red `X`. The browser does not infer cockpit STD from pressure.
+* If valid numeric text does not fit the field, a red `X` appears. The unit control remains active, so another selection can be displayed if it fits.
 * Pressure failure affects only its readout; source/transport loss covers the entire panel.
 * Tape backgrounds use the existing opacity token; BARO, text, ticks, and pointer windows remain opaque.
 * Accessible labels preserve the full received values or the unavailable/overflow state without per-sample live announcements.
@@ -154,4 +156,4 @@ Evidence limit: real iOS Safari and Android Chrome acceptance remains separate.
 
 ### Live BARO follow-up
 
-[Issue #89](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/89): `KOHLSMAN SETTING HG:1` supplies pressure for the same indexed altimeter as indicated altitude. The browser offers a local unit/STD selection without simulator writes. Local STD is not a cockpit-mode indication. Logged pressure does not establish which cockpit control corresponds to this index or prove display synchronization; verify those during live acceptance.
+[Issue #89](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/89): `KOHLSMAN SETTING HG:1` supplies pressure for the same indexed altimeter as indicated altitude. The browser offers a local unit and STD selection without simulator writes. Local STD is not a cockpit-mode indication. Logged pressure does not establish which cockpit control corresponds to this index or prove display synchronization. Verify those during live acceptance.

@@ -165,13 +165,13 @@ Speed fields extend the live example above:
 
 * Altitude is a source-supplied indication for its pressure setting; the browser does not calculate pressure corrections.
 * Altitude and BARO are independently optional and share the sample sequence, age, and expiry deadline.
-* Rust omits absent values and BARO fields outside `live`; attitude-only publication clears them.
+* Rust omits absent values and BARO fields outside `live`. Attitude-only publication clears them.
 * Missing, null, nonnumeric, or non-finite altitude becomes unavailable independently of pressure and other indications.
 * Missing, null, or non-string BARO text becomes unavailable independently of altitude.
 * Every string is preserved verbatim, including an empty string, spaces, `23.83 inHg`, `1026 hPa`, or `BARO`.
-* The optional `baro_setting` contains positive finite `pressure_hpa`. Its presence takes precedence over legacy text; invalid present data is unavailable.
+* The optional `baro_setting` contains positive finite `pressure_hpa`. Its presence takes precedence over legacy text. Present invalid data is unavailable.
 * The SimConnect provider omits both BARO fields if pressure is unavailable. String-only producers remain supported.
-* When `baro_setting` is absent, the producer owns legacy text formatting and unit identification; `BARO` has no appended unit.
+* When `baro_setting` is absent, the producer owns legacy text formatting and unit identification. `BARO` has no appended unit.
 * Each sample replaces both previous values; missing values never become zero or retain a previous reading.
 * Finite altitude values outside the presentation limits remain valid telemetry.
 * Source or transport loss invalidates the entire panel.

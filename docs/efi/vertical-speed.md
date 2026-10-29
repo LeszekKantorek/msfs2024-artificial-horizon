@@ -4,7 +4,7 @@ The compact signed VSI readout below current altitude.
 
 ## Requirements
 
-Round numeric VSI to 10 ft/min, with ties away from zero: `0`, `-20`, `-120`, `+400`, `+420`; never `-0`. Preserve source precision and calculations.
+Round numeric VSI to 10 ft/min, with ties away from zero: `0`, `-20`, `-120`, `+400`, `+420`. Never display `-0`. Preserve source precision and calculations.
 
 Display source-supplied signed ft/min. Valid VSI remains available when altitude or BARO is unavailable.
 Use raw values for display-limit checks before rounding; do not estimate VSI from browser altitude differences.
