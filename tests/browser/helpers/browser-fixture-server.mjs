@@ -56,6 +56,7 @@ const server = createServer((request, response) => {
         snapshot.selected_altitude_ft = fixture.selected_altitude_ft;
         snapshot.vertical_speed_fpm = fixture.vertical_speed_fpm;
         if (!fixture.omit_baro) snapshot.baro_text = fixture.baro_text;
+        if (Object.hasOwn(fixture, 'baro_setting') && !fixture.omit_baro_setting) snapshot.baro_setting = fixture.baro_setting;
         snapshot.ias_kt = fixture.ias_kt;
         snapshot.gs_kt = fixture.gs_kt;
         if (!fixture.omit_tas) snapshot.tas_kt = fixture.tas_kt;

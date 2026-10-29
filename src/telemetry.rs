@@ -306,6 +306,33 @@ impl AirspeedProfile {
     }
 }
 
+/// Conversion from inches of mercury to hectopascals.
+pub const HPA_PER_INHG: f64 = 33.8638866667;
+
+/// Active barometric pressure and the simulator's explicit standard mode.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+pub struct BaroSetting {
+    pressure_hpa: f64,
+    standard: bool,
+}
+impl BaroSetting {
+    pub fn new(pressure_hpa: f64, standard: bool) -> Result<Self, TelemetryError> {
+        if !pressure_hpa.is_finite() || pressure_hpa <= 0.0 {
+            return Err(TelemetryError::InvalidBaroSetting);
+        }
+        Ok(Self {
+            pressure_hpa,
+            standard,
+        })
+    }
+    pub fn pressure_hpa(&self) -> f64 {
+        self.pressure_hpa
+    }
+    pub fn is_standard(&self) -> bool {
+        self.standard
+    }
+}
+
 /// One fresh acquisition with independently available optional indications.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct FlightSample {
@@ -336,6 +363,8 @@ pub struct FlightSample {
     vertical_speed_fpm: Option<VerticalSpeed>,
     #[serde(skip_serializing_if = "Option::is_none")]
     baro_text: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    baro_setting: Option<BaroSetting>,
 }
 impl FlightSample {
     pub fn new(
@@ -358,6 +387,7 @@ impl FlightSample {
             selected_altitude_ft: None,
             vertical_speed_fpm: None,
             baro_text: None,
+            baro_setting: None,
         }
     }
     pub fn attitude(&self) -> Attitude {
@@ -383,6 +413,10 @@ impl FlightSample {
     }
     pub fn with_selected_altitude(mut self, altitude: Option<SelectedAltitude>) -> Self {
         self.selected_altitude_ft = altitude;
+        self
+    }
+    pub fn with_baro_setting(mut self, setting: Option<BaroSetting>) -> Self {
+        self.baro_setting = setting;
         self
     }
     pub fn with_vertical_speed(mut self, speed: Option<VerticalSpeed>) -> Self {
@@ -453,6 +487,8 @@ pub struct Snapshot {
     vertical_speed_fpm: Option<VerticalSpeed>,
     #[serde(skip_serializing_if = "Option::is_none")]
     baro_text: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    baro_setting: Option<BaroSetting>,
 }
 #[derive(Clone, Debug)]
 struct Current {
@@ -473,6 +509,7 @@ struct Current {
     selected_altitude: Option<SelectedAltitude>,
     vertical_speed: Option<VerticalSpeed>,
     baro: Option<String>,
+    baro_setting: Option<BaroSetting>,
 }
 impl Current {
     fn snapshot(&self) -> Snapshot {
@@ -513,6 +550,7 @@ impl Current {
             selected_altitude_ft: attitude.and(self.selected_altitude),
             vertical_speed_fpm: attitude.and(self.vertical_speed),
             baro_text: attitude.and(self.baro.clone()),
+            baro_setting: attitude.and(self.baro_setting),
         }
     }
 }
@@ -562,6 +600,7 @@ pub fn channel(source: Source) -> (Publisher, Subscription) {
         selected_altitude: None,
         vertical_speed: None,
         baro: None,
+        baro_setting: None,
     };
     let (sender, receiver) = watch::channel(current.clone());
     (Publisher { sender, current }, Subscription { receiver })
@@ -625,6 +664,7 @@ impl Publisher {
         self.current.altitude = sample.as_ref().and_then(|s| s.altitude_ft);
         self.current.selected_altitude = sample.as_ref().and_then(|s| s.selected_altitude_ft);
         self.current.vertical_speed = sample.as_ref().and_then(|s| s.vertical_speed_fpm);
+        self.current.baro_setting = sample.as_ref().and_then(|s| s.baro_setting);
         self.current.baro = sample.and_then(|s| s.baro_text);
         self.sender.send_replace(self.current.clone());
         Ok(())
@@ -660,6 +700,8 @@ impl Subscription {
 }
 #[derive(Debug, thiserror::Error)]
 pub enum TelemetryError {
+    #[error("barometric pressure must be finite and positive hPa")]
+    InvalidBaroSetting,
     #[error("heading must be finite magnetic degrees within [0, 360)")]
     InvalidHeading,
     #[error("selected heading must be finite magnetic degrees within [0, 360)")]

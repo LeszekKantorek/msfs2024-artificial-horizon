@@ -4,7 +4,7 @@ The compact signed VSI readout below current altitude.
 
 ## Requirements
 
-Pending [#88](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/88): round numeric VSI to 10 ft/min, with ties away from zero: `0`, `-20`, `-120`, `+400`, `+420`; never `-0`. Preserve source precision and calculations. The whole-ft/min behavior below remains current until implementation.
+Round numeric VSI to 10 ft/min, with ties away from zero: `0`, `-20`, `-120`, `+400`, `+420`; never `-0`. Preserve source precision and calculations.
 
 Display source-supplied signed ft/min. Valid VSI remains available when altitude or BARO is unavailable.
 Use raw values for display-limit checks before rounding; do not estimate VSI from browser altitude differences.
@@ -37,7 +37,7 @@ Reading and availability follow these rules:
 
 | Input | Presentation |
 | --- | --- |
-| Raw value within -9999 to +9999 ft/min | Rounded whole ft/min, with `+` for positive and `-` for negative readings |
+| Raw value within -9999 to +9999 ft/min | Rounded to the nearest 10 ft/min, ties away from zero, with `+` for positive and `-` for negative readings |
 | Rounded positive or negative zero | `0` |
 | Raw value beyond the numeric limit | White `+OVR` or `-OVR` in the same window |
 | Missing or invalid value | Red `X` in the same window |

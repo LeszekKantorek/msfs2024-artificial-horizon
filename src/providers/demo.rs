@@ -1,9 +1,9 @@
 //! Repeatable degree fixtures; no simulator SDK conventions are assumed.
 use crate::telemetry::{
-    AirspeedProfile, Attitude, BarometricAltitude, FlightSample, GroundSpeed, Heading,
-    IasAcceleration, IndicatedAirspeed, Publisher, SAMPLE_PERIOD, SelectedAltitude,
-    SelectedHeading, SlipSkid, TelemetryError, TrueAirspeed, TurnRate, VSpeedReferences,
-    VerticalSpeed,
+    AirspeedProfile, Attitude, BaroSetting, BarometricAltitude, FlightSample, GroundSpeed,
+    HPA_PER_INHG, Heading, IasAcceleration, IndicatedAirspeed, Publisher, SAMPLE_PERIOD,
+    SelectedAltitude, SelectedHeading, SlipSkid, TelemetryError, TrueAirspeed, TurnRate,
+    VSpeedReferences, VerticalSpeed,
 };
 use std::future::Future;
 use tokio::time::{MissedTickBehavior, interval};
@@ -45,7 +45,11 @@ pub fn sample(index: u64) -> FlightSample {
         _ => (320 - step) as f64 / 120.0,
     };
     let (altitude, selected, vertical_speed) = altitude_scenario(index);
-    let baro = [29.92, 30.12, 29.72][(step / 120) as usize];
+    let baro = if phase == 8 {
+        29.92
+    } else {
+        [29.92, 30.12, 29.72][(step / 120) as usize]
+    };
     FlightSample::new(
         attitude,
         Some(SlipSkid::new(slip).expect("built-in ball positions are valid")),
@@ -67,6 +71,9 @@ pub fn sample(index: u64) -> FlightSample {
         Some(BarometricAltitude::new(altitude).expect("built-in altitude is valid")),
         Some(format!("{baro:.2} inHg")),
     )
+    .with_baro_setting(Some(
+        BaroSetting::new(baro * HPA_PER_INHG, phase == 8).unwrap(),
+    ))
     .with_selected_altitude(
         selected.map(|feet| SelectedAltitude::new(feet).expect("built-in target is valid")),
     )

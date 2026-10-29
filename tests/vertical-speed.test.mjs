@@ -4,17 +4,22 @@ import { verticalSpeedReading, vsiWindow } from '../web/altitude/vsi.js';
 import { altitudeTicks, tapeMarkPresentation } from '../web/altitude/tape.js';
 import { pfdLayout } from '../web/layout.js';
 
-test('signed rates round to whole ft/min and raw limits distinguish overflow from unavailable input', () => {
+test('signed rates round to tens symmetrically and raw limits distinguish overflow from unavailable input', () => {
   for (const fpm of [undefined, null, '0', false, {}, [], NaN, Infinity, -Infinity]) {
     assert.deepEqual(verticalSpeedReading(fpm), { state: 'unavailable', text: 'X' });
   }
   for (const [fpm, text, state] of [
     [0, '0', 'available'], [-0, '0', 'available'], [-0.1, '0', 'available'], [0.1, '0', 'available'],
-    [0.5, '+1', 'available'], [-0.5, '0', 'available'], [813.56, '+814', 'available'], [-813.56, '-814', 'available'],
+    [1, '0', 'available'], [-1, '0', 'available'], [4.999, '0', 'available'], [-4.999, '0', 'available'],
+    [5, '+10', 'available'], [-5, '-10', 'available'], [12, '+10', 'available'], [-12, '-10', 'available'],
+    [14.999, '+10', 'available'], [-14.999, '-10', 'available'], [15, '+20', 'available'], [-15, '-20', 'available'],
+    [-20, '-20', 'available'], [-120, '-120', 'available'], [400, '+400', 'available'], [420, '+420', 'available'],
+    [813.56, '+810', 'available'], [-813.56, '-810', 'available'],
     [1500, '+1500', 'available'], [-1500, '-1500', 'available'],
     [2000, '+2000', 'available'], [-2000, '-2000', 'available'],
     [2000.01, '+2000', 'available'], [-2000.01, '-2000', 'available'],
-    [4881.36, '+4881', 'available'], [9999, '+9999', 'available'], [-9999, '-9999', 'available'],
+    [4881.36, '+4880', 'available'], [9995, '+10000', 'available'], [-9995, '-10000', 'available'],
+    [9999, '+10000', 'available'], [-9999, '-10000', 'available'],
     [9999.01, '+OVR', 'overflow'], [-9999.01, '-OVR', 'overflow'],
     [Number.MAX_VALUE, '+OVR', 'overflow'], [-Number.MAX_VALUE, '-OVR', 'overflow'],
   ]) assert.deepEqual(verticalSpeedReading(fpm), { text, state });

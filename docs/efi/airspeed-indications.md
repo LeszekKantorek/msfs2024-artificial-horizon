@@ -245,6 +245,6 @@ Evidence limit: desktop validation does not establish real iOS Safari or Android
 
 ### Live trend and visibility findings
 
-[Issue #87](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/87): replay showed acceleration spikes, reduced by a one-second derivative experiment. Receipt timing is a possible cause, not a confirmed diagnosis. The estimator remains undecided; preserve six-second prediction semantics. Replay does not establish rendered behavior.
+[Issue #87](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/87): replay showed acceleration spikes with adjacent acquisitions. The native provider uses a bounded 0.5-second window and the browser retains the six-second prediction. Receipt timing is a possible cause, not a confirmed diagnosis. Replay does not establish perceived live behavior.
 
 [Issue #90](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/90): distinguish missing inputs from valid indications outside the clipped tape. Missing thresholds hide only dependent bands; never fabricate references. Logs do not establish screen visibility, and the session did not reach redline. Edge markers or persistent readouts remain proposals.

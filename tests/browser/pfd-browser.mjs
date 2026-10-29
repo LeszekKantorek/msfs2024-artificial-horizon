@@ -467,6 +467,55 @@ try {
   await page.evaluate(() => { window.dispatchEvent(new Event('pageshow')); window.dispatchEvent(new Event('pageshow')); });
   await page.locator('.instrument[data-available="true"]').waitFor();
   assert.equal(activeClients, 1);
+  // A local unit choice must not write to the simulator and persists through STD.
+  setFixture({ state: 'live', attitude_only: false, hold: false, omit_baro_setting: false,
+    baro_setting: { pressure_hpa: 1013.25, standard: false }, baro_text: 'legacy' });
+  await page.evaluate(() => localStorage.removeItem('efi.baro.unit'));
+  await page.reload();
+  await page.waitForFunction(() => document.querySelector('#barometric-value').textContent === '29.92 inHg');
+  await page.locator('#barometric-setting').click();
+  await page.waitForFunction(() => document.querySelector('#barometric-value').textContent === '1013 hPa');
+  assert.equal(await page.evaluate(() => localStorage.getItem('efi.baro.unit')), 'hPa');
+  await page.reload();
+  await page.waitForFunction(() => document.querySelector('#barometric-value').textContent === '1013 hPa');
+  setFixture({ baro_setting: { pressure_hpa: 1013.25, standard: true } });
+  await page.waitForFunction(() => document.querySelector('#barometric-value').textContent === 'STD');
+  await page.locator('#barometric-setting').click();
+  assert.equal(await page.locator('#barometric-value').textContent(), 'STD');
+  setFixture({ baro_setting: { pressure_hpa: 1013.25, standard: false } });
+  await page.waitForFunction(() => document.querySelector('#barometric-value').textContent === '29.92 inHg');
+  setFixture({ baro_setting: null });
+  await page.waitForFunction(() => document.querySelector('#barometric-value').textContent === 'X');
+  setFixture({ baro_setting: { pressure_hpa: 1000, standard: false } });
+  await page.waitForFunction(() => document.querySelector('#barometric-value').textContent === '29.53 inHg');
+  setFixture({ baro_setting: { pressure_hpa: 10000, standard: false } });
+  await page.waitForFunction(() => document.querySelector('#barometric-value').textContent === 'X');
+  await page.locator('#barometric-setting').click();
+  await page.waitForFunction(() => document.querySelector('#barometric-value').textContent === '10000 hPa');
+  await page.locator('#barometric-setting').click();
+  await page.waitForFunction(() => document.querySelector('#barometric-value').textContent === 'X');
+  setFixture({ baro_setting: { pressure_hpa: 1e20, standard: false } });
+  await page.waitForFunction(() => document.querySelector('#barometric-value').textContent === 'X');
+  assert.equal(await page.locator('#barometric-setting').getAttribute('data-state'), 'unavailable');
+  await page.locator('#barometric-setting').click();
+  assert.equal(await page.evaluate(() => localStorage.getItem('efi.baro.unit')), 'hPa');
+  setFixture({ omit_baro_setting: true, baro_text: 'legacy' });
+  await page.waitForFunction(() => document.querySelector('#barometric-value').textContent === 'legacy');
+  await page.locator('#barometric-setting').click();
+  assert.equal(await page.locator('#barometric-value').textContent(), 'legacy');
+  setFixture({ omit_baro_setting: false, baro_setting: { pressure_hpa: 1013.25, standard: false } });
+  const touchContext = await browser.newContext({ hasTouch: true, viewport: { width: 320, height: 480 } });
+  await touchContext.addInitScript(() => {
+    Object.defineProperty(window, 'localStorage', { get() { throw new Error('storage denied'); } });
+  });
+  const touchPage = await touchContext.newPage();
+  await touchPage.goto(url);
+  await touchPage.waitForFunction(() => document.querySelector('#barometric-value').textContent === '29.92 inHg');
+  await touchPage.locator('#barometric-setting').tap();
+  await touchPage.waitForFunction(() => document.querySelector('#barometric-value').textContent === '1013 hPa');
+  await touchPage.waitForTimeout(100);
+  assert.equal(await touchPage.locator('#barometric-value').textContent(), '1013 hPa');
+  await touchContext.close();
   assert.deepEqual(errors, []);
   console.log(`PFD browser checks passed on ${await browser.version()}. Viewports, fixtures, poses, optional failures, stale, resize and lifecycle checked.`);
 } finally {

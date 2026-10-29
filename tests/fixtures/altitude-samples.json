@@ -12,6 +12,6 @@
   {"sample": 240, "altitude_ft": 1020, "baro_text": "29.72 inHg"},
   {"sample": 299, "altitude_ft": 980, "baro_text": "29.72 inHg"},
   {"sample": 300, "altitude_ft": 120, "baro_text": "29.72 inHg"},
-  {"sample": 359, "altitude_ft": -120, "baro_text": "29.72 inHg"},
+  {"sample": 359, "altitude_ft": -120, "baro_text": "29.92 inHg"},
   {"sample": 3960, "altitude_ft": -120, "baro_text": "29.92 inHg"}
 ]

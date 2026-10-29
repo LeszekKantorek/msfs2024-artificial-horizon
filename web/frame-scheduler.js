@@ -68,6 +68,7 @@ export function createFrameScheduler({
       pendingLayout = layout;
       if (latest) schedule(); else applyLayout();
     },
+    redraw() { schedule(); },
     invalidate,
   };
 }
