@@ -16,6 +16,10 @@ Demo publishes deterministic synthetic telemetry through the same channel used b
 
 The sample sequence includes attitude, coordinated turn, speed, altitude, pressure, vertical speed, and heading. The original `demo::attitude` helper retains its seven-pose cycle. `demo::sample` adds two extreme pitch poses to the nine-segment attitude cycle.
 
+### Public source interface
+
+`providers::demo::run(publisher, shutdown)` publishes through the supplied `Publisher`. The caller supplies a shutdown future returning `()`. The function returns `Result<(), TelemetryError>`. Publication errors end the producer. It does not start HTTP or create a telemetry channel.
+
 ## Scenario overview
 
 At the nominal 50 ms sample interval, the complete scenario repeats after 3,960 samples, or 198 seconds. Attitude, coordinated turn, speeds, heading, and pressure repeat within that sequence every 18 seconds. Missed sample ticks are skipped, so elapsed wall time can differ from the nominal schedule.

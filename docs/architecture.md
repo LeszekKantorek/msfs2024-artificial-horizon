@@ -21,8 +21,7 @@ flowchart LR
 * Put reusable logic in one library package and thin executables in `src/bin/`.
 * Add packages or services only for a concrete need.
 
-Application composition connects either Demo or the SimConnect receiver to the same HTTP/SSE server.
-The server receives a prepared subscription and does not select or start providers.
+Application composition selects a source and creates one telemetry channel. The source publishes normalized samples or unavailable states through the channel's publisher. The server receives a subscription and sends current snapshots over SSE to each browser. The server does not select or start providers. Slow clients can skip intermediate publications without blocking acquisition.
 
 > A provider failure must never select demo automatically.
 
@@ -77,7 +76,7 @@ The repository groups the application by responsibility:
 | `web/` | Browser telemetry and instrument presentation |
 | `tests/` | Integration tests and fixtures |
 
-The [backend implementation guide](backend-implementation.md) explains the data flow and component collaboration.
+The [HTTP server guide](server.md) describes routing, embedded assets, and telemetry delivery.
 The [telemetry sources guide](sources/index.md) describes Demo and SimConnect.
 The [panel presentation](efi/index.md) describes the browser module boundaries.
 The source tree is authoritative for individual files.
@@ -95,7 +94,9 @@ The library exposes `Config`, `Source`, and `Server`. Application composition se
 * SimConnect configuration permits an absolute DLL override and an exact log file. The resolver uses the same executable-relative default for CLI and library calls before opening a log or loading native code.
 * HTTP availability does not depend on DLL loading, simulator connection, or flight readiness.
 
-The [backend API reference](backend-implementation.md#public-application-interfaces) describes the public entry points. [ADR 0007](adr/0007-application-composition.md) defines the composition and public server boundary. The [SimConnect guide](sources/simconnect.md) describes source configuration and diagnostics. Run the application using the [README procedure](../README.md#start-the-demo).
+`application::SourceSelection` selects `Demo` or `SimConnect(SimConnectConfig)`. `application::run(config, selection, shutdown)` validates configuration, creates the channel, binds HTTP, starts components, and collects their results. Its caller-owned shutdown future returns `io::Result<()>`.
+
+The [server interface](server.md#public-server-interfaces) and [source guides](sources/index.md) describe their public entry points. [ADR 0007](adr/0007-application-composition.md) defines the composition and public server boundary. The [SimConnect guide](sources/simconnect.md) describes source configuration and diagnostics. Run the application using the [README procedure](../README.md#start-the-demo).
 
 Web assets are embedded in the release binary. The client uses a relative, same-origin SSE URL and requires no CDN, frontend package manager, CORS policy, or database.
 
@@ -160,7 +161,7 @@ Browser assembly connects telemetry, lifecycle, layout, and presentation. The te
 
 The [panel presentation](efi/index.md) defines shared responsibilities and feature ownership. [Frame lifecycle](efi/lifecycle.md#panel-interface-and-frame-lifecycle), [composition](efi/composition.md), and [telemetry operations](efi/telemetry.md#telemetry-operations) define the detailed contracts. [ADR 0004](adr/0004-modular-pfd-presentation.md) and [ADR 0005](adr/0005-visual-object-composition.md) record the design rationale.
 
-Embedded asset delivery preserves paths, MIME types, status codes, response bodies, and GET/HEAD behavior. Static routes remain independent of telemetry. Replaced root and calculation-module routes return 404 without compatibility facades. Do not add wildcard routes, directory serving, runtime file access, or dependencies.
+Embedded asset delivery preserves paths, MIME types, status codes, response bodies, and GET/HEAD behavior. The [server guide](server.md#assets-and-routes) describes registration. Static routes remain independent of telemetry. Replaced root and calculation-module routes return 404 without compatibility facades. Do not add wildcard routes, directory serving, runtime file access, or dependencies.
 
 ## Library telemetry interface
 

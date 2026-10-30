@@ -71,6 +71,12 @@ The CLI applies these restrictions:
 
 ## Implementation
 
+### Public source interface
+
+`providers::simconnect::SimConnectConfig` contains an optional absolute DLL override and an optional exact log path. It contains no HTTP configuration or process arguments. With no override, DLL resolution uses the executable-relative default for library and CLI calls.
+
+`providers::simconnect::run(config, publisher, shutdown)` acquires through the supplied SimConnect `Publisher`. Its caller-owned shutdown future returns `io::Result<()>`. The function returns a `RunReport` with separate acquisition and diagnostic outcomes. It does not start HTTP or create a telemetry channel. A publisher with another source identity is rejected before acquisition.
+
 ### Application availability
 
 The application validates configuration, creates the waiting telemetry channel, and binds HTTP before starting the producer.
