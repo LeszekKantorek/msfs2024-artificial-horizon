@@ -1,9 +1,8 @@
 # Independently available airspeed data
 
-| Record | Value |
-| --- | --- |
-| Date | 2026-10-28 |
-| Status | Accepted through the supplied implementation plan |
+Date: 2026-10-28
+
+Status: Accepted through the supplied implementation plan.
 
 ## Context
 
