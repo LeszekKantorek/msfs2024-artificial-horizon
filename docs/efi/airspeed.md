@@ -4,61 +4,56 @@ IAS tape, rolling digits, independent GS, and the shared airspeed composition.
 
 ## Requirements
 
-Display source-supplied IAS and GS independently in knots. Zero is valid; missing data must not become zero or retain a previous reading.
-The 0–999 kt range limits presentation, not valid telemetry. Profile and acceleration availability remain independent of the speed readings.
+* Display source-supplied IAS and GS independently in knots.
+* Zero is valid. Missing data must not become zero or retain a previous reading.
+* The 0–999 kt range limits presentation, not valid telemetry.
+* Profile and acceleration availability remain independent of the speed readings.
 
 Wire definitions: [telemetry contract](../telemetry-contract.md#optional-speed-indications).
 
 ## Presentation
 
-Composition and geometry use the panel's airspeed allocation:
+### Input availability and display limits
 
-* IAS, TAS, and GS use layer 1.
-* IAS and GS local failure and overflow marks use layer 4. TAS marks stay inside its opaque layer-1 field.
-* The airspeed rectangle defines tape geometry and includes the 1 CSS px increase for wider range bands and scale-label clearance.
-* The central attitude region starts 1 CSS px farther right and is 1 CSS px narrower. Altitude retains its allocation.
-* GS stays at the bottom of the panel, with the same left edge and width as IAS.
-* The IAS background extends to GS without a gap.
-* IAS and altitude scales use clips of equal height over their complete existing allocations.
-* `[KT]` and `[FT]` are centered in their tape widths at panel height minus 40 CSS px, with the same 10 CSS px font and baseline.
-* The labels occupy the 16 CSS px band between each scale and footer, with 1 CSS px above and below their desktop glyph bounds.
-* `[KT]` remains visible during IAS loss; the fallback reference list has no additional unit heading.
-* GS uses the same opaque dark background and inset 1 CSS px frame as BARO, with the speed-trend magenta token `--turn` for its border.
-* GS and BARO occupy aligned 32 CSS px footers. Both tape backgrounds meet their footer without a gap and both footers meet the bottom panel edge.
-* The exterior three-pixel margins and safe-area handling remain unchanged.
+| Input state | Display behavior |
+| --- | --- |
+| Available value from 0 through 999 kt | Display the speed |
+| Value above 999 kt | Show `OVR`. Overflowing IAS leaves no visible numeric tape |
+| Unavailable value | Show `X`. Missing IAS leaves no visible numeric tape |
 
-The tape and readouts use these display rules:
+* TAS and GS availability remain independent.
+* Validation accepts finite nonnegative speeds above the display limit.
+
+### IAS tape and rolling digits
 
 * Tape spacing is 4 CSS px/kt, with major labels every 10 kt and minor ticks every 2 kt.
 * The scale and rolling digits use fractional received IAS without rounding the input to whole knots.
 * Screen-space clipping hides readings outside the tape rectangle and its unit label.
 * The fixed opaque window clips three rolling digit columns.
 * Leading zeros are blank.
-* Units roll from fractional IAS.
-* Higher columns roll during the final knot before a decimal carry.
-* GS uses a separate labelled readout, rounded to the nearest knot with halves rounded up.
-* GS has no visible unit suffix; its accessible label retains knots.
-* GS label and value share 13 CSS px, weight-600 text, with a common vertical center and three-pixel left/right padding.
 
-Availability and lifecycle remain independent:
+Units roll from fractional IAS. Higher columns roll during the final knot before a decimal carry.
 
-* Display values span 0–999 kt.
-* Above 999 kt, show `OVR`.
-* Unavailable values show `X`.
-* Neither missing nor overflowing IAS leaves a visible numeric tape.
-* TAS and GS availability remain independent.
-* No independent animation, timer, interpolation, or client-generated flight values are used.
+### Ground-speed readout and unit labels
+
+* GS uses a separate labeled readout, rounded to the nearest knot with halves rounded up.
+* GS has no visible unit suffix. Its accessible label retains knots.
+* `[KT]` remains visible during IAS loss. The fallback reference list has no additional unit heading.
 
 ## Implementation
 
+### Composition and visual object interfaces
+
 `airspeed/index.js` composes IAS, TAS, and GS once, exposing `resize(layout)` and `render(frame)`:
 
-* Compute the shared GS panel position once per resize.
-* Pass `layout.airspeed` and the shared position to IAS.
-* Pass `{ x, y, width }` to GS and the top-left `{ x, y, width, height }` allocation to TAS.
-* Select IAS/profile/acceleration and TAS/GS from the complete frame during render.
-* Keep coherent IAS readings and child geometry in IAS.
-* Keep GS state, rounding, and geometry in GS.
+| Operation or owner | Responsibility |
+| --- | --- |
+| Composition resize | Compute the shared GS panel position once per resize. Pass `layout.airspeed` and the shared position to IAS |
+| GS resize input | Pass `{ x, y, width }` |
+| TAS resize input | Pass the top-left `{ x, y, width, height }` allocation |
+| Composition render | Select IAS/profile/acceleration and TAS/GS from the complete frame |
+| IAS | Keep coherent IAS readings and child geometry |
+| GS | Keep GS state, rounding, and geometry |
 
 The following objects implement IAS and GS. [Ranges/references](airspeed-indications.md#composition-and-visual-object-interfaces) and [TAS](true-airspeed.md#visual-object-interface) document their own interfaces.
 
@@ -68,49 +63,9 @@ The following objects implement IAS and GS. [Ranges/references](airspeed-indicat
 | Readout: `createReadout(defs, iasHost, warnings)` | Exclusive digit clip, window, columns, unit, IAS warning | Readout geometry and unit position | IAS reading and fallback-reference flag |
 | GS: `createGroundSpeed(parent, warnings)` | Independent GS group/background/label/value and warning | `{ x, y, width }` | GS value |
 
-Ownership and availability remain local:
-
-* IAS owns the clip shared by tape and reference markers.
-* Readout owns its exclusive digit clip.
-* IAS, TAS, GS, profile, and acceleration availability remain independent.
-* Every frame resets relevant warning, visibility, unit, fallback, and trend states, including missing data.
-
-### Local calculations and constants
-
-The speed objects keep calculations with their visual implementations:
-
-| Module | Calculations and constants |
-| --- | --- |
-| `airspeed/ias.js` | IAS readings, `speedIndications`, and child geometry |
-| `airspeed/ground-speed.js` | GS state, rounding, and geometry |
-| `airspeed/readout.js` | `rollingDigits` and local `DIGIT_HEIGHT` of 22 px |
-
-IAS child geometry and GS geometry stay inside their owning resize operations.
-The [range and reference objects](airspeed-indications.md#implementation) own their calculations and tape constants.
-[TAS](true-airspeed.md#implementation) owns its independent reading and top-strip geometry.
-
-### Shared speed helpers
-
-`airspeed/helpers.js` exports only `MAX_SPEED`, `speedState`, and `tapeOffset` for actual shared rules:
-
-| Rule | Consumers / value |
-| --- | --- |
-| `speedState` | IAS, TAS, and GS |
-| `tapeOffset` | Tape and references, using 4 px/kt |
-| `MAX_SPEED` | Speed classification, tape, and references |
-
-### Validation and display limits
-
-* Validation accepts finite nonnegative speeds above the display limit.
-* The 999 kt limit, `OVR`, and six-second prediction belong to airspeed calculations.
-
-### Factory interface
-
 | Factory | Returned operations |
 | --- | --- |
 | `createAirspeed(instrument, layers)` in `airspeed/index.js` | `resize(layout)`, `render(frame)` |
-
-### Object composition
 
 ```text
 Airspeed
@@ -122,14 +77,61 @@ Airspeed
 `-- Ground speed
 ```
 
-### Layers and local clips
+### Calculations and shared helpers
+
+* The 999 kt limit, `OVR`, and six-second prediction belong to airspeed calculations.
+
+#### Local calculations and constants
+
+The speed objects keep calculations with their visual implementations:
+
+| Module | Calculations and constants |
+| --- | --- |
+| `airspeed/ias.js` | IAS readings, `speedIndications`, and child geometry |
+| `airspeed/ground-speed.js` | GS state, rounding, and geometry |
+| `airspeed/readout.js` | `rollingDigits` and local `DIGIT_HEIGHT` of 22 px |
+
+* IAS child geometry and GS geometry stay inside their owning resize operations.
+* The [range and reference objects](airspeed-indications.md#implementation) own their calculations and tape constants.
+* [TAS](true-airspeed.md#implementation) owns its independent reading and top-strip geometry.
+
+#### Shared speed helpers
+
+`airspeed/helpers.js` exports the shared speed rules:
+
+| Rule | Consumers / value |
+| --- | --- |
+| `speedState` | IAS, TAS, and GS |
+| `tapeOffset` | Tape and references, using 4 px/kt |
+| `MAX_SPEED` | Speed classification, tape, and references |
+| `maximumSpeed` | IAS and tape. Select the lower available positive finite VNE or redline, or `null` when neither is available |
+
+### Geometry, layers, clipping, and paint order
+
+| Element | Geometry or layer contract |
+| --- | --- |
+| Layers | IAS, TAS, and GS use layer 1. |
+| Failure and overflow marks | IAS and GS local failure and overflow marks use layer 4. TAS marks stay inside its opaque layer-1 field. |
+| Airspeed allocation | The airspeed rectangle defines tape geometry and includes the 1 CSS px increase for wider range bands and scale-label clearance. |
+| Adjacent allocations | The central attitude region starts 1 CSS px farther right and is 1 CSS px narrower. Altitude retains its allocation. |
+| GS position | GS stays at the bottom of the panel, with the same left edge and width as IAS. |
+| IAS background | The IAS background extends to GS without a gap. |
+| Scale clips | IAS and altitude scales use clips of equal height over their complete existing allocations. |
+| Unit-label coordinates | `[KT]` and `[FT]` are centered in their tape widths at panel height minus 40 CSS px. Both use the same 10 CSS px font and baseline. |
+| Unit-label clearance | The labels occupy the 16 CSS px band between each scale and footer. Preserve 1 CSS px above and below their desktop glyph bounds. |
+| GS appearance | GS uses the same opaque dark background and inset 1 CSS px frame as BARO. Its border uses the speed-trend magenta token `--turn`. |
+| Footer alignment | GS and BARO occupy aligned 32 CSS px footers. Both tape backgrounds meet their footer without a gap and both footers meet the bottom panel edge. |
+| Panel margins | The exterior three-pixel margins and safe-area handling remain unchanged. |
+| GS typography | GS label and value share 13 CSS px, weight-600 text, with a common vertical center and three-pixel left/right padding. |
+
+The clips retain their visual-object owners:
 
 | Element | Layer / origin | Clip and owner |
 | --- | --- | --- |
 | IAS scale/ranges/trend/reference markers | Layer 1, IAS origin | IAS shared tape clip |
 | IAS rolling digits | Layer 1, IAS origin | Readout exclusive digit clip |
 
-### SVG paint order
+SVG paint order follows these sequences:
 
 | Scope | Order |
 | --- | --- |
@@ -137,31 +139,34 @@ Airspeed
 | IAS | Background, tape, window, digits, unit, fallback references |
 | Airspeed layer | IAS, GS, TAS |
 
-### SVG and CSS state
+### Frame updates, SVG state, and accessibility
+
+* IAS root state updates run before its child indication updates on every frame.
+* TAS and GS update their states independently.
+* IAS, TAS, and GS reset warning colors, availability, local X/OVR marks, profile visibility, and fallback flags.
+* Accessible speed labels retain current values or unavailable/overflow states.
+* IAS, TAS, GS, profile, and acceleration availability remain independent.
+* Every frame resets relevant warning, visibility, unit, fallback, and trend states, including missing data.
+* No independent animation, timer, interpolation, or client-generated flight values are used.
 
 | State written by JavaScript | CSS or presentation effect |
 | --- | --- |
 | IAS `data-state` | Hide tape and digits unless the value is available |
 | IAS `data-overspeed`, `data-approaching` | Red pointer window and yellow predictive-warning digits |
 
-### Frame state and accessibility
+### Retired asset routes
 
-* IAS root state updates run before its child indication updates on every frame.
-* TAS and GS update their states independently.
-* IAS, TAS, and GS reset warning colors, availability, local X/OVR marks, profile visibility, and fallback flags.
-* Accessible speed labels retain current values or unavailable/overflow states.
+| Retired route | Current owner |
+| --- | --- |
+| `/airspeed.js` | `/airspeed/index.js` and its visual objects |
+| `/airspeed/calculations.js` | Pure functions in the implementing visual objects |
 
 ## Testing
 
 Use the [validation scope matrix](../testing/index.md#validation-by-change-scope) and the feature checks below.
 Shared browser commands, phone setup, and evidence rules are linked from those checks.
 
-For changes to footer geometry, also apply the [shared GS/BARO and unit-label checks](altitude.md#tape-footers-and-source-formatted-baro).
-
-### Airspeed and ground-speed acceptance
-
-Run the automated checks and both desktop browser scripts for airspeed implementation changes.
-Check these speed-specific behaviors:
+### Acceptance scenarios
 
 | Area | Expected behavior |
 | --- | --- |
@@ -172,14 +177,30 @@ Check these speed-specific behaviors:
 | Display limits | 999 kt is readable. 999.01 and 1000 kt show `OVR`. Missing or invalid values show `X`, never zero |
 | GS | 137.6 kt shows 138 beside the GS label, without a visible unit suffix. The accessible description retains knots |
 | Lifecycle | Equal fresh speeds renew validity. Resize preserves the accepted deadline. Reconnect/resume require a new fresh sample without duplicate subscriptions |
-| Integration | Two SSE clients receive matching IAS/GS. The compiled Rust demo supplies 150/170 kt during its hold segment |
-| Fixture | Items 1/4/8 use the real speed module, without duplicate speed readouts. All other included items also use production modules |
 
-#### Real-phone checks
+### Automated checks and independent fixtures
 
-Apply the [shared phone procedure](../testing/devices.md#real-phone-acceptance-procedure) for #21.
-Check IAS acceleration, hold, deceleration, and distinct GS, including digits, ticks, and local failure marks against sky and ground.
-Use [phone fixtures](../testing/devices.md#phone-fixture-setup) for controlled rollover, limits, and failures with these inputs:
+Run the automated checks and both desktop browser scripts for airspeed implementation changes.
+
+| Suite or fixture | Coverage and method |
+| --- | --- |
+| Speed calculations | `tests/airspeed.test.mjs` and `tests/airspeed-ranges.test.mjs` import readout, tape, references, IAS, and shared speed helpers directly |
+| `tests/fixtures/speed-samples.json` | Independent IAS/GS checkpoints during acceleration, hold, deceleration, and repeat |
+
+### Desktop geometry and availability transitions
+
+For changes to footer geometry, also apply the [shared GS/BARO and unit-label checks](altitude.md#tape-footers-and-source-formatted-baro).
+
+Regression #56 covers composition recovery:
+
+* Repeat IAS/profile loss during resize and both recovery orders.
+* Verify independently painted GS and reset warnings/references.
+
+### Real-phone checks
+
+1. Apply the [shared phone procedure](../testing/devices.md#real-phone-acceptance-procedure) for #21.
+2. Check IAS acceleration, hold, deceleration, and distinct GS. Inspect digits, ticks, and local failure marks against sky and ground.
+3. Use [phone fixtures](../testing/devices.md#phone-fixture-setup) for controlled rollover, limits, and failures with these inputs:
 
 ```json
 {"ias_kt":99.5,"gs_kt":137.6}
@@ -191,39 +212,24 @@ Use [phone fixtures](../testing/devices.md#phone-fixture-setup) for controlled r
 {"hold":false}
 ```
 
-### Focused calculation and lifecycle suites
+Record device results through the shared phone procedure.
 
-| Suite | Coverage / method |
-| --- | --- |
-| Speed calculations | `tests/airspeed.test.mjs` and `tests/airspeed-ranges.test.mjs` import readout, tape, references, IAS, and shared speed helpers directly |
+> Desktop checks do not establish real-phone acceptance.
 
-### Independent fixtures
-
-| Fixture / suite | Coverage |
-| --- | --- |
-| `tests/fixtures/speed-samples.json` | Independent IAS/GS checkpoints during acceleration, hold, deceleration, and repeat |
-
-### Demo behavior
-
-Use the [Demo speed cycle](../sources/demo.md#speed-cycle-and-profile) for source values and timing.
-Check zero-speed presentation, acceleration, the IAS 150 / GS 170 kt hold, deceleration, and return to zero.
-
-### Composition recovery regression
-
-| Owner | Checks |
-| --- | --- |
-| #56: recovery | Repeat IAS/profile loss during resize and both recovery orders, with independently painted GS and reset warnings/references |
-
-### Retired asset routes
-
-| Retired route | Current owner |
-| --- | --- |
-| `/airspeed.js` | `/airspeed/index.js` and its visual objects |
-| `/airspeed/calculations.js` | Pure functions in the implementing visual objects |
-
-### Full-panel geometry
+### Full-panel integration
 
 Check IAS rolling digits and speed boundaries during full-panel acceptance.
+
+| Area | Expected behavior |
+| --- | --- |
+| Integration | Two SSE clients receive matching IAS/GS. The compiled Rust demo supplies 150/170 kt during its hold segment |
+| Fixture | Items 1/4/8 use the real speed module, without duplicate speed readouts. All other included items also use production modules |
+
+#### Demo behavior
+
+Use the [Demo speed cycle](../sources/demo.md#speed-cycle-and-profile) for source values and timing.
+
+Check zero-speed presentation, acceleration, the IAS 150 / GS 170 kt hold, deceleration, and return to zero.
 
 ## Rationale and regression lessons
 

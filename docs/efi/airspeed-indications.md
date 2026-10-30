@@ -96,7 +96,7 @@ Fallback references preserve configured values when IAS is unavailable:
 
 ### Composition and visual object interfaces
 
-The [airspeed composition](airspeed.md#implementation) supplies IAS readings and child geometry.
+The [airspeed composition](airspeed.md#composition-and-visual-object-interfaces) supplies IAS readings and child geometry.
 Tape and reference interfaces are defined on this page.
 
 | Owner | Responsibility |

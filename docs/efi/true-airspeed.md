@@ -30,7 +30,7 @@ Real-device acceptance belongs to [#66](https://github.com/LeszekKantorek/msfs20
 
 `airspeed/true-airspeed.js` owns TAS state, rounding, top-strip geometry, SVG, and local availability.
 It uses `speedState` from the [shared speed helpers](airspeed.md#shared-speed-helpers) for speed classification.
-`airspeed/index.js` passes the top-left allocation and the current TAS value through the [airspeed composition](airspeed.md#implementation).
+`airspeed/index.js` passes the top-left allocation and the current TAS value through the [airspeed composition](airspeed.md#composition-and-visual-object-interfaces).
 Each render replaces the reading and uses the common frame deadline.
 
 ### Visual object interface
