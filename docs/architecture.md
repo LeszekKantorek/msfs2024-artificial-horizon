@@ -16,15 +16,10 @@ flowchart LR
     HTTP -->|SSE telemetry| Phone
 ```
 
-* Select exactly one provider at startup.
-* Keep acquisition, normalization, current state, and HTTP in one Rust process.
-* Put reusable logic in one library package and thin executables in `src/bin/`.
-* Add packages or services only for a concrete need.
-
-Application composition connects either Demo or the existing SimConnect receiver to the same HTTP/SSE server.
-The server receives a prepared subscription and does not select or start providers.
-
-> A provider failure must never select demo automatically.
+The SimConnect provider receives flight data from MSFS2024, while Demo generates synthetic samples.
+The selected provider publishes normalized telemetry into one validated latest snapshot.
+The Rust HTTP server delivers that state to the mobile browser through SSE and serves the browser assets.
+The browser validates incoming telemetry and renders the flight instruments.
 
 ## Boundaries
 
@@ -39,6 +34,22 @@ The server receives a prepared subscription and does not select or start provide
 | State distribution | One latest snapshot, bounded memory, shared clients |
 | HTTP | Static assets, health, SSE framing, subscriptions, graceful shutdown |
 | Browser | Message validation, instrument/status display, receive timeout |
+
+### Process and source ownership
+
+The application follows these composition constraints:
+
+* Select exactly one provider at startup.
+* Keep acquisition, normalization, current state, and HTTP in one Rust process.
+* Put reusable logic in one library package and thin executables in `src/bin/`.
+* Add packages or services only for a concrete need.
+
+Application composition connects either Demo or the existing SimConnect receiver to the same HTTP/SSE server.
+The server receives a prepared subscription and does not select or start providers.
+
+> A provider failure must never select Demo automatically.
+
+### Platform and native integration
 
 * Keep SDK types outside telemetry and HTTP.
 * Give a dedicated worker ownership of native SimConnect calls and message processing.
