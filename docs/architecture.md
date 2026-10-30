@@ -16,10 +16,13 @@ flowchart LR
     HTTP -->|SSE telemetry| Phone
 ```
 
-The SimConnect provider receives flight data from MSFS2024, while Demo generates synthetic samples.
-The selected provider publishes normalized telemetry into one validated latest snapshot.
-The Rust HTTP server delivers that state to the mobile browser through SSE and serves the browser assets.
-The browser validates incoming telemetry and renders the flight instruments.
+The diagram shows two source paths feeding the same browser display:
+
+* The SimConnect provider receives flight data from MSFS2024.
+* Demo generates synthetic samples.
+* The selected provider publishes normalized telemetry into one validated latest snapshot.
+* The Rust HTTP server delivers that state through SSE. It also serves the browser assets.
+* The mobile browser validates incoming telemetry and renders the flight instruments.
 
 ## Boundaries
 
