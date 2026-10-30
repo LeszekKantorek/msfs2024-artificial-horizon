@@ -200,7 +200,7 @@ Heading boundaries and validation follow these rules:
 * The producer still wraps after 3960 samples.
 * The altitude cycle remains 198 seconds.
 * `tests/fixtures/heading-samples.json` supplies independent checkpoints, including both north crossings.
-* See [heading presentation](../efi/heading.md#presentation) and [heading acceptance](../efi/heading.md#heading-acceptance).
+* See [heading presentation](../efi/heading.md#presentation) and [heading acceptance](../efi/heading.md#testing).
 
 ## Validation
 
