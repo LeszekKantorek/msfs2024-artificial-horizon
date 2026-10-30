@@ -1,7 +1,5 @@
 # Independently available airspeed data
 
-Date: 2026-10-28
-
 Status: Accepted through the supplied implementation plan.
 
 ## Context
