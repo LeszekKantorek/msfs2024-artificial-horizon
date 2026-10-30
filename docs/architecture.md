@@ -77,7 +77,8 @@ The repository groups the application by responsibility:
 | `web/` | Browser telemetry and instrument presentation |
 | `tests/` | Integration tests and fixtures |
 
-The [backend implementation guide](backend/index.md) explains the data flow and component collaboration.
+The [backend implementation guide](backend-implementation.md) explains the data flow and component collaboration.
+The [telemetry sources guide](sources/index.md) describes Demo and SimConnect.
 The [panel presentation](efi/index.md) describes the browser module boundaries.
 The source tree is authoritative for individual files.
 
@@ -94,7 +95,7 @@ The library exposes `Config`, `Source`, and `Server`. Application composition se
 * SimConnect configuration permits an absolute DLL override and an exact log file. The resolver uses the same executable-relative default for CLI and library calls before opening a log or loading native code.
 * HTTP availability does not depend on DLL loading, simulator connection, or flight readiness.
 
-[ADR 0007](adr/0007-application-composition.md) defines the composition and public server boundary. The [SimConnect guide](backend/simconnect.md) describes source configuration and diagnostics. Run the application using the [README procedure](../README.md#start-the-demo).
+[ADR 0007](adr/0007-application-composition.md) defines the composition and public server boundary. The [SimConnect guide](sources/simconnect.md) describes source configuration and diagnostics. Run the application using the [README procedure](../README.md#start-the-demo).
 
 Web assets are embedded in the release binary. The client uses a relative, same-origin SSE URL and requires no CDN, frontend package manager, CORS policy, or database.
 
@@ -133,9 +134,9 @@ One native worker owns acquisition and publishes normalized telemetry through th
 The demo does not load SimConnect, and a SimConnect failure never selects the demo.
 Windows builds do not require SDK headers or binaries.
 
-The [SimConnect mode](backend/simconnect.md) publishes attitude through the same HTTP/SSE and browser contract as Demo.
+The [SimConnect mode](sources/simconnect.md) publishes attitude through the same HTTP/SSE and browser contract as Demo.
 [ADR 0007](adr/0007-application-composition.md) defines composition, source-failure isolation and shutdown.
-The [SimConnect guide](backend/simconnect.md#live-publication-evidence) describes the tested scope and evidence limits.
+The [SimConnect guide](sources/simconnect.md#live-publication-evidence) describes the tested scope and evidence limits.
 [Issue #8](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/8) covers packaging and DLL distribution conditions.
 Runtime loading does not establish redistribution permission.
 
