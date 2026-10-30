@@ -12,8 +12,9 @@ Select the source for the affected boundary:
 | Fields, independent validity, and pressure meaning | [Altitude telemetry](../docs/telemetry-contract.md#optional-altitude-and-pressure-setting) |
 | Demo sweeps and pressure cycles | [Demo altitude and pressure](../docs/sources/demo.md#altitude-and-pressure) |
 | Tape spacing, drums, display limits, BARO formatting, and availability | [Altitude presentation](../docs/efi/altitude.md#presentation) |
-| Automated and device checks | [Altitude acceptance](../docs/efi/altitude.md#altitude-and-pressure-acceptance), [footer and BARO checks](../docs/efi/altitude.md#tape-footers-and-source-formatted-baro) |
+| Automated and device checks | [Altitude acceptance](../docs/efi/altitude.md#acceptance-scenarios), [footer and BARO checks](../docs/efi/altitude.md#tape-footers-and-source-formatted-baro) |
 | Public evidence and accepted scope | [Issue #23](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/23), [PR #59](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/pull/59), [footer revision #65](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/65) |
+| Live BARO checks and evidence limits | [Live acceptance](../docs/efi/altitude.md#live-baro-acceptance) |
 | Implementation and accepted tape/BARO refinements | [Implementation](../docs/efi/altitude.md#implementation), [rationale and regression lessons](../docs/efi/altitude.md#rationale-and-regression-lessons) |
 
 ### G1000 STD source limitation
