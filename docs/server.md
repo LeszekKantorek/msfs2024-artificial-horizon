@@ -1,12 +1,17 @@
 # HTTP and SSE server
 
 The server delivers embedded browser assets, HTTP liveness, and current telemetry from a caller-supplied subscription.
-It owns the listening socket and client connections. Application composition owns acquisition and coordinated shutdown.
+Ownership is divided between the server and application composition:
+
+* The server owns the listening socket and client connections.
+* Application composition owns acquisition and coordinated shutdown.
 
 ## Public API
 
-The crate root re-exports `Server`, `ServerError`, `Config`, and `ConfigError`.
-Routers are public through the `http` module.
+The public interfaces have these entry points:
+
+* The crate root re-exports `Server`, `ServerError`, `Config`, and `ConfigError`.
+* Routers are public through the `http` module.
 
 | Interface | Contract |
 | --- | --- |
@@ -18,9 +23,11 @@ Routers are public through the `http` module.
 | `ServerError::Config` | Invalid HTTP settings, rejected before binding |
 | `ServerError::Bind` | Listener failure with the requested address and underlying I/O error |
 
-The shutdown future for `Server::run` must be `Send + 'static`.
-Only the CLI handles process signals.
-A router alone does not install socket deadlines. `Server::run` wraps accepted sockets with the connection adapter.
+Server execution follows these constraints:
+
+* The shutdown future for `Server::run` must be `Send + 'static`.
+* Only the CLI handles process signals.
+* A router alone does not install socket deadlines. `Server::run` wraps accepted sockets with the connection adapter.
 
 ### Configuration
 
@@ -31,10 +38,12 @@ A router alone does not install socket deadlines. `Server::run` wraps accepted s
 | `listen_address` | `IpAddr` | `127.0.0.1` | Reject multicast and `255.255.255.255`. Accept interface or wildcard addresses subject to OS binding |
 | `port` | `u16` | `8080` | Accept `1` through `65535`; reject zero |
 
-`Config::validate()` applies the same checks to library and CLI callers.
-`Config::socket_address()` combines the address and port.
-Provider selection is separate from HTTP configuration.
-Use the [deployment constraints](architecture.md#deployment) before exposing the server to a LAN.
+Configuration follows these rules:
+
+* `Config::validate()` applies the same checks to library and CLI callers.
+* `Config::socket_address()` combines the address and port.
+* Provider selection is separate from HTTP configuration.
+* Use the [deployment constraints](architecture.md#deployment) before exposing the server to a LAN.
 
 ## HTTP routes
 
@@ -46,6 +55,8 @@ Use the [deployment constraints](architecture.md#deployment) before exposing the
 | `GET /health` | `200` JSON `{"status":"ok"}` when HTTP is serving |
 | `GET /api/v1/events` | `200 text/event-stream` when using the telemetry router |
 | Unregistered asset path | `404`, without a compatibility facade |
+
+Routes and streaming responses follow these constraints:
 
 * Health reports HTTP liveness, independently of simulator connection, source freshness, or flight readiness.
 * Static routes remain independent of telemetry. The static router does not expose SSE.
@@ -62,6 +73,8 @@ Use the [deployment constraints](architecture.md#deployment) before exposing the
 | `assets::router()` | Register the table through one loop |
 | `src/http/mod.rs` | Compose assets and health, then add telemetry when supplied |
 
+Asset delivery follows these constraints:
+
 * Embed assets in the binary. Runtime delivery requires no working-directory files or frontend build.
 * Preserve paths, MIME types, status codes, response bodies, and GET/HEAD behavior when reorganizing asset code.
 * Replaced root and calculation-module routes return 404 without compatibility facades.
@@ -73,9 +86,12 @@ The [EFI composition guide](efi/composition.md#delivery-boundaries) owns browser
 ## SSE delivery
 
 Each request owns a clone of the subscription to the single acquisition channel.
-The first body frame uses `snapshot_and_update()` to read and acknowledge the current state atomically.
-Later frames await `changed()` and serialize the newest snapshot.
-This prevents duplicate delivery of a pending initial publication.
+Delivery follows this sequence:
+
+1. The first body frame uses `snapshot_and_update()` to read and acknowledge the current state atomically. This prevents duplicate delivery of a pending initial publication.
+2. Later frames await `changed()` and serialize the newest snapshot.
+
+Publication and transport remain separate:
 
 * Add no per-client acquisition tasks, sample queues, or cached wire snapshots.
 * Pull from the latest-value channel when the HTTP body is polled. Slow consumers can skip intermediate publications.
@@ -84,10 +100,12 @@ This prevents duplicate delivery of a pending initial publication.
 * Keep source state separate from transport state. An idle or unavailable source does not end a session.
 * A closed source channel ends the stream after pending state.
 
-The [wire framing contract](telemetry-contract.md#framing) defines the event name, heartbeat, retry, and envelope rules.
-Application composition retains the channel after producer termination, so existing streams stay open with unavailable data.
-A new client receives the same current unavailable state.
-See the [application lifecycle](architecture.md#application-lifecycle) for startup ordering and failure supervision.
+Framing and application lifecycle follow these contracts:
+
+* The [wire framing contract](telemetry-contract.md#framing) defines the event name, heartbeat, retry, and envelope rules.
+* Application composition retains the channel after producer termination, so existing streams stay open with unavailable data.
+* A new client receives the same current unavailable state.
+* See the [application lifecycle](architecture.md#application-lifecycle) for startup ordering and failure supervision.
 
 ### Connection shutdown
 
@@ -103,13 +121,17 @@ The connection adapter enforces deadlines below the SSE body because a body time
 | Repeated shutdown signal | Preserve the first deadline |
 | Dropped or aborted running server future | Signal connection shutdown through the shutdown guard |
 
+Shutdown ownership and evidence have these limits:
+
 * Server shutdown closes HTTP connections without owning or stopping an externally supplied publisher.
 * Application shutdown signals both server and provider and collects their outcomes independently.
 * Native worker joining has separate constraints. The five-second HTTP grace does not bound a blocked native call.
 * Socket progress does not establish phone receipt. Finite HTTP/TCP buffers can still add transit delay.
 
-[ADR 0002](adr/0002-sse-connection-lifecycle.md) records the socket design and alternatives.
-[ADR 0007](adr/0007-application-composition.md) supersedes its original producer ownership and fatal-source-failure behavior.
+The lifecycle decisions have these scopes:
+
+* [ADR 0002](adr/0002-sse-connection-lifecycle.md) records the socket design and alternatives.
+* [ADR 0007](adr/0007-application-composition.md) supersedes ADR 0002's original producer ownership and fatal-source-failure behavior.
 
 ## Validation
 
@@ -122,4 +144,4 @@ Use the [validation scope matrix](testing/index.md#validation-by-change-scope) t
 | Embedded routes and browser imports | [EFI validation](testing/pfd.md) |
 | Phone recovery and delivery observations | [Real-phone procedure](testing/devices.md#real-phone-acceptance-procedure) |
 
-Automated socket and fixture checks do not establish actual phone latency, integrated simulator acceptance, or long-duration memory behavior.
+> Automated socket and fixture checks do not establish actual phone latency, integrated simulator acceptance, or long-duration memory behavior.
