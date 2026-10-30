@@ -60,7 +60,7 @@ Availability and lifecycle remain independent:
 * Keep coherent IAS readings and child geometry in IAS.
 * Keep GS state, rounding, and geometry in GS.
 
-The following objects implement IAS and GS. [Ranges/references](airspeed-indications.md#visual-object-interfaces) and [TAS](true-airspeed.md#visual-object-interface) document their own interfaces.
+The following objects implement IAS and GS. [Ranges/references](airspeed-indications.md#composition-and-visual-object-interfaces) and [TAS](true-airspeed.md#visual-object-interface) document their own interfaces.
 
 | Object / factory | Owned content | Resize input | Render input |
 | --- | --- | --- | --- |

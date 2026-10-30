@@ -1,21 +1,29 @@
 # Airspeed ranges, references, and trend
 
-Configured speed bands, V-speed markers, six-second prediction, and VNE warnings.
+Configured speed bands, V-speed markers, six-second prediction, and maximum-speed warnings.
 
 ## Requirements
 
-Use the explicit source profile and source acceleration. Missing configuration must not select a demo default.
-Keep profile loss and acceleration loss independent. Predictions must not replace current IAS.
-The demo profile is fictional and does not establish real-aircraft performance.
+* Use the explicit source profile and source acceleration. Missing configuration must not select a demo default.
+* Keep profile loss and acceleration loss independent. Predictions must not replace current IAS.
+
+> The demo profile is fictional and does not establish real-aircraft performance.
 
 Wire definitions: [telemetry contract](../telemetry-contract.md#optional-airspeed-ranges-and-trend).
 
 ## Presentation
 
-The same module consumes the optional profile and acceleration from the complete frame.
-It creates all new SVG nodes once. Resize and render retain the existing panel lifecycle.
-Each threshold and reference is independently optional. A range requires only its own valid ordered bounds. Each R/X/Y/G marker requires only its corresponding reference. Missing members clear their previous indications without affecting unrelated content. An unavailable profile hides ranges, references, and maximum-speed warnings while preserving valid IAS, GS, attitude, and acceleration-based trend.
-Unavailable acceleration hides the trend and predictive warning while preserving valid ranges, references, and actual overspeed.
+### Input availability and partial loss
+
+| Input or change | Presentation contract |
+| --- | --- |
+| Individual threshold or reference | Each threshold and reference is independently optional. Missing members clear their previous indications without affecting unrelated content. |
+| Range bounds | A range requires only its own valid ordered bounds. |
+| R/X/Y/G reference | Each marker requires only its corresponding reference. |
+| Unavailable profile | Hide ranges, references, and maximum-speed warnings. Preserve valid IAS, GS, attitude, and acceleration-based trend. |
+| Unavailable acceleration | Hide the trend and predictive warning. Preserve valid ranges, references, and actual overspeed. |
+
+### Speed ranges
 
 | Range | Bounds in configured knots | Demo bounds |
 | --- | --- | --- |
@@ -23,20 +31,12 @@ Unavailable acceleration hides the trend and predictive warning while preserving
 | White flap range | `[VS0, VFE)` | 40-85 |
 | Green normal range | `[VS1, VNO)` | 50-110 |
 | Yellow caution range | `[VNO, VNE)` | 110-140 |
-| Red/white overspeed | `[VNE, infinity)` | From 140 |
+| Red/white overspeed | `[effective maximum, infinity)` | From 140 |
 
-Range and readout geometry use these rules:
+The white flap range occupies the left half of the shared lane. Green remains visible on the right where both ranges apply.
+The effective maximum clips configured ranges as defined under [maximum-speed warnings](#maximum-speed-warnings).
 
-* Red, green, yellow, and red/white striped ranges share one 6 CSS px lane at local `x = tape width - 18`.
-* The white flap range overlays the left half of that lane at 3 CSS px width. Green remains visible on the right where both ranges apply.
-* The white range paints after the other range rectangles. Each range retains its configured speed interval, including the white-only interval below VS1.
-* Ticks and scale labels sit 2 CSS px farther left to clear the wider lane. The airspeed allocation is 1 CSS px wider to contain three-digit labels on the narrowest tape.
-* Tick lengths, stroke widths, and label sizes remain unchanged.
-* All ranges use the IAS scale's 4 CSS px/kt spacing and screen-space clip.
-* The fixed window remains opaque.
-* Digits use 17 px text to preserve three readable columns beside the new indications at minimum width.
-
-Reference letters map to configured speeds:
+### Reference markers and fallback values
 
 | Letter | Reference | Synthetic demo value |
 | --- | --- | --- |
@@ -57,48 +57,60 @@ Tape references preserve their anchors and readable labels:
 
 Fallback references preserve configured values when IAS is unavailable:
 
-* Missing or invalid IAS shows a local `X` and the configured references in four rows above GS, with the persistent `[KT]` footer label. Only available references occupy their assigned R/X/Y/G rows; missing values never become zero.
-* Bottom reference values round to 0.1 kt.
-* Positive values below 0.1 show `<0.1`.
-* Values above 999 show `OVR`.
+* Missing or invalid IAS shows a local `X` and the configured references in four rows above GS. The `[KT]` footer label persists.
+* Only available references occupy their assigned R/X/Y/G rows. Missing values never become zero.
 * The development badge hides while fallback references occupy its area.
 
-Trend uses source-supplied acceleration:
+| Configured reference value | Bottom readout |
+| --- | --- |
+| Positive value below 0.1 kt | `<0.1` |
+| Value from 0.1 through 999 kt | Round to 0.1 kt |
+| Value above 999 kt | `OVR` |
+
+### Trend prediction
 
 * Zero IAS is valid.
 * `OVR` retains its existing meaning and hides the numeric tape and trend.
 * The browser calculates the six-second prediction as `IAS + 6 * ias_acceleration_ktps` from source-supplied acceleration.
 * The magenta vector extends from current IAS toward that prediction.
-* Its 3 CSS px stroke remains centered at local `x = tape width - 10`, leaving 0.5 CSS px between its painted edge and the range lane.
-* Its stroke stays inside the tape clip.
 * A negative prediction remains a calculation result and clips at the tape boundary.
 * Constant speed, missing acceleration, or a non-finite prediction hides the vector.
 * Missing configuration does not prevent a valid trend calculation.
 * The prediction never replaces or extrapolates the current IAS reading.
 
-The effective maximum is the lower available value of fixed VNE and current redline. Current redline does not supply the upper bound of the yellow caution range. Normal ranges are clipped at the effective maximum.
+### Maximum-speed warnings
 
-The effective maximum changes the current-speed window and digits independently:
+* The effective maximum is the lower available value of fixed VNE and current redline.
+* Current redline does not supply the upper bound of the yellow caution range.
+* Normal ranges are clipped at the effective maximum.
 
-* At or above the effective maximum, the pointer window becomes red, including when the readout shows `OVR`.
-* Below VNE, a rising prediction at or above the effective maximum makes the actual-speed digits yellow.
-* A new frame resets colors when the corresponding condition or required data is absent.
-* Loss of both VNE and redline removes both maximum-speed warnings.
-* Acceleration loss removes only the predictive warning.
-
-All range and trend content stays inside the IAS allocation.
-The airspeed column, including TAS and GS, gains 1 CSS px. Its width is `clamp(panel width * 0.16, 50, 84) + 1`.
-The central attitude region starts 1 CSS px farther right and is 1 CSS px narrower. The altitude allocation remains unchanged.
+| Condition | Warning behavior |
+| --- | --- |
+| IAS at or above the effective maximum | The pointer window becomes red, including when the readout shows `OVR`. |
+| IAS below the effective maximum and a rising prediction at or above that maximum | The actual-speed digits become yellow. |
+| Corresponding condition or required data absent in a new frame | Reset the affected colors. |
+| Both VNE and redline lost | Remove both maximum-speed warnings. |
+| Acceleration lost | Remove only the predictive warning. |
 
 ## Implementation
 
+### Composition and visual object interfaces
+
 The [airspeed composition](airspeed.md#implementation) supplies IAS readings and child geometry.
 Tape and reference interfaces are defined on this page.
-The tape owns named `renderRanges` and `renderTrend` operations.
-References owns markers, leaders, and fallback values, keeping each reference in one record.
-IAS selects coherent readings, profile, and prediction for its children.
 
-Calculations and constants remain with their visual objects:
+| Owner | Responsibility |
+| --- | --- |
+| Tape | Own named `renderRanges` and `renderTrend` operations |
+| References | Own markers, leaders, and fallback values, keeping each reference in one record |
+| IAS | Select coherent readings, profile, and prediction for its children |
+
+| Object / factory | Owned content | Resize input | Render input |
+| --- | --- | --- | --- |
+| Tape: `createTape(defs, tapeHost)` | Barber pattern, scale/ticks/labels, named range rectangles, trend | Tape geometry | IAS reading, profile, prediction |
+| References: `createReferences(tapeHost, iasHost)` | Markers/leaders and bottom group/unit/values | Tape geometry | IAS reading, profile, fallback-reference flag |
+
+### Calculations and shared helpers
 
 | Module | Calculations and constants |
 | --- | --- |
@@ -108,35 +120,57 @@ Calculations and constants remain with their visual objects:
 Tape and references share `tapeOffset` at 4 px/kt and use `MAX_SPEED` from `airspeed/helpers.js`.
 The [shared speed helpers](airspeed.md#shared-speed-helpers) section lists all consumers.
 
-### SVG and CSS state
+### Geometry, clipping, and paint order
+
+Range and readout geometry use these rules:
+
+* Red, green, yellow, and red/white striped ranges share one 6 CSS px lane at local `x = tape width - 18`.
+* The white flap range overlays the left half of that lane at 3 CSS px width. Green remains visible on the right where both ranges apply.
+* The white range paints after the other range rectangles. Each range retains its configured speed interval, including the white-only interval below VS1.
+* Ticks and scale labels sit 2 CSS px farther left to clear the wider lane. The airspeed allocation is 1 CSS px wider to contain three-digit labels on the narrowest tape.
+* Tick lengths, stroke widths, and label sizes remain unchanged.
+* All ranges use the IAS scale's 4 CSS px/kt spacing and screen-space clip.
+* The fixed window remains opaque.
+* Digits use 17 px text to preserve three readable columns beside the new indications at minimum width.
+
+Trend geometry follows these constraints:
+
+* Its 3 CSS px stroke remains centered at local `x = tape width - 10`, leaving 0.5 CSS px between its painted edge and the range lane.
+* Its stroke stays inside the tape clip.
+
+Reference paint order preserves label visibility:
+
+* Reference leaders precede markers so labels remain above their leaders.
+
+Panel allocation follows these rules:
+
+* All range and trend content stays inside the IAS allocation.
+* The airspeed column, including TAS and GS, gains 1 CSS px. Its width is `clamp(panel width * 0.16, 50, 84) + 1`.
+* The central attitude region starts 1 CSS px farther right and is 1 CSS px narrower. The altitude allocation remains unchanged.
+
+Cross-instrument geometry retains these constraints:
+
+* Airspeed and altitude trends share a 3 CSS px stroke and magenta color on their existing axes.
+* Airspeed bands and both trends use the specified stroke widths. Ticks and labels move 2 CSS px left for clearance.
+* The airspeed column, including TAS and GS, uses `clamp(width × 0.16, 50, 84) + 1` CSS px. The additional pixel contains three-digit scale labels after the 2 px shift. The altitude allocation remains independent, and the horizon uses the remaining width. Scale labels use a 12 px font.
+
+### Frame updates, SVG state, and accessibility
+
+* The airspeed module consumes the optional profile and acceleration from the complete frame.
+* It creates all new SVG nodes once. Resize and render retain the existing panel lifecycle.
+* Trend updates clear the path and prediction attribute when no prediction exists.
+* Reference labels retain exact configured values despite compact visible text.
 
 | State written by JavaScript | CSS or presentation effect |
 | --- | --- |
 | Bottom references `data-visible` | Hide the development badge while fallback references occupy its area |
-
-### Reference and trend state
-
-* Reference leaders precede markers so labels remain above their leaders.
-* Trend updates clear the path and prediction attribute when no prediction exists.
-* Reference labels retain exact configured values despite compact visible text.
-
-### Visual object interfaces
-
-| Object / factory | Owned content | Resize input | Render input |
-| --- | --- | --- | --- |
-| Tape: `createTape(defs, tapeHost)` | Barber pattern, scale/ticks/labels, named range rectangles, trend | Tape geometry | IAS reading, profile, prediction |
-| References: `createReferences(tapeHost, iasHost)` | Markers/leaders and bottom group/unit/values | Tape geometry | IAS reading, profile, fallback-reference flag |
 
 ## Testing
 
 Use the [validation scope matrix](../testing/index.md#validation-by-change-scope) and the feature checks below.
 Shared browser commands, phone setup, and evidence rules are linked from those checks.
 
-### Airspeed ranges, references, and trend acceptance
-
-Run the automated checks and both browser scripts for range, reference, or trend implementation changes.
-The #22 checks use the existing demo and fixture transport.
-The [contract](../telemetry-contract.md#optional-airspeed-ranges-and-trend) defines the fictional profile and source acceleration.
+### Acceptance scenarios
 
 | Area | Expected behavior |
 | --- | --- |
@@ -154,11 +188,27 @@ The [contract](../telemetry-contract.md#optional-airspeed-ranges-and-trend) defi
 | Reference edge cases | Fractional, tiny, and above-display-range values retain exact accessible values with bounded fallback text. Coincident and nearby labels stay separate with exact leader anchors |
 | Partial loss | Invalid profile retains IAS/GS and a valid trend. Invalid acceleration retains profile and actual overspeed. Old snapshots retain attitude |
 | Freshness | Irregular message receipt does not change source acceleration. Equal fresh samples renew validity. Expiry before painting and resize preserve the original deadline |
-| Integration | Two SSE clients receive matching profile and acceleration. The release binary demonstrates a predictive warning, actual overspeed, hold with hidden trend, and restart recovery |
 | Layout | Three IAS columns fit the window. Marker strokes stay within the tape. Fallback rows stay below local X and above GS at the minimum viewport |
 
-The browser checks use independent expected positions and inspect computed colors, SVG bounds, clipping edges, and node identity.
-Screenshots include `speed-approaching-vne.png`, `speed-at-vne.png`, and fallback views under `.local/pfd-browser/`.
+### Automated checks and independent fixtures
+
+* Run the automated checks and both browser scripts for range, reference, or trend implementation changes.
+* The #22 checks use the existing demo and fixture transport.
+* The [contract](../telemetry-contract.md#optional-airspeed-ranges-and-trend) defines profile fields and source acceleration.
+* The [Demo speed cycle and profile](../sources/demo.md#speed-cycle-and-profile) defines the fictional configuration.
+
+| Fixture / suite | Coverage |
+| --- | --- |
+| `tests/fixtures/airspeed-profile.json` | Independent fictional thresholds and named reference configuration |
+| `tests/fixtures/speed-indications.json` | Source acceleration and six-second predictions at segment boundaries |
+
+* `tests/airspeed-ranges.test.mjs` covers redline-only prediction: IAS 95 kt and +1 kt/s predict 101 kt against a 100 kt redline.
+* The same suite checks actual overspeed at the redline and selection of VNE when it is lower than redline.
+
+### Desktop geometry and availability transitions
+
+* The browser checks use independent expected positions and inspect computed colors, SVG bounds, clipping edges, and node identity.
+* Screenshots include `speed-approaching-vne.png`, `speed-at-vne.png`, and fallback views under `.local/pfd-browser/`.
 
 `checkAirspeedAvailabilityTransitions` in `tests/browser/checks/airspeed-browser-checks.mjs` checks 40 loss/resize/recovery transitions through `pfd-browser.mjs`:
 
@@ -176,13 +226,26 @@ Transition assertions preserve independent availability and state resets:
 * Production SVG node identity remains stable.
 * The development fixture reuses the same production nodes and geometry operations.
 
-#### Real-phone checks for #22
+#### Range lane and trend geometry
 
-Apply the [shared phone procedure](../testing/devices.md#real-phone-acceptance-procedure) for #22.
-Inspect ranges, references, acceleration/deceleration, yellow predictive digits, red overspeed pointer, and constant-speed trend removal.
-Use [phone fixtures](../testing/devices.md#phone-fixture-setup) for the controlled cases below in both `/` and `/layout.html`.
+The #64 geometry checks require these comparisons:
 
-Enter these JSON lines into the fixture terminal. The fixture initially supplies the configured profile.
+* Preserve matched before/after screenshots for `/` and `/layout.html` at 320x240, 320x480, and 568x240 CSS px.
+* Use IAS 25, 65, 95, 123, and 150 kt to cover low speed, white/green overlap, normal, caution, and striped overspeed.
+* Include rising and falling trends, range thresholds, readout overlap, and clipping at both tape edges.
+* Inspect painted bounds, labels, and V-speed references after resize settles.
+* Confirm that other EFI stroke widths remain unchanged.
+* The IAS/TAS/GS column gains 1 CSS px, the horizon loses 1 CSS px, and the altitude allocation remains unchanged.
+
+### Real-phone checks
+
+#### Ranges, references, and warnings
+
+* Apply the [shared phone procedure](../testing/devices.md#real-phone-acceptance-procedure) for #22.
+* Inspect ranges, references, acceleration/deceleration, yellow predictive digits, red overspeed pointer, and constant-speed trend removal.
+* Use [phone fixtures](../testing/devices.md#phone-fixture-setup) for the controlled cases below in both `/` and `/layout.html`.
+
+The fixture initially supplies the configured profile. Enter these JSON lines into the fixture terminal:
 
 ```json
 {"ias_kt":55,"ias_acceleration_ktps":0}
@@ -199,35 +262,27 @@ Enter these JSON lines into the fixture terminal. The fixture initially supplies
 {"attitude_only":true}
 ```
 
-Restart the fixture to restore its initial profile after the partial-loss checks.
-Check immediately below and above the five thresholds with the same input mechanism.
-Real-phone acceptance requires passing records from both devices. Desktop checks provide separate evidence.
+* Restart the fixture to restore its initial profile after the partial-loss checks.
+* Check immediately below and above the five thresholds with the same input mechanism.
+* Real-phone acceptance requires passing records from both devices. Desktop checks provide separate evidence.
 
-#### Wider airspeed bands acceptance (#64)
+#### Range lane and trend geometry on phones
 
-Preserve matched before/after screenshots for `/` and `/layout.html` at 320x240, 320x480, and 568x240 CSS px.
-Use IAS 25, 65, 95, 123, and 150 kt to cover low speed, white/green overlap, normal, caution, and striped overspeed.
-Include rising and falling trends, range thresholds, readout overlap, and clipping at both tape edges.
-Inspect painted bounds, labels, and V-speed references after resize settles.
-Confirm that other EFI stroke widths remain unchanged.
-The IAS/TAS/GS column gains 1 CSS px, the horizon loses 1 CSS px, and the altitude allocation remains unchanged.
+For #64, complete these device checks:
 
-Apply the [shared phone procedure](../testing/devices.md#real-phone-acceptance-procedure) on actual iOS Safari and Android Chrome.
-Inspect the 6 px range lane, its 3 px white left overlay, and matching 3 px airspeed and altitude trends.
-Check portrait/landscape, rotation, browser bars, safe areas, connection loss, and lock/background recovery.
-Record the tested revision, device model, OS/browser versions, date, viewport, observations, and pass/fail.
-Leave device acceptance unconfirmed until both records pass.
+* Apply the [shared phone procedure](../testing/devices.md#real-phone-acceptance-procedure) on actual iOS Safari and Android Chrome.
+* Inspect the 6 px range lane, its 3 px white left overlay, and matching 3 px airspeed and altitude trends.
+* Check portrait/landscape, rotation, browser bars, safe areas, connection loss, and lock/background recovery.
+* Record the tested revision, device model, OS/browser versions, date, viewport, observations, and pass/fail.
+* Leave device acceptance unconfirmed until both records pass.
 
-### Independent fixtures
-
-| Fixture / suite | Coverage |
-| --- | --- |
-| `tests/fixtures/airspeed-profile.json` | Independent fictional thresholds and named reference configuration |
-| `tests/fixtures/speed-indications.json` | Source acceleration and six-second predictions at segment boundaries |
-
-### Full-panel geometry
+### Full-panel integration
 
 Check the six-second speed trend during full-panel acceptance.
+
+| Area | Expected behavior |
+| --- | --- |
+| Integration | Two SSE clients receive matching profile and acceleration. The release binary demonstrates a predictive warning, actual overspeed, hold with hidden trend, and restart recovery |
 
 ## Rationale and regression lessons
 
@@ -237,14 +292,29 @@ Check the six-second speed trend during full-panel acceptance.
 * Preserve the resulting 16 px fallback rows and 8 px marker clearance when changing reference geometry.
 * Preserve exact accessible values and speed anchors when compacting or displacing fractional, tiny, large, coincident, or nearby references.
 * Preserve the single 6 CSS px range lane and white 3 CSS px left overlay. Paint white last because green must not hide the flap range where their intervals overlap.
-* Airspeed and altitude trends share a 3 CSS px stroke and magenta color on their existing axes.
-* Airspeed bands and both trends use the specified stroke widths. Ticks and labels move 2 CSS px left for clearance.
-* The airspeed column, including TAS and GS, uses `clamp(width × 0.16, 50, 84) + 1` CSS px. The additional pixel contains three-digit scale labels after the 2 px shift. The altitude allocation remains independent, and the horizon uses the remaining width. Scale labels use a 12 px font.
 
-Evidence limit: desktop validation does not establish real iOS Safari or Android Chrome acceptance.
+## Evidence and limitations
 
-### Live trend and visibility findings
+> Desktop validation does not establish real iOS Safari or Android Chrome acceptance.
 
-[Issue #87](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/87): replay showed acceleration spikes with adjacent acquisitions. The native provider uses a bounded 0.5-second window and the browser retains the six-second prediction. Receipt timing is a possible cause, not a confirmed diagnosis. Replay does not establish perceived live behavior.
+### Live trend findings
 
-[Issue #90](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/90): distinguish missing inputs from valid indications outside the clipped tape. Missing thresholds hide only dependent bands; never fabricate references. Logs do not establish screen visibility, and the session did not reach redline. Edge markers or persistent readouts remain proposals.
+[Issue #87](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/87) records these findings:
+
+| Category | Finding |
+| --- | --- |
+| Replay observation | Acceleration spikes with adjacent acquisitions |
+| Current behavior | The native provider uses a bounded 0.5-second window and the browser retains the six-second prediction |
+| Hypothesis | Receipt timing is a possible cause, not a confirmed diagnosis |
+| Evidence limit | Replay does not establish perceived live behavior |
+
+### Visibility findings
+
+[Issue #90](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/90) separates availability from visibility:
+
+| Category | Finding or constraint |
+| --- | --- |
+| Interpretation | Distinguish missing inputs from valid indications outside the clipped tape |
+| Required behavior | Missing thresholds hide only dependent bands. Never fabricate references |
+| Evidence limits | Logs do not establish screen visibility, and the session did not reach redline |
+| Proposals | Edge markers or persistent readouts remain proposals |
