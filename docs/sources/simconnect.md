@@ -96,19 +96,23 @@ Application startup and source-failure isolation follow the [application lifecyc
 
 ## Runtime and resource lifecycle
 
-Native integration follows these decisions:
+The provider uses minimal manual bindings and runtime DLL loading within the existing Rust package.
 
-* The provider uses minimal manual bindings and runtime DLL loading within the existing Rust package.
-* [ADR 0006](../adr/0006-simconnect-manual-ffi.md) defines binding, loading, and publication decisions.
-* [ADR 0007](../adr/0007-application-composition.md) defines composition, source-failure isolation, and shutdown.
+| Decision | Scope |
+| --- | --- |
+| [ADR 0006](../adr/0006-simconnect-manual-ffi.md) | Binding, loading, and publication |
+| [ADR 0007](../adr/0007-application-composition.md) | Composition, source-failure isolation, and shutdown |
 
 ### Application availability
 
-Application startup follows these rules:
+The application starts components in this order:
 
-* The application validates configuration, creates the waiting telemetry channel, and binds HTTP before starting the producer.
-* A busy port prevents acquisition from starting.
-* HTTP does not wait for DLL loading or simulator readiness.
+1. Validate configuration.
+2. Create the waiting telemetry channel.
+3. Bind HTTP. A busy port prevents acquisition from starting.
+4. Start the producer.
+
+HTTP does not wait for DLL loading or simulator readiness.
 
 | Condition | Application behavior |
 | --- | --- |
@@ -117,11 +121,11 @@ Application startup follows these rules:
 | DLL load or export failure | HTTP stays available. Console diagnostics identify the failure without Demo fallback |
 | Ctrl+C or HTTP failure | Signal both components and wait for their results. HTTP failure returns an application error |
 
-Diagnostics and HTTP health remain separate from telemetry availability:
-
-* Detailed source errors stay in console diagnostics and the optional log.
-* The SSE schema is unchanged.
-* `/health` reports HTTP liveness, independently of simulator availability.
+| Output | Contract |
+| --- | --- |
+| Console diagnostics and optional log | Contain detailed source errors |
+| SSE | Unchanged schema |
+| `/health` | HTTP liveness, independently of simulator availability |
 
 ### Reception and resource ownership
 
@@ -210,14 +214,20 @@ Optional fields follow these availability rules:
 Speed profiles have these source limits:
 
 * VS0, VS1, project minimum rotation, and current redline are independently available. Other thresholds and references remain absent unless their exact standard source is established.
-* Minimum rotation is a project reference, not a Vr calculated by an FMS based on weight and flap position.
-* General climb speed is not substituted for Vy. Current flap limits are not substituted for fixed VFE. Dynamic redline is not fixed VNE.
 * No aircraft configuration reader or addon-specific avionics bridge is provided.
 
-IAS trend follows these timing rules:
+| Observation or reference | Interpretation limit |
+| --- | --- |
+| Minimum rotation | Project reference, not a Vr calculated by an FMS based on weight and flap position |
+| General climb speed | Not substituted for Vy |
+| Current flap limits | Not substituted for fixed VFE |
+| Dynamic redline | Not fixed VNE |
 
-* IAS trend uses a bounded 0.5-second window of valid worker acquisitions and their monotonic receive times.
-* The trend describes knots per real second, including when simulation speed differs from real time.
+IAS trend uses a bounded 0.5-second window of valid worker acquisitions and their monotonic receive times.
+The trend describes knots per real second, including when simulation speed differs from real time.
+
+Trend freshness and history follow these rules:
+
 * Acceleration expires after 0.5 seconds without a new IAS sample. IAS retains its independent one-second freshness.
 * The history resets after invalid input, a stale gap, pause, or flight change.
 
@@ -277,17 +287,17 @@ Reference: [SimConnect request API](https://docs.flightsimulator.com/msfs2024/re
 | `dispatch_summary` | Packet and empty-dispatch counts, notification and timeout wakes, last HRESULT, silence |
 | `notification_release`, `library_release`, `session_end` | Cleanup attempts and final session outcome |
 
-Interpret records with these constraints:
-
-* `attitude_raw.data.sample_index` counts samples per connection.
-* `repeated_radians` contains the extra pitch and bank probes.
-* Unit comparisons retain a `0.00001`-degree tolerance, differences, bit equality, and bounds from repeated reads.
-* `affects_sample_validity: false` separates diagnostic observations from primary-radian validation.
-* Rejected attitudes retain `message: "Unknown"` and `rejected_simobject_data`. The latter contains received headers, expected request and definition IDs, and match results. Rejected payloads are not interpreted.
-* Other unsupported message IDs remain `Unknown`.
-* Schema 4 records `live_publication_enabled: true` and bounded `validation_scope`.
-* Retained `candidate_state` and `candidate_attitude` names use `candidate_is_hypothesis: false`.
-* Historical schemas 1–3 withheld candidate live. Schema 2 could reject cross-unit disagreements.
+| Record field or case | Interpretation |
+| --- | --- |
+| Sample index | `attitude_raw.data.sample_index` counts samples per connection. |
+| Repeated-radian probes | `repeated_radians` contains the extra pitch and bank probes. |
+| Unit comparisons | Unit comparisons retain a `0.00001`-degree tolerance, differences, bit equality, and bounds from repeated reads. |
+| Diagnostic validity | `affects_sample_validity: false` separates diagnostic observations from primary-radian validation. |
+| Rejected attitudes | Rejected attitudes retain `message: "Unknown"` and `rejected_simobject_data`. The latter contains received headers, expected request and definition IDs, and match results. Rejected payloads are not interpreted. |
+| Unsupported messages | Other unsupported message IDs remain `Unknown`. |
+| Current schema | Schema 4 records `live_publication_enabled: true` and bounded `validation_scope`. |
+| Retained candidate names | Retained `candidate_state` and `candidate_attitude` names use `candidate_is_hypothesis: false`. |
+| Historical schemas | Historical schemas 1–3 withheld candidate live. Schema 2 could reject cross-unit disagreements. |
 
 ## Testing
 
@@ -378,16 +388,15 @@ Fault tests and acceptance records have these requirements:
 
 ### Live-publication evidence
 
-Live-publication evidence has these boundaries:
+| Evidence or acceptance | Coverage or limit |
+| --- | --- |
+| #5 records | Cover the receiver and local publication. Do not establish the integrated HTTP/SSE-to-EFI path or actual behavior on iOS and Android. |
+| Integrated simulator and mobile acceptance | Require separate runs against the final application artifact |
 
-* The #5 records cover the receiver and local publication.
-* The #5 records do not establish the integrated HTTP/SSE-to-EFI path or actual behavior on iOS and Android.
-* Integrated simulator and mobile acceptance require separate runs against the final application artifact.
-
-Acceptance and rationale have separate sources:
-
-* [#5 acceptance record](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5): tested environments and evidence limits.
-* [ADR 0006](../adr/0006-simconnect-manual-ffi.md#live-publication-amendment): decision to enable live publication.
+| Source | Purpose |
+| --- | --- |
+| [#5 acceptance record](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) | Tested environments and evidence limits |
+| [ADR 0006](../adr/0006-simconnect-manual-ffi.md#live-publication-amendment) | Decision to enable live publication |
 
 ### Recorded evidence limits
 
