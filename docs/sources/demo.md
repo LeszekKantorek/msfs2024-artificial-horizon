@@ -25,16 +25,20 @@ The `providers::demo` module exposes these functions:
 | `speed_profile()` | Return validated fictional thresholds and named references |
 | `normalize_degrees(pitch, roll)` | Wrap finite roll to `[-180, 180)` and validate attitude. Return `TelemetryError` for invalid input |
 
-`run` owns separate sample and freshness intervals of 50 ms and skips missed ticks.
-Each sample tick publishes `sample(index)` and advances the index modulo 3960.
-Freshness ticks call `Publisher::expire()` even without sample publication.
-Shutdown takes priority over both ticks.
-The caller supplies a channel identified as `Source::Demo` and owns HTTP and process signals.
+The runtime and its caller have these responsibilities:
+
+* `run` owns separate sample and freshness intervals of 50 ms and skips missed ticks.
+* Each sample tick publishes `sample(index)` and advances the index modulo 3960.
+* Freshness ticks call `Publisher::expire()` even without sample publication.
+* Shutdown takes priority over both ticks.
+* The caller supplies a channel identified as `Source::Demo` and owns HTTP and process signals.
 
 ## Scenario timing
 
-Scenario times describe nominal playback at 20 Hz.
-The runtime advances by published sample index, so skipped ticks do not advance the scenario by elapsed wall time.
+Playback follows these timing rules:
+
+* Scenario times describe nominal playback at 20 Hz.
+* The runtime advances by published sample index, so skipped ticks do not advance the scenario by elapsed wall time.
 
 | Scenario | Samples | Nominal period |
 | --- | --- | --- |
@@ -42,9 +46,11 @@ The runtime advances by published sample index, so skipped ticks do not advance 
 | Altitude, selected altitude, and vertical speed | 3960 | 198 seconds |
 | Standalone `attitude` helper | 280 | 14 seconds |
 
-The full producer cycle contains eleven short cycles.
-The standalone seven-pose helper remains compatible with its original fixtures.
-`sample` adds two extreme-pitch poses without changing that helper.
+Scenario cycles preserve these relationships:
+
+* The full producer cycle contains eleven short cycles.
+* The standalone seven-pose helper remains compatible with its original fixtures.
+* `sample` adds two extreme-pitch poses without changing that helper.
 
 ### Attitude and coordinated turn
 
@@ -76,11 +82,15 @@ IAS, TAS, and GS share one fraction while retaining independent values:
 | 10–16 s | Linear decrease to zero | -25 kt/s |
 | 16–18 s | Zero | 0 kt/s |
 
-Multiply the fraction by 150 kt for IAS, 160 kt for TAS, and 170 kt for GS.
-At sample `step = index % 360`, the increasing fraction is `(step - 40) / 120`.
-The decreasing fraction is `(320 - step) / 120`.
+Speed calculations use these values:
 
-The demo supplies this fictional configuration. These values do not establish the performance of a real aircraft.
+* Multiply the fraction by 150 kt for IAS, 160 kt for TAS, and 170 kt for GS.
+* At sample `step = index % 360`, the increasing fraction is `(step - 40) / 120`.
+* The decreasing fraction is `(320 - step) / 120`.
+
+The demo supplies this fictional configuration:
+
+> These values do not establish the performance of a real aircraft.
 
 ```json
 {
@@ -93,8 +103,11 @@ The demo supplies this fictional configuration. These values do not establish th
 }
 ```
 
-The demo acceleration is +25 kt/s during acceleration, zero during hold and rest, and -25 kt/s during deceleration.
-At each segment boundary, the new segment supplies the acceleration. Independent fixtures reside in `airspeed-profile.json` and `speed-indications.json`.
+Acceleration and fixtures follow these rules:
+
+* The demo acceleration is +25 kt/s during acceleration, zero during hold and rest, and -25 kt/s during deceleration.
+* At each segment boundary, the new segment supplies the acceleration.
+* Independent fixtures reside in `airspeed-profile.json` and `speed-indications.json`.
 
 ### Altitude and pressure
 
@@ -110,13 +123,13 @@ Each sweep includes both endpoints over 60 samples:
 | 12–15 s | 1020 | 980 |
 | 15–18 s | 120 | -120 |
 
-The producer cycles through `29.92 inHg`, `30.12 inHg`, and `29.72 inHg` at six-second intervals.
-Transitions between sweeps are synthetic test cases, not a physical flight trajectory or a pressure-response model.
+Pressure, display references, and validation follow these rules:
 
-`tests/fixtures/altitude-samples.json` contains independent checkpoints and cycle boundaries.
-[Altitude presentation](../efi/altitude.md#presentation) defines the display limits and rolling drums.
-
-Numeric BARO uses the same pressure as the legacy text, converted with `HPA_PER_INHG`.
+* The producer cycles through `29.92 inHg`, `30.12 inHg`, and `29.72 inHg` at six-second intervals.
+* Transitions between sweeps are synthetic test cases, not a physical flight trajectory or a pressure-response model.
+* `tests/fixtures/altitude-samples.json` contains independent checkpoints and cycle boundaries.
+* [Altitude presentation](../efi/altitude.md#presentation) defines the display limits and rolling drums.
+* Numeric BARO uses the same pressure as the legacy text, converted with `HPA_PER_INHG`.
 
 ### Selected-altitude phases
 
@@ -139,9 +152,11 @@ Each 90-second approach uses this schedule:
 | 12 seconds | Depart by 300 ft |
 | 6 seconds | Hold deviation |
 
-Attitude, speeds, coordinated-turn values, and pressure retain their existing 18-second cycles.
-`tests/fixtures/selected-altitude-samples.json` contains independent checkpoints.
-See [selected-altitude presentation](../efi/selected-altitude.md#presentation-and-alert-behavior) for alert rules and display validity.
+Related cycles and validation remain shared:
+
+* Attitude, speeds, coordinated-turn values, and pressure retain their existing 18-second cycles.
+* `tests/fixtures/selected-altitude-samples.json` contains independent checkpoints.
+* See [selected-altitude presentation](../efi/selected-altitude.md#presentation-and-alert-behavior) for alert rules and display validity.
 
 ### Vertical speed
 
@@ -155,12 +170,12 @@ The demo derives altitude and VSI from shared segment definitions:
 | First sample after artificial jumps | Omitted at cycle indices 0, 60, 120, 240, 300, 360, and 2160 |
 | Continuous phase boundary | Rate of the phase beginning at that sample |
 
-`tests/fixtures/vertical-speed-samples.json` supplies independent segment and jump checkpoints.
-See [VSI presentation](../efi/vertical-speed.md#presentation) for display limits and [VSI acceptance](../efi/vertical-speed.md#vertical-speed-acceptance) for checks.
+VSI calculations and validation use these rules:
 
-The six sweeps use `(end - start) / 59` feet per sample to include both endpoints.
-Multiplying that slope by 1200 samples per minute yields the analytic VSI.
-Target phases interpolate over their sample intervals and use the next phase's value at each boundary.
+* `tests/fixtures/vertical-speed-samples.json` supplies independent segment and jump checkpoints.
+* See [VSI presentation](../efi/vertical-speed.md#presentation) for display limits and [VSI acceptance](../efi/vertical-speed.md#vertical-speed-acceptance) for checks.
+* The six sweeps use `(end - start) / 59` feet per sample to include both endpoints. Multiply that slope by 1200 samples per minute to obtain the analytic VSI.
+* Target phases interpolate over their sample intervals and use the next phase's value at each boundary.
 
 ### Heading cycle
 
@@ -178,15 +193,21 @@ The heading demo repeats every 360 samples at 20 Hz, following source turn rate:
 | 14-16 seconds | 354 degrees | Unavailable | 0 deg/s |
 | 16-18 seconds | 354 degrees | 354 degrees | 0 deg/s |
 
-Phase boundaries use the starting phase's values. Normalization wraps calculations into `[0, 360)`.
-The producer still wraps after 3960 samples. The altitude cycle remains 198 seconds.
-`tests/fixtures/heading-samples.json` supplies independent checkpoints, including both north crossings.
-See [heading presentation](../efi/heading.md#presentation) and [heading acceptance](../efi/heading.md#heading-acceptance).
+Heading boundaries and validation follow these rules:
+
+* Phase boundaries use the starting phase's values.
+* Normalization wraps calculations into `[0, 360)`.
+* The producer still wraps after 3960 samples.
+* The altitude cycle remains 198 seconds.
+* `tests/fixtures/heading-samples.json` supplies independent checkpoints, including both north crossings.
+* See [heading presentation](../efi/heading.md#presentation) and [heading acceptance](../efi/heading.md#heading-acceptance).
 
 ## Validation
 
-Use the [telemetry and Demo checks](../testing/runtime.md#telemetry-and-demo-checks) for publication, lifecycle, and fixture validation.
-Use [EFI feature pages](../efi/index.md#features) for instrument-specific rendering and acceptance scenarios.
+Select validation by scope:
+
+* Use the [telemetry and Demo checks](../testing/runtime.md#telemetry-and-demo-checks) for publication, lifecycle, and fixture validation.
+* Use [EFI feature pages](../efi/index.md#features) for instrument-specific rendering and acceptance scenarios.
 
 | Boundary | Expected evidence |
 | --- | --- |
@@ -197,5 +218,6 @@ Use [EFI feature pages](../efi/index.md#features) for instrument-specific render
 | Multiple clients | Matching source samples from one acquisition channel, without per-client scenarios |
 | Compatibility | Attitude-only publication clears optional indications; old v1 snapshots remain usable |
 
-Demo and desktop evidence do not establish simulator compatibility or actual iOS Safari and Android Chrome acceptance.
+> Demo and desktop evidence do not establish simulator compatibility or actual iOS Safari and Android Chrome acceptance.
+
 Keep those results separate under the [device procedure](../testing/devices.md#real-phone-acceptance-procedure).
