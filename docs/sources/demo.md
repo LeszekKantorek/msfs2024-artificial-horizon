@@ -156,7 +156,7 @@ Related cycles and validation remain shared:
 
 * Attitude, speeds, coordinated-turn values, and pressure retain their existing 18-second cycles.
 * `tests/fixtures/selected-altitude-samples.json` contains independent checkpoints.
-* See [selected-altitude presentation](../efi/selected-altitude.md#presentation-and-alert-behavior) for alert rules and display validity.
+* See [selected-altitude presentation](../efi/selected-altitude.md#presentation) for alert rules and display validity.
 
 ### Vertical speed
 

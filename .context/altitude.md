@@ -43,9 +43,9 @@ Select the source for the affected boundary:
 | --- | --- |
 | Optional target and freshness | [Selected-altitude telemetry](../docs/telemetry-contract.md#optional-selected-altitude) |
 | Shared altitude, target, and VSI phases | [Demo selected-altitude phases](../docs/sources/demo.md#selected-altitude-phases), [analytic VSI](../docs/sources/demo.md#vertical-speed) |
-| Capture, bug geometry, thresholds, flashing, and deviation | [Selected-altitude presentation](../docs/efi/selected-altitude.md#presentation-and-alert-behavior) |
+| Capture, bug geometry, thresholds, flashing, and deviation | [Selected-altitude presentation](../docs/efi/selected-altitude.md#presentation), [bug geometry](../docs/efi/selected-altitude.md#geometry-clipping-and-paint-order) |
 | Per-sample acceptance and timed rendering | [Panel lifecycle](../docs/efi/lifecycle.md#panel-interface-and-frame-lifecycle) |
-| Automated and actual-device checks | [Selected-altitude acceptance](../docs/efi/selected-altitude.md#selected-altitude-and-alert-acceptance) |
+| Automated and actual-device checks | [Selected-altitude acceptance](../docs/efi/selected-altitude.md#testing) |
 | Alert behavior, regression lessons, and decisions | [Implementation](../docs/efi/selected-altitude.md#implementation), [rationale](../docs/efi/selected-altitude.md#rationale-and-regression-lessons) |
 
 ## Vertical speed
