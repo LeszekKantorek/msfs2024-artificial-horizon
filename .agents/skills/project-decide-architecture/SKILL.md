@@ -36,7 +36,7 @@ Use criteria that affect the actual outcome.
 | Complexity and deployment | Which new processes, dependencies, protocols, or installation steps does the option require? | [ADR 0001 alternatives](../../../docs/adr/0001-rust-http-sse.md#alternatives-and-trade-offs) compare simpler and larger designs |
 | Lifecycle and failure behavior | How does the option handle stale data, slow clients, cancellation, and shutdown? | [ADR 0002](../../../docs/adr/0002-sse-connection-lifecycle.md) rejects body-only socket timeouts |
 | Compatibility and verification | Which wire, visual, accessibility, or module contract must remain valid? | [PFD boundary map](../../../.context/pfd-presentation.md#composition) links frame, clipping, ownership, and SVG contracts |
-| Exposure and distribution | Does the option change trust boundaries, network access, SDK obligations, or permissions? | [Security review](../../../.context/security-review.md), [SimConnect integration](../../../docs/architecture.md#simconnect-integration) |
+| Exposure and distribution | Does the option change trust boundaries, network access, SDK obligations, or permissions? | [Security review](../../../.context/security-review.md), [SimConnect integration](../../../docs/sources/simconnect.md) |
 | Reconsideration | What future requirement or evidence would invalidate the choice? | [ADR 0001](../../../docs/adr/0001-rust-http-sse.md) identifies remote access, commands, history, and scale as triggers |
 
 ## ADR and delivery records

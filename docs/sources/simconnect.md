@@ -9,11 +9,13 @@ User-aircraft flight instrument reception with optional diagnostics.
 | Runtime | Windows x64 MSVC. Use the [development environment](../../CONTRIBUTING.md#environment-setup) |
 | DLL | Official x64 `SimConnect.dll`, obtained separately |
 | Build | No SDK headers, import library, or installed simulator required |
-| Acquisition | One module and the caller-owned telemetry channel |
+| Acquisition | One native worker in the provider module within the existing Rust package. Publish normalized telemetry through the caller-owned channel |
 | Telemetry | Existing [states, validity, and freshness](../telemetry-contract.md#freshness-and-status) |
-| Scope | Available standard aircraft data through HTTP/SSE and EFI. Each optional indication is independent |
+| Scope | Standard aircraft attitude and available optional instrument data through the same HTTP/SSE and browser contract as Demo. Each optional indication is independent |
 | Distribution | Packaging and DLL redistribution conditions in [#8](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/8) |
 | Repository | No SDK files, installation paths, or generated diagnostics in Git |
+
+> Runtime DLL loading does not establish redistribution permission.
 
 ## Usage
 
@@ -91,6 +93,10 @@ The `providers::simconnect` module exports the acquisition interface independent
 Application startup and source-failure isolation follow the [application lifecycle](../architecture.md#server-and-browser-ownership).
 
 ## Implementation
+
+* The provider uses minimal manual bindings and runtime DLL loading within the existing Rust package.
+* [ADR 0006](../adr/0006-simconnect-manual-ffi.md) defines binding, loading, and publication decisions.
+* [ADR 0007](../adr/0007-application-composition.md) defines composition, source-failure isolation, and shutdown.
 
 ### Application availability
 

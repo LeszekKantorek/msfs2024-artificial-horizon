@@ -64,6 +64,8 @@ The application follows these composition constraints:
 * Keep SimConnect integration inside the Windows provider module.
 * Keep Windows tests and demo builds independent of the SDK.
 
+[ADR 0006](adr/0006-simconnect-manual-ffi.md) defines native binding, loading, and publication decisions.
+
 ### State distribution
 
 | Rule | Mechanism |
@@ -183,27 +185,6 @@ Delivery and presentation have separate owners:
 | Remote access | Requires a separate access-control/TLS decision |
 
 > `localhost` on a phone refers to the phone. Port forwarding and public hosting are outside MVP scope.
-
-## SimConnect integration
-
-SimConnect integration has these properties:
-
-* The provider uses minimal manual bindings and runtime DLL loading within the existing Rust package.
-* One native worker owns acquisition and publishes normalized telemetry through the caller-owned channel.
-* SimConnect publishes attitude and available optional instrument data through the same HTTP/SSE and browser contract as Demo.
-* Demo does not load SimConnect.
-* A SimConnect failure never selects Demo.
-* Windows builds do not require SDK headers or binaries.
-
-| Subject | Source |
-| --- | --- |
-| Binding, loading, and publication decisions | [ADR 0006](adr/0006-simconnect-manual-ffi.md) |
-| Composition, source-failure isolation, and shutdown | [ADR 0007](adr/0007-application-composition.md) |
-| Configuration, API, and implementation | [SimConnect guide](sources/simconnect.md) |
-| Tested scope and evidence limits | [Live-publication evidence](sources/simconnect.md#live-publication-evidence) |
-| Packaging and DLL distribution conditions | [Issue #8](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/8) |
-
-> Runtime loading does not establish redistribution permission.
 
 ## Browser boundary
 
