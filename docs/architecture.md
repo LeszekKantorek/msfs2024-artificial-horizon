@@ -70,10 +70,14 @@ The repository groups the application by responsibility:
 | Path | Responsibility |
 | --- | --- |
 | `src/bin/` | CLI entry point |
-| `src/` | Application composition, configuration, telemetry, providers, and HTTP |
+| `src/application.rs` | Source selection, channel lifetime, startup, and shutdown |
+| `src/providers/` | Demo and SimConnect acquisition |
+| `src/telemetry.rs` | Validated model, latest state, and subscriptions |
+| `src/http/` | Embedded assets, health, and SSE delivery |
 | `web/` | Browser telemetry and instrument presentation |
 | `tests/` | Integration tests and fixtures |
 
+The [backend implementation guide](backend/index.md) explains the data flow and component collaboration.
 The [panel presentation](efi/index.md) describes the browser module boundaries.
 The source tree is authoritative for individual files.
 
@@ -166,7 +170,15 @@ Browser: SSE -> validate -> latest sample -> animation frame -> SVG/DOM
 
 The channel fixes source identity for its lifetime and distributes the latest value without a history queue. A provider publishes live only for fresh samples from an active, unpaused source; otherwise it publishes an explicit unavailable state. An independent 50 ms freshness tick expires samples even without callbacks. Snapshot reads calculate age and suppress expired live attitude, including between ticks. Internal sample timestamps are not serialized.
 
-The first SSE event reads and acknowledges the current publication atomically to avoid duplicate delivery. The [telemetry contract](telemetry-contract.md#freshness-and-status) defines freshness and wire behavior. The [SSE decision](adr/0002-sse-connection-lifecycle.md) defines delivery and connection limits.
+The subscription operations have distinct acknowledgment semantics:
+
+| Operation | Contract |
+| --- | --- |
+| `snapshot()` | Read the current state without acknowledging a pending change |
+| `snapshot_and_update()` | Read and acknowledge the current publication atomically |
+| `changed().await` | Wait for and acknowledge the newest publication, skipping intermediate values |
+
+The first SSE event uses `snapshot_and_update()` to avoid duplicate delivery. The [telemetry contract](telemetry-contract.md#freshness-and-status) defines freshness and wire behavior. The [SSE decision](adr/0002-sse-connection-lifecycle.md) defines delivery and connection limits.
 
 ### Server and browser ownership
 
