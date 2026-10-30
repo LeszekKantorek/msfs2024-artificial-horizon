@@ -6,11 +6,11 @@ User-aircraft flight instrument reception with optional diagnostics.
 
 | Requirement | Contract |
 | --- | --- |
-| Runtime | Windows x64 MSVC. Use the [development environment](../CONTRIBUTING.md#environment-setup) |
+| Runtime | Windows x64 MSVC. Use the [development environment](../../CONTRIBUTING.md#environment-setup) |
 | DLL | Official x64 `SimConnect.dll`, obtained separately |
 | Build | No SDK headers, import library, or installed simulator required |
 | Acquisition | One module and the caller-owned telemetry channel |
-| Telemetry | Existing [states, validity, and freshness](telemetry-contract.md#freshness-and-status) |
+| Telemetry | Existing [states, validity, and freshness](../telemetry-contract.md#freshness-and-status) |
 | Scope | Available standard aircraft data through HTTP/SSE and EFI. Each optional indication is independent |
 | Distribution | Packaging and DLL redistribution conditions in [#8](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/8) |
 | Repository | No SDK files, installation paths, or generated diagnostics in Git |
@@ -29,7 +29,7 @@ User-aircraft flight instrument reception with optional diagnostics.
 
 3. Check the console for the selected DLL and connection status.
    An active, unpaused flight produces `State: live` after a new sample passes availability checks.
-4. Open the printed HTTP URL. For phone access, use the [private LAN setup](../README.md#use-your-phone) with `--source simconnect`.
+4. Open the printed HTTP URL. For phone access, use the [private LAN setup](../../README.md#use-your-phone) with `--source simconnect`.
 5. Press `Ctrl+C` to close HTTP clients and wait for native reception to stop.
 
 For a DLL in another directory, provide its absolute path:
@@ -126,7 +126,7 @@ Attitude acquisition uses these conventions:
 
 * Request `PLANE PITCH DEGREES` and `PLANE BANK DEGREES` as `FLOAT64` radians once per simulator frame, without `CHANGED`.
 * Use the [native radian unit](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simvars/aircraft-simvars/aircraft-miscellaneous-variables/) despite the variable names.
-* Negate both signs, convert locally to degrees, and wrap bank to the [telemetry range](telemetry-contract.md#fields-and-conventions).
+* Negate both signs, convert locally to degrees, and wrap bank to the [telemetry range](../telemetry-contract.md#fields-and-conventions).
 * Reject invalid or nonfinite primary input. Do not clamp it.
 * Treat requested degrees and repeated radians as diagnostics. Disagreement or nonfinite probes cannot invalidate otherwise valid primary radians.
 
@@ -244,13 +244,13 @@ Interpret records with these constraints:
 * `affects_sample_validity: false` separates diagnostic observations from primary-radian validation.
 * Rejected attitudes retain `message: "Unknown"` and `rejected_simobject_data`. The latter contains received headers, expected request and definition IDs, and match results. Rejected payloads are not interpreted.
 * Other unsupported message IDs remain `Unknown`.
-* Schema 4 records `live_publication_enabled: true` and bounded `validation_scope`.
+* Schema 4 records `live_publication_enabled: true`. Earlier schema 4 sessions can also contain `validation_scope`.
 * Retained `candidate_state` and `candidate_attitude` names use `candidate_is_hypothesis: false`.
 * Historical schemas 1–3 withheld candidate live. Schema 2 could reject cross-unit disagreements.
 
 ## Testing
 
-Use the [validation scope matrix](testing/index.md#validation-by-change-scope), [automated commands](testing/automated.md#automated-checks), and [evidence procedure](testing/evidence.md).
+Use the [validation scope matrix](../testing/index.md#validation-by-change-scope), [automated commands](../testing/automated.md#automated-checks), and [evidence procedure](../testing/evidence.md).
 
 ### Automated checks
 
@@ -294,13 +294,13 @@ Select manual checks only for a concrete change, contradiction, or additional cl
 Use these evidence rules:
 
 * Reuse existing results before requesting another run.
-* Keep local logs, session IDs, versions, independent observations, and [build provenance](testing/evidence.md#build-provenance). Runtime metadata alone does not establish a binary's source.
+* Keep local logs, session IDs, versions, independent observations, and [build provenance](../testing/evidence.md#build-provenance). Runtime metadata alone does not establish a binary's source.
 * Divide process CPU time by elapsed wall time for one logical CPU. State normalization across all logical CPUs.
 * Use console observations without logging for connection, availability, and shutdown claims. Do not infer numerical angles.
 
 ### Integrated HTTP/SSE and device acceptance
 
-Use the final release artifact and the [real-device procedure](testing/devices.md#real-phone-acceptance-procedure).
+Use the final release artifact and the [real-device procedure](../testing/devices.md#real-phone-acceptance-procedure).
 Run the following scenarios separately on actual iOS Safari and Android Chrome.
 Keep the receiver's #5 evidence separate from these end-to-end results.
 
@@ -328,7 +328,7 @@ Integrated simulator and mobile acceptance require separate runs against the fin
 Acceptance and rationale have separate sources:
 
 * [#5 acceptance record](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5): tested environments and evidence limits.
-* [ADR 0006](adr/0006-simconnect-manual-ffi.md#live-publication-amendment): decision to enable live publication.
+* [ADR 0006](../adr/0006-simconnect-manual-ffi.md#live-publication-amendment): decision to enable live publication.
 
 ## Rationale and regression lessons
 
@@ -336,7 +336,7 @@ Acceptance and rationale have separate sources:
 | --- | --- |
 | Native radians | Independent requested units do not guarantee simultaneous acquisition |
 | Diagnostic degree and repeat probes | No effect on canonical validity. The cause of discrepancies remains unresolved |
-| Native bindings and ownership | Defined in [ADR 0006](adr/0006-simconnect-manual-ffi.md) |
+| Native bindings and ownership | Defined in [ADR 0006](../adr/0006-simconnect-manual-ffi.md) |
 
 The [validation evidence](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) has these limits:
 

@@ -26,7 +26,7 @@ The application creates one channel for the selected provider. HTTP receives a s
 | Source | Implementation | Details |
 | --- | --- | --- |
 | Demo | Synthetic samples from a deterministic scenario | [Demo provider](demo.md) |
-| SimConnect | A native worker acquires and normalizes simulator data | [SimConnect guide](../simconnect.md) and [ADR 0006](../adr/0006-simconnect-manual-ffi.md) |
+| SimConnect | A native worker acquires and normalizes simulator data | [SimConnect guide](simconnect.md) and [ADR 0006](../adr/0006-simconnect-manual-ffi.md) |
 
 Composition validates configuration and binds HTTP before starting acquisition. On producer failure, it retains the channel and publishes `disconnected`. HTTP remains available until shutdown. A permanently failed producer is not restarted and Demo is not selected automatically.
 

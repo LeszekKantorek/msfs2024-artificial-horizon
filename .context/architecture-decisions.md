@@ -26,7 +26,7 @@ Use the [change map](component-changes.md) to locate affected contracts and vali
 
 ## SimConnect scope and evidence
 
-Accepts manual minimal FFI/runtime loading in one existing-package worker, refining ADR 0001. The decision selects the main app, DLL beside EXE by default, optional absolute override and optional exact-file append diagnostics. [Live publication](../docs/adr/0006-simconnect-manual-ffi.md#live-publication-amendment) permits live publication within the [documented limits](../docs/simconnect.md#live-publication-evidence), retaining lifecycle/numeric/freshness checks. Historical schemas 1–3 retain the guard; schema 4 enables live publication. Exact readiness timing, quantitative angle agreement, broader compatibility and full CPU coverage remain limits. Reuse applicable evidence; rerun for a concrete affected condition or contradiction.
+Accepts manual minimal FFI/runtime loading in one existing-package worker, refining ADR 0001. The decision selects the main app, DLL beside EXE by default, optional absolute override and optional exact-file append diagnostics. [Live publication](../docs/adr/0006-simconnect-manual-ffi.md#live-publication-amendment) permits live publication within the [documented limits](../docs/backend/simconnect.md#live-publication-evidence), retaining lifecycle/numeric/freshness checks. Historical schemas 1–3 retain the guard; schema 4 enables live publication. Exact readiness timing, quantitative angle agreement, broader compatibility and full CPU coverage remain limits. Reuse applicable evidence; rerun for a concrete affected condition or contradiction.
 
 ## Decision procedure
 
