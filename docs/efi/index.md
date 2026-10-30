@@ -4,28 +4,53 @@ The compact electronic flight instrument (EFI) combines attitude, speed, altitud
 The artificial horizon is its attitude indication; the [project terminology](../project-brief.md#terminology) defines the instrument terminology, including the `pfd` technical identifier.
 This guide groups each feature's requirements, presentation, implementation, rationale, and tests on one page.
 
+## Extension scope
+
+| Scope or decision | Source |
+| --- | --- |
+| Product scope | [Project brief](../project-brief.md) |
+| Original Demo extension decision | [ADR 0003](../adr/0003-responsive-pfd-demo.md) |
+| Current SimConnect optional instruments | [SimConnect observations](../sources/simconnect.md#optional-instrument-observations) |
+| Deterministic Demo scenarios and source-selected values | [Demo requirements](../sources/demo.md#requirements-and-usage) |
+| Additive fields, validity, fixtures, and attitude-only compatibility | [Telemetry extension contract](../telemetry-contract.md#further-efi-extension-boundary) |
+
+EFI extensions preserve these scope limits:
+
+* Demo extensions add no SDK requirements.
+* Performance #7 and packaging #8 remain separate work.
+* Source data and browser presentation use the same normalized contract for Demo and SimConnect.
+
 ## Shared responsibilities
 
 Read only the shared boundary affected by a change:
 
 | Boundary | Documentation | Use when |
 | --- | --- | --- |
-| Module composition | [Composition and implementation](composition.md) | Adding an instrument, changing object ownership, or sharing calculations |
-| Frames and scheduling | [Lifecycle](lifecycle.md) | Changing sample acceptance, expiry, resize, timed alerts, or invalidation |
-| Browser telemetry | [Telemetry client](telemetry.md) | Changing normalization, publication callbacks, or connection ownership |
+| Module composition | [Composition and implementation](composition.md#panel-composition) | Adding an instrument or changing module responsibilities |
+| Internal composition | [Internal module seams](composition.md#internal-module-seams) | Changing private nodes, shared hosts/clips, or concrete child inputs |
+| Calculations and helpers | [Pure calculations and helpers](composition.md#pure-calculations-and-helpers) | Changing calculation ownership, shared consumers, or DOM-free imports |
+| Asset integration | [Delivery boundaries](composition.md#delivery-boundaries) | Adding future instruments or changing embedded browser imports |
+| Frames and scheduling | [Lifecycle](lifecycle.md#panel-interface-and-frame-lifecycle) | Changing sample acceptance, expiry, resize, timed alerts, or invalidation |
+| Browser telemetry | [Telemetry client](telemetry.md#telemetry-operations) | Changing normalization, publication callbacks, or connection ownership |
 | Global status | [Status module](status.md) | Changing unavailable presentation or accessible announcements |
-| Layout and drawing | [Rendering](rendering.md) | Changing panel layers, clip boundaries, opacity, or cross-module drawing order |
+| Layout and drawing | [Rendering](rendering.md) | Changing panel layers, screen-space clips, opacity, or cross-module drawing order |
+| Attitude transforms | [World transforms](attitude.md#world-transforms) | Changing pitch translation, bank rotation, or their relation to fixed clips |
 | Validation | [Testing guide](../testing/index.md) | Selecting automated, desktop, and actual-phone checks |
 
-The panel passes one complete read-only frame to each instrument.
-Instrument compositions select fields and delegate to visual objects.
-Objects own their geometry and calculations.
-The common scheduler owns retained frames and timing.
-The telemetry client owns the connection and freshness.
+Shared presentation ownership follows these rules:
 
-System boundaries remain in [architecture](../architecture.md).
-[ADR 0004](../adr/0004-modular-pfd-presentation.md) and [ADR 0005](../adr/0005-visual-object-composition.md) explain instrument and visual-object composition.
-The [roadmap](../roadmap.md) defines delivery order.
+* The panel passes one complete read-only frame to each instrument.
+* Instrument compositions select fields and delegate to visual objects.
+* Objects own their geometry and calculations.
+* The common scheduler owns retained frames and timing.
+* The telemetry client owns the connection and freshness.
+
+| Cross-component boundary or decision | Source |
+| --- | --- |
+| System integration and delivery constraints | [Browser boundary](../architecture.md#browser-boundary) |
+| Instrument composition and layers | [ADR 0004](../adr/0004-modular-pfd-presentation.md) |
+| Visual-object composition and calculation ownership | [ADR 0005](../adr/0005-visual-object-composition.md) |
+| Delivery order | [Roadmap](../roadmap.md) |
 
 ## Features
 

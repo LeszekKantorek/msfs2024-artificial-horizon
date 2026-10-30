@@ -338,12 +338,13 @@ Each feature slice must:
 * Define its optional normalized fields, units, independent validity, and freshness handling.
 * Add compatible Rust/browser fixtures with the fields.
 * Preserve attitude fields, state meanings, and pitch/bank-only publication.
-* Keep old snapshots usable for attitude.
+* Keep old snapshots usable for attitude. Missing extensions remain unavailable in old snapshots and attitude-only publications.
 * Invalidate only the affected indication for malformed optional instrument data.
 * Preserve existing envelope/attitude validation and global source/transport invalidation.
 
 Constraints:
 
+* Do not advertise unimplemented fields as current contract fields.
 * Never substitute zero or demo values for missing data.
 * The attitude-only SimConnect integration in #6 need not populate EFI extensions.
 * Selected values remain source-supplied and read-only.

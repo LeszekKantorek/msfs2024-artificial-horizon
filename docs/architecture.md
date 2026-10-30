@@ -167,7 +167,7 @@ Delivery and presentation have separate owners:
 | Owner | Responsibility | Reference |
 | --- | --- | --- |
 | HTTP server | Delivery and connection closure, independently of acquisition. Preserve source-failure isolation | [SSE delivery and shutdown](server.md#sse-delivery) |
-| Browser | Connection recovery and presentation scheduling | [Panel boundary](#panel-boundary) |
+| Browser | Connection recovery and presentation scheduling | [Browser boundary](#browser-boundary) |
 
 > [ADR 0007](adr/0007-application-composition.md) defines composition and supersedes the original producer ownership in ADR 0002.
 
@@ -205,62 +205,20 @@ SimConnect integration has these properties:
 
 > Runtime loading does not establish redistribution permission.
 
-## EFI extension boundary
+## Browser boundary
 
-| Scope or decision | Source |
-| --- | --- |
-| Product scope | [Project brief](project-brief.md) |
-| Original Demo extension decision | [ADR 0003](adr/0003-responsive-pfd-demo.md) |
+The browser receives telemetry from either provider through the same HTTP/SSE contract:
 
-Extensions follow these constraints:
+* Validate incoming snapshots and normalize optional indications independently.
+* Present received values without generating independent flight data or sending setting/control commands.
+* Keep connection recovery and presentation scheduling in the browser.
+* Invalidate unavailable or expired data instead of displaying retained readings as live.
+* Apply no interpolation or extrapolation.
 
-* The current SimConnect provider also supplies available optional instruments through the same normalized contract.
+Delivery preserves these system constraints:
+
 * Retain one Rust process, SSE, plain JavaScript, and SVG.
-* Keep deterministic Demo scenarios and selected values in Rust, shared by all subscribers.
-* Let the browser present received values without independent flight data or setting/control commands.
-* Add optional normalized v1 fields without changing attitude meanings, lifecycle states, or pitch/bank-only publication.
-* Keep missing extensions unavailable in old snapshots and attitude-only publications.
-* Define field names, validity, and fixtures in the feature that introduces them.
-* Do not advertise unimplemented fields as current contract fields.
-* Demo extensions add no SDK requirements. Performance #7 and packaging #8 remain separate work.
-
-## Panel boundary
-
-| Presentation boundary | Source |
-| --- | --- |
-| Module tree, frame lifecycle, and layer composition | [Panel presentation](efi/index.md) |
-| Instrument composition and layers | [ADR 0004](adr/0004-modular-pfd-presentation.md) |
-| Visual-object composition and calculation ownership | [ADR 0005](adr/0005-visual-object-composition.md) |
-
-| Module | Responsibility |
-| --- | --- |
-| Application assembly | Connect telemetry, layout, lifecycle, and presentation |
-| Telemetry client | Own EventSource, sequence, retries, expiry, status, and lifecycle |
-| Telemetry validation | Pure envelope validation and independent optional-value normalization |
-| Frame scheduler | Coalesce latest samples, retain deadlines, cancel invalid work |
-| Panel and instruments | Compose visual objects under the presentation contracts linked below |
-| Status presentation | Show source/transport status and obscure invalid data |
-
-The presentation reference owns these contracts:
-
-* [Panel interface and frame lifecycle](efi/lifecycle.md#panel-interface-and-frame-lifecycle): normalized read-only frames, initialization, scheduling, and invalidation.
-* [Internal seams](efi/composition.md#internal-module-seams): visual ownership, private nodes, shared hosts/clips, and concrete child inputs.
-* [Pure calculations and helpers](efi/composition.md#pure-calculations-and-helpers): calculation ownership, actual shared consumers, and DOM-free imports.
-* [Telemetry operations](efi/telemetry.md#telemetry-operations): validation, callback publication, and connection lifecycle.
-* [Delivery boundaries](efi/composition.md#delivery-boundaries): future instruments and asset integration.
-
-Browser scheduling preserves these invariants:
-
-* The browser retains one latest sample and at most one pending animation frame.
-* It accepts each fresh sample before coalescing draws, preserving instrument history such as selected-altitude alerts.
-* Resize retains the original sample deadline.
-* Rendering checks expiry and cancels invalid work.
-* The browser applies no interpolation or extrapolation.
-
-Browser delivery and implementation follow these boundaries:
-
 * Use a relative, same-origin SSE URL and embed web assets in the binary.
 * Require no CDN, frontend package manager, CORS policy, or database.
-* Keep detailed browser module responsibilities in [composition](efi/composition.md).
-* Keep timed alerts, resize, and invalidation in the [frame lifecycle](efi/lifecycle.md).
-* Keep attitude transforms and screen-space clipping in [rendering](efi/rendering.md).
+
+The [EFI guide](efi/index.md) defines extension scope and routes presentation work to the relevant component contracts.

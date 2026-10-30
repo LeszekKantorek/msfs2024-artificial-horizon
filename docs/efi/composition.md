@@ -9,7 +9,7 @@ Rendering and scheduling have separate responsibilities. Visual objects own thei
 
 | Module | Responsibility |
 | --- | --- |
-| `app.js` | Assemble telemetry, status, panel, resize observation, and page lifecycle |
+| `app.js` | Assemble telemetry, status, panel, layout, resize observation, and page lifecycle |
 | `telemetry/client.js` | Own EventSource, sequence handling, retries, expiry, status, and start/stop lifecycle |
 | `telemetry/validation.js` | Pure snapshot validation and independent optional-value normalization |
 | `frame-scheduler.js` | Retain the latest frame, coalesce draws, check expiry, and cancel invalid work |
