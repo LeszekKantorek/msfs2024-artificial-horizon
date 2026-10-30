@@ -27,7 +27,7 @@ Selection is runtime configuration, not a Cargo feature or a separate package.
 * Create no hidden channel, telemetry history queue, or HTTP server.
 
 Application composition creates the channel, binds HTTP, and then starts the selected provider.
-The [application lifecycle](../architecture.md#server-and-browser-ownership) owns failure supervision and shutdown coordination.
+The [application lifecycle](../architecture.md#application-lifecycle) owns failure supervision and shutdown coordination.
 A source failure never selects Demo automatically.
 
 The [library telemetry interface](../architecture.md#library-telemetry-interface) defines publication and subscription semantics.

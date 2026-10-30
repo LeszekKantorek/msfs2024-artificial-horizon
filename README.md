@@ -112,7 +112,7 @@ The #5 receiver evidence does not establish integrated live-browser or mobile ac
 | --- | --- |
 | Run checks or test a phone | [Testing](docs/testing/index.md) |
 | Contribute a change | [Contributing](CONTRIBUTING.md) |
-| Use the Rust library or understand the design | [Architecture](docs/architecture.md#application-api) |
+| Use the Rust library or understand the design | [Architecture](docs/architecture.md#application-composition) |
 | Understand HTTP APIs, assets, and connection shutdown | [Server](docs/server.md) |
 | Develop or validate a source provider | [Sources](docs/sources/index.md) |
 | Find deterministic Demo scenarios | [Demo](docs/sources/demo.md) |

@@ -87,7 +87,7 @@ This prevents duplicate delivery of a pending initial publication.
 The [wire framing contract](telemetry-contract.md#framing) defines the event name, heartbeat, retry, and envelope rules.
 Application composition retains the channel after producer termination, so existing streams stay open with unavailable data.
 A new client receives the same current unavailable state.
-See the [application lifecycle](architecture.md#server-and-browser-ownership) for startup ordering and failure supervision.
+See the [application lifecycle](architecture.md#application-lifecycle) for startup ordering and failure supervision.
 
 ### Connection shutdown
 

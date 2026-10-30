@@ -90,7 +90,7 @@ The `providers::simconnect` module exports the acquisition interface independent
 * Dropping the running future signals worker cancellation. Normal shutdown also waits for the worker and reports cleanup results.
 * A permanently blocked native call has no guaranteed completion deadline.
 
-Application startup and source-failure isolation follow the [application lifecycle](../architecture.md#server-and-browser-ownership).
+Application startup and source-failure isolation follow the [application lifecycle](../architecture.md#application-lifecycle).
 
 ## Implementation
 
