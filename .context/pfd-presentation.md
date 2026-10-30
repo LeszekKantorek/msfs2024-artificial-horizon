@@ -9,13 +9,15 @@ Read the canonical contract for the boundary being changed:
 
 | Boundary | Source |
 | --- | --- |
-| Object ownership, local calculations, and shared helpers | [Internal module seams](../docs/efi/composition.md#internal-module-seams) |
-| Complete normalized frames, initialization, scheduling, invalidation | [Panel interface and frame lifecycle](../docs/efi/lifecycle.md#panel-interface-and-frame-lifecycle) |
-| Shared clips, paint order, stable nodes, state resets, accessibility | [Layers and clipping](../docs/efi/rendering.md#layers-and-clipping), [SVG/CSS interface](../docs/efi/rendering.md#svg-and-css-interface) |
+| Object ownership, local calculations, and shared helpers | [Internal module seams](../docs/efi/composition.md#visual-object-interfaces-and-ownership) |
+| Normalized frame fields and read-only values | [Frame contract](../docs/efi/lifecycle.md#normalized-frame-contract) |
+| Initialization, sample acceptance, scheduling, and invalidation | [Frame lifecycle](../docs/efi/lifecycle.md#initialization-and-geometry-updates), [invalidation and recovery](../docs/efi/lifecycle.md#invalidation-and-recovery) |
+| Shared clips, paint order, stable nodes, state resets, accessibility | [Clipping and transforms](../docs/efi/rendering.md#clipping-and-transforms), [paint order](../docs/efi/rendering.md#cross-module-paint-order), [SVG/CSS interface](../docs/efi/rendering.md#svg-and-css-interface) |
 | Composition rationale and helpers compromise | [ADR 0004](../docs/adr/0004-modular-pfd-presentation.md), [ADR 0005](../docs/adr/0005-visual-object-composition.md) |
 | Future instrument scope and dependencies | [Roadmap](../docs/roadmap.md) |
-| Refactor rationale, resize/clipping regressions, and evidence limits | [Composition lessons](../docs/efi/composition.md#rationale-and-regression-lessons) |
-| Telemetry validation, callbacks, and reentrancy | [Telemetry operations](../docs/efi/telemetry.md#telemetry-operations), [callback limits](../docs/efi/telemetry.md#callback-reentrancy-limit) |
+| Calculation ownership and extraction rationale | [Composition lessons](../docs/efi/composition.md#rationale-and-regression-lessons) |
+| Resize coherence and clipping regressions | [Coalesced rendering](../docs/efi/lifecycle.md#coalesced-frame-rendering), [painted-bound checks](../docs/efi/rendering.md#painted-bounds-and-clipping-checks) |
+| Telemetry validation, callbacks, and reentrancy | [Telemetry operations](../docs/efi/telemetry.md#implementation), [callback limits](../docs/efi/telemetry.md#callback-reentrancy-limits) |
 
 ## Visual validation
 

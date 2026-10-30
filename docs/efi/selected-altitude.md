@@ -98,7 +98,7 @@ Paint the overlapping elements in this order:
 
 ### Alert history and scheduler integration
 
-The [panel lifecycle](lifecycle.md#panel-interface-and-frame-lifecycle) connects sample history to shared scheduling:
+The [panel lifecycle](lifecycle.md#sample-acceptance-and-drawing) connects sample history to shared scheduling:
 
 * Every fresh accepted sample advances history before drawing is coalesced.
 * Rendering and resize never advance sample history.

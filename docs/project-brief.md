@@ -107,7 +107,7 @@ Use original graphics. Do not embed PDF screenshots or copy the bezel.
 The opaque sky/ground background fills the entire panel, including side, heading, and supplemental regions.
 Tape backgrounds are translucent; digits, ticks, and value windows remain readable.
 Central pitch markings have separate clipping, and invalid data remains obscured.
-The [panel presentation](efi/rendering.md#layers-and-clipping) defines layer ownership and clipping.
+The [panel presentation](efi/rendering.md#layer-allocation) defines layer ownership and clipping.
 
 [#36](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/36) first separates existing modules without changing the image.
 [#37](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/37) implements this composition without a top status bar. Background opacity remains subject to mobile acceptance.

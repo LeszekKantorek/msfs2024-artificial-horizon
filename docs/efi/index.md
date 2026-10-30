@@ -26,12 +26,12 @@ Read only the shared boundary affected by a change:
 
 | Boundary | Documentation | Use when |
 | --- | --- | --- |
-| Module composition | [Composition and implementation](composition.md#panel-composition) | Adding an instrument or changing module responsibilities |
-| Internal composition | [Internal module seams](composition.md#internal-module-seams) | Changing private nodes, shared hosts/clips, or concrete child inputs |
-| Calculations and helpers | [Pure calculations and helpers](composition.md#pure-calculations-and-helpers) | Changing calculation ownership, shared consumers, or DOM-free imports |
-| Asset integration | [Delivery boundaries](composition.md#delivery-boundaries) | Adding future instruments or changing embedded browser imports |
-| Frames and scheduling | [Lifecycle](lifecycle.md#panel-interface-and-frame-lifecycle) | Changing sample acceptance, expiry, resize, timed alerts, or invalidation |
-| Browser telemetry | [Telemetry client](telemetry.md#telemetry-operations) | Changing normalization, publication callbacks, or connection ownership |
+| Module composition | [Composition and implementation](composition.md#component-responsibilities) | Adding an instrument or changing module responsibilities |
+| Internal composition | [Internal module seams](composition.md#visual-object-interfaces-and-ownership) | Changing private nodes, shared hosts/clips, or concrete child inputs |
+| Calculations and helpers | [Pure calculations and helpers](composition.md#calculations-and-shared-helpers) | Changing calculation ownership, shared consumers, or DOM-free imports |
+| Asset integration | [Delivery boundaries](composition.md#asset-integration-and-extension-constraints) | Adding future instruments or changing embedded browser imports |
+| Frames and scheduling | [Lifecycle](lifecycle.md#panel-interface) | Changing sample acceptance, expiry, resize, timed alerts, or invalidation |
+| Browser telemetry | [Telemetry client](telemetry.md#implementation) | Changing normalization, publication callbacks, or connection ownership |
 | Global status | [Status module](status.md) | Changing unavailable presentation or accessible announcements |
 | Layout and drawing | [Rendering](rendering.md) | Changing panel layers, screen-space clips, opacity, or cross-module drawing order |
 | Attitude transforms | [World transforms](attitude.md#world-transforms) | Changing pitch translation, bank rotation, or their relation to fixed clips |

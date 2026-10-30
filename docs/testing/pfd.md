@@ -97,7 +97,7 @@ The scripted geometry checks include these regression cases:
 
 Asset checks cover the current module graph:
 
-* The [EFI composition guide](../efi/composition.md#module-composition) describes runtime ownership. The [feature directory](../efi/index.md#features) identifies implementing modules.
+* The [EFI composition guide](../efi/composition.md#component-responsibilities) describes runtime ownership. The [feature directory](../efi/index.md#features) identifies implementing modules.
 * `src/http/assets.rs` registers the current modules, HTML, and CSS through explicit mappings.
 * `tests/http.rs` checks the explicit embedded routes and JavaScript MIME.
 * Both browser scripts check retired routes return 404 without compatibility facades.
@@ -204,7 +204,7 @@ Later feature slices extend these checks:
 * Test painted symbol extents, including stroke clearance, rather than only instrument-region bounds.
 * Exclude hidden SVG labels and intersect visible bounds with their ancestor clips when checking content collisions.
 * After changing a browser viewport, wait for SVG `viewBox` dimensions to match its CSS bounds before measuring glyphs. A fresh sample alone does not confirm completed resize geometry.
-* For #37 and later, distinguish overlapping background coverage from non-overlapping indication content using the [module plan](../efi/composition.md#rationale-and-regression-lessons).
+* For #37 and later, distinguish overlapping background coverage from non-overlapping indication content using the [painted-bound checks](../efi/rendering.md#painted-bounds-and-clipping-checks).
 * Keep desktop Edge evidence separate from required real iOS Safari and Android Chrome acceptance.
 
 ### Paint order checks

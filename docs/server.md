@@ -81,7 +81,7 @@ Asset delivery follows these constraints:
 * Add no wildcard routes, directory serving, runtime file access, or dependencies for asset registration.
 * Update embedded routes and the development fixture server together when browser imports change.
 
-The [EFI composition guide](efi/composition.md#delivery-boundaries) owns browser delivery boundaries and feature integration.
+The [EFI composition guide](efi/composition.md#asset-integration-and-extension-constraints) owns browser delivery boundaries and feature integration.
 
 ## SSE delivery
 

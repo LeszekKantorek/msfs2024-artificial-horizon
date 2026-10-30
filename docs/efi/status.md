@@ -54,7 +54,7 @@ The integration keeps these responsibilities separate:
 | Scheduler | Enforce frame freshness and expiry through the panel lifecycle |
 | Status view | Present availability and source/transport messages without owning the connection or validating frame freshness |
 
-The [frame lifecycle](lifecycle.md#panel-interface-and-frame-lifecycle) supplies the fresh-frame contract.
+The [frame lifecycle](lifecycle.md#normalized-frame-contract) supplies the fresh-frame contract.
 `render(frame)` relies on that contract. It does not independently check the sample deadline.
 
 ### Frame updates and DOM state
