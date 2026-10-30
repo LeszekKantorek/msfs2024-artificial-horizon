@@ -57,7 +57,7 @@ data: {"schema_version":1,"sequence":42,"source":"demo","state":"live","sample_a
 
 | Timing | Initial value / rule |
 | --- | --- |
-| Valid samples | Source cadence: [Demo](sources/demo.md#scenario-timing) uses 20 Hz; [SimConnect attitude](sources/simconnect.md#data-and-availability) requests each simulator frame |
+| Valid samples | Source cadence: [Demo](sources/demo.md#scenario-timing) uses 20 Hz; [SimConnect attitude](sources/simconnect.md#attitude-and-freshness) requests each simulator frame |
 | Reconnect hint | `retry: 2000` |
 | Page retry | Close the failed EventSource. Create its replacement after 2,000 ms, including initial connection failures |
 | Idle heartbeat | SSE comment every 10 seconds when otherwise idle |

@@ -110,7 +110,7 @@ Evidence and decision records have separate scopes:
 | This ADR | Binding, ownership, loading, and publication decisions |
 | SDK header source | Inspected declarations, not general simulator and DLL compatibility |
 | [#5 acceptance record](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) | Tested environment, paired simulator observations, execution results, and accepted deferrals |
-| [Feature limits](../sources/simconnect.md#rationale-and-regression-lessons) | Current compatibility, readiness, angle, performance, and untested-path qualifications |
+| [Feature limits](../sources/simconnect.md#recorded-evidence-limits) | Current compatibility, readiness, angle, performance, and untested-path qualifications |
 | Earlier simulator sessions | Candidate behavior under the former gate. The changed publication path has automated regression coverage |
 | Runtime metadata | Environment context, not independent proof of a binary's source or compiler |
 

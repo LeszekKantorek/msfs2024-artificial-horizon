@@ -84,6 +84,8 @@ The `providers::simconnect` module exports the acquisition interface independent
 | `RunReport::diagnostics` | Independent `DiagnosticStatus`: disabled, completed, or failed |
 | `SimConnectError` | Configuration, I/O, native, telemetry, or worker-panic failure |
 
+The provider API preserves these boundaries:
+
 * The provider creates no hidden telemetry channel and never starts HTTP.
 * Configuration contains no scenario, process arguments, or HTTP settings.
 * DLL resolution uses the same executable-relative default for library and CLI calls, before opening diagnostics or loading native code.
@@ -92,7 +94,9 @@ The `providers::simconnect` module exports the acquisition interface independent
 
 Application startup and source-failure isolation follow the [application lifecycle](../architecture.md#application-lifecycle).
 
-## Implementation
+## Runtime and resource lifecycle
+
+Native integration follows these decisions:
 
 * The provider uses minimal manual bindings and runtime DLL loading within the existing Rust package.
 * [ADR 0006](../adr/0006-simconnect-manual-ffi.md) defines binding, loading, and publication decisions.
@@ -100,8 +104,11 @@ Application startup and source-failure isolation follow the [application lifecyc
 
 ### Application availability
 
-The application validates configuration, creates the waiting telemetry channel, and binds HTTP before starting the producer.
-A busy port prevents acquisition from starting. HTTP does not wait for DLL loading or simulator readiness.
+Application startup follows these rules:
+
+* The application validates configuration, creates the waiting telemetry channel, and binds HTTP before starting the producer.
+* A busy port prevents acquisition from starting.
+* HTTP does not wait for DLL loading or simulator readiness.
 
 | Condition | Application behavior |
 | --- | --- |
@@ -110,44 +117,40 @@ A busy port prevents acquisition from starting. HTTP does not wait for DLL loadi
 | DLL load or export failure | HTTP stays available. Console diagnostics identify the failure without Demo fallback |
 | Ctrl+C or HTTP failure | Signal both components and wait for their results. HTTP failure returns an application error |
 
-Detailed source errors stay in console diagnostics and the optional log. The SSE schema is unchanged.
-`/health` reports HTTP liveness, independently of simulator availability.
+Diagnostics and HTTP health remain separate from telemetry availability:
 
-### Optional instrument observations
+* Detailed source errors stay in console diagnostics and the optional log.
+* The SSE schema is unchanged.
+* `/health` reports HTTP liveness, independently of simulator availability.
 
-The native worker requests these optional observations:
+### Reception and resource ownership
 
-| Observation | Source units or selection |
+One native worker owns all SimConnect calls:
+
+| Operation | Behavior |
 | --- | --- |
-| IAS, TAS, GS | Knots |
-| KOHLSMAN pressure, indicated altitude | inHg and feet, respectively, from altimeter index 1 |
-| VSI | Feet per minute |
-| Magnetic heading | Degrees |
-| Slip/skid ball position | Position |
-| Turn rate | Degrees per second |
-| Autopilot targets | Active slot 0. Target visibility does not require the autopilot master to be engaged. Radio-referenced altitude targets are omitted |
+| Dispatch | `GetNextDispatch`, Windows notification and cancellation events, at most 128 messages per batch |
+| Empty queue | An empty dispatch or `E_FAIL` alone does not establish disconnection |
+| State queries | Every 5 seconds |
+| Silence watchdog | Reconnect after 15 seconds without packets. This diagnostic trigger does not prove native connection loss |
+| Retry | Interruptible waits of 1, 2, 4, 8, then at most 10 seconds |
+| Source loss | No automatic switch to demo |
 
-The cockpit control corresponding to altimeter index 1 depends on the aircraft and requires live verification.
+Normal shutdown uses this order:
 
-Optional fields follow these availability rules:
+1. Stop reception.
+2. Close the native connection.
+3. Release notification handles and the DLL.
+4. Join the worker.
 
-* Each request has its own definition and exception boundary. Failed fields become unavailable without stopping attitude or HTTP.
-* Last observations expire independently after 1000 ms. Pauses, flight changes, and reconnect clear cached values.
-* Additional observations and expiry publications preserve the attitude receive time.
+Cleanup preserves these limits:
 
-Speed profiles have these source limits:
+* A failed native close retains the DLL mapping and notification handle until exit because native code might still use them.
+* Cleanup records describe attempted paths. Inspect the final outcome and errors.
 
-* VS0, VS1, project minimum rotation, and current redline are independently available. Other thresholds and references remain absent unless their exact standard source is established.
-* Minimum rotation is a project reference, not a Vr calculated by an FMS based on weight and flap position.
-* General climb speed is not substituted for Vy. Current flap limits are not substituted for fixed VFE. Dynamic redline is not fixed VNE.
-* No aircraft configuration reader or addon-specific avionics bridge is provided.
+## Telemetry acquisition and availability
 
-IAS trend uses a bounded 0.5-second window of valid worker acquisitions and their monotonic receive times. The trend describes knots per real second, including when simulation speed differs from real time.
-
-* Acceleration expires after 0.5 seconds without a new IAS sample. IAS retains its independent one-second freshness.
-* The history resets after invalid input, a stale gap, pause, or flight change.
-
-### Data and availability
+### Attitude and freshness
 
 Attitude acquisition uses these conventions:
 
@@ -182,32 +185,43 @@ Availability follows these rules:
 | `disconnected` | Native connection unavailable |
 | `invalid` | Input fails normalization or validation |
 
-### Reception and resource ownership
+### Optional instrument observations
 
-One native worker owns all SimConnect calls:
+The native worker requests these optional observations:
 
-| Operation | Behavior |
+| Observation | Source units or selection |
 | --- | --- |
-| Dispatch | `GetNextDispatch`, Windows notification and cancellation events, at most 128 messages per batch |
-| Empty queue | An empty dispatch or `E_FAIL` alone does not establish disconnection |
-| State queries | Every 5 seconds |
-| Silence watchdog | Reconnect after 15 seconds without packets. This diagnostic trigger does not prove native connection loss |
-| Retry | Interruptible waits of 1, 2, 4, 8, then at most 10 seconds |
-| Source loss | No automatic switch to demo |
+| IAS, TAS, GS | Knots |
+| KOHLSMAN pressure, indicated altitude | inHg and feet, respectively, from altimeter index 1 |
+| VSI | Feet per minute |
+| Magnetic heading | Degrees |
+| Slip/skid ball position | Position |
+| Turn rate | Degrees per second |
+| Autopilot targets | Active slot 0. Target visibility does not require the autopilot master to be engaged. Radio-referenced altitude targets are omitted |
 
-Normal shutdown uses this order:
+> The cockpit control corresponding to altimeter index 1 depends on the aircraft and requires live verification.
 
-1. Stop reception.
-2. Close the native connection.
-3. Release notification handles and the DLL.
-4. Join the worker.
+Optional fields follow these availability rules:
 
-Cleanup preserves these limits:
+* Each request has its own definition and exception boundary. Failed fields become unavailable without stopping attitude or HTTP.
+* Last observations expire independently after 1000 ms. Pauses, flight changes, and reconnect clear cached values.
+* Additional observations and expiry publications preserve the attitude receive time.
 
-* A failed native close retains the DLL mapping and notification handle until exit because native code might still use them.
-* Cleanup records describe attempted paths. Inspect the final outcome and errors.
+Speed profiles have these source limits:
 
-### Diagnostic logging
+* VS0, VS1, project minimum rotation, and current redline are independently available. Other thresholds and references remain absent unless their exact standard source is established.
+* Minimum rotation is a project reference, not a Vr calculated by an FMS based on weight and flap position.
+* General climb speed is not substituted for Vy. Current flap limits are not substituted for fixed VFE. Dynamic redline is not fixed VNE.
+* No aircraft configuration reader or addon-specific avionics bridge is provided.
+
+IAS trend follows these timing rules:
+
+* IAS trend uses a bounded 0.5-second window of valid worker acquisitions and their monotonic receive times.
+* The trend describes knots per real second, including when simulation speed differs from real time.
+* Acceleration expires after 0.5 seconds without a new IAS sample. IAS retains its independent one-second freshness.
+* The history resets after invalid input, a stale gap, pause, or flight change.
+
+## Diagnostic logging
 
 | Property | Behavior |
 | --- | --- |
@@ -230,7 +244,7 @@ Diagnostic failures remain independent of acquisition:
 | Missing `session_end` | Unconfirmed termination |
 | Final result | `DiagnosticStatus` distinguishes disabled, completed, and failed logging independently of the native outcome |
 
-#### Payload profiles
+### Payload profiles
 
 The connection fixes its profile when opened:
 
@@ -249,7 +263,7 @@ Decoding preserves these rules:
 
 Reference: [SimConnect request API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_requestdataonsimobject/).
 
-#### Record reference
+### Record reference
 
 | Records | Content |
 | --- | --- |
@@ -277,7 +291,13 @@ Interpret records with these constraints:
 
 ## Testing
 
-Use the [validation scope matrix](../testing/index.md#validation-by-change-scope), [automated commands](../testing/automated.md#automated-checks), and [evidence procedure](../testing/evidence.md).
+Select the shared testing procedure by purpose:
+
+| Purpose | Procedure |
+| --- | --- |
+| Select checks for the change | [Validation scope matrix](../testing/index.md#validation-by-change-scope) |
+| Run automated checks | [Automated commands](../testing/automated.md#automated-checks) |
+| Record results and evidence limits | [Evidence procedure](../testing/evidence.md) |
 
 ### Automated checks
 
@@ -288,6 +308,8 @@ Use the [validation scope matrix](../testing/index.md#validation-by-change-scope
 | Native data | ABI layout, payload decoding, normalization, rejected packets |
 | Telemetry | New and equal acquisitions, original receive time, stale data, invalid input, lifecycle invalidation |
 | Diagnostics and resources | Append sessions, writer exclusion, protected destinations, diagnostic failures, retry bounds, cancellation, cleanup |
+
+### Official-DLL smoke check
 
 Run the optional official-DLL smoke check:
 
@@ -327,9 +349,11 @@ Use these evidence rules:
 
 ### Integrated HTTP/SSE and device acceptance
 
-Use the final release artifact and the [real-device procedure](../testing/devices.md#real-phone-acceptance-procedure).
-Run the following scenarios separately on actual iOS Safari and Android Chrome.
-Keep the receiver's #5 evidence separate from these end-to-end results.
+Integrated acceptance follows these requirements:
+
+* Use the final release artifact and the [real-device procedure](../testing/devices.md#real-phone-acceptance-procedure).
+* Run the following scenarios separately on actual iOS Safari and Android Chrome.
+* Keep the receiver's #5 evidence separate from these end-to-end results.
 
 | Scenario | Expected result |
 | --- | --- |
@@ -343,27 +367,29 @@ Keep the receiver's #5 evidence separate from these end-to-end results.
 | Rotation, background, lock/resume, Wi-Fi recovery | Readable status and fresh-data recovery without reload or duplicate subscriptions |
 | Ctrl+C with active clients | Client connections end and the port is reusable. Record native cleanup outcome separately |
 
-Use controlled producers for deterministic fault tests without changing the production source choices.
-Record the tested revision, binary and DLL identities, environment, exact inputs, observed behavior, and missing checks.
-Desktop fixture tests cannot certify the real simulator path or either mobile browser.
+Fault tests and acceptance records have these requirements:
+
+* Use controlled producers for deterministic fault tests without changing the production source choices.
+* Record the tested revision, binary and DLL identities, environment, exact inputs, observed behavior, and missing checks.
+
+> Desktop fixture tests cannot certify the real simulator path or either mobile browser.
+
+## Evidence and limitations
 
 ### Live-publication evidence
 
-The #5 records cover the receiver and local publication. They do not establish the integrated HTTP/SSE-to-EFI path or actual behavior on iOS and Android.
-Integrated simulator and mobile acceptance require separate runs against the final application artifact.
+Live-publication evidence has these boundaries:
+
+* The #5 records cover the receiver and local publication.
+* The #5 records do not establish the integrated HTTP/SSE-to-EFI path or actual behavior on iOS and Android.
+* Integrated simulator and mobile acceptance require separate runs against the final application artifact.
 
 Acceptance and rationale have separate sources:
 
 * [#5 acceptance record](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5): tested environments and evidence limits.
 * [ADR 0006](../adr/0006-simconnect-manual-ffi.md#live-publication-amendment): decision to enable live publication.
 
-## Rationale and regression lessons
-
-| Decision | Reason |
-| --- | --- |
-| Native radians | Independent requested units do not guarantee simultaneous acquisition |
-| Diagnostic degree and repeat probes | No effect on canonical validity. The cause of discrepancies remains unresolved |
-| Native bindings and ownership | Defined in [ADR 0006](../adr/0006-simconnect-manual-ffi.md) |
+### Recorded evidence limits
 
 The [validation evidence](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) has these limits:
 
@@ -374,3 +400,11 @@ The [validation evidence](https://github.com/LeszekKantorek/msfs2024-artificial-
 | Live publication | Automated regression tests cover live publication. Physical sessions using the waiting gate do not establish behavior with live publication enabled |
 | Performance | Short active CPU observations, not a benchmark. Menu CPU and numerical shutdown latency are unmeasured |
 | Other environments and interruption | Untested: clean machine without SDK, interruption during a blocked native call, independent OS unload verification |
+
+## Rationale and regression lessons
+
+| Decision | Reason |
+| --- | --- |
+| Native radians | Independent requested units do not guarantee simultaneous acquisition |
+| Diagnostic degree and repeat probes | No effect on canonical validity. The cause of discrepancies remains unresolved |
+| Native bindings and ownership | Defined in [ADR 0006](../adr/0006-simconnect-manual-ffi.md) |
