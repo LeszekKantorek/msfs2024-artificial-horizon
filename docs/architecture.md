@@ -95,7 +95,7 @@ The library exposes `Config`, `Source`, and `Server`. Application composition se
 * SimConnect configuration permits an absolute DLL override and an exact log file. The resolver uses the same executable-relative default for CLI and library calls before opening a log or loading native code.
 * HTTP availability does not depend on DLL loading, simulator connection, or flight readiness.
 
-[ADR 0007](adr/0007-application-composition.md) defines the composition and public server boundary. The [SimConnect guide](sources/simconnect.md) describes source configuration and diagnostics. Run the application using the [README procedure](../README.md#start-the-demo).
+The [backend API reference](backend-implementation.md#public-application-interfaces) describes the public entry points. [ADR 0007](adr/0007-application-composition.md) defines the composition and public server boundary. The [SimConnect guide](sources/simconnect.md) describes source configuration and diagnostics. Run the application using the [README procedure](../README.md#start-the-demo).
 
 Web assets are embedded in the release binary. The client uses a relative, same-origin SSE URL and requires no CDN, frontend package manager, CORS policy, or database.
 

@@ -21,6 +21,28 @@ The application creates one channel for the selected provider. HTTP receives a s
 
 [ADR 0007](adr/0007-application-composition.md) records the composition decision and failure behavior. [ADR 0002](adr/0002-sse-connection-lifecycle.md) defines SSE delivery and socket deadlines.
 
+## Public application interfaces
+
+The library root re-exports `Config`, `Source`, and `Server`. The CLI parses process arguments and supplies the shutdown signal. The [SimConnect guide](sources/simconnect.md#command-line-options) lists the CLI options.
+
+| Interface | Contract |
+| --- | --- |
+| `Config` | HTTP listen address and port only. Library configuration does not read process arguments |
+| `Source` | Channel source identity, independent of HTTP configuration |
+| `application::SourceSelection` | Select `Demo` or `SimConnect(SimConnectConfig)` |
+| `application::run(config, selection, shutdown)` | Validate configuration, create the channel, bind HTTP, start components, and collect their results |
+| `Server::bind(config, subscription)` | Validate HTTP configuration before binding. Use the supplied subscription without starting a provider |
+| `Server::local_address()` | Return the bound address as `io::Result<SocketAddr>` |
+| `Server::run(shutdown)` | Serve HTTP until caller-owned shutdown, then begin graceful shutdown of active connections |
+| `http::router()` | Build the embedded asset and health routes without telemetry |
+| `http::router_with_telemetry(subscription)` | Add SSE using the supplied subscription, without starting acquisition |
+| `providers::simconnect::SimConnectConfig` | Optional absolute DLL override and optional exact log path. It contains no HTTP configuration |
+| `providers::simconnect::run(config, publisher, shutdown)` | Acquire using the supplied publisher. Return a `RunReport` with separate acquisition and diagnostic outcomes |
+
+`application::run` and `simconnect::run` accept shutdown futures returning `io::Result<()>`. `Server::run` accepts a shutdown future returning `()`. The caller owns process signals. The library does not install signal handlers.
+
+The [telemetry contract](telemetry-contract.md#model-boundary) describes the model and publication interfaces. The [architecture](architecture.md#library-telemetry-interface) defines subscription acknowledgment behavior.
+
 ## Source and lifecycle
 
 The [telemetry sources guide](sources/index.md) lists the available sources and their documentation.
