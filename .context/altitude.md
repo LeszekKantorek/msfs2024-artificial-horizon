@@ -31,7 +31,8 @@ For #89, controlled browser checks covered touch emulation and the text-selectio
 | Requirements and presentation | [Feature contract](../docs/efi/altitude-trend.md#requirements) |
 | Object ownership and calculations | [Implementation](../docs/efi/altitude-trend.md#implementation) |
 | Automated, visual, and device acceptance | [Testing](../docs/efi/altitude-trend.md#testing) |
-| Decision rationale, regression lessons, and evidence limits | [Rationale](../docs/efi/altitude-trend.md#rationale-and-regression-lessons) |
+| Decision rationale and regression lessons | [Rationale](../docs/efi/altitude-trend.md#rationale-and-regression-lessons) |
+| Real-device checks and evidence limits | [Phone checks](../docs/efi/altitude-trend.md#real-phone-checks) |
 
 ## Selected altitude
 

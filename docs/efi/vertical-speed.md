@@ -91,7 +91,7 @@ Apply the [shared phone procedure](../testing/devices.md#real-phone-acceptance-p
 2. Inspect matching readout styles, the narrower rectangle, selected target/bug, and pressure against sky and ground.
 3. Use [phone fixtures](../testing/devices.md#phone-fixture-setup) with the inputs below for signed limits, partial failures, and missing data.
 
-Also run the [altitude trend prediction checks](altitude-trend.md#prediction-regression-and-screenshots) and [trend phone checks for #25](altitude-trend.md#vsi-feature-phone-acceptance).
+Also run the [altitude trend prediction checks](altitude-trend.md#automated-checks-and-desktop-geometry) and [trend phone checks for #25](altitude-trend.md#real-phone-checks).
 
 Enter these JSON lines into the fixture terminal:
 
