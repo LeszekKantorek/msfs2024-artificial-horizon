@@ -46,9 +46,8 @@ The application follows these composition constraints:
 * Keep acquisition, normalization, current state, and HTTP in one Rust process.
 * Put reusable logic in one library package and thin executables in `src/bin/`.
 * Add packages or services only for a concrete need.
-
-Application composition connects either Demo or the existing SimConnect receiver to the same HTTP/SSE server.
-The server receives a prepared subscription and does not select or start providers.
+* Application composition connects either Demo or the SimConnect receiver to the same HTTP/SSE server.
+* The server receives a prepared subscription and does not select or start providers.
 
 > A provider failure must never select Demo automatically.
 
@@ -77,9 +76,13 @@ The server receives a prepared subscription and does not select or start provide
 
 ## Application API
 
-The `msfs2024_artificial_horizon` library separates application assembly from reusable providers, telemetry, and HTTP.
-The crate root re-exports `Config`, `ConfigError`, `Source`, `Server`, and `ServerError`.
-Provider-specific interfaces remain public through `providers::demo` and `providers::simconnect`.
+The `msfs2024_artificial_horizon` library exposes these boundaries:
+
+| Library boundary | Contract |
+| --- | --- |
+| Application assembly | Separate from reusable providers, telemetry, and HTTP |
+| Crate root | Re-exports `Config`, `ConfigError`, `Source`, `Server`, and `ServerError` |
+| Providers | Public interfaces through `providers::demo` and `providers::simconnect` |
 
 | Interface | Contract |
 | --- | --- |
@@ -91,9 +94,16 @@ Provider-specific interfaces remain public through `providers::demo` and `provid
 | `Source` | Identify the channel source for its lifetime, independently of HTTP configuration |
 | `Server` | Accept a prepared subscription and caller-owned shutdown without selecting or starting acquisition |
 
-The executable is named `msfs2024-artificial-horizon`, with its thin entry point in `src/bin/main.rs`.
-Future executables use their own binary names.
-Use the [README startup procedure](../README.md#start-the-demo) or the [development environment](../CONTRIBUTING.md#environment-setup).
+Executable configuration follows these rules:
+
+* The executable is named `msfs2024-artificial-horizon`.
+* Its thin entry point is `src/bin/main.rs`.
+* Future executables use their own binary names.
+
+| Task | Procedure |
+| --- | --- |
+| Run the application | [README startup procedure](../README.md#start-the-demo) |
+| Prepare development tools | [Development environment](../CONTRIBUTING.md#environment-setup) |
 
 The component references provide detailed interfaces:
 
@@ -141,9 +151,9 @@ Browser: SSE -> validate -> latest sample -> animation frame -> SVG/DOM
 
 ### Server and browser ownership
 
-HTTP availability does not depend on DLL loading, simulator connection, or flight readiness.
 Application composition owns acquisition and its shutdown lifecycle:
 
+* HTTP availability does not depend on DLL loading, simulator connection, or flight readiness.
 * Validate configuration and create the `waiting` channel before binding HTTP. Start the provider only after a successful bind.
 * Retain a nonpublishing handle to the same watch channel while the selected provider owns the only active `Publisher`.
 * After the provider releases publication, recover the latest state and publish `disconnected` without renewing the last sample time.
@@ -152,10 +162,14 @@ Application composition owns acquisition and its shutdown lifecycle:
 * Wait for the native worker. Do not abort it. A permanently blocked native call has no guaranteed completion deadline.
 * The server owns only HTTP shutdown and connection closure. Repeated shutdown signals preserve the first connection deadline.
 
-HTTP owns delivery and connection closure, independently of acquisition.
-Its [SSE delivery and shutdown](server.md#sse-delivery) operate below the producer and preserve source-failure isolation.
-The browser owns connection recovery and presentation scheduling through the [panel boundary](#panel-boundary).
-[ADR 0007](adr/0007-application-composition.md) defines composition and supersedes the original producer ownership in ADR 0002.
+Delivery and presentation have separate owners:
+
+| Owner | Responsibility | Reference |
+| --- | --- | --- |
+| HTTP server | Delivery and connection closure, independently of acquisition. Preserve source-failure isolation | [SSE delivery and shutdown](server.md#sse-delivery) |
+| Browser | Connection recovery and presentation scheduling | [Panel boundary](#panel-boundary) |
+
+> [ADR 0007](adr/0007-application-composition.md) defines composition and supersedes the original producer ownership in ADR 0002.
 
 ## Deployment
 
@@ -172,23 +186,35 @@ The browser owns connection recovery and presentation scheduling through the [pa
 
 ## SimConnect integration
 
-The SimConnect provider uses minimal manual bindings and runtime DLL loading within the existing Rust package.
-One native worker owns acquisition and publishes normalized telemetry through the caller-owned channel.
-[ADR 0006](adr/0006-simconnect-manual-ffi.md) defines the binding, loading, and publication decisions.
-The demo does not load SimConnect, and a SimConnect failure never selects the demo.
-Windows builds do not require SDK headers or binaries.
+SimConnect integration has these properties:
 
-The [SimConnect mode](sources/simconnect.md) publishes attitude and available optional instrument data through the same HTTP/SSE and browser contract as Demo.
-[ADR 0007](adr/0007-application-composition.md) defines composition, source-failure isolation and shutdown.
-The [SimConnect guide](sources/simconnect.md#live-publication-evidence) describes the tested scope and evidence limits.
-[Issue #8](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/8) covers packaging and DLL distribution conditions.
-Runtime loading does not establish redistribution permission.
+* The provider uses minimal manual bindings and runtime DLL loading within the existing Rust package.
+* One native worker owns acquisition and publishes normalized telemetry through the caller-owned channel.
+* SimConnect publishes attitude and available optional instrument data through the same HTTP/SSE and browser contract as Demo.
+* Demo does not load SimConnect.
+* A SimConnect failure never selects Demo.
+* Windows builds do not require SDK headers or binaries.
+
+| Subject | Source |
+| --- | --- |
+| Binding, loading, and publication decisions | [ADR 0006](adr/0006-simconnect-manual-ffi.md) |
+| Composition, source-failure isolation, and shutdown | [ADR 0007](adr/0007-application-composition.md) |
+| Configuration, API, and implementation | [SimConnect guide](sources/simconnect.md) |
+| Tested scope and evidence limits | [Live-publication evidence](sources/simconnect.md#live-publication-evidence) |
+| Packaging and DLL distribution conditions | [Issue #8](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/8) |
+
+> Runtime loading does not establish redistribution permission.
 
 ## EFI extension boundary
 
-The [project brief](project-brief.md) defines scope, and [ADR 0003](adr/0003-responsive-pfd-demo.md) records the original Demo extension decision.
-The current SimConnect provider also supplies available optional instruments through the same normalized contract.
+| Scope or decision | Source |
+| --- | --- |
+| Product scope | [Project brief](project-brief.md) |
+| Original Demo extension decision | [ADR 0003](adr/0003-responsive-pfd-demo.md) |
 
+Extensions follow these constraints:
+
+* The current SimConnect provider also supplies available optional instruments through the same normalized contract.
 * Retain one Rust process, SSE, plain JavaScript, and SVG.
 * Keep deterministic Demo scenarios and selected values in Rust, shared by all subscribers.
 * Let the browser present received values without independent flight data or setting/control commands.
@@ -200,9 +226,11 @@ The current SimConnect provider also supplies available optional instruments thr
 
 ## Panel boundary
 
-[Panel presentation](efi/index.md) defines the module tree, frame lifecycle, and layer composition.
-
-[ADR 0004](adr/0004-modular-pfd-presentation.md) defines instrument composition and layers. [ADR 0005](adr/0005-visual-object-composition.md) defines visual-object composition and calculation ownership.
+| Presentation boundary | Source |
+| --- | --- |
+| Module tree, frame lifecycle, and layer composition | [Panel presentation](efi/index.md) |
+| Instrument composition and layers | [ADR 0004](adr/0004-modular-pfd-presentation.md) |
+| Visual-object composition and calculation ownership | [ADR 0005](adr/0005-visual-object-composition.md) |
 
 | Module | Responsibility |
 | --- | --- |
@@ -221,10 +249,15 @@ The presentation reference owns these contracts:
 * [Telemetry operations](efi/telemetry.md#telemetry-operations): validation, callback publication, and connection lifecycle.
 * [Delivery boundaries](efi/composition.md#delivery-boundaries): future instruments and asset integration.
 
-The browser retains one latest sample and at most one pending animation frame.
-It accepts each fresh sample before coalescing draws, preserving instrument history such as selected-altitude alerts.
-Resize retains the original sample deadline. Rendering checks expiry and cancels invalid work.
-No interpolation or extrapolation is applied.
+Browser scheduling preserves these invariants:
+
+* The browser retains one latest sample and at most one pending animation frame.
+* It accepts each fresh sample before coalescing draws, preserving instrument history such as selected-altitude alerts.
+* Resize retains the original sample deadline.
+* Rendering checks expiry and cancels invalid work.
+* The browser applies no interpolation or extrapolation.
+
+Browser delivery and implementation follow these boundaries:
 
 * Use a relative, same-origin SSE URL and embed web assets in the binary.
 * Require no CDN, frontend package manager, CORS policy, or database.
