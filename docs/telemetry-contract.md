@@ -9,6 +9,7 @@
 | `telemetry::Attitude` | Validated attitude |
 | `SlipSkid`, `TurnRate` | Independently validated optional indications |
 | `IndicatedAirspeed`, `TrueAirspeed`, `GroundSpeed` | Independently validated finite nonnegative knots, with `new` and `knots` methods |
+| `SelectedAltitude`, `FlightSample::with_selected_altitude` | Validate finite signed feet and add an independently optional source target |
 | `BarometricAltitude` | Finite signed feet, with `new` and `feet` methods; no telemetry display limit |
 | `VerticalSpeed` | Finite signed ft/min, with `new` and `feet_per_minute` methods. No telemetry display limit |
 | `FlightSample::with_vertical_speed(speed)` | Add independently optional source-supplied vertical speed |
@@ -31,20 +32,14 @@
 | `tests/fixtures/attitudes.json` | Independent known poses |
 
 The model exposes no HTTP endpoint.
+`FlightSample` is cloneable rather than copyable. Publication owns its BARO text, and snapshot reads clone the sample.
+The additive builders preserve the original attitude/turn constructor and attitude-only publication path.
 
 ## HTTP surface
 
-| Request | Response |
-| --- | --- |
-| `GET /` | Instrument HTML with relative same-origin asset URLs |
-| `GET /health` | `200` JSON `{"status":"ok"}` when HTTP is serving |
-| `GET /api/v1/events` | `200 text/event-stream`, one stream per page |
-
-* There are no write/control endpoints.
-* Health reports process liveness, not flight readiness.
-* Send `Cache-Control: no-cache, no-transform` and `X-Accel-Buffering: no` for SSE.
-* Do not compress or buffer SSE responses through a proxy.
-* If you introduce a proxy, test streaming and timeout settings.
+`GET /api/v1/events` delivers the v1 contract as `200 text/event-stream`.
+The [server reference](server.md#http-routes) owns asset routes, health, and response behavior.
+There are no write/control endpoints.
 
 ## Framing
 
@@ -62,12 +57,12 @@ data: {"schema_version":1,"sequence":42,"source":"demo","state":"live","sample_a
 
 | Timing | Initial value / rule |
 | --- | --- |
-| Valid samples | Proposed 20 Hz cadence |
+| Valid samples | Source cadence: [Demo](sources/demo.md#scenario-timing) uses 20 Hz; [SimConnect attitude](sources/simconnect.md#data-and-availability) requests each simulator frame |
 | Reconnect hint | `retry: 2000` |
 | Page retry | Close the failed EventSource. Create its replacement after 2,000 ms, including initial connection failures |
 | Idle heartbeat | SSE comment every 10 seconds when otherwise idle |
 | Stalled socket write | Close after 30 seconds without progress |
-| Server shutdown | Stop acquisition and end streams. Allow five seconds for remaining connections |
+| Server shutdown | End HTTP connections with a five-second grace. Application composition separately stops acquisition |
 
 These durations are initial tuning values.
 
@@ -182,14 +177,7 @@ Example additions to a live v1 snapshot:
 {"altitude_ft": -120.0, "baro_text": "29.92 inHg", "baro_setting": {"pressure_hpa": 1013.25}}
 ```
 
-The first 18 seconds of the shared 198-second Rust altitude demo contain six three-second sweeps.
-Their endpoints are -120/120, 980/1020, 9980/10020, 10020/9980, 1020/980, and 120/-120 ft.
-Each sweep includes both endpoints over 60 samples.
-The producer cycles through `29.92 inHg`, `30.12 inHg`, and `29.72 inHg` at six-second intervals.
-Transitions between sweeps are synthetic test cases, not a physical flight trajectory or a pressure-response model.
-
-`tests/fixtures/altitude-samples.json` contains independent checkpoints and cycle boundaries.
-[Altitude presentation](efi/altitude.md#presentation) defines the display limits and rolling drums.
+See the [Demo provider](sources/demo.md#altitude-and-pressure) for the deterministic scenario and fixture references.
 
 ### Optional selected altitude
 
@@ -211,28 +199,7 @@ Example addition to a live v1 snapshot:
 {"selected_altitude_ft": 10000.0}
 ```
 
-The shared altitude, target, and vertical-speed demo repeats after 3960 samples at 20 Hz:
-
-| Time | Altitude / target |
-| --- | --- |
-| 0-18 seconds | Existing six signed sweeps, without selected altitude |
-| 18-108 seconds | Approach 10000 ft from 8500 ft, hold, then depart to 10300 ft |
-| 108-198 seconds | Approach 1000 ft from 2500 ft, hold, then depart to 700 ft |
-
-Each 90-second approach uses this schedule:
-
-| Duration | Altitude relative to target |
-| --- | --- |
-| 6 seconds | Hold 1500 ft away |
-| 40 seconds | Move to 500 ft away |
-| 20 seconds | Reach target |
-| 6 seconds | Hold target |
-| 12 seconds | Depart by 300 ft |
-| 6 seconds | Hold deviation |
-
-Attitude, speeds, coordinated-turn values, and pressure retain their existing 18-second cycles.
-`tests/fixtures/selected-altitude-samples.json` contains independent checkpoints.
-See [selected-altitude presentation](efi/selected-altitude.md#presentation-and-alert-behavior) for alert rules and display validity.
+See the [Demo provider](sources/demo.md#selected-altitude-phases) for the deterministic scenario and fixture references.
 
 ### Optional magnetic headings
 
@@ -252,24 +219,7 @@ Example additions to a live v1 snapshot:
 {"heading_deg": 359.0, "selected_heading_deg": 1.0}
 ```
 
-The heading demo repeats every 360 samples at 20 Hz, following source turn rate:
-
-| Time | Current heading | Selected heading | Turn rate |
-| --- | --- | --- | --- |
-| 0-2 seconds | 354 degrees | 350 degrees | 0 deg/s |
-| 2-4 seconds | 354 degrees | 90 degrees | 0 deg/s |
-| 4-6 seconds | 354 degrees | 180 degrees | 0 deg/s |
-| 6-8 seconds | 354 to 348 degrees | 350 degrees | -3 deg/s |
-| 8-10 seconds | 348 to 354 degrees | 350 degrees | +3 deg/s |
-| 10-12 seconds | 354 to 0 degrees | 0 degrees | +3 deg/s |
-| 12-14 seconds | 0 to 354 degrees | 0 degrees | -3 deg/s |
-| 14-16 seconds | 354 degrees | Unavailable | 0 deg/s |
-| 16-18 seconds | 354 degrees | 354 degrees | 0 deg/s |
-
-Phase boundaries use the starting phase's values. Normalization wraps calculations into `[0, 360)`.
-The producer still wraps after 3960 samples. The altitude cycle remains 198 seconds.
-`tests/fixtures/heading-samples.json` supplies independent checkpoints, including both north crossings.
-See [heading presentation](efi/heading.md#presentation) and [heading acceptance](efi/heading.md#heading-acceptance).
+See the [Demo provider](sources/demo.md#heading-cycle) for the deterministic scenario and fixture references.
 
 ### Optional vertical speed
 
@@ -288,18 +238,7 @@ Example addition to a live v1 snapshot:
 {"vertical_speed_fpm": 1500.0}
 ```
 
-The demo derives altitude and VSI from shared segment definitions:
-
-| Segment | VSI |
-| --- | --- |
-| First six altitude sweeps | Analytic slope, approximately +/-4881.36 or +/-813.56 ft/min |
-| Target approach and departure | +1500 ft/min upward, -1500 ft/min downward |
-| Holds | Zero |
-| First sample after artificial jumps | Omitted at cycle indices 0, 60, 120, 240, 300, 360, and 2160 |
-| Continuous phase boundary | Rate of the phase beginning at that sample |
-
-`tests/fixtures/vertical-speed-samples.json` supplies independent segment and jump checkpoints.
-See [VSI presentation](efi/vertical-speed.md#presentation) for display limits and [VSI acceptance](efi/vertical-speed.md#vertical-speed-acceptance) for checks.
+See the [Demo provider](sources/demo.md#vertical-speed) for the deterministic scenario and fixture references.
 
 ### Optional airspeed ranges and trend
 
@@ -314,19 +253,6 @@ The profile contains these fields:
 
 Rust types expose validated constructors. Profile fields remain private. The wire names identify their units and reference meanings.
 
-The demo supplies this fictional configuration. These values do not establish the performance of a real aircraft.
-
-```json
-{
-  "airspeed_profile": {
-    "vs0_kt": 40.0, "vs1_kt": 50.0, "vfe_kt": 85.0,
-    "vno_kt": 110.0, "vne_kt": 140.0,
-    "references": {"vr_kt": 55.0, "vx_kt": 65.0, "vy_kt": 75.0, "vg_kt": 90.0}
-  },
-  "ias_acceleration_ktps": 25.0
-}
-```
-
 These extensions follow the existing sample lifecycle:
 
 * Both fields share the sample sequence, monotonic age, and expiry deadline. Providers must supply acceleration from the same fresh acquisition as IAS.
@@ -340,8 +266,7 @@ These extensions follow the existing sample lifecycle:
 The browser never computes acceleration from browser receipt intervals.
 [Ranges, references, and trend](efi/airspeed-indications.md#presentation) defines the prediction, clipping, warnings, and fallback presentation.
 
-The demo acceleration is +25 kt/s during acceleration, zero during hold and rest, and -25 kt/s during deceleration.
-At each segment boundary, the new segment supplies the acceleration. Independent fixtures reside in `airspeed-profile.json` and `speed-indications.json`.
+See the [Demo provider](sources/demo.md#speed-cycle-and-profile) for the deterministic scenario and fixture references.
 
 Unavailable state example:
 

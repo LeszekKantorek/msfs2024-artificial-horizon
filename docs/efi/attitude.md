@@ -150,6 +150,9 @@ Complete the separate phone acceptance for #20:
 
 ### Demo behavior
 
+Use the [Demo attitude and coordinated-turn schedule](../sources/demo.md#attitude-and-coordinated-turn) for exact source values.
+The cycle exercises these presentation cases:
+
 | Property | Expected behavior |
 | --- | --- |
 | Cycle | Nine poses over 18 seconds, each held for two seconds |

@@ -9,7 +9,8 @@ Select the source for the affected boundary:
 
 | Boundary | Source |
 | --- | --- |
-| Fields, independent validity, pressure meaning, and demo sweeps | [Altitude telemetry](../docs/telemetry-contract.md#optional-altitude-and-pressure-setting) |
+| Fields, independent validity, and pressure meaning | [Altitude telemetry](../docs/telemetry-contract.md#optional-altitude-and-pressure-setting) |
+| Demo sweeps and pressure cycles | [Demo altitude and pressure](../docs/sources/demo.md#altitude-and-pressure) |
 | Tape spacing, drums, display limits, BARO formatting, and availability | [Altitude presentation](../docs/efi/altitude.md#presentation) |
 | Automated and device checks | [Altitude acceptance](../docs/efi/altitude.md#altitude-and-pressure-acceptance), [footer and BARO checks](../docs/efi/altitude.md#tape-footers-and-source-formatted-baro) |
 | Public evidence and accepted scope | [Issue #23](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/23), [PR #59](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/pull/59), [footer revision #65](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/65) |
@@ -38,7 +39,8 @@ Select the source for the affected boundary:
 
 | Boundary | Source |
 | --- | --- |
-| Optional target, freshness, and shared altitude demo | [Selected-altitude telemetry](../docs/telemetry-contract.md#optional-selected-altitude) |
+| Optional target and freshness | [Selected-altitude telemetry](../docs/telemetry-contract.md#optional-selected-altitude) |
+| Shared altitude, target, and VSI phases | [Demo selected-altitude phases](../docs/sources/demo.md#selected-altitude-phases), [analytic VSI](../docs/sources/demo.md#vertical-speed) |
 | Capture, bug geometry, thresholds, flashing, and deviation | [Selected-altitude presentation](../docs/efi/selected-altitude.md#presentation-and-alert-behavior) |
 | Per-sample acceptance and timed rendering | [Panel lifecycle](../docs/efi/lifecycle.md#panel-interface-and-frame-lifecycle) |
 | Automated and actual-device checks | [Selected-altitude acceptance](../docs/efi/selected-altitude.md#selected-altitude-and-alert-acceptance) |

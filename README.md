@@ -8,7 +8,7 @@ then open its address in a browser on the same network.
 
 > **Try the demo today.** The executable displays synthetic attitude, IAS, TAS, GS, altitude, selected-altitude alerts, vertical speed, pressure, magnetic heading, slip/skid, and turn rate.
 > SimConnect feeds available live flight instruments to the same browser display. Speed ranges and references remain independently available; unsupported aircraft data is hidden.
-> See the [recorded evidence and limits](docs/simconnect.md#live-publication-evidence). This is not a real-flight instrument.
+> See the [recorded evidence and limits](docs/sources/simconnect.md#live-publication-evidence). This is not a real-flight instrument.
 
 [Start the demo](#start-the-demo) · [Use your phone](#use-your-phone) · [Development](CONTRIBUTING.md)
 
@@ -97,13 +97,13 @@ cargo run --locked --release --bin msfs2024-artificial-horizon -- --source simco
 Place `SimConnect.dll` beside the running executable, or add `--dll` with its absolute path.
 The default DLL location is independent of the working directory.
 Optional `--log` appends sessions to exactly the supplied file; distinguish scenarios by filename.
-See [SimConnect setup and scenarios](docs/simconnect.md) for requirements and observation procedures.
+See [SimConnect setup and scenarios](docs/sources/simconnect.md) for requirements and observation procedures.
 This mode starts HTTP/SSE with the same address and port options as Demo.
 Add `--listen-address 0.0.0.0 --port 8080` for access from the trusted private network.
 Open the printed URL on the PC or phone.
 HTTP remains available if SimConnect cannot start; the display shows unavailable data and the console explains the source failure.
 Live publication requires a running simulator, a loaded flight, zero pause flags, and a fresh valid sample.
-Recorded sessions support signs, pause/menu unavailability, fresh-sample recovery and reconnect in the tested setup; see [evidence and limits](docs/simconnect.md#live-publication-evidence).
+Recorded sessions support signs, pause/menu unavailability, fresh-sample recovery and reconnect in the tested setup; see [evidence and limits](docs/sources/simconnect.md#live-publication-evidence).
 The #5 receiver evidence does not establish integrated live-browser or mobile acceptance. Broader compatibility and complete performance coverage are not established.
 
 ## Project guide
@@ -113,8 +113,11 @@ The #5 receiver evidence does not establish integrated live-browser or mobile ac
 | Run checks or test a phone | [Testing](docs/testing/index.md) |
 | Contribute a change | [Contributing](CONTRIBUTING.md) |
 | Use the Rust library or understand the design | [Architecture](docs/architecture.md#application-api) |
+| Understand HTTP APIs, assets, and connection shutdown | [Server](docs/server.md) |
+| Develop or validate a source provider | [Sources](docs/sources/index.md) |
+| Find deterministic Demo scenarios | [Demo](docs/sources/demo.md) |
 | Consume telemetry | [Telemetry contract](docs/telemetry-contract.md) |
-| Run SimConnect reception or diagnostics | [SimConnect setup and scenarios](docs/simconnect.md) |
+| Run SimConnect reception or diagnostics | [SimConnect setup and scenarios](docs/sources/simconnect.md) |
 | Review scope and future work | [Project brief](docs/project-brief.md) · [Roadmap](docs/roadmap.md) |
 | Understand the stack choice | [ADR 0001](docs/adr/0001-rust-http-sse.md) |
 | Track work | [GitHub Issues](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues) |

@@ -101,7 +101,7 @@ The [visual-object decision](../adr/0005-visual-object-composition.md) records t
 Delivery preserves production scope and asset integration:
 
 * Each implementation issue updates its tests, documentation, and mobile evidence.
-* Update embedded Rust asset routes and the fixture server when imports change.
+* Update embedded Rust asset routes and the fixture server when imports change. The [server reference](../server.md#embedded-assets) defines asset registration constraints.
 * The full development fixture uses production modules for all 17 included illustration elements.
 * No new telemetry fields, framework, build pipeline, Solid.js, three.js, or custom signals are required for #36 or #37.
 

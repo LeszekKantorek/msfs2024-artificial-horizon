@@ -205,9 +205,8 @@ Use [phone fixtures](../testing/devices.md#phone-fixture-setup) for controlled r
 
 ### Demo behavior
 
-| Property | Expected behavior |
-| --- | --- |
-| IAS/GS | 0–2 s: zero. 2–8 s: acceleration to IAS 150 / GS 170 kt. 8–10 s: hold. 10–16 s: deceleration to zero. 16–18 s: zero |
+Use the [Demo speed cycle](../sources/demo.md#speed-cycle-and-profile) for source values and timing.
+Check zero-speed presentation, acceleration, the IAS 150 / GS 170 kt hold, deceleration, and return to zero.
 
 ### Composition recovery regression
 

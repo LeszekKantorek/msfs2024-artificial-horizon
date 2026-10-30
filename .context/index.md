@@ -4,6 +4,10 @@
 | [Phone access](../README.md#use-your-phone) | Connecting a phone to the demo over the private LAN. |
 | [Product scope](../docs/project-brief.md#scope-and-acceptance) | Determining included behavior, exclusions, or acceptance ownership. |
 | [Architecture boundaries](../docs/architecture.md#boundaries) | Locating component responsibilities before changing a runtime boundary. |
+| [HTTP server](../docs/server.md) | Changing routers, assets, health, SSE delivery, or connection shutdown. |
+| [Source providers](../docs/sources/index.md) | Selecting or changing acquisition and normalization responsibilities. |
+| [Demo scenarios](../docs/sources/demo.md#scenario-timing) | Checking deterministic source values, cycles, altitude phases, or fixture expectations. |
+| [SimConnect integration](../docs/sources/simconnect.md) | Changing native acquisition, diagnostics, or assessing live evidence limits. |
 | [PFD features](../docs/efi/index.md#features) | Finding requirements, presentation, implementation, and acceptance scenarios for a specific instrument. |
 | [Shared PFD boundaries](../docs/efi/index.md#shared-responsibilities) | Changing composition, frames, telemetry, global status, or cross-module rendering. |
 | [Validation scope](../docs/testing/index.md#validation-by-change-scope) | Selecting required checks for a change. |

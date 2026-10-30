@@ -54,7 +54,8 @@ Closely coupled objects share a feature page; independently changed behavior has
 | Rationale, accepted refinements, regression lessons | The affected feature or shared validation page, with public provenance and evidence limits |
 | Feature scenarios, expected results, screenshots, device-specific checks | The feature's Testing section |
 | Reusable commands, phone setup, evidence templates | Shared testing pages |
-| Wire fields, normalization, units, source demo schedules | [Telemetry contract](../telemetry-contract.md) |
+| Wire fields, normalization, units, and compatibility | [Telemetry contract](../telemetry-contract.md) |
+| Source scenario definitions and timing | [Demo provider](../sources/demo.md) |
 | Product coverage and exclusions | [Project brief](../project-brief.md#scope-and-acceptance) |
 | Execution results and acceptance status | Related GitHub issues and PRs |
 

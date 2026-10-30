@@ -59,7 +59,11 @@ Review the choice of structure independently from the wording:
 | [README](../README.md) | First run, phone access, available behavior, limitations |
 | [CONTRIBUTING](../CONTRIBUTING.md) | Developer setup, context tooling, contribution workflow |
 | [Brief](../docs/project-brief.md) | Requirements, scope, assumptions, success criteria |
-| [Architecture](../docs/architecture.md) | Target design, boundaries, library API |
+| [Architecture](../docs/architecture.md) | End-to-end flow, boundaries, application lifecycle, deployment, and fundamental library contracts |
+| [Server](../docs/server.md) | HTTP API, routers, embedded assets, health, SSE delivery, and connection shutdown |
+| [Sources](../docs/sources/index.md) | Shared acquisition responsibilities and provider navigation |
+| [Demo](../docs/sources/demo.md) | Deterministic scenarios, source API, timing, and validation references |
+| [SimConnect](../docs/sources/simconnect.md) | Native configuration, API, diagnostics, implementation, tests, and evidence limits |
 | [Panel presentation](../docs/efi/index.md) | Feature requirements, presentation, implementation, rationale, and acceptance scenarios; shared composition, lifecycle, and rendering contracts |
 | [Contract](../docs/telemetry-contract.md) | Wire interface, units, validity, freshness |
 | [Testing](../docs/testing/index.md) | Shared check commands, runtime and device procedures, validation selection, and evidence templates; feature scenarios remain on feature pages |

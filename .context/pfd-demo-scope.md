@@ -10,7 +10,7 @@ status: active
 | Modules, layers, and instrument scope | [Panel presentation](../docs/efi/index.md), [ADR 0004](../docs/adr/0004-modular-pfd-presentation.md) |
 | Additive fields and preserved attitude-only provider | [ADR 0003](../docs/adr/0003-responsive-pfd-demo.md), [contract](../docs/telemetry-contract.md) |
 
-* The accepted full-instrument plan supersedes the original demo-only restriction; see [SimConnect](../docs/simconnect.md) and [ADR 0008](../docs/adr/0008-partial-airspeed-profile.md). Performance #7 and packaging #8 remain separate.
+* The accepted full-instrument plan supersedes the original demo-only restriction; see [SimConnect](../docs/sources/simconnect.md) and [ADR 0008](../docs/adr/0008-partial-airspeed-profile.md). Performance #7 and packaging #8 remain separate.
 * Apply the scope: no battery, HSI, or navigation guidance, and responsive layout instead of fixed 4:3.
 * Treat scope as planned until source and implementation evidence establish that it exists.
 * Describe implemented behavior separately from device acceptance, which requires its own recorded evidence.

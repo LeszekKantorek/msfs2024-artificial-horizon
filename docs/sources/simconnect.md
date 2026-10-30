@@ -6,11 +6,11 @@ User-aircraft flight instrument reception with optional diagnostics.
 
 | Requirement | Contract |
 | --- | --- |
-| Runtime | Windows x64 MSVC. Use the [development environment](../CONTRIBUTING.md#environment-setup) |
+| Runtime | Windows x64 MSVC. Use the [development environment](../../CONTRIBUTING.md#environment-setup) |
 | DLL | Official x64 `SimConnect.dll`, obtained separately |
 | Build | No SDK headers, import library, or installed simulator required |
 | Acquisition | One module and the caller-owned telemetry channel |
-| Telemetry | Existing [states, validity, and freshness](telemetry-contract.md#freshness-and-status) |
+| Telemetry | Existing [states, validity, and freshness](../telemetry-contract.md#freshness-and-status) |
 | Scope | Available standard aircraft data through HTTP/SSE and EFI. Each optional indication is independent |
 | Distribution | Packaging and DLL redistribution conditions in [#8](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/8) |
 | Repository | No SDK files, installation paths, or generated diagnostics in Git |
@@ -29,7 +29,7 @@ User-aircraft flight instrument reception with optional diagnostics.
 
 3. Check the console for the selected DLL and connection status.
    An active, unpaused flight produces `State: live` after a new sample passes availability checks.
-4. Open the printed HTTP URL. For phone access, use the [private LAN setup](../README.md#use-your-phone) with `--source simconnect`.
+4. Open the printed HTTP URL. For phone access, use the [private LAN setup](../../README.md#use-your-phone) with `--source simconnect`.
 5. Press `Ctrl+C` to close HTTP clients and wait for native reception to stop.
 
 For a DLL in another directory, provide its absolute path:
@@ -68,6 +68,27 @@ The CLI applies these restrictions:
 | Errors | Missing DLL, incompatible architecture, or missing exports stop the producer. HTTP remains available |
 | Missing default DLL | Place it beside the EXE or select an absolute `--dll` path |
 | Console | DLL selection, connections, state changes, errors, and shutdown, including without logging |
+
+## Public API
+
+The `providers::simconnect` module exports the acquisition interface independently of HTTP and process arguments.
+
+| Interface | Contract |
+| --- | --- |
+| `SimConnectConfig` | Optional `dll: Option<PathBuf>` and `log: Option<PathBuf>`. Both default to `None` |
+| `resolve_dll(override_path)` | Return the selected path or `SimConnectError`. Validate path syntax without loading the DLL |
+| `run(config, publisher, shutdown)` | Consume a caller-supplied `Publisher` with `Source::SimConnect`. Await caller-owned shutdown with output `io::Result<()>` and return `RunReport` |
+| `RunReport::result` | Acquisition outcome as `Result<(), SimConnectError>` |
+| `RunReport::diagnostics` | Independent `DiagnosticStatus`: disabled, completed, or failed |
+| `SimConnectError` | Configuration, I/O, native, telemetry, or worker-panic failure |
+
+* The provider creates no hidden telemetry channel and never starts HTTP.
+* Configuration contains no scenario, process arguments, or HTTP settings.
+* DLL resolution uses the same executable-relative default for library and CLI calls, before opening diagnostics or loading native code.
+* Dropping the running future signals worker cancellation. Normal shutdown also waits for the worker and reports cleanup results.
+* A permanently blocked native call has no guaranteed completion deadline.
+
+Application startup and source-failure isolation follow the [application lifecycle](../architecture.md#server-and-browser-ownership).
 
 ## Implementation
 
@@ -126,7 +147,7 @@ Attitude acquisition uses these conventions:
 
 * Request `PLANE PITCH DEGREES` and `PLANE BANK DEGREES` as `FLOAT64` radians once per simulator frame, without `CHANGED`.
 * Use the [native radian unit](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simvars/aircraft-simvars/aircraft-miscellaneous-variables/) despite the variable names.
-* Negate both signs, convert locally to degrees, and wrap bank to the [telemetry range](telemetry-contract.md#fields-and-conventions).
+* Negate both signs, convert locally to degrees, and wrap bank to the [telemetry range](../telemetry-contract.md#fields-and-conventions).
 * Reject invalid or nonfinite primary input. Do not clamp it.
 * Treat requested degrees and repeated radians as diagnostics. Disagreement or nonfinite probes cannot invalidate otherwise valid primary radians.
 
@@ -250,7 +271,7 @@ Interpret records with these constraints:
 
 ## Testing
 
-Use the [validation scope matrix](testing/index.md#validation-by-change-scope), [automated commands](testing/automated.md#automated-checks), and [evidence procedure](testing/evidence.md).
+Use the [validation scope matrix](../testing/index.md#validation-by-change-scope), [automated commands](../testing/automated.md#automated-checks), and [evidence procedure](../testing/evidence.md).
 
 ### Automated checks
 
@@ -294,13 +315,13 @@ Select manual checks only for a concrete change, contradiction, or additional cl
 Use these evidence rules:
 
 * Reuse existing results before requesting another run.
-* Keep local logs, session IDs, versions, independent observations, and [build provenance](testing/evidence.md#build-provenance). Runtime metadata alone does not establish a binary's source.
+* Keep local logs, session IDs, versions, independent observations, and [build provenance](../testing/evidence.md#build-provenance). Runtime metadata alone does not establish a binary's source.
 * Divide process CPU time by elapsed wall time for one logical CPU. State normalization across all logical CPUs.
 * Use console observations without logging for connection, availability, and shutdown claims. Do not infer numerical angles.
 
 ### Integrated HTTP/SSE and device acceptance
 
-Use the final release artifact and the [real-device procedure](testing/devices.md#real-phone-acceptance-procedure).
+Use the final release artifact and the [real-device procedure](../testing/devices.md#real-phone-acceptance-procedure).
 Run the following scenarios separately on actual iOS Safari and Android Chrome.
 Keep the receiver's #5 evidence separate from these end-to-end results.
 
@@ -328,7 +349,7 @@ Integrated simulator and mobile acceptance require separate runs against the fin
 Acceptance and rationale have separate sources:
 
 * [#5 acceptance record](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5): tested environments and evidence limits.
-* [ADR 0006](adr/0006-simconnect-manual-ffi.md#live-publication-amendment): decision to enable live publication.
+* [ADR 0006](../adr/0006-simconnect-manual-ffi.md#live-publication-amendment): decision to enable live publication.
 
 ## Rationale and regression lessons
 
@@ -336,7 +357,7 @@ Acceptance and rationale have separate sources:
 | --- | --- |
 | Native radians | Independent requested units do not guarantee simultaneous acquisition |
 | Diagnostic degree and repeat probes | No effect on canonical validity. The cause of discrepancies remains unresolved |
-| Native bindings and ownership | Defined in [ADR 0006](adr/0006-simconnect-manual-ffi.md) |
+| Native bindings and ownership | Defined in [ADR 0006](../adr/0006-simconnect-manual-ffi.md) |
 
 The [validation evidence](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) has these limits:
 

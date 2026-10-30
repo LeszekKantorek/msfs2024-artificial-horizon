@@ -97,7 +97,7 @@ The scripted geometry checks include these regression cases:
 
 Asset checks cover the current module graph:
 
-* The [architecture tree](../architecture.md#intended-source-layout) lists the runtime modules.
+* The [EFI composition guide](../efi/composition.md#module-composition) describes runtime ownership. The [feature directory](../efi/index.md#features) identifies implementing modules.
 * `src/http/assets.rs` registers the current modules, HTML, and CSS through explicit mappings.
 * `tests/http.rs` checks the explicit embedded routes and JavaScript MIME.
 * Both browser scripts check retired routes return 404 without compatibility facades.

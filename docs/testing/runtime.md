@@ -93,7 +93,8 @@ These tests require no simulator or SDK.
 
 ### Demo behavior
 
-Feature pages own the [attitude/turn cycle](../efi/attitude.md#demo-behavior) and [IAS/GS cycle](../efi/airspeed.md#demo-behavior).
+The [Demo provider](../sources/demo.md#scenario-timing) owns source cycles and timing.
+Feature pages own the [attitude/turn checks](../efi/attitude.md#demo-behavior) and [IAS/GS checks](../efi/airspeed.md#demo-behavior).
 The following rules apply to the shared producer:
 
 | Property | Expected behavior |
