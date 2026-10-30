@@ -26,6 +26,6 @@ IAS history expires independently of IAS availability. The [SimConnect policy](.
 | Requirements and presentation | [Feature contract](../docs/efi/true-airspeed.md#requirements) |
 | Object ownership and calculations | [Implementation](../docs/efi/true-airspeed.md#implementation) |
 | Automated, visual, and device acceptance | [Testing](../docs/efi/true-airspeed.md#testing) |
-| Decision rationale, regression lessons, and evidence limits | [Rationale](../docs/efi/true-airspeed.md#rationale-and-regression-lessons) |
+| Decision rationale, regression lessons, and evidence limits | [Rationale](../docs/efi/true-airspeed.md#rationale-and-regression-lessons), [phone checks and evidence limits](../docs/efi/true-airspeed.md#real-phone-checks) |
 
 Partial-profile decision: [ADR 0008](../docs/adr/0008-partial-airspeed-profile.md) governs independent thresholds, references and current redline.
