@@ -4,36 +4,23 @@ The compact signed VSI readout below current altitude.
 
 ## Requirements
 
-Round numeric VSI to 10 ft/min, with ties away from zero: `0`, `-20`, `-120`, `+400`, `+420`. Never display `-0`. Preserve source precision and calculations.
-
-Display source-supplied signed ft/min. Valid VSI remains available when altitude or BARO is unavailable.
-Use raw values for display-limit checks before rounding; do not estimate VSI from browser altitude differences.
+* Display source-supplied signed ft/min without estimating VSI from browser altitude differences.
+* Preserve source precision and calculations when rounding the displayed value.
+* Use raw values for display-limit and availability checks before rounding.
+* Keep valid VSI available when altitude or BARO is unavailable.
 
 Wire definitions: [telemetry contract](../telemetry-contract.md#optional-vertical-speed).
 
 ## Presentation
 
-`altitude/index.js` composes the stateless `vsi.js` object inside the altitude group:
+* Place the compact numeric window below current altitude.
+* Align its right border with the altitude window and its value with the right edge of altitude's digits.
+* Display feet per minute without a visible unit label or arrow.
 
-* A 51-by-27 CSS px rectangle sits below the current-altitude window, with aligned right borders and three pixels between painted strokes.
-* The window shares altitude's monospace font family, text color, background and one-pixel border.
-* VSI uses 13 CSS px text, one pixel smaller than altitude's 14 CSS px text.
-* The value aligns with the right edge of altitude's digits, using feet per minute without a visible unit label or arrow.
-* The altitude readout supplies that edge from the measured bounds of its two-digit monospace drum during resize.
-* VSI accounts for glyph bounds when positioning text, including the wider unavailable `X`.
-* Altitude keeps its existing tape width and places the trend inside its left-side tick lane.
-* VSI owns its formatting, window geometry and availability, with altitude delegating resize, rendering and invalidation.
-* The tape uses VSI's local window bounds to hide whole intersecting labels and shorten intersecting ticks with two pixels of clearance.
-* The selected-altitude bug paints below both opaque windows and remains visible to their left.
+### Input availability, rounding, and display limits
 
-The local window position uses altitude tape width `W` and height `H`:
-
-```text
-x = W - 1 - 51
-y = H/2 + 14 + 1 + 3
-```
-
-Reading and availability follow these rules:
+Round numeric VSI to 10 ft/min, with ties away from zero. Example readings include `0`, `-20`, `-120`, `+400`, and `+420`.
+Never display `-0`.
 
 | Input | Presentation |
 | --- | --- |
@@ -43,30 +30,84 @@ Reading and availability follow these rules:
 | Missing or invalid value | Red `X` in the same window |
 | Missing altitude or pressure | Valid VSI remains available |
 
-Bounds and availability use raw values before rounding.
-The accessible label includes the raw value and feet per minute.
-VSI uses the common frame and expiry deadline without a timer, interpolation, filtering, or sample history.
-The full layout fixture uses the same module as production.
-
-Garmin G5 Guide 190-01112-12 Rev. 2, section 3.3.9, provides the vertical-speed reference.
-The compact numeric window and its numeric limits are application design decisions.
+Bounds and availability use raw values before rounding. A raw value within the limit can therefore round to a displayed magnitude of 10000.
 
 ## Implementation
 
-`altitude/index.js` composes the stateless `altitude/vsi.js` object.
-VSI owns formatting, window geometry, and local availability. Altitude delegates resize, rendering, and invalidation.
-The readout supplies measured digit bounds during resize; the tape uses the VSI window bounds for tick and label clearance.
+### Composition and visual object interface
+
+`altitude/index.js` composes the stateless `altitude/vsi.js` object inside the altitude group:
+
+| Component | Responsibility |
+| --- | --- |
+| Altitude composition | Delegate resize, rendering, and invalidation to VSI |
+| VSI | Own formatting, window geometry, and local availability |
+| Altitude readout | Supply the measured right edge of the two-digit monospace drum during resize |
+| Altitude tape | Use VSI's local window bounds for tick and label clearance |
+
+`createVsi(parent)` exposes these methods:
+
+| Method | Contract |
+| --- | --- |
+| `resize(allocation, altitudeTextRight)` | Set local window geometry and align text with the supplied altitude digit edge |
+| `render(fpm)` | Format the raw rate, set local availability, and update text and the accessible label |
+| `invalidate()` | Set the unavailable state, show `X`, and set the unavailable accessible label |
+
+### Geometry, text alignment, and paint order
+
+| Parameter | Requirement |
+| --- | --- |
+| Window size | 51-by-27 CSS px |
+| Position | Below the current-altitude window, with aligned right borders |
+| Painted gap | Three pixels between the altitude and VSI window strokes |
+| Shared style | Altitude's monospace font family, text color, background, and one-pixel border |
+| Text size | 13 CSS px, one pixel smaller than altitude's 14 CSS px text |
+| Tape allocation | Preserve the existing altitude tape width and keep the trend inside its left-side tick lane |
+| Tape obstruction | Hide whole intersecting labels and shorten intersecting ticks with two pixels of clearance |
+| Selected-altitude bug | Paint below both opaque windows and remain visible to their left |
+
+The local window position uses altitude tape width `W` and height `H`:
+
+```text
+x = W - 1 - 51
+y = H/2 + 14 + 1 + 3
+```
+
+During resize, the altitude readout supplies the right edge measured from its two-digit monospace drum.
+VSI corrects text positioning for glyph bounds, including the wider unavailable `X`, so the painted text edges align.
+
+### Frame updates, SVG state, and accessibility
+
+* Use the common frame and expiry deadline.
+* Add no timer, interpolation, filtering, or sample history.
+* Include the raw value and feet per minute in the accessible label for available and overflow readings.
+* Use the same VSI module in the full layout fixture and production.
 
 ## Testing
 
 Use the [validation scope matrix](../testing/index.md#validation-by-change-scope) and the feature checks below.
 Shared browser commands, phone setup, and evidence rules are linked from those checks.
 
-### Vertical-speed acceptance
-
 Issue [#25](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/25) owns VSI evidence.
-Use the [contract](../telemetry-contract.md#optional-vertical-speed) and [presentation rules](#presentation) for units, ranges, and availability.
 
+### Acceptance scenarios
+
+Use the [contract](../telemetry-contract.md#optional-vertical-speed) and [presentation rules](#presentation) for units, ranges, and availability.
+Check the raw limit independently from the rounded text:
+
+| Raw input in ft/min | Expected indication |
+| --- | --- |
+| `9999` | `+10000` |
+| `-9999` | `-10000` |
+| `9999.01` | White `+OVR` |
+| `-9999.01` | White `-OVR` |
+| Positive or negative value rounding to zero | `0`, without a minus sign |
+| Missing or invalid value | Red `X` |
+| Valid VSI with unavailable altitude or BARO | Retain the VSI reading |
+
+### Automated checks and independent fixtures
+
+Run the [automated Rust and Node commands](../testing/automated.md#automated-checks).
 Automated acceptance covers these boundaries:
 
 | Boundary | Checks |
@@ -75,23 +116,28 @@ Automated acceptance covers these boundaries:
 | Scenario | Independent 3960-sample checkpoints, every jump and phase, analytic altitude/rate agreement, 25 ft/s producing +1500 ft/min, and unchanged other cycles |
 | Node calculations | Signed zero, rounding, raw +/-9999 boundaries, invalid values, window geometry, recovered horizon width, and label/tick obstruction |
 | Shared lifecycle | Latest coherent frame, resize without renewed freshness, expiry before drawing, pause/disconnect, reconnect and background/resume without duplicate subscriptions |
-| SVG | Shared font family/color, 13-pixel VSI text, matching right text edges and 51-by-27 window. Three-pixel painted gap, text bounds, target bug, label/tick clearance, nodes and partial loss |
-| Release runtime | Embedded altitude/VSI/trend modules with GET/HEAD and JavaScript MIME, actual Rust ft/min in SSE/SVG, six-second climb prediction, hold and restart recovery |
 
-Use these checks and artifacts:
+Retain the selected-altitude alert regressions, including expiry while flashing and delayed callback cancellation.
 
-* Run the [automated Rust and Node commands](../testing/automated.md#automated-checks) and both [desktop browser scripts](../testing/pfd.md#responsive-efi-layout-and-desktop-checks).
-* Retain the selected-altitude alert regressions, including expiry while flashing and delayed callback cancellation.
-* Inspect `.local/pfd-browser/vsi-*` for the minimum viewport, narrow portrait, short landscape, negative-altitude capture and long signed values.
-* Inspect `.local/pfd-runtime-vertical-speed.png` for the compiled demo's +1500 ft/min climb beside altitude and its selected target.
+### Desktop geometry and availability transitions
+
+Run both [desktop browser scripts](../testing/pfd.md#responsive-efi-layout-and-desktop-checks).
+Check these SVG properties:
+
+* Shared font family and color, 13-pixel VSI text, and matching right text edges.
+* A 51-by-27 window with a three-pixel painted gap and contained text bounds.
+* Selected target bug, label and tick clearance, retained nodes, and partial loss.
+
+Inspect `.local/pfd-browser/vsi-*` for the minimum viewport, narrow portrait, short landscape, negative-altitude capture, and long signed values.
+Also run the [altitude trend prediction checks](altitude-trend.md#automated-checks-and-desktop-geometry).
+
+### Real-phone checks
 
 Apply the [shared phone procedure](../testing/devices.md#real-phone-acceptance-procedure) for #25, with these VSI-specific checks:
 
 1. Watch the 198-second altitude/VSI cycle for `0` during holds, positive climb, and negative descent directly below altitude.
 2. Inspect matching readout styles, the narrower rectangle, selected target/bug, and pressure against sky and ground.
 3. Use [phone fixtures](../testing/devices.md#phone-fixture-setup) with the inputs below for signed limits, partial failures, and missing data.
-
-Also run the [altitude trend prediction checks](altitude-trend.md#automated-checks-and-desktop-geometry) and [trend phone checks for #25](altitude-trend.md#real-phone-checks).
 
 Enter these JSON lines into the fixture terminal:
 
@@ -112,11 +158,26 @@ Enter these JSON lines into the fixture terminal:
 {"hold":false}
 ```
 
-### Full-panel geometry
+4. Run the [trend phone checks for #25](altitude-trend.md#real-phone-checks).
 
+> Desktop checks do not establish real iOS Safari or Android Chrome acceptance.
+
+### Full-panel integration
+
+Check these release-runtime results:
+
+* Embedded altitude/VSI/trend modules support GET/HEAD and JavaScript MIME.
+* Actual Rust ft/min reaches SSE and SVG.
+* Six-second climb prediction, hold, and restart recovery work through the integrated application.
+
+Inspect `.local/pfd-runtime-vertical-speed.png` for the compiled demo's +1500 ft/min climb beside altitude and its selected target.
 Check VSI limits during full-panel acceptance.
 
 ## Rationale and regression lessons
+
+Garmin G5 Guide 190-01112-12 Rev. 2, section 3.3.9, provides the vertical-speed reference.
+
+> The compact numeric window and its numeric limits are application design decisions.
 
 Retain these implementation and validation lessons:
 
@@ -125,5 +186,3 @@ Retain these implementation and validation lessons:
 * VSI composition belongs to altitude, but its availability remains independent of altitude and pressure.
 * Align VSI text with the altitude drum's measured right edge during resize. Centering does not preserve the accepted alignment.
 * Wait for raw accessible values in browser checks when successive samples have identical rounded text.
-
-Evidence limit: desktop checks do not establish real iOS Safari or Android Chrome acceptance.

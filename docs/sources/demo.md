@@ -173,7 +173,7 @@ The demo derives altitude and VSI from shared segment definitions:
 VSI calculations and validation use these rules:
 
 * `tests/fixtures/vertical-speed-samples.json` supplies independent segment and jump checkpoints.
-* See [VSI presentation](../efi/vertical-speed.md#presentation) for display limits and [VSI acceptance](../efi/vertical-speed.md#vertical-speed-acceptance) for checks.
+* See [VSI presentation](../efi/vertical-speed.md#presentation) for display limits and [VSI acceptance](../efi/vertical-speed.md#testing) for checks.
 * The six sweeps use `(end - start) / 59` feet per sample to include both endpoints. Multiply that slope by 1200 samples per minute to obtain the analytic VSI.
 * Target phases interpolate over their sample intervals and use the next phase's value at each boundary.
 

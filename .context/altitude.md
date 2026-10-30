@@ -56,6 +56,6 @@ Select the source for the affected boundary:
 | --- | --- |
 | Signed ft/min, optional fields, freshness, and analytic scenario | [VSI telemetry](../docs/telemetry-contract.md#optional-vertical-speed) |
 | Window geometry, styles, limits, rounding, and local availability | [VSI presentation](../docs/efi/vertical-speed.md#presentation) |
-| Automated coverage and real-phone procedures | [VSI acceptance](../docs/efi/vertical-speed.md#vertical-speed-acceptance) |
+| Automated coverage and real-phone procedures | [VSI acceptance](../docs/efi/vertical-speed.md#testing) |
 | Prediction and overlap with the selected bug | [Altitude trend](#altitude-trend) |
 | Object ownership, alignment, and scenario lessons | [Implementation](../docs/efi/vertical-speed.md#implementation), [rationale](../docs/efi/vertical-speed.md#rationale-and-regression-lessons) |
