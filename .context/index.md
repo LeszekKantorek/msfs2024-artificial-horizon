@@ -1,16 +1,23 @@
 | Entry | Use when |
 | --- | --- |
 | [Start the demo](../README.md#start-the-demo) | Building and running the demo for the first time. |
+| [User instructions](../README.md) | Finding first run, phone access, available behavior, and limitations. |
 | [Phone access](../README.md#use-your-phone) | Connecting a phone to the demo over the private LAN. |
-| [Product scope](../docs/efi/index.md#product-scope-and-reference) | Determining included behavior, exclusions, and reference coverage. |
-| [Architecture boundaries](../docs/architecture.md#components-and-execution) | Locating component responsibilities before changing a runtime boundary. |
+| [Product scope](../docs/efi/index.md#product-scope-and-reference) | Determining product coverage, exclusions, reference illustration, and terminology. |
+| [Architecture boundaries](../docs/architecture.md#components-and-execution) | Locating end-to-end flow, boundaries, application lifecycle, deployment, and fundamental library contracts. |
 | [HTTP server](../docs/server.md) | Changing routers, assets, health, SSE delivery, or connection shutdown. |
-| [Source providers](../docs/sources/index.md) | Selecting or changing acquisition and normalization responsibilities. |
-| [Demo scenarios](../docs/sources/demo.md#scenario-timing) | Checking deterministic source values, cycles, altitude phases, or fixture expectations. |
-| [SimConnect integration](../docs/sources/simconnect.md) | Changing native acquisition, diagnostics, or assessing live evidence limits. |
+| [Source providers](../docs/sources/index.md) | Finding shared acquisition responsibilities and provider navigation. |
+| [Demo scenarios](../docs/sources/demo.md) | Finding deterministic scenarios, source API, timing, and validation references. |
+| [SimConnect integration](../docs/sources/simconnect.md) | Finding native configuration, API, diagnostics, implementation, tests, or live evidence limits. |
+| [Telemetry contract](../docs/telemetry-contract.md) | Finding the wire interface, units, validity, and freshness requirements. |
 | [PFD features](../docs/efi/index.md#features) | Finding requirements, presentation, implementation, and acceptance scenarios for a specific instrument. |
 | [Shared PFD boundaries](../docs/efi/index.md#shared-responsibilities) | Changing composition, frames, telemetry, global status, or cross-module rendering. |
-| [Validation scope](../docs/testing/index.md#validation-by-change-scope) | Selecting required checks for a change. |
+| [Validation scope](../docs/testing/index.md#validation-by-change-scope) | Selecting required checks and shared commands, runtime and device procedures; feature scenarios remain on feature pages. |
+| [Developer setup](../CONTRIBUTING.md) | Finding development setup, context tooling, and contribution workflow. |
+| [Documentation maintenance](../CONTRIBUTING.md#documentation-maintenance) | Moving or consolidating documentation, preserving meaning, or checking historical requirements. |
+| [Roadmap](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9) | Reading delivery order and dependencies. |
+| [Issue records](repository-instructions.md#github-issue-records) | Distinguishing requirements from task status and execution results in issues and PRs. |
+| [Architecture decision records](../docs/adr/) | Reading decisions and their lifecycle rather than implementation status. |
 | [Contribution workflow](../CONTRIBUTING.md#workflow) | Preparing an issue, branch, or PR. |
 | [Acceptance tracking](../CONTRIBUTING.md#acceptance-criteria-and-additional-verification) | Recording verified criteria, evidence, and pending checks. |
 | [Repository rules](repository-instructions.md) | Finding contribution constraints, acceptance criteria, or follow-up rules. |
@@ -31,6 +38,6 @@
 | [Speed instruments](speed.md) | Extending or validating IAS, GS, TAS, speed ranges, references, or trend. |
 | [Altitude instruments](altitude.md) | Extending or validating altitude, BARO, selected altitude, vertical speed, or altitude trend. |
 | [Heading](heading.md) | Extending or validating magnetic headings, numeric readout formatting, north wrapping, selected-bug capture, or top-strip geometry. |
-| [Writing style](writing-style.md) | Editing project prose or Markdown structure, or choosing which document owns a requirement. |
-| [Context tooling maintenance](agent-maintenance.md) | Maintaining upstream skills, project procedure skills, procedure ownership, or CSV session hooks. |
-| [Context authoring](context-authoring.md) | Preserving findings, reviewing knowledge, or changing entry metadata and navigation. |
+| [Project Markdown](../.agents/skills/project-write-content/SKILL.md) | Selecting Markdown structures and examples, or reviewing meaning and rendering. |
+| [Technical writing](../.agents/skills/technical-writing-rules/SKILL.md) | Writing or reviewing English technical language and accuracy. |
+| [Context and tooling maintenance](agent-maintenance.md) | Maintaining knowledge entries, metadata, navigation, upstream or project skills, procedure ownership, or session hooks. |

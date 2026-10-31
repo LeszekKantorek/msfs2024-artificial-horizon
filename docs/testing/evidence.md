@@ -42,6 +42,7 @@ Preserve the origin and scope of each claim:
 
 ## Accepted values and test evidence
 
+* Distinguish product settings, test tolerances, and measured results. A value appearing in a test does not establish a product requirement.
 * Treat values delivered by an accepted task as established unless the user has raised objections to those values.
 * Document these values as current requirements or settings, without provisional labels or pending-acceptance notes.
 * Missing separate measurements or device records do not reopen acceptance of these values.

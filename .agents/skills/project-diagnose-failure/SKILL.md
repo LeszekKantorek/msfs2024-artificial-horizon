@@ -41,7 +41,7 @@ Keep diagnosis separate from speculation and recovery attempts.
 * Do not broaden permissions, disable security controls, or stop unrelated processes as diagnostic shortcuts.
 * Use the [validation procedure](../../../docs/testing/evidence.md#select-evidence-by-failure-risk) for a regression check that detects the original failure.
 * Reuse unaffected evidence under the [evidence-reuse rules](../../../docs/testing/index.md#evidence-reuse).
-* Save established reusable findings through [context authoring](../../../.context/context-authoring.md), rather than storing raw debugging progress.
+* Save established reusable findings with [context-preserve](../context-preserve/SKILL.md), applying [knowledge conventions](../../../.context/agent-maintenance.md#knowledge-maintenance) to the record. Exclude raw debugging progress.
 
 ## Completion checks
 

@@ -41,7 +41,7 @@ Use criteria that affect the actual outcome.
 
 ## ADR and delivery records
 
-Follow the existing ADR examples and [document responsibilities](../../../.context/writing-style.md#document-responsibilities).
+Follow the existing ADR examples and [documentation ownership](../../../AGENTS.md#documentation-ownership).
 
 * Record the decision status, problem context, selected option, alternatives, rationale, and consequences.
 * Write the status as a plain line. Do not require a date or use a metadata table.

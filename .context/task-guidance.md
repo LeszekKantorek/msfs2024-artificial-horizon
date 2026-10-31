@@ -14,7 +14,7 @@ Use this table for tasks that need more than one source or a condition-dependent
 
 | Task | Read first | Extend only when relevant |
 | --- | --- | --- |
-| Preserve findings or review knowledge | [Context authoring](context-authoring.md) and the context skill matching the task | [Tool maintenance](agent-maintenance.md) when changing skills or hooks |
+| Preserve findings or review knowledge | The context skill matching the task and [knowledge conventions](agent-maintenance.md#knowledge-maintenance) | [Markdown structure](../.agents/skills/project-write-content/SKILL.md) when writing entries; [tool maintenance](agent-maintenance.md#project-procedure-skills) when changing skills |
 | Prepare a detailed implementation plan | [project-plan-change](../.agents/skills/project-plan-change/SKILL.md) | [Planning rationale](implementation-planning.md#why-these-details-matter) when choosing detail; [handoffs](iterative-development.md#accepted-plans-and-handoffs) for accepted plans and amendments |
 | Change behavior across component boundaries, such as providers, telemetry, HTTP, or the browser | [Change map](component-changes.md) | [Governing decisions](architecture-decisions.md#find-the-governing-decision) when reconsidering accepted boundaries or behavior |
 | Change IAS, GS, TAS, speed ranges, references, or trend | [Speed instrument map](speed.md) | — |
@@ -27,7 +27,7 @@ Use this table for tasks that need more than one source or a condition-dependent
 | Prepare independent code review | [project-review-change](../.agents/skills/project-review-change/SKILL.md) | Applicable contracts and [change requirements](../CONTRIBUTING.md#change-requirements) for the reviewed diff |
 | Prepare or publish a PR for agreed changes | [project-prepare-pr](../.agents/skills/project-prepare-pr/SKILL.md) | [Acceptance-control map](../docs/pr-acceptance.md) for validator failures or workflow changes |
 | Start a contribution branch | [Contribution workflow](../CONTRIBUTING.md#workflow) | [project-plan-change](../.agents/skills/project-plan-change/SKILL.md) only when a detailed implementation plan is needed |
-| Write, revise, review, or relocate documentation | [Writing rules and document responsibilities](writing-style.md) | [Context authoring](context-authoring.md) for knowledge entries and map changes |
+| Create, revise, review, or move project text | [Technical writing rules](../.agents/skills/technical-writing-rules/SKILL.md) and [project conventions](../CONTRIBUTING.md#writing-guidance); [project-write-content](../.agents/skills/project-write-content/SKILL.md) for Markdown | [Documentation maintenance](../CONTRIBUTING.md#documentation-maintenance) for moves or consolidation; [entry conventions](agent-maintenance.md#local-entry-and-index-convention) for project knowledge |
 | Review an exposure or permission change | [Security boundaries](security-review.md#project-boundaries) | [Focused checks](security-review.md#focused-checks) for the affected input, network, dependency, or CI boundary |
 | Find the rationale or scope of an existing architecture choice | [Governing decisions](architecture-decisions.md#find-the-governing-decision) | [Change map](component-changes.md) when assessing affected contracts and checks |
 | Make a material architecture decision | [project-decide-architecture](../.agents/skills/project-decide-architecture/SKILL.md) | [Change map](component-changes.md) for affected contracts and validation |

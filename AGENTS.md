@@ -36,13 +36,21 @@ Use these maps whenever a task needs project knowledge. Select rows by the reque
 
 ## Documentation ownership
 
+* Apply [technical-writing-rules](.agents/skills/technical-writing-rules/SKILL.md) for language and accuracy within its scope, including non-Markdown technical text.
+* Apply [project-write-content](.agents/skills/project-write-content/SKILL.md) whenever creating, revising, moving, or reviewing Markdown, including within implementation tasks. This includes documentation, `.context/`, agent instructions, and Markdown issue or PR text. Ordinary chat is outside its scope.
+* Apply [project writing conventions](CONTRIBUTING.md#writing-guidance) to all project text, including code comments and commit messages.
+* For knowledge work, select the matching context skill and follow [knowledge maintenance](.context/agent-maintenance.md#knowledge-maintenance).
+* For skill design, use procedural-skill-creator under the [source ownership rules](.context/agent-maintenance.md#project-procedure-skills).
+
 * [Roadmap issue #9](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9) is the sole roadmap. Read delivery order and dependencies there. Do not create or maintain a separate roadmap document.
 
-Agent-facing technical materials, including `.context/`, `AGENTS.md`, `SKILL.md`, and skill reference files, may link into `.context/`.
-Project documentation, user instructions, and other non-agent documentation must not link into `.context/`.
-Before creating documentation, check whether an existing document owns the subject. Avoid duplicating implementation details that are clear from code.
-Keep agent procedures and supporting knowledge in their agent-facing sources. When project or user documentation needs that content, publish the relevant information in `docs/` or its appropriate documentation owner.
-Keep feature requirements, presentation, implementation details, and acceptance scenarios on the owning feature page; shared pages contain only shared contracts and procedures.
+* Agent-facing technical materials, including `.context/`, `AGENTS.md`, `SKILL.md`, and skill reference files, may link into `.context/`.
+* Project documentation, user instructions, and other non-agent documentation must not link into `.context/`.
+* Before creating documentation, check whether an existing document owns the subject. Select the owner by subject, not by the task that revealed the rule.
+* Use the existing context maps. When no route fits, inspect directly related sources before proposing a new location.
+* Avoid duplicating implementation details that are clear from code.
+* Keep agent procedures and supporting knowledge in their agent-facing sources. When project or user documentation needs that content, publish it in the appropriate documentation owner.
+* Keep feature requirements, presentation, implementation details, and acceptance scenarios on the owning feature page; shared pages contain only shared contracts and procedures.
 
 ## Project constraints
 
@@ -66,6 +74,7 @@ Maintain each procedure in its owning `SKILL.md` under the [source ownership rul
 
 | Skill | Use |
 | --- | --- |
+| [project-write-content](.agents/skills/project-write-content/SKILL.md) | Construct and review Markdown using decision rules and examples while preserving meaning |
 | [project-plan-change](.agents/skills/project-plan-change/SKILL.md) | Prepare a detailed implementation plan with invariants and acceptance evidence |
 | [project-diagnose-failure](.agents/skills/project-diagnose-failure/SKILL.md) | Diagnose an observed application, test, build, or environment failure |
 | [project-validate-presentation](.agents/skills/project-validate-presentation/SKILL.md) | Validate EFI presentation and report the limits of desktop and device evidence |
