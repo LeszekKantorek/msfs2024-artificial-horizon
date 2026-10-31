@@ -36,7 +36,7 @@ Desktop emulation does not establish device acceptance.
 7. Disable and restore Wi-Fi. Check the unavailable cover and retry status, followed by fresh-data recovery without reload.
 8. Stop and restart the server on the same port. Require recovery despite sequence restart and no duplicate subscriptions.
 9. Record each device separately using the template below. Put the feature's observations and screenshots in its issue or PR.
-10. Leave missing or failing device criteria unchecked. Keep the owning issue open until both required device results support acceptance.
+10. Leave missing or failing device criteria unchecked. Keep the work incomplete until both required device results support acceptance; retain draft PR status and keep a related issue open when one exists.
 
 Check uninterrupted freshness as well as recovery: no frozen valid-looking indication may survive loss or resume.
 For simulator-specific checks, also apply the [manual acceptance matrix](#manual-acceptance-matrix).

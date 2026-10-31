@@ -127,7 +127,7 @@ Pure checks follow the existing module boundaries:
 
 > The procedures apply to the EFI demo and do not establish passing results or live EFI compatibility.
 
-* Each feature issue owns its automated and real-phone evidence.
+* Record each feature's automated and real-phone evidence in its PR, related issue, or a durable linked validation record.
 * Use the [device evidence template](devices.md#real-phone-acceptance-procedure).
 * Keep Demo evidence separate from [simulator, device, and performance evidence](evidence.md#measurements-and-evidence).
 
@@ -184,7 +184,7 @@ Record refactor validation against the final revision:
 3. Describe and assess each [screenshot difference](evidence.md#screenshot-comparisons) without inventing an unverified cause.
 4. Run required final checks on the combined revision, following the [evidence reuse rules](index.md#evidence-reuse).
 5. Record required iOS Safari and Android Chrome checks under the [manual acceptance rules](evidence.md#manual-acceptance).
-6. Record remaining checks in the owning issue or a linked validation record.
+6. Record remaining checks in the PR, a related issue, or a durable linked validation record.
 
 For background presentation changes, apply the [shared phone procedure](devices.md#real-phone-acceptance-procedure) using [phone fixtures](devices.md#phone-fixture-setup):
 
@@ -250,4 +250,4 @@ Acceptance criteria:
 * [ ] Paused, disconnected, invalid, and stale states remain explicit.
 * [ ] Unchanged attitude with fresh callbacks remains valid.
 
-> These criteria define expected behavior, not completion status. Record results in the owning issues.
+> These criteria define expected behavior, not completion status. Record results in the PR, related issues, or a durable linked validation record.

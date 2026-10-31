@@ -29,7 +29,7 @@ jobs:
         with:
           node-version: '24'
       - run: npm ci --prefix .github/scripts --ignore-scripts
-      - name: Validate issue criteria and PR checklists
+      - name: Validate supplied issue criteria and PR tasks
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node .github/scripts/acceptance-check.mjs

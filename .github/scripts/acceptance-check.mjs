@@ -64,7 +64,6 @@ export function closingIssues(body, repository) {
     else if (!Number.isSafeInteger(number) || number < 1) errors.push(`Invalid issue number: ${reference}.`);
     else refs.push(number);
   }
-  if (!refs.length) errors.push('Add a same-repository closing reference such as Closes #21.');
   return { numbers: [...new Set(refs)], errors };
 }
 
@@ -76,7 +75,6 @@ export function validateAcceptance(prBody, issues) {
     const body = parse(issue.body);
     const acceptance = section(body, 'Acceptance criteria');
     const criteria = tasks(acceptance.tokens);
-    if (!criteria.length) errors.push(`#${issue.number} needs an Acceptance criteria section with task items.`);
     for (const task of criteria.filter(task => !task.checked)) {
       errors.push(`Unchecked acceptance criterion (#${issue.number}): ${task.text}`);
     }

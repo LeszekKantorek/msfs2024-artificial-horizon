@@ -13,19 +13,19 @@ test('closing references support GitHub keywords, case, same-repository URLs and
   assert.deepEqual(closingIssues('Closes #21. FIXED example/pfd#22. Resolves https://github.com/example/pfd/issues/23. Fixes #21.', repo),
     { numbers: [21, 22, 23], errors: [] });
   assert.match(closingIssues('Closes other/repo#21', repo).errors.join(), /this repository/);
-  assert.match(closingIssues('Refs #21', repo).errors.join(), /closing reference/);
+  assert.deepEqual(closingIssues('Refs #21', repo), { numbers: [], errors: [] });
   assert.match(closingIssues('Closes #0', repo).errors.join(), /Invalid issue/);
   assert.equal(closingIssues('Example: `Closes #21`', repo).numbers.length, 0);
   assert.deepEqual(closingIssues('## Related issue\nCloses #21', repo), { numbers: [21], errors: [] });
 });
 
-test('hidden, quoted and fenced examples cannot supply acceptance or verification', () => {
+test('hidden, quoted and fenced tasks do not affect optional acceptance or verification', () => {
   const hidden = `<!-- Closes #21 -->\n\`\`\`markdown\nCloses #21\n\`\`\``;
   assert.equal(closingIssues(hidden, repo).numbers.length, 0);
   const body = `Closes #21\n## Additional verification\n> - [x] ${criterion}\n~~~\n- [x] ${criterion}\n~~~\n<!-- - [x] ${criterion} -->`;
   assert.deepEqual(validateAcceptance(body, [issue()]), []);
-  assert.match(validateAcceptance('', [issue('## Acceptance criteria\n> - [x] Example')]).join(), /needs an Acceptance/);
-  assert.match(validateAcceptance('Closes #21', [issue('## Acceptance criteria\n```\n- [x] Done\n```')]).join(), /needs an Acceptance/);
+  assert.deepEqual(validateAcceptance('', [issue('## Acceptance criteria\n> - [ ] Example')]), []);
+  assert.deepEqual(validateAcceptance('Closes #21', [issue('## Acceptance criteria\n```\n- [ ] Done\n```')]), []);
 });
 
 test('issue acceptance and PR checklists must both be checked, without comparing wording', () => {
@@ -43,9 +43,9 @@ test('only the issue Acceptance criteria section is checked; PR tasks are checke
   assert.match(validateAcceptance('Closes #21\n## Tests\n- [ ] A PR check.', [source]).join(), /Unchecked PR/);
 });
 
-test('all-verified issues need no dummy checklist; absent criteria and PR references fail', () => {
+test('issues need no checklist; closing references to PRs still fail', () => {
   assert.deepEqual(validateAcceptance('Closes #21', [issue('## Acceptance criteria\n- [x] Automated test passed.')]), []);
-  assert.match(validateAcceptance('Closes #21', [issue('No criteria yet.')]).join(), /needs an Acceptance/);
+  assert.deepEqual(validateAcceptance('Closes #21', [issue('No criteria yet.')]), []);
   assert.match(validateAcceptance('Closes #21', [{ ...issue(), pull_request: {} }]).join(), /not an issue/);
 });
 
@@ -64,8 +64,8 @@ test('nested and repeated acceptance headings include every criterion', () => {
 test('literal comments in code cannot hide unchecked tasks; malformed fence endings remain code', () => {
   const body = 'Closes #21\n```text\n<!--\n```\n- [ ] Visible incomplete check.';
   assert.match(validateAcceptance(body, [issue()]).join(), /Visible incomplete/);
-  assert.match(validateAcceptance('', [issue('## Acceptance criteria\n```\nexample\n```still-code\n- [x] Hidden')]).join(), /needs an Acceptance/);
-  assert.match(validateAcceptance('', [issue('## Acceptance criteria\n\n    - [x] Code example')]).join(), /needs an Acceptance/);
+  assert.deepEqual(validateAcceptance('', [issue('## Acceptance criteria\n```\nexample\n```still-code\n- [ ] Hidden')]), []);
+  assert.deepEqual(validateAcceptance('', [issue('## Acceptance criteria\n\n    - [ ] Code example')]), []);
   assert.deepEqual(validateAcceptance('- [x] Parent\n    - [x] Nested', [issue()]), []);
   assert.match(validateAcceptance('- [x] Parent\n    - [ ] Nested', [issue()]).join(), /Nested/);
 });
@@ -77,7 +77,7 @@ test('multiline wording does not matter; the checkbox state controls acceptance'
 
 test('inline code comments, nested fenced examples and task continuation lines obey GFM structure', () => {
   assert.match(validateAcceptance('Closes #21\nExample: `<!--`\n- [ ] Visible incomplete check.', [issue()]).join(), /Visible incomplete/);
-  assert.match(validateAcceptance('', [issue('## Acceptance criteria\n- Example:\n    ```markdown\n    - [x] Hidden example\n    ```')]).join(), /needs an Acceptance/);
+  assert.deepEqual(validateAcceptance('', [issue('## Acceptance criteria\n- Example:\n    ```markdown\n    - [ ] Hidden example\n    ```')]), []);
   assert.match(validateAcceptance('Closes #21\n- [ ]\n  Visible incomplete check.', [issue()]).join(), /Visible incomplete/);
   assert.match(validateAcceptance('', [issue('## Acceptance criteria\n- [ ]\n  Continue here.')]).join(), /Continue here/);
   assert.deepEqual(validateAcceptance('Closes #21\n- [x]\n  Done.', [issue()]), []);
@@ -101,6 +101,75 @@ function fakeApi(initial = [pr()]) {
   return state;
 }
 const run = state => runAcceptance({ api: state.api, repository: repo, targetUrl: 'https://github.com/example/pfd/actions/runs/1' });
+
+test('PRs without closing references or checklists publish success without issue API requests', async () => {
+  for (const body of ['', 'Describe the change.', 'Refs #21', 'Example: `Closes #21`']) {
+    assert.deepEqual(closingIssues(body, repo), { numbers: [], errors: [] });
+    const state = fakeApi([pr(body)]);
+    assert.equal((await run(state))[0].state, 'success');
+    assert.equal(state.writes[0].body.context, CONTEXT);
+    assert.ok(state.writes[0].path.endsWith(sha));
+    assert.ok(!state.reads.some(path => path.includes('/issues/')));
+    await run(state);
+    assert.equal(state.writes.length, 1);
+  }
+});
+
+test('linked issues can omit a checklist or contain an empty acceptance section', async () => {
+  for (const body of [null, '', 'No checklist.', '## Acceptance criteria\nExpected behavior in prose.', '## Acceptance criteria\n## Notes\n- [ ] Unrelated']) {
+    const state = fakeApi();
+    state.issues.set(21, issue(body));
+    assert.equal((await run(state))[0].state, 'success');
+    assert.ok(state.reads.some(path => path.includes('/issues/21')));
+  }
+});
+
+test('visible PR tasks remain enforced without issue references', async () => {
+  const state = fakeApi([pr('- [ ] Pending local check')]);
+  assert.equal((await run(state))[0].state, 'failure');
+  assert.match((await run(state))[0].errors.join(), /Pending local check/);
+  state.prs[0].body = '- [x] Local check completed';
+  assert.equal((await run(state))[0].state, 'success');
+});
+
+test('hidden unchecked PR tasks are ignored even without an issue', async () => {
+  const body = '> - [ ] Quoted example\n\n```markdown\n- [ ] Fenced example\n```\n\n<!-- - [ ] Comment -->\n\n    - [ ] Indented example';
+  assert.equal((await run(fakeApi([pr(body)])))[0].state, 'success');
+  assert.equal((await run(fakeApi([pr(`${body}\n\n- [ ] Visible task`)])))[0].state, 'failure');
+});
+
+test('optional issue criteria become blocking when an unchecked checklist is supplied', async () => {
+  const state = fakeApi();
+  state.issues.set(21, issue('No checklist.'));
+  assert.equal((await run(state))[0].state, 'success');
+  state.issues.set(21, issue('## Acceptance criteria\n- [ ] New criterion'));
+  assert.equal((await run(state))[0].state, 'failure');
+});
+
+test('unlinked PRs sharing a head cannot override an incomplete linked checklist', async () => {
+  const state = fakeApi([pr('No issue.', 47), pr('Closes #21', 49)]);
+  state.issues.set(21, issue('## Acceptance criteria\n- [ ] Required check'));
+  assert.equal((await run(state))[0].state, 'failure');
+  assert.equal(state.writes.length, 1);
+});
+
+test('unlinked PR metadata and shared-head membership are rechecked before success', async () => {
+  for (const edit of ['body', 'membership']) {
+    const state = fakeApi([pr('No issue.')]);
+    const api = state.api;
+    let edited = false;
+    state.api = async (path, method, body) => {
+      const result = structuredClone(await api(path, method, body));
+      if (!edited && path.includes('/commits/')) {
+        edited = true;
+        if (edit === 'body') state.prs[0].body += '\n- [ ] Newly incomplete';
+        else state.prs.push(pr('- [ ] Another PR task', 49));
+      }
+      return result;
+    };
+    assert.equal((await run(state))[0].state, 'failure', edit);
+  }
+});
 
 test('API integration publishes success on the current PR head and skips identical scheduled results', async () => {
   const state = fakeApi();
@@ -126,8 +195,8 @@ test('PR edits, issue edits and new heads invalidate earlier success without a n
   assert.ok(state.writes.at(-1).path.endsWith('b'.repeat(40)));
 });
 
-test('missing references, issue API errors and malformed responses cannot produce success', async () => {
-  const state = fakeApi([pr('Refs #21')]);
+test('invalid references and issue API errors cannot produce success', async () => {
+  const state = fakeApi([pr('Closes other/repo#21')]);
   assert.equal((await run(state))[0].state, 'failure');
   state.prs = [pr('Closes #999')];
   assert.equal((await run(state))[0].state, 'error');

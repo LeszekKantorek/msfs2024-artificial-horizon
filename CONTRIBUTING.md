@@ -130,15 +130,15 @@ Apply the [project constraints](AGENTS.md#project-constraints) and the requireme
 
 Before delivery, apply the [validation scope matrix](docs/testing/index.md#validation-by-change-scope) and [evidence reuse rules](docs/testing/index.md#evidence-reuse).
 Local validation remains mandatory; GitHub Actions does not compile the application or run its test suites.
-Record results in the owning issue or a linked validation record against the tested revision and environment, including observations and unavailable checks.
+Record results in the PR, a related issue, or a durable linked validation record against the tested revision and environment, including observations and unavailable checks.
 Use the [acceptance procedure](#acceptance-criteria-and-additional-verification) to track completion.
 Before marking work complete, confirm that required checks pass and acceptance criteria have supporting evidence.
 
 ## Workflow
 
-1. Select or create a GitHub issue with an outcome and acceptance criteria.
+1. Establish the requested outcome and validation expectations. Consult a related issue when available.
 2. Check dependencies in the [roadmap](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9).
-3. Create a branch from current `main` named `change/<issue>-<topic>`, for example `change/20-responsive-pfd`.
+3. Create a branch from current `main` named `change/<topic>`.
 4. Implement one reviewable outcome under the [change requirements](#change-requirements).
 5. Update affected documentation, contracts, and fixtures.
 6. Select and run checks through the [validation scope matrix](docs/testing/index.md#validation-by-change-scope).
@@ -149,18 +149,20 @@ Before marking work complete, confirm that required checks pass and acceptance c
 Use [project-prepare-pr](.agents/skills/project-prepare-pr/SKILL.md) to prepare a local description or publish the requested PR.
 The skill owns the preparation procedure; this document retains the contribution requirements and acceptance-tracking rules.
 Describe what changed, why, and important design choices or consequences.
-Link the owning issue. Test-status sections, command lists, and testing checklists are not required in PR descriptions.
+
+* Link a relevant issue when one exists. Use a closing keyword only when the PR completes that issue. Issue linkage and acceptance checklists are optional.
+* Record applicable validation evidence in the PR, a related issue, or a durable linked record. No fixed test-status section or command list is required.
 
 ### Acceptance criteria and additional verification
 
-1. Give the issue an `Acceptance criteria` heading with Markdown task items.
-2. Mark a criterion as checked when the required automated or manual validation confirms it.
-3. Record the confirming tests or validation results in the issue or a linked validation record, including the tested commit and relevant environment.
-4. Leave unconfirmed criteria unchecked in the issue. Record how to verify each remaining item and the expected result there or in the linked validation record.
-5. Update issue criteria after verification. If a PR includes task items, keep them accurate; any visible unchecked PR task blocks the acceptance status.
+1. Select required validation from the change scope.
+2. Record confirming results in the PR, a related issue, or a durable linked record, including the tested commit and relevant environment.
+3. If an issue uses an acceptance checklist, place its task items under `Acceptance criteria`. Mark them checked only after required validation confirms them.
+4. Leave supplied unconfirmed criteria unchecked. Record remaining verification and expected results in the PR, related issue, or linked record.
+5. Keep supplied checklists accurate. Unchecked criteria in a closing-linked issue and any visible unchecked PR task block the acceptance status.
 
 Draft PRs can retain incomplete acceptance; complete it before merge.
-PR descriptions need no test checklist when acceptance is tracked in the issue.
+A successful status does not replace required local validation.
 Use the [acceptance control reference](docs/pr-acceptance.md#checklist-scope) for parser rules and [status meanings](docs/pr-acceptance.md#understand-the-result) for blocking conditions.
 
 ### Promote agreed findings
