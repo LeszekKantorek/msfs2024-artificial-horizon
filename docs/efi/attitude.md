@@ -230,7 +230,7 @@ Complete coordinated-turn and attitude acceptance on each device:
 1. Run the real-device procedure on iOS Safari and Android Chrome.
 2. Include centered/left/right slip, both standard-rate turns, and both chevron scenarios.
 3. Exercise orientation, browser bars, lock/resume, Wi-Fi recovery, and server recovery.
-4. Record device, OS/browser, build, and network details with the acceptance results.
+4. Record the mobile platform (iOS or Android), build, and network conditions with the acceptance results.
 
 > Desktop checks do not replace acceptance on actual iOS Safari and Android Chrome. Keep missing device evidence explicit.
 

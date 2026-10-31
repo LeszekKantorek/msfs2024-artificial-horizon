@@ -198,7 +198,7 @@ Additional phone checks retain their acceptance scope:
 | Scope | Checks |
 | --- | --- |
 | Footer readability | Inspect footer readability and edge seams throughout the shared phone layout scenarios |
-| BARO preference | Check reload and portrait/landscape readability on available phones. Record the devices actually checked |
+| BARO preference | Check reload and portrait/landscape readability on available phones. Record the mobile platforms checked: iOS or Android |
 
 > Real iOS Safari and Android Chrome acceptance remains separate from desktop checks.
 
@@ -211,7 +211,7 @@ Validate the source and local selection against the cockpit:
 2. Touch the BARO field and compare equivalent inHg and hPa values.
 3. Verify that the locally selected STD label does not command the cockpit or report its mode.
 4. Apply the [real-phone checks](#real-phone-checks) for reload and portrait/landscape readability.
-5. Record which cockpit instrument and devices were actually checked.
+5. Record which cockpit instrument and mobile platforms (iOS or Android) were checked.
 
 > Logged pressure does not establish the corresponding cockpit control or prove display synchronization. Desktop and demo results do not establish cockpit synchronization or real-phone acceptance.
 
@@ -227,16 +227,18 @@ Validate the source and local selection against the cockpit:
 
 ## Evidence and limitations
 
-The [BARO validation record](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/89) distinguishes these evidence scopes:
+BARO validation covers these scopes:
 
 | Evidence | Result and limit |
 | --- | --- |
-| Controlled desktop checks | Touch emulation, unavailable storage, and text-selection styling were checked. Emulated touch does not establish behavior on a physical phone. |
-| Reported interaction | The local unit cycle and preference persistence after reload were confirmed. The record does not explicitly identify the device for these observations. |
-| Reported Android observation | Instrument text did not trigger text selection. This result does not establish iOS behavior or other device configurations. |
-| Reported flight observation | Changing cockpit pressure changed the application indication. The aircraft and specific cockpit instrument were not supplied. |
+| Controlled desktop checks | Touch emulation, unavailable storage, and text-selection styling were checked. Emulated touch remains separate from physical-phone validation. |
+| Confirmed mobile acceptance | BARO behavior is confirmed on iOS and Android. Exact phone models and mobile OS/browser versions are not required. |
+| Confirmed interaction | The local unit cycle and preference persistence after reload work. |
+| Reported Android observation | Instrument text did not trigger text selection. |
+| Reported flight observation | Changing cockpit pressure changed the application indication. This observation does not establish compatibility with every aircraft. |
 
-These observations do not replace the [live BARO acceptance procedure](#live-baro-acceptance) for a particular aircraft and device.
+Use the [live BARO acceptance procedure](#live-baro-acceptance) when validating affected behavior after implementation changes.
+The existing mobile acceptance does not await device-identification details.
 
 ## Rationale and regression lessons
 

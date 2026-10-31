@@ -41,15 +41,21 @@ Desktop emulation does not establish device acceptance.
 Check uninterrupted freshness as well as recovery: no frozen valid-looking indication may survive loss or resume.
 For simulator-specific checks, also apply the [manual acceptance matrix](#manual-acceptance-matrix).
 
+### Mobile acceptance records
+
+* Identify the tested mobile platform: iOS or Android.
+* Record the tested build, behavior, result, and applicable limitations.
+* Do not request or require public phone models or exact mobile OS/browser versions.
+* Their absence is not an evidence gap or an outstanding acceptance item.
+* Report only performed or confirmed checks. Do not infer unperformed tests.
+
 Evidence template for the issue or PR:
 
 | Field | Value |
 | --- | --- |
 | Build commit / local changes | |
 | Date / viewport / zoom | |
-| Phone model | |
-| OS version | |
-| Safari / Chrome version | |
+| Mobile platform | iOS or Android |
 | Network and server address | |
 | Feature / controlled inputs / screenshots | Pass/fail, observations |
 | Demo poses and directions | Pass/fail, observations |

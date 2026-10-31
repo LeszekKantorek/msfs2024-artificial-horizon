@@ -280,7 +280,7 @@ Validate range and trend geometry on both mobile browsers:
 * Apply the [shared phone procedure](../testing/devices.md#real-phone-acceptance-procedure) on actual iOS Safari and Android Chrome.
 * Inspect the 6 px range lane, its 3 px white left overlay, and matching 3 px airspeed and altitude trends.
 * Check portrait/landscape, rotation, browser bars, safe areas, connection loss, and lock/background recovery.
-* Record the tested revision, device model, OS/browser versions, date, viewport, observations, and pass/fail.
+* Record the tested revision, mobile platform (iOS or Android), date, viewport, observations, and pass/fail.
 * Leave device acceptance unconfirmed until both records pass.
 
 ### Full-panel integration
@@ -316,7 +316,7 @@ The [recorded trend validation](https://github.com/LeszekKantorek/msfs2024-artif
 | Adjacent-acquisition replay | Differencing adjacent acquisitions produced acceleration spikes. This reconstruction does not establish painted-frame behavior. |
 | Recorded-session replay | The 0.5-second window produced a maximum acceleration of 8.061 kt/s in one recording. Journal elapsed times approximate worker receipt times. |
 | Automated checks | Synthetic cases cover noise, response, timing, and lifecycle behavior. Controlled browser checks provide separate presentation evidence. |
-| Reported live observation | The trend was stable at approximately constant IAS and responded sensibly to acceleration and deceleration. Aircraft and device details were not supplied. |
+| Reported live observation | The trend was stable at approximately constant IAS and responded sensibly to acceleration and deceleration. Aircraft details were not supplied. |
 | Interpretation | Replay does not establish painted-frame behavior, perceived live behavior, or physical acceleration accuracy. |
 | Diagnostic hypothesis | Receipt timing is a possible cause of spikes in adjacent-acquisition derivatives. It is not a confirmed universal diagnosis of rapid IAS changes. |
 

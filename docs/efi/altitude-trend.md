@@ -131,7 +131,7 @@ Repeat the placement scenarios on actual iOS Safari and Android Chrome:
 1. Apply the [shared phone procedure](../testing/devices.md#real-phone-acceptance-procedure).
 2. Repeat the [desktop scenes](#automated-checks-and-desktop-geometry), including rotation, browser bars, and safe areas.
 3. Confirm readable digits and strokes, correct layering, and recovery after source or connection loss.
-4. Record device, OS/browser versions, commit, observations, and screenshots with the acceptance results.
+4. Record the mobile platform (iOS or Android), commit, observations, and screenshots with the acceptance results.
 
 Include these trend checks in the shared phone procedure:
 

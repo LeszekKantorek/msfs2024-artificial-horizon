@@ -9,12 +9,13 @@ Measurement limits, build provenance, and matched screenshot comparisons.
 | Controlled fixtures and Demo | Values, presentation, independent availability, geometry, and connection behavior. Do not establish simulator compatibility |
 | Compiled application | Embedded assets and the application telemetry-to-display path |
 | SimConnect with MSFS2024 | Acquisition and integration in the recorded simulator environment |
-| Actual phones | Behavior on the recorded devices and browser versions |
+| Actual phones | Observed behavior on the tested iOS or Android platform |
 | Latency and stability measurements | Results under recorded conditions, with method uncertainty |
 
 Record the measurement environment and observations:
 
-* OS, CPU, phone models, and browser versions.
+* Desktop OS, CPU, and browser versions for desktop measurements.
+* Mobile platform: iOS or Android. Follow the [mobile acceptance record rules](devices.md#mobile-acceptance-records).
 * Simulator, SDK, and aircraft versions.
 * Build commit, source rate, network conditions, duration, and failures.
 * Memory and subscriber trends with two phones for at least 30 minutes.
@@ -48,7 +49,7 @@ Source cadence follows the [telemetry contract](../telemetry-contract.md#framing
 
 These measurements require real equipment. The targets do not claim achieved performance.
 
-* Record the aircraft, phones, and browser versions for each tested setup.
+* Record the aircraft and tested mobile platforms: iOS or Android.
 * Mobile performance and any need for interpolation require measurements and a separate accepted change. Current rendering does not interpolate.
 * Use the [SimConnect evidence limits](../sources/simconnect.md#live-publication-evidence) for compatibility, sign/unit conversion, and lifecycle observations.
 * [ADR 0006](../adr/0006-simconnect-manual-ffi.md) governs manual FFI. Runtime/SDK distribution conditions require separate evidence and do not follow from a successful run.
@@ -127,7 +128,7 @@ Use complementary evidence for different requirements:
 | Browser fixture with real modules | Controlled rendering, geometry, clipping, and object lifetime | Does not establish packaged application integration |
 | Compiled application browser test | Embedded assets and the actual telemetry-to-display path | Does not establish actual mobile browser behavior |
 | Matched screenshots and inspection | Readability and visual differences under recorded conditions | Cover only the inspected scenes |
-| Actual phone checks | Device, browser bars, safe areas, rotation, and recovery | Cover only the recorded devices and versions |
+| Actual phone checks | Device, browser bars, safe areas, rotation, and recovery | Cover the reported checks on iOS or Android, not every device |
 | Independent code review | Assessed defects, unintended changes, and test gaps in a specified diff | Does not replace tests or establish absence of defects |
 
 * Use [EFI layout validation](pfd.md#geometry-and-paint-regression-checks) for rendering checks.

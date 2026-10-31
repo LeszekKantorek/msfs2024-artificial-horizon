@@ -14,9 +14,11 @@ status: active
 | Evidence | Limit |
 | --- | --- |
 | Desktop viewports / synthetic SSE | Browser behavior only, not phone lifecycle or simulator compatibility |
-| Real iOS Safari / Android Chrome | Run the documented procedures on actual devices. Record the tested device, behavior, and result |
+| Real iOS Safari / Android Chrome | Run the documented procedures on actual devices. Record the tested platform (iOS or Android), behavior, and result |
 
 Procedures: [testing](../docs/testing/index.md). Freshness/status: [contract](../docs/telemetry-contract.md).
+
+* Follow the [mobile acceptance record rules](../docs/testing/devices.md#mobile-acceptance-records) when recording phone checks.
 
 * Fill the entire panel with sky/ground and retain a separate central pitch clip.
 * Do not show a top status bar or DEMO label. Keep unavailable reasons on the full-panel cover.
