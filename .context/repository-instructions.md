@@ -25,3 +25,8 @@ Issue maintenance follows these authorization boundaries:
 * Honor explicit exclusions for individual issues, even when they remain open.
 
 Documentation owns requirements and contracts. Issues track work, unresolved proposals, execution results, and acceptance evidence.
+
+* State requirements so they can be understood without opening an issue.
+* Issue links can identify work or supporting evidence. They must not replace the requirement in its documentation owner.
+* Keep accepted requirements for future features in documentation, explicitly marked as planned.
+* An unresolved idea does not become a requirement merely because it appears in an issue.

@@ -172,6 +172,13 @@ Collect reusable implementation findings in [#9](https://github.com/LeszekKantor
 3. Apply the requested labels and set the actual parent/sub-issue relationship when a parent is required.
 4. Verify the saved labels and the parent shown in GitHub's Relationships section.
 
+Each follow-up issue must remain usable without the originating conversation or local notes:
+
+* State the problem, relevant context, agreed scope, and exclusions.
+* Link the canonical requirements rather than making the issue their only source.
+* Include acceptance criteria and their validation method, with observable expected results.
+* Preserve supporting findings and unresolved questions with their actual status.
+
 > A reference in the description or an epic task list does not establish a parent/sub-issue relationship.
 
 ## Project guidance
@@ -182,9 +189,24 @@ Collect reusable implementation findings in [#9](https://github.com/LeszekKantor
 
 ## Writing guidance
 
-* Write concise, impersonal English with consistent terms.
-* Preserve requirements, units, limits, and uncertainty. Omit the history and provenance of documentation changes. Distinguish planned behavior, implementation, and confirmed acceptance.
+* Apply [technical-writing-rules](.agents/skills/technical-writing-rules/SKILL.md) for English technical language and accuracy within its scope.
+* Write concise, impersonal English with consistent terms across project text, including agent instructions and context entries.
+* Describe results, decisions, and procedures without personal narration such as "the owner", "owner-assisted", "the user reported", or "the assistant verified". Use wording such as "The configuration selects..." or "The decision requires...".
+* Retain technical ownership terms when they describe resource management or responsibilities.
+* Use the [project terminology](docs/efi/index.md#terminology): EFI for the complete instrument, artificial horizon for attitude indication. Keep technical identifiers consistent with their consumers.
+* Preserve requirements, units, limits, and uncertainty. Distinguish planned behavior, implementation, and confirmed acceptance.
 * Keep supplied accepted plans local and verbatim, including their original language.
 * Put feature requirements, presentation, implementation details, and tests on the owning feature page. Keep shared procedures in the testing guide.
 * Link canonical public documentation rather than agent context. Check moved content, links, anchors, and Markdown paragraph boundaries.
-* Use the [technical writing rules](.agents/skills/technical-writing-rules/SKILL.md) for detailed writing and review guidance.
+* Use [project-write-content](.agents/skills/project-write-content/SKILL.md) for Markdown structure and examples, including when writing is part of implementation. Explicit project conventions take precedence over conflicting general defaults.
+
+### Documentation maintenance
+
+* Organize content for retrieval and understanding. Shortening text is not an independent goal.
+* Describe current requirements and behavior directly. Omit implementation chronicles and accounts of document edits from current reference documentation.
+* Retain the rationale for current decisions. Mark accepted planned behavior separately from existing implementation; unresolved claims remain unresolved.
+* Before moving or shortening content, compare individual conditions, exceptions, values, and obligation levels. A requirement must not become a description or optional example.
+* Before removing source text, verify where every requirement, constraint, and caveat remains in canonical documentation.
+* Before restoring a historical requirement, check later accepted decisions and its current owner. Use Git history to resolve discrepancies.
+* Identify incoming links before moving content and repair affected paths and anchors. Required link changes do not justify retaining content under the wrong owner.
+* For test or acceptance claims, follow [historical evidence](docs/testing/evidence.md#historical-evidence-and-current-claims) and the [accepted-value policy](docs/testing/evidence.md#accepted-values-and-test-evidence). Preserve their conditions and scoped limits; do not copy these policies into writing guidance.

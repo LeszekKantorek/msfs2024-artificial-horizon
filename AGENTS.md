@@ -3,6 +3,7 @@
 ## Working with the user
 
 * Treat analysis, discussion, and review as separate from authorization to implement or change GitHub. Complete explicitly requested work without confirming routine steps.
+* Reassess pending actions when the user changes the instruction. Tool approval does not expand the user's authorization.
 * Keep to the requested scope. Do not start unrelated work or add speculative abstractions or documentation.
 * Present options and trade-offs for material project decisions; do not treat discussion as approval.
 * Distinguish facts, hypotheses, proposals, and accepted decisions. Question assumptions when evidence warrants it, and surface unresolved conflicts between sources.
@@ -35,17 +36,26 @@ Use these maps whenever a task needs project knowledge. Select rows by the reque
 
 ## Documentation ownership
 
+* Apply [technical-writing-rules](.agents/skills/technical-writing-rules/SKILL.md) for language and accuracy within its scope, including non-Markdown technical text.
+* Apply [project-write-content](.agents/skills/project-write-content/SKILL.md) whenever creating, revising, moving, or reviewing Markdown, including within implementation tasks. This includes documentation, `.context/`, agent instructions, and Markdown issue or PR text. Ordinary chat is outside its scope.
+* Apply [project writing conventions](CONTRIBUTING.md#writing-guidance) to all project text, including code comments and commit messages.
+* For knowledge work, select the matching context skill and follow [knowledge maintenance](.context/agent-maintenance.md#knowledge-maintenance).
+* For skill design, use procedural-skill-creator under the [source ownership rules](.context/agent-maintenance.md#project-procedure-skills).
+
 * [Roadmap issue #9](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9) is the sole roadmap. Read delivery order and dependencies there. Do not create or maintain a separate roadmap document.
 
-Agent-facing technical materials, including `.context/`, `AGENTS.md`, `SKILL.md`, and skill reference files, may link into `.context/`.
-Project documentation, user instructions, and other non-agent documentation must not link into `.context/`.
-Before creating documentation, check whether an existing document owns the subject. Avoid duplicating implementation details that are clear from code.
-Keep agent procedures and supporting knowledge in their agent-facing sources. When project or user documentation needs that content, publish the relevant information in `docs/` or its appropriate documentation owner.
-Keep feature requirements, presentation, implementation details, and acceptance scenarios on the owning feature page; shared pages contain only shared contracts and procedures.
+* Agent-facing technical materials, including `.context/`, `AGENTS.md`, `SKILL.md`, and skill reference files, may link into `.context/`.
+* Project documentation, user instructions, and other non-agent documentation must not link into `.context/`.
+* Before creating documentation, check whether an existing document owns the subject. Select the owner by subject, not by the task that revealed the rule.
+* Use the existing context maps. When no route fits, inspect directly related sources before proposing a new location.
+* Avoid duplicating implementation details that are clear from code.
+* Keep agent procedures and supporting knowledge in their agent-facing sources. When project or user documentation needs that content, publish it in the appropriate documentation owner.
+* Keep feature requirements, presentation, implementation details, and acceptance scenarios on the owning feature page; shared pages contain only shared contracts and procedures.
 
 ## Project constraints
 
-* Treat the server, telemetry contract, and embedded Web as one application. Rebuild and deliver the complete application after every change.
+* Treat the server, telemetry contract, and embedded Web as one application. Rebuild and deliver the complete application after changes to application code or build inputs. Documentation-only changes require no application build.
+* Run screenshot tests and inspect the captures when browser JavaScript or display behavior changes. Select checks through the validation scope matrix.
 * Do not maintain backward compatibility with earlier application versions. Update producers, consumers, and fixtures together without legacy adapters or fallbacks to previous formats or values.
 * Keep documentation links out of application source code and runtime output. Documentation may reference code.
 * Write project text in English and preserve the MIT license.
@@ -64,6 +74,7 @@ Maintain each procedure in its owning `SKILL.md` under the [source ownership rul
 
 | Skill | Use |
 | --- | --- |
+| [project-write-content](.agents/skills/project-write-content/SKILL.md) | Construct and review Markdown using decision rules and examples while preserving meaning |
 | [project-plan-change](.agents/skills/project-plan-change/SKILL.md) | Prepare a detailed implementation plan with invariants and acceptance evidence |
 | [project-diagnose-failure](.agents/skills/project-diagnose-failure/SKILL.md) | Diagnose an observed application, test, build, or environment failure |
 | [project-validate-presentation](.agents/skills/project-validate-presentation/SKILL.md) | Validate EFI presentation and report the limits of desktop and device evidence |

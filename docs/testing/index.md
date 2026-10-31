@@ -16,7 +16,7 @@ Record results and acceptance progress in the owning GitHub issue or a linked va
 | Validate altitude | [Altitude/BARO](../efi/altitude.md#testing), [alerts](../efi/selected-altitude.md#testing), [VSI](../efi/vertical-speed.md#testing), [trend](../efi/altitude-trend.md#testing) | Changed right-side indication |
 | Validate heading | [Heading](../efi/heading.md#testing) | Heading or full-panel acceptance |
 | Validate phones or supply controlled inputs | [Device procedure and fixtures](devices.md) | Device behavior or feature acceptance |
-| Record binary, visual, or performance evidence | [Evidence](evidence.md) | Results depend on a build, capture, or measurement |
+| Record test results or acceptance evidence | [Evidence records](evidence.md#test-evidence-records) | Automated tests, manual checks, reported acceptance, and reused results |
 | Change acceptance control | [Validator checks](../pr-acceptance.md#validate-changes-to-the-control) | Acceptance parser or workflow changes |
 
 ## Validation by change scope
@@ -29,12 +29,14 @@ Use the changed behavior and acceptance criteria to select local checks:
 | Session hooks or other development tooling | Changed behavior and failure paths | Application checks only when application inputs change |
 | PR acceptance control | [Validator suite](../pr-acceptance.md#validate-changes-to-the-control), permissions, and trusted-code boundary | Acceptance tooling |
 | Rust or browser application code, dependencies, or build configuration | [Automated checks](automated.md#automated-checks), affected [runtime checks](runtime.md), and [feature scenarios](../efi/index.md#features) | Affected application behavior |
-| EFI rendering, geometry, lifecycle, or module/asset integration | Both [desktop browser scripts](pfd.md#responsive-efi-layout-and-desktop-checks) and relevant screenshot inspection | Additional EFI evidence |
+| Browser JavaScript, EFI display, geometry, lifecycle, or module/asset integration | Both [desktop browser scripts](pfd.md#responsive-efi-layout-and-desktop-checks), screenshot tests, and inspection of the affected captures | Additional EFI evidence |
 | Mobile behavior or feature acceptance | Applicable real iOS Safari and Android Chrome checks | Device evidence separate from desktop results |
 
 Apply these scope rules:
 
 * Use every applicable row when a change crosses boundaries.
+* Rebuild the complete application after changes to application code or build inputs, including embedded Web assets.
+* Documentation-only changes require no application build or application screenshot tests.
 * Local validation remains mandatory. Application builds and test suites do not run in GitHub Actions.
 * Preserve the acceptance workflow's triggers, required `Acceptance criteria` status, and unrelated repository protections. The `Build & Test` status must not be required.
 * Report checks prevented by explicit task restrictions.
