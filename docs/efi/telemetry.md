@@ -84,21 +84,18 @@ These limits remain outside the cancellation guarantee:
 * Future callers must not rely on these limitations as stable behavior guarantees.
 * Changes require separate behavior scope and regression checks for callback-triggered stop, restart, and nested acceptance.
 
-### Retired asset routes
-
-The retired asset route was `/telemetry-client.js`. The current owner is `/telemetry/client.js`.
-
 ## Testing
 
 Use the [automated commands](../testing/automated.md) and [HTTP/SSE integration checks](../testing/runtime.md).
+Verify the [asset registration contract](../server.md#embedded-assets): unregistered paths return `404` without compatibility aliases.
 
 ### Client and validation coverage
 
 | Suite | Coverage and method |
 | --- | --- |
 | Browser controller | Independent fixtures, one EventSource/retry timer, two-second retry, sequence reset, freshness, malformed messages, suspend/resume |
-| Telemetry validation | Direct internal-module tests, independent optional fields, old snapshots, copied profile/reference values, and unbounded finite speed input |
-| Sample callbacks | Current status before attitude before full sample, with separate attitude copies, original attitude-only shape, and matching deadlines |
+| Telemetry validation | Direct internal-module tests, independent optional fields, attitude-only snapshots, copied profile/reference values, and unbounded finite speed input |
+| Sample callbacks | Current status before attitude before full sample, with separate attitude copies, attitude-only shape, and matching deadlines |
 
 ### Evidence limits
 

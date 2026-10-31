@@ -7,6 +7,7 @@ status: active
 * Link to canonical documents instead of copying their content.
 * Remove session progress and expired task-specific permissions from reusable knowledge.
 * Preserve conditions, uncertainty, and evidence limits. Omit the history and provenance of documentation changes.
+* Apply [accepted values and test evidence](writing-style.md#accepted-values-and-test-evidence) when preserving decisions or recording unresolved findings.
 * Use concise technical English and the [writing style](writing-style.md).
 * Use tables or diagrams only when they reduce reading effort.
 * Keep independent topics separate so agents can read only relevant entries.

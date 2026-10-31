@@ -19,6 +19,15 @@ status: active
 * Check [Markdown structure](#markdown-structure) separately from sentence clarity and technical accuracy.
 * Link to the canonical source instead of repeating commands or rules.
 
+## Accepted values and test evidence
+
+* Treat values delivered by an accepted task as established unless the user has raised objections to those values.
+* Document these values as current requirements or settings, without provisional labels or pending-acceptance notes.
+* Missing separate measurements or device records do not reopen acceptance of these values.
+* Do not add unresolved-value entries to local follow-up records solely because separate test evidence is missing.
+* Report only recorded or performed tests. Acceptance of a value does not establish a particular measurement or device test.
+* Preserve actual reported problems and conflicting requirements as separate findings with their scope and evidence.
+
 ## Markdown structure
 
 * For feature pages, follow the section structure and Markdown conventions of one representative page of the same type.

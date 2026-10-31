@@ -98,11 +98,12 @@ The [visual-object decision](../adr/0005-visual-object-composition.md) records t
 
 ## Asset integration and extension constraints
 
-* Add future instruments in their feature issues with real Demo data, without empty implementations or production placeholder readings.
-* Each implementation issue updates its tests, documentation, and mobile evidence.
+* Add instruments within the accepted product scope with deterministic Demo data, without empty implementations or production placeholder readings.
+* Update tests, documentation, and applicable mobile evidence when changing an instrument.
 * Update embedded Rust asset routes and the fixture server when imports change. The [server reference](../server.md#embedded-assets) defines asset registration constraints.
 * Use the [production fixture scope](rendering.md#production-fixture-scope) for full-panel checks.
-* No new telemetry fields, framework, build pipeline, Solid.js, three.js, or custom signals are required for #36 or #37.
+* Retain plain JavaScript, SVG, and SSE without an application framework, frontend build pipeline, or custom signals system.
+* Composition changes do not establish telemetry changes. Field extensions follow the [telemetry contract](../telemetry-contract.md#further-efi-extension-boundary) and accepted feature scope.
 
 ## Rationale and regression lessons
 

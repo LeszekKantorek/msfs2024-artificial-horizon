@@ -7,7 +7,10 @@ status: active
 
 Use this table for tasks that need more than one source or a condition-dependent route.
 [AGENTS](../AGENTS.md#context-selection) owns context selection and the fallback to the index.
-For instrument changes, use the [wire contract](../docs/telemetry-contract.md#fields-and-conventions) when changing inputs, [layout validation](../docs/testing/pfd.md#geometry-and-paint-regression-checks) for geometry or layers, and [shared responsibilities](../docs/efi/index.md#shared-responsibilities) for cross-feature changes.
+
+* For instrument input changes, use the [wire contract](../docs/telemetry-contract.md#fields-and-conventions).
+* For geometry or layer changes, use [layout validation](../docs/testing/pfd.md#geometry-and-paint-regression-checks).
+* For cross-feature changes, use [shared responsibilities](../docs/efi/index.md#shared-responsibilities).
 
 | Task | Read first | Extend only when relevant |
 | --- | --- | --- |

@@ -1,6 +1,7 @@
 # EFI documentation guide
 
-The compact electronic flight instrument (EFI) combines attitude, speed, altitude, heading, and coordinated-turn indications in one responsive, read-only panel.
+The compact electronic flight instrument (EFI) combines attitude, speed, altitude, heading, and coordinated-turn indications in one responsive panel.
+Simulator access is read-only.
 The artificial horizon is its attitude indication.
 The [project terminology](#terminology) defines these terms and the `pfd` technical identifier.
 
@@ -21,11 +22,10 @@ Their names do not expand the product scope. Use EFI in new descriptions of the 
 
 * Preserve mobile readability, low delay, explicit unavailable states, and G5-inspired hierarchy with original assets.
 * Keep simulator access read-only. Do not add menus, knobs, simulator editing, or synchronization commands.
-* The [accepted local BARO preference](../adr/0003-responsive-pfd-demo.md#local-baro-display-preference) refines the original prohibition on browser controls. It sends no simulator commands.
-* The original simulator MVP covered pitch/bank, scales, aircraft references, and source/connection status under #5-#8.
-* Additional live EFI data was deferred in that original scope. Current [SimConnect capabilities and evidence](../sources/simconnect.md#live-publication-evidence) include optional instruments.
-* Attitude-only publications still leave optional readings unavailable. Source failure must never select Demo silently.
-* Demo scenarios supply selected altitude, magnetic heading, selected-heading bugs, and barometric setting through separate feature slices.
+* The [accepted local BARO preference](../adr/0003-responsive-pfd-demo.md#local-baro-display-preference) changes only local presentation and sends no simulator commands.
+* SimConnect supplies attitude and available optional instrument data. The [SimConnect evidence](../sources/simconnect.md#live-publication-evidence) defines the limits of recorded observations.
+* Attitude-only publications leave optional readings unavailable. Source failure must never select Demo silently.
+* Demo scenarios supply selected altitude, magnetic heading, selected-heading bugs, and barometric setting.
 
 | Reference | Location |
 | --- | --- |
@@ -55,7 +55,17 @@ Use original graphics. Do not embed PDF screenshots or copy the bezel.
 | Flight director, autopilot controls, recording, internet hosting | Outside scope |
 | Full G5 replica | Outside scope |
 
-* Original default units: kt, ft, ft/min, inHg, and degrees. The [BARO preference](altitude.md) adds local hPa and STD presentation.
+| Indication | Presentation units or mode |
+| --- | --- |
+| IAS, TAS, and GS | kt |
+| Altitude | ft |
+| Vertical speed | ft/min |
+| Attitude and heading angles | degrees |
+| BARO | inHg without a valid saved preference. Local options are inHg, hPa, and STD |
+
+STD is a local display mode, not a pressure unit or confirmation of the cockpit setting.
+The [BARO reference](altitude.md) defines local preference behavior and conversion from transport pressure in hPa.
+
 * Demo speed thresholds belong to an explicit synthetic profile, not assumed real-aircraft performance. Live profile availability follows the [SimConnect observations](../sources/simconnect.md#optional-instrument-observations).
 
 ## Features
@@ -109,18 +119,17 @@ Presentation components retain these responsibilities:
 | --- | --- | --- |
 | Product scope | [Product scope and reference](#product-scope-and-reference) | Coverage and exclusions |
 | System integration | [Browser boundary](../architecture.md#browser-boundary) | Integration and delivery constraints |
-| Original Demo extension | [ADR 0003](../adr/0003-responsive-pfd-demo.md) | Original extension scope and decision |
+| EFI scope | [ADR 0003](../adr/0003-responsive-pfd-demo.md) | Instrument scope and local BARO presentation |
 | Instrument composition | [ADR 0004](../adr/0004-modular-pfd-presentation.md) | Instrument boundaries and layers |
 | Visual-object composition | [ADR 0005](../adr/0005-visual-object-composition.md) | Object boundaries and calculation ownership |
 | Current SimConnect instruments | [SimConnect observations](../sources/simconnect.md#optional-instrument-observations) | Available optional instruments and observation limits |
 | Deterministic source behavior | [Demo requirements](../sources/demo.md#requirements-and-usage) | Deterministic scenarios and source-selected values |
-| Telemetry extensions | [Extension contract](../telemetry-contract.md#further-efi-extension-boundary) | Additive fields, validity, fixtures, and attitude-only compatibility |
+| Telemetry extensions | [Extension contract](../telemetry-contract.md#further-efi-extension-boundary) | Additive fields, validity, fixtures, and attitude-only publications |
 | Delivery order | [Roadmap](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9) | Work sequence and dependencies |
 
 EFI extensions preserve these scope limits:
 
 * Demo extensions add no SDK requirements.
-* Performance #7 and packaging #8 remain separate work.
 * Source data and browser presentation use the same normalized contract for Demo and SimConnect.
 
 ## Content ownership
@@ -137,7 +146,7 @@ Closely coupled objects share a feature page. Independently changed behavior has
 | Normalized frames, panel interfaces, scheduling, and cancellation | [Frame lifecycle](lifecycle.md) |
 | Shared layers, clipping, opacity, and paint order | [Rendering](rendering.md) |
 | Global availability and status internals | [Status](status.md) |
-| Rationale, accepted refinements, and regression lessons | The affected feature or shared document, with public provenance and evidence limits. ADRs own accepted architectural decisions |
+| Rationale, accepted refinements, and regression lessons | The affected feature or shared document, with identifiable sources for recorded evidence and applicable evidence limits. ADRs own accepted architectural decisions |
 | Feature scenarios, controlled Demo inputs, expected results, screenshots, and device-specific checks | The feature's Testing section |
 | Reusable commands, phone setup, and evidence templates | [Shared testing pages](../testing/index.md) |
 | Wire fields, normalization contract, units, and compatibility | [Telemetry contract](../telemetry-contract.md) |

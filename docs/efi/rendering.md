@@ -21,7 +21,6 @@ Panel-wide geometry, layer allocation, cross-module paint order, and shared SVG/
 
 
 * Target iOS Safari and Android Chrome in portrait and landscape.
-* The first slice (#20) required assessing all intended elements with development-only fixtures before later additions reduced horizon space.
 
 ## Layer allocation
 
@@ -49,10 +48,8 @@ Other instrument pages own their local geometry and internal paint order.
 ## Background opacity
 
 * Apply opacity to background shapes, not whole instrument groups.
-* `--instrument-background-opacity` defaults to `0.65` pending real-phone acceptance in #37.
+* `--instrument-background-opacity` defaults to `0.65`.
 * CSS owns page composition and instrument background opacity.
-
-> This architecture does not prescribe a final numeric opacity value. Final background opacity acceptance requires real-phone evidence.
 
 ## Cross-module paint order
 
@@ -95,9 +92,3 @@ Follow the [opacity comparison procedure](../testing/pfd.md#modular-and-layered-
 Record real-device acceptance evidence in the owning GitHub issue.
 
 > Keep real-device evidence separate from desktop checks. Implementation and source review do not establish final validation or actual phone acceptance.
-
-## Composition provenance
-
-* #36 separated existing modules without changing the image.
-* #37 introduced layered composition without a top status bar.
-* Those steps added no telemetry fields or functional tape readings. Background opacity remains subject to mobile acceptance.
