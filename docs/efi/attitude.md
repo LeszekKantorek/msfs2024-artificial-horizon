@@ -36,7 +36,7 @@ Wire definitions: [attitude fields and conventions](../telemetry-contract.md#fie
 
 | Indication | Presentation |
 | --- | --- |
-| Slip/skid | Zero is centered; negative displacement moves left and positive displacement moves right |
+| Slip/skid | Zero is centered. Negative displacement moves left and positive displacement moves right |
 | Turn rate | Standard-rate marks at +/-3 deg/s within the +/-6 deg/s display span |
 | Turn rate beyond the display span | Show an edge arrow |
 
@@ -86,7 +86,7 @@ Panel delegation preserves these boundaries:
 * Horizon owns the common world/warning origins, background clip, and pitch clip.
 * The panel owns `#attitude-clip`, shared by horizon's bank pointer and fixed symbols.
 * `composePanel(svg, instruments, status)` retains its API.
-* Panel composition assigns existing `layout.attitude` before instrument resize.
+* Panel composition assigns `layout.attitude` before instrument resize.
 * No instrument scale or path calculation moves into panel delegation.
 
 ### World transforms
@@ -119,17 +119,11 @@ Paint fixed children in this order:
 * Aircraft calculates its common shape/outline path once per resize.
 * JavaScript writes slip/skid and turn-rate `data-available` to control local unavailable marks and hide the affected indication.
 
-### Retired asset routes
-
-| Retired route | Current owner |
-| --- | --- |
-| `/horizon.js`, `/fixed-symbols.js` | Their feature directories |
-| `/horizon/calculations.js` | Pure functions in the implementing visual objects |
-
 ## Testing
 
-Run both [desktop browser scripts](../testing/pfd.md#responsive-efi-layout-and-desktop-checks) for presentation changes.
-Use [controlled fixtures](../testing/pfd.md#controlled-browser-fixtures) for local turn failures, extreme poses, expiry, and recovery.
+* Run both [desktop browser scripts](../testing/pfd.md#responsive-efi-layout-and-desktop-checks) for presentation changes.
+* Verify that unregistered asset paths return `404`, without aliases, under the [HTTP route contract](../server.md#http-routes).
+* Use [controlled fixtures](../testing/pfd.md#controlled-browser-fixtures) for local turn failures, extreme poses, expiry, and recovery.
 
 ### Acceptance scenarios
 
@@ -150,7 +144,7 @@ Calculation and lifecycle suites cover these boundaries:
 | Suite | Coverage / method |
 | --- | --- |
 | Horizon | `tests/horizon.test.mjs` imports `attitudeTransforms` from `web/horizon/index.js` for independent pose signs and extreme/default transforms |
-| Coordinated turn | Typed bounds, independent optional failures, old snapshots, shared sample age, +/-3 deg/s, resize without refreshing age |
+| Coordinated turn | Typed bounds, independent optional failures, current attitude-only publications, shared sample age, +/-3 deg/s, resize without refreshing age |
 
 `tests/horizon.test.mjs` checks independent pose signs and combined/extreme transforms without a DOM.
 Independent fixtures retain separate scopes:
@@ -164,7 +158,7 @@ Independent fixtures retain separate scopes:
 
 * Check pitch geometry immediately after `ResizeObserver`, before the next animation callback.
 * Check matching world/pitch/chevron transforms, fixed aircraft/outline paths, and original SVG hierarchy across poses and resize.
-* For #36 module regressions, preserve the current image, pose signs, combined transforms, slip/skid, turn rate, and local unavailable indications.
+* Module regression checks cover presentation, pose signs, combined transforms, slip/skid, turn rate, and local unavailable indications.
 
 ### Controlled attitude and turn inputs
 
@@ -182,21 +176,21 @@ Start the [shared fixture server](../testing/pfd.md#controlled-browser-fixtures)
 
 ### Real-phone checks
 
-Apply the [shared phone procedure](../testing/devices.md#real-phone-acceptance-procedure) and record results in #4.
+Apply the [shared phone procedure](../testing/devices.md#real-phone-acceptance-procedure) and record the required results.
 Add these attitude checks for each phone:
 
 * [ ] Check that no DEMO label or top status bar appears.
 * [ ] Observe the full current cycle and indications listed in [Demo behavior](#demo-behavior).
 * [ ] Check that nose up lowers the horizon and right bank rotates it counterclockwise.
 
-Complete the separate coordinated-turn and attitude extension acceptance for #20:
+Complete coordinated-turn and attitude acceptance on each device:
 
-1. Run the real-device procedure on iOS Safari and Android Chrome for #20.
+1. Run the real-device procedure on iOS Safari and Android Chrome.
 2. Include centered/left/right slip, both standard-rate turns, and both chevron scenarios.
 3. Exercise orientation, browser bars, lock/resume, Wi-Fi recovery, and server recovery.
-4. Record device, OS/browser, build, and network details in the issue.
+4. Record device, OS/browser, build, and network details with the acceptance results.
 
-> Keep #20 open while this hardware evidence is missing. Desktop checks do not replace the required real-device acceptance.
+> Desktop checks do not replace acceptance on actual iOS Safari and Android Chrome. Keep missing device evidence explicit.
 
 ### Simulator comparison scope
 

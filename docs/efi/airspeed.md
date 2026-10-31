@@ -112,16 +112,16 @@ The speed objects keep calculations with their visual implementations:
 | --- | --- |
 | Layers | IAS, TAS, and GS use layer 1. |
 | Failure and overflow marks | IAS and GS local failure and overflow marks use layer 4. TAS marks stay inside its opaque layer-1 field. |
-| Airspeed allocation | The airspeed rectangle defines tape geometry and includes the 1 CSS px increase for wider range bands and scale-label clearance. |
-| Adjacent allocations | The central attitude region starts 1 CSS px farther right and is 1 CSS px narrower. Altitude retains its allocation. |
+| Airspeed allocation | IAS, TAS, and GS share `clamp(panelWidth * 0.16, 50, 84) + 1` CSS px. The additional pixel provides clearance for three-digit scale labels. |
+| Adjacent allocations | Altitude uses `clamp(panelWidth * 0.19, 60, 92)` CSS px. Attitude starts at `x = airspeedWidth` and uses `panelWidth - airspeedWidth - altitudeWidth`. |
 | GS position | GS stays at the bottom of the panel, with the same left edge and width as IAS. |
 | IAS background | The IAS background extends to GS without a gap. |
-| Scale clips | IAS and altitude scales use clips of equal height over their complete existing allocations. |
+| Scale clips | IAS and altitude scales use clips of equal height over their complete allocations. |
 | Unit-label coordinates | `[KT]` and `[FT]` are centered in their tape widths at panel height minus 40 CSS px. Both use the same 10 CSS px font and baseline. |
 | Unit-label clearance | The labels occupy the 16 CSS px band between each scale and footer. Preserve 1 CSS px above and below their desktop glyph bounds. |
 | GS appearance | GS uses the same opaque dark background and inset 1 CSS px frame as BARO. Its border uses the speed-trend magenta token `--turn`. |
 | Footer alignment | GS and BARO occupy aligned 32 CSS px footers. Both tape backgrounds meet their footer without a gap and both footers meet the bottom panel edge. |
-| Panel margins | The exterior three-pixel margins and safe-area handling remain unchanged. |
+| Panel margins | Preserve exterior three-pixel margins and safe-area handling. |
 | GS typography | GS label and value share 13 CSS px, weight-600 text, with a common vertical center and three-pixel left/right padding. |
 
 The clips retain their visual-object owners:
@@ -154,13 +154,6 @@ SVG paint order follows these sequences:
 | IAS `data-state` | Hide tape and digits unless the value is available |
 | IAS `data-overspeed`, `data-approaching` | Red pointer window and yellow predictive-warning digits |
 
-### Retired asset routes
-
-| Retired route | Current owner |
-| --- | --- |
-| `/airspeed.js` | `/airspeed/index.js` and its visual objects |
-| `/airspeed/calculations.js` | Pure functions in the implementing visual objects |
-
 ## Testing
 
 Use the [validation scope matrix](../testing/index.md#validation-by-change-scope) and the feature checks below.
@@ -180,7 +173,8 @@ Shared browser commands, phone setup, and evidence rules are linked from those c
 
 ### Automated checks and independent fixtures
 
-Run the automated checks and both desktop browser scripts for airspeed implementation changes.
+* Run the automated checks and both desktop browser scripts for airspeed implementation changes.
+* Verify that unregistered asset paths return `404`, without aliases, under the [HTTP route contract](../server.md#http-routes).
 
 | Suite or fixture | Coverage and method |
 | --- | --- |
@@ -191,14 +185,14 @@ Run the automated checks and both desktop browser scripts for airspeed implement
 
 For changes to footer geometry, also apply the [shared GS/BARO and unit-label checks](altitude.md#tape-footers-and-baro).
 
-Regression #56 covers composition recovery:
+Composition recovery requires these checks:
 
 * Repeat IAS/profile loss during resize and both recovery orders.
 * Verify independently painted GS and reset warnings/references.
 
 ### Real-phone checks
 
-1. Apply the [shared phone procedure](../testing/devices.md#real-phone-acceptance-procedure) for #21.
+1. Apply the [shared phone procedure](../testing/devices.md#real-phone-acceptance-procedure).
 2. Check IAS acceleration, hold, deceleration, and distinct GS. Inspect digits, ticks, and local failure marks against sky and ground.
 3. Use [phone fixtures](../testing/devices.md#phone-fixture-setup) for controlled rollover, limits, and failures with these inputs:
 

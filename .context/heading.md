@@ -13,5 +13,3 @@ Select the source for the affected boundary:
 | Automated checks, screenshot procedure, and hardware evidence | [Heading acceptance](../docs/efi/heading.md#testing) |
 | Implementation and accepted decisions | [Implementation](../docs/efi/heading.md#implementation), [rationale and regression lessons](../docs/efi/heading.md#rationale-and-regression-lessons) |
 | Clipping regression | [Clipping and scope](../docs/efi/heading.md#desktop-geometry-and-availability-transitions) |
-
-The original accepted plan remains local under `.local/plans/26-heading/`.

@@ -6,7 +6,7 @@ The independent TAS readout above the IAS tape.
 
 * Display source-supplied TAS independently of IAS, GS, profile, and acceleration.
 * Apply the 999 kt presentation limit before rounding.
-* Use the existing 32 CSS px top-left allocation without moving heading or reducing the central attitude area.
+* Use the 32 CSS px top-left allocation without moving heading or reducing the central attitude area.
 
 Wire definitions: [telemetry contract](../telemetry-contract.md#optional-speed-indications).
 
@@ -69,7 +69,7 @@ Classify TAS before rounding its displayed value:
 Use the [validation scope matrix](../testing/index.md#validation-by-change-scope) and the feature checks below.
 Shared browser commands, phone setup, and evidence rules are linked from those checks.
 
-Issue [#66](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/66) owns TAS acceptance, including real-device acceptance.
+The checks on this page define TAS acceptance, including separate real-device results.
 
 ### Acceptance scenarios
 
@@ -77,7 +77,7 @@ Use the [speed contract](../telemetry-contract.md#optional-speed-indications) an
 
 | Check | Expected behavior |
 | --- | --- |
-| Browser | Source-supplied TAS reaches SVG and ARIA. Explicit expectations cover zero, fractions, rounding, 999, overflow, missing/null/malformed input, old snapshots, expiry and recovery |
+| Browser | Source-supplied TAS reaches SVG and ARIA. Explicit expectations cover zero, fractions, rounding, 999, overflow, missing/null/malformed input, current attitude-only publications, expiry and recovery |
 | Partial loss | Missing TAS preserves valid IAS/GS. Missing IAS or GS preserves TAS |
 | Geometry | Stable production nodes in both compositions. Glyph containment for one-, two-, three-digit values, X and OVR. Inset frame, opaque background, and clearance from heading and tape |
 
@@ -95,20 +95,20 @@ Run the [automated checks](../testing/automated.md#automated-checks) and both [d
 1. Apply the [shared phone procedure](../testing/devices.md#real-phone-acceptance-procedure).
 2. Use [phone fixtures](../testing/devices.md#phone-fixture-setup) in both compositions. Enter these controlled samples:
 
-```json
-{"ias_kt":150,"tas_kt":160,"gs_kt":170}
-{"tas_kt":0}
-{"tas_kt":85.5}
-{"tas_kt":999}
-{"tas_kt":999.01}
-{"tas_kt":null}
-{"tas_kt":"85"}
-{"tas_kt":160,"omit_tas":true}
-{"omit_tas":false,"tas_kt":160,"ias_kt":null}
-{"ias_kt":150,"gs_kt":null}
-{"gs_kt":170,"hold":true}
-{"hold":false}
-```
+   ```json
+   {"ias_kt":150,"tas_kt":160,"gs_kt":170}
+   {"tas_kt":0}
+   {"tas_kt":85.5}
+   {"tas_kt":999}
+   {"tas_kt":999.01}
+   {"tas_kt":null}
+   {"tas_kt":"85"}
+   {"tas_kt":160,"omit_tas":true}
+   {"omit_tas":false,"tas_kt":160,"ias_kt":null}
+   {"ias_kt":150,"gs_kt":null}
+   {"gs_kt":170,"hold":true}
+   {"hold":false}
+   ```
 
 3. Check continuous backgrounds and readable TAS labels throughout the shared rotation, layout, and recovery scenarios.
 
@@ -118,13 +118,13 @@ Run the [automated checks](../testing/automated.md#automated-checks) and both [d
 
 | Check | Expected behavior |
 | --- | --- |
-| Rust and SSE | Independently optional finite nonnegative TAS, unchanged v1 envelope, atomic publication, shared age, two matching clients, and clearing on omission or source loss |
+| Rust and SSE | Independently optional finite nonnegative TAS, the v1 envelope, atomic publication, shared age, two matching clients, and clearing on omission or source loss |
 | Demo | Independent speed checkpoints repeat, including simultaneous IAS 150, TAS 160, and GS 170 |
 | Runtime | Embedded TAS module supports HTTP/MIME and HEAD checks. Real demo readouts recover after server restart without reload |
 
 ## Rationale and regression lessons
 
-* Use the existing top-left 32 CSS px allocation without moving heading or narrowing attitude.
+* Use the top-left 32 CSS px allocation without moving heading or narrowing attitude.
 * Keep the TAS frame white. GS retains its speed-trend magenta frame.
 * TAS uses source-supplied data independently of IAS, GS, configuration, and acceleration.
 * The 999 kt presentation limit applies before rounding. 999.01 kt is valid telemetry with an overflow indication.
