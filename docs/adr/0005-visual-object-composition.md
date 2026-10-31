@@ -7,16 +7,15 @@ Decision status: Accepted.
 [ADR 0004](0004-modular-pfd-presentation.md) establishes instrument composition and one frame scheduler.
 The visual-object decision addresses these internal boundaries:
 
-* Large internal creation, resize, and update operations still combine several visual responsibilities.
-* The next boundary follows concrete visual objects while preserving appearance, accessibility, telemetry, and lifecycle.
-* An initial split placed pure calculations in separate files.
+* Combining unrelated creation, resize, and update operations obscures visual responsibilities.
+* Visual-object boundaries preserve appearance, accessibility, telemetry, and lifecycle.
 * Object-specific functions belong to their visual objects.
 * Pure behavior and direct tests do not require a separate file.
 
 ## Decision
 
 Use JavaScript factories, composition, and small object interfaces within the existing modular architecture.
-The [presentation reference](../efi/composition.md#internal-module-seams) owns detailed interfaces, calculation locations, and resource ownership.
+The [presentation reference](../efi/composition.md#visual-object-interfaces-and-ownership) owns detailed interfaces, calculation locations, and resource ownership.
 
 Visual ownership defines the interfaces:
 
@@ -53,12 +52,12 @@ Visual ownership keeps responsibilities and extensions local:
 * Extensions change the relevant object and its explicit composition site, consistent with OCP/SOLID.
 * OCP does not require a plugin registry or closed composition list.
 
-The decision limits abstraction and preserves compatibility:
+The decision limits abstraction and preserves presentation behavior:
 
 * KISS keeps named range and trend operations inside the tape instead of creating modules for primitive shapes.
 * DRY shares existing rules with actual callers and computes common transforms once.
 * Meaningful pure tests import the owning modules in Node without DOM.
-* SVG identity, paint order, clipping, and accessible meanings remain compatibility constraints.
+* Preserve SVG identity, paint order, clipping, and accessible meanings during internal refactoring.
 * Visual objects add no frame cache, timer, subscription, or scheduler.
 
 | Alternative | Decision |

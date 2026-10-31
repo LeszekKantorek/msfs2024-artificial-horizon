@@ -11,3 +11,17 @@ Use the [workflow](../CONTRIBUTING.md#workflow) for branch and PR preparation, a
 ## Follow-up findings
 
 Use [finding promotion](../CONTRIBUTING.md#promote-agreed-findings) to collect implementation findings and define an agreed follow-up after the originating task closes.
+
+## GitHub issue records
+
+Issue maintenance follows these authorization boundaries:
+
+* Do not automatically correct historical or completed issues, including their text, checklists, links, or status.
+* Change historical records only when the user explicitly requests that change.
+* Maintain the roadmap and unfinished issues only within the authorized task.
+* An open issue is not permission to rewrite it during documentation review.
+* Preserve requirements in their canonical Markdown owner without editing the source issue.
+* Report obsolete links or contradictory statements in historical issues instead of silently repairing them.
+* Honor explicit exclusions for individual issues, even when they remain open.
+
+Documentation owns requirements and contracts. Issues track work, unresolved proposals, execution results, and acceptance evidence.

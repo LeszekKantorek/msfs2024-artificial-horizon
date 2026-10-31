@@ -4,14 +4,18 @@ Measurement limits, build provenance, and matched screenshot comparisons.
 
 ## Measurements and evidence
 
-| Owner | Scope |
+| Validation scope | Evidence boundary |
 | --- | --- |
-| #7 | Original simulator reliability and performance |
-| #20-#26 | Planned EFI demo acceptance, without expanding #7 or #8 |
+| Controlled fixtures and Demo | Values, presentation, independent availability, geometry, and connection behavior. Do not establish simulator compatibility |
+| Compiled application | Embedded assets and the application telemetry-to-display path |
+| SimConnect with MSFS2024 | Acquisition and integration in the recorded simulator environment |
+| Actual phones | Observed behavior on the tested iOS or Android platform |
+| Latency and stability measurements | Results under recorded conditions, with method uncertainty |
 
 Record the measurement environment and observations:
 
-* OS, CPU, phone models, and browser versions.
+* Desktop OS, CPU, and browser versions for desktop measurements.
+* Mobile platform: iOS or Android. Follow the [mobile acceptance record rules](devices.md#mobile-acceptance-records).
 * Simulator, SDK, and aircraft versions.
 * Build commit, source rate, network conditions, duration, and failures.
 * Memory and subscriber trends with two phones for at least 30 minutes.
@@ -21,11 +25,34 @@ Record the measurement environment and observations:
 | Receipt-to-render | Browser monotonic clock and frame callbacks |
 | Total latency | Instrumented source with measured clock offset and uncertainty, or synchronized or high-frame-rate recording of source and phone |
 | Report | Method uncertainty, p50, and p95. Never subtract unrelated device timestamps |
-| Proposed target | p95 <= 150 ms from source acquisition through visible rendering on healthy LAN |
+| Latency target | p95 <= 150 ms from source acquisition through visible rendering on healthy LAN |
 
 * Attach results to the validation issue.
-* Keep hardware-dependent tasks open until observations support acceptance. Apply the [manual acceptance rules](#sources-and-limits).
+* Apply the [manual acceptance rules](#sources-and-limits) to hardware-dependent checks. Do not reopen accepted values solely because separate measurement records are missing.
 * Unit tests cannot certify simulator or phone behavior.
+
+### Current requirements and measurement targets
+
+| Behavior | Current requirement |
+| --- | --- |
+| Demo publication | Nominally 20 Hz |
+| SimConnect attitude acquisition | Each simulator frame |
+| Active-page stale indication | Within 1 second of the last usable sample |
+| Layout | At least 320 CSS px wide and 240 CSS px of usable height, in both orientations |
+
+Source cadence follows the [telemetry contract](../telemetry-contract.md#framing).
+
+| Measurement | Target or scenario |
+| --- | --- |
+| End-to-end latency, healthy LAN | p95 <= 150 ms |
+| Concurrent use | Two phones for at least 30 minutes without growing queues or continuously growing memory/subscriber counts |
+
+These measurements require real equipment. The targets do not claim achieved performance.
+
+* Record the aircraft and tested mobile platforms: iOS or Android.
+* Mobile performance and any need for interpolation require measurements and a separate accepted change. Current rendering does not interpolate.
+* Use the [SimConnect evidence limits](../sources/simconnect.md#live-publication-evidence) for compatibility, sign/unit conversion, and lifecycle observations.
+* [ADR 0006](../adr/0006-simconnect-manual-ffi.md) governs manual FFI. Runtime/SDK distribution conditions require separate evidence and do not follow from a successful run.
 
 ### Build provenance
 
@@ -101,7 +128,7 @@ Use complementary evidence for different requirements:
 | Browser fixture with real modules | Controlled rendering, geometry, clipping, and object lifetime | Does not establish packaged application integration |
 | Compiled application browser test | Embedded assets and the actual telemetry-to-display path | Does not establish actual mobile browser behavior |
 | Matched screenshots and inspection | Readability and visual differences under recorded conditions | Cover only the inspected scenes |
-| Actual phone checks | Device, browser bars, safe areas, rotation, and recovery | Cover only the recorded devices and versions |
+| Actual phone checks | Device, browser bars, safe areas, rotation, and recovery | Cover the reported checks on iOS or Android, not every device |
 | Independent code review | Assessed defects, unintended changes, and test gaps in a specified diff | Does not replace tests or establish absence of defects |
 
 * Use [EFI layout validation](pfd.md#geometry-and-paint-regression-checks) for rendering checks.

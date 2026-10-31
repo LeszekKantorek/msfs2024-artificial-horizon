@@ -67,7 +67,7 @@ Run these checks locally on Windows x64 MSVC.
 | Frame scheduler | Latest-frame/layout coalescing, coherent resize and render, expiry before draw, cancellation on data loss, resize without renewing age, fresh identical values |
 | Panel/status | Complete read-only frame delegation, shared attitude clip through resize/expiry, status without a sample, stale obscuring, separate source/transport state and announcements |
 
-Apply the [client and validation suites](../efi/telemetry.md#client-and-validation-suites) alongside these integration checks.
+Apply the [client and validation suites](../efi/telemetry.md#client-and-validation-coverage) alongside these integration checks.
 
 ### Desktop exploration
 
@@ -93,7 +93,8 @@ These tests require no simulator or SDK.
 
 ### Demo behavior
 
-Feature pages own the [attitude/turn cycle](../efi/attitude.md#demo-behavior) and [IAS/GS cycle](../efi/airspeed.md#demo-behavior).
+The [Demo provider](../sources/demo.md#scenario-timing) owns source cycles and timing.
+Feature pages own the [attitude/turn checks](../efi/attitude.md#demo-behavior) and [IAS/GS checks](../efi/airspeed.md#demo-behavior).
 The following rules apply to the shared producer:
 
 | Property | Expected behavior |

@@ -137,7 +137,7 @@ Before marking work complete, confirm that required checks pass and acceptance c
 ## Workflow
 
 1. Select or create a GitHub issue with an outcome and acceptance criteria.
-2. Check dependencies in the [roadmap](docs/roadmap.md).
+2. Check dependencies in the [roadmap](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9).
 3. Create a branch from current `main` named `change/<issue>-<topic>`, for example `change/20-responsive-pfd`.
 4. Implement one reviewable outcome under the [change requirements](#change-requirements).
 5. Update affected documentation, contracts, and fixtures.

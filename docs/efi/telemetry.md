@@ -4,19 +4,31 @@ Connection ownership, snapshot normalization, callback publication, and reentran
 
 ## Requirements
 
-Validate snapshots and optional fields independently. Preserve the original freshness deadline and one connection per client.
+* Validate snapshots and optional fields independently.
+* Preserve the original freshness deadline and one connection per client.
+* Keep EventSource ownership, sequence handling, retry/age timers, expiry deadlines, and start/stop in the client.
+
 Use the [wire freshness contract](../telemetry-contract.md#freshness-and-status) and the [shared frame lifecycle](lifecycle.md).
 
 ## Implementation
 
-### Telemetry operations
+### Client interface and ownership
 
-The telemetry client preserves the connection lifecycle:
+`telemetry/client.js` exports only `createTelemetryClient`.
+Its private operations are `readMessage`, `acceptSample`, `publishSample`, and `expireSample`.
 
-* `telemetry/client.js` exports only `createTelemetryClient`.
-* Its private operations are `readMessage`, `acceptSample`, `publishSample`, and `expireSample`.
-* The current-connection guard precedes parsing.
-* Parsing catches message decoding failures without swallowing callback exceptions.
+| Interface | Contract |
+| --- | --- |
+| `onStatus` | Required callback receiving a copied status |
+| `onAttitude`, `onSample` | Optional callbacks, defaulting to no operation |
+| `makeEventSource`, `now`, `schedule`, `cancel` | Injectable connection, monotonic clock, and timer dependencies |
+| `start()` | Activate the client and connect. Repeated calls while active do nothing |
+| `stop()` | Close the connection, clear retry and age timers, and report suspended/waiting status, subject to [callback reentrancy limits](#callback-reentrancy-limits) |
+
+One client owns the subscription, retry timer, and age timer.
+The [scheduler](lifecycle.md#sample-acceptance-and-drawing) owns the retained frame and pending draw.
+
+### Snapshot validation and optional normalization
 
 The adjacent validation module exposes these pure functions:
 
@@ -26,28 +38,37 @@ The adjacent validation module exposes these pure functions:
 | `normalizeAirspeedProfile(value)` | Copied valid profile with separate reference values, or `null` |
 | `normalizeOptionalIndications(value)` | Independently normalized optional values, including profile and acceleration |
 
-Validation and publication retain these boundaries:
+### Sample acceptance and callback publication
 
-* EventSource ownership, sequence handling, retry/age timers, expiry deadlines, and start/stop remain in the client.
-* Both sample callbacks receive separate attitude copies and the same deadline.
-* `onAttitude` retains its attitude-only shape.
-* The application attaches the current copied status when accepting the complete sample into the scheduler.
+* Check the current connection before parsing a message.
+* Catch message decoding failures without swallowing callback exceptions.
+* Give both sample callbacks separate attitude copies and the same deadline.
+* Preserve the attitude-only shape of `onAttitude`.
+* Attach the current copied status in the application before accepting the complete sample into the scheduler.
 
 Accepted live samples invoke callbacks in this order:
 
-| Order | Callback |
+1. `onStatus`.
+2. `onAttitude`.
+3. `onSample`.
+
+### Connection lifecycle and freshness
+
+| Event or condition | Client behavior |
 | --- | --- |
-| 1 | `onStatus` |
-| 2 | `onAttitude` |
-| 3 | `onSample` |
+| New connection | Open `/api/v1/events` and reset the sequence to `-1` |
+| Connection opens | Report connected/waiting status |
+| Connection fails or construction throws | Close the connection, clear the age timer, report reconnecting/waiting, and retry after 2000 ms while active |
+| Malformed or invalid snapshot | Clear the age timer and report invalid state |
+| Valid snapshot with sequence no greater than the retained sequence | Ignore the snapshot |
+| Accepted live snapshot | Subtract `sample_age_ms` from 1000 ms, using zero age when absent. Report stale if no freshness remains |
+| Fresh live snapshot | Publish with the deadline `receivedAt + remaining` and schedule expiry |
+| Early expiry timer | Reschedule using the original received time and remaining duration |
+| Expiry deadline reached | Report stale even without another sample |
+| Hidden page or `pagehide` | Application calls `stop()` |
+| Visible page or visible `pageshow` | Application calls `start()` |
 
-Lifecycle state stays with the client and scheduler:
-
-* Expiry retains the original received time and deadline, including rescheduling an early timer.
-* One client owns the subscription, retry timer, and age timer.
-* One scheduler owns the retained frame and pending draw.
-
-### Callback reentrancy limit
+### Callback reentrancy limits
 
 The current client has these limits when a callback changes its lifecycle:
 
@@ -66,17 +87,16 @@ These limits remain outside the cancellation guarantee:
 ## Testing
 
 Use the [automated commands](../testing/automated.md) and [HTTP/SSE integration checks](../testing/runtime.md).
+Verify the [asset registration contract](../server.md#embedded-assets): unregistered paths return `404` without compatibility aliases.
 
-### Client and validation suites
+### Client and validation coverage
 
-| Suite | Coverage / method |
+| Suite | Coverage and method |
 | --- | --- |
 | Browser controller | Independent fixtures, one EventSource/retry timer, two-second retry, sequence reset, freshness, malformed messages, suspend/resume |
-| Telemetry validation | Direct internal-module tests, independent optional fields, old snapshots, copied profile/reference values, and unbounded finite speed input |
-| Sample callbacks | Current status before attitude before full sample, with separate attitude copies, original attitude-only shape, and matching deadlines |
+| Telemetry validation | Direct internal-module tests, independent optional fields, attitude-only snapshots, copied profile/reference values, and unbounded finite speed input |
+| Sample callbacks | Current status before attitude before full sample, with separate attitude copies, attitude-only shape, and matching deadlines |
 
-### Retired asset routes
+### Evidence limits
 
-| Retired route | Current owner |
-| --- | --- |
-| `/telemetry-client.js` | `/telemetry/client.js` |
+> Client and validation tests do not establish integrated simulator-to-browser or real-phone acceptance. Use the [device procedure](../testing/devices.md#real-phone-acceptance-procedure) for device evidence.

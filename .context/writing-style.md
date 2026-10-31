@@ -19,6 +19,15 @@ status: active
 * Check [Markdown structure](#markdown-structure) separately from sentence clarity and technical accuracy.
 * Link to the canonical source instead of repeating commands or rules.
 
+## Accepted values and test evidence
+
+* Treat values delivered by an accepted task as established unless the user has raised objections to those values.
+* Document these values as current requirements or settings, without provisional labels or pending-acceptance notes.
+* Missing separate measurements or device records do not reopen acceptance of these values.
+* Do not add unresolved-value entries to local follow-up records solely because separate test evidence is missing.
+* Report only recorded or performed tests. Acceptance of a value does not establish a particular measurement or device test.
+* Preserve actual reported problems and conflicting requirements as separate findings with their scope and evidence.
+
 ## Markdown structure
 
 * For feature pages, follow the section structure and Markdown conventions of one representative page of the same type.
@@ -58,16 +67,20 @@ Review the choice of structure independently from the wording:
 | --- | --- |
 | [README](../README.md) | First run, phone access, available behavior, limitations |
 | [CONTRIBUTING](../CONTRIBUTING.md) | Developer setup, context tooling, contribution workflow |
-| [Brief](../docs/project-brief.md) | Requirements, scope, assumptions, success criteria |
-| [Architecture](../docs/architecture.md) | Target design, boundaries, library API |
+| [EFI scope](../docs/efi/index.md#product-scope-and-reference) | Product coverage, exclusions, reference illustration, and terminology |
+| [Architecture](../docs/architecture.md) | End-to-end flow, boundaries, application lifecycle, deployment, and fundamental library contracts |
+| [Server](../docs/server.md) | HTTP API, routers, embedded assets, health, SSE delivery, and connection shutdown |
+| [Sources](../docs/sources/index.md) | Shared acquisition responsibilities and provider navigation |
+| [Demo](../docs/sources/demo.md) | Deterministic scenarios, source API, timing, and validation references |
+| [SimConnect](../docs/sources/simconnect.md) | Native configuration, API, diagnostics, implementation, tests, and evidence limits |
 | [Panel presentation](../docs/efi/index.md) | Feature requirements, presentation, implementation, rationale, and acceptance scenarios; shared composition, lifecycle, and rendering contracts |
 | [Contract](../docs/telemetry-contract.md) | Wire interface, units, validity, freshness |
 | [Testing](../docs/testing/index.md) | Shared check commands, runtime and device procedures, validation selection, and evidence templates; feature scenarios remain on feature pages |
-| [Roadmap](../docs/roadmap.md) | Order and dependencies |
+| [Roadmap](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9) | Order and dependencies |
 | [ADRs](../docs/adr/) | Decisions and decision lifecycle, not implementation status |
 | GitHub Issues / PRs | Task status, execution results, acceptance evidence |
 
 ## Instrument terminology
 
-Use [project terminology](../docs/project-brief.md#terminology): EFI for the complete instrument, artificial horizon for the attitude indication.
+Use [project terminology](../docs/efi/index.md#terminology): EFI for the complete instrument, artificial horizon for the attitude indication.
 Keep technical identifiers consistent with their consumers.

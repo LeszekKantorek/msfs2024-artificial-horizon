@@ -25,8 +25,8 @@ Apply these existing constraints rather than assuming broader protection.
 | --- | --- | --- |
 | Local and LAN access | Loopback default, explicit LAN binding, private-network firewall scope, and no LAN authentication | [Deployment](../docs/architecture.md#deployment), [phone access](../README.md#use-your-phone) |
 | Remote exposure | Public hosting and port forwarding are outside MVP scope, with remote access requiring a separate access-control/TLS decision | [Deployment](../docs/architecture.md#deployment) |
-| Telemetry and resources | Validated snapshots, bounded latest-state delivery, freshness checks, and stalled-client deadlines | [Architecture](../docs/architecture.md#boundaries), [telemetry contract](../docs/telemetry-contract.md), [ADR 0002](../docs/adr/0002-sse-connection-lifecycle.md) |
-| Displayed input | Preserve input validation and safe text rendering without changing the declared telemetry contract | [Browser responsibilities](../docs/architecture.md#boundaries), [telemetry contract](../docs/telemetry-contract.md) |
+| Telemetry and resources | Validated snapshots, bounded latest-state delivery, freshness checks, and stalled-client deadlines | [Architecture](../docs/architecture.md#components-and-execution), [telemetry contract](../docs/telemetry-contract.md), [ADR 0002](../docs/adr/0002-sse-connection-lifecycle.md) |
+| Displayed input | Preserve input validation and safe text rendering without changing the declared telemetry contract | [Browser responsibilities](../docs/architecture.md#browser-boundary), [telemetry contract](../docs/telemetry-contract.md) |
 | Privileged acceptance CI | Execute trusted main code only, with limited permissions and no persisted checkout credentials | [CI trust boundary](../docs/pr-acceptance.md#trust-boundary) |
 | Issue and PR content | Treat metadata as data and never interpolate it into shell commands | [CI trust boundary](../docs/pr-acceptance.md#trust-boundary) |
 | Dependencies | Preserve locked dependencies and the acceptance tooling's installation without lifecycle scripts | [Repository rules](../CONTRIBUTING.md#change-requirements), [CI trust boundary](../docs/pr-acceptance.md#trust-boundary) |
@@ -48,7 +48,7 @@ Select checks for actual changes rather than adding unrelated security work.
 
 ## Sources and limits
 
-* Implementation example: [BARO rendering](../web/altitude/baro.js) assigns source-formatted text through `textContent` rather than HTML parsing.
+* Assign display text through `textContent` rather than HTML parsing. Apply this rule to [BARO rendering](../web/altitude/baro.js) and other text readouts.
 * This entry defines a review procedure rather than a completed security audit or a vulnerability assessment.
 * A private-network restriction does not add authentication or encryption.
 * Report current dependency security claims only with evidence for the actual versions and review date.

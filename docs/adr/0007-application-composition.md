@@ -5,37 +5,48 @@ Decision status: Accepted.
 ## Context
 
 HTTP must remain available before the simulator starts and after acquisition fails.
-The existing receiver takes ownership of `Publisher`; releasing its final watch sender would otherwise close SSE streams.
+The existing receiver takes ownership of `Publisher`. Releasing its final watch sender would otherwise close SSE streams.
 The application needs to retain unavailable state without adding another receiver, sample queue, or distribution layer.
 
-This decision supersedes ADR 0002 only for producer ownership, joining, and fatal-source-failure behavior.
-Its SSE delivery, channel-closure semantics, socket deadlines, and browser recovery rules remain applicable.
+| Responsibility | Governing decision |
+| --- | --- |
+| Producer ownership, joining, and source-failure behavior | This ADR |
+| SSE delivery, channel-closure semantics, socket deadlines, and browser recovery | [ADR 0002](0002-sse-connection-lifecycle.md) |
 
 ## Decision
 
 ### Component boundaries
 
-* Application composition selects one source, validates configuration, creates the channel, binds HTTP, and starts the components.
-* `Server::bind(config, subscription)` receives an existing subscription. The server neither owns a `Publisher` nor starts a provider.
-* `Config` contains HTTP address and port only. `SourceSelection` belongs to application composition.
-* Keep the existing SimConnect receiver, dedicated native worker, `RunReport`, and optional diagnostics.
-* Keep the v1 telemetry and SSE contracts. Detailed source errors remain diagnostic output.
+| Component or contract | Decision |
+| --- | --- |
+| Application composition | Select one source, validate configuration, create the channel, bind HTTP, and start the components |
+| `Server::bind(config, subscription)` | Receive an existing subscription. The server neither owns a `Publisher` nor starts a provider |
+| `Config` | Contain HTTP address and port only |
+| `SourceSelection` | Belong to application composition |
+| SimConnect | Keep the existing receiver, dedicated native worker, `RunReport`, and optional diagnostics |
+| Telemetry and SSE | Keep the v1 contracts. Detailed source errors remain diagnostic output |
 
 ### Startup and source failure
 
-Bind HTTP before starting acquisition. Invalid configuration or a failed bind prevents producer startup.
-DLL availability, exported functions, simulator connection, and flight readiness are producer concerns and do not delay HTTP startup.
+Startup preserves these boundaries:
 
-Composition retains a nonpublishing handle to the same watch channel.
-Only the provider holds active publication while it runs.
-After the provider releases its publisher, composition recovers the latest state and publishes `disconnected`.
-It preserves source identity, sequence continuity, and the last accepted sample time.
-The channel remains available to existing and new HTTP clients until application shutdown.
+* Bind HTTP before starting acquisition. Invalid configuration or a failed bind prevents producer startup.
+* DLL availability, exported functions, simulator connection, and flight readiness are producer concerns and do not delay HTTP startup.
 
-Transient simulator loss follows the existing bounded retry policy.
-A permanently failed producer is reported without automatic restart or Demo fallback.
-Normal simulator states remain `waiting`, `live`, `paused`, `stale`, `disconnected`, and `invalid`.
-Only a new eligible sample restores live indications.
+Publication ownership follows this sequence:
+
+1. Composition retains a nonpublishing handle to the same watch channel. Only the provider holds active publication while it runs.
+2. After the provider releases its publisher, composition recovers the latest state and publishes `disconnected`.
+3. The channel remains available to existing and new HTTP clients until application shutdown.
+
+Recovery preserves source identity, sequence continuity, and the last accepted sample time.
+
+| Source condition | Behavior |
+| --- | --- |
+| Transient simulator loss | Follow the existing bounded retry policy |
+| Permanently failed producer | Report the failure without automatic restart or Demo fallback |
+| Normal simulator states | Retain `waiting`, `live`, `paused`, `stale`, `disconnected`, and `invalid` |
+| Recovery to live indications | Require a new eligible sample |
 
 ### Shutdown
 
@@ -57,12 +68,16 @@ Only a new eligible sample restores live indications.
 | Add provider traits, registries, or a composition framework | Adds unnecessary interfaces for the two existing source choices |
 | Retain the channel and recover publication after release | Preserves the existing distribution contract and one active publisher |
 
-The server boundary supports another contract-compatible source through application composition without changing HTTP or browser code.
-The public server API changes; callers must create the telemetry channel explicitly.
+The selected boundary has these consequences:
+
+* The server boundary supports another contract-compatible source through application composition without changing HTTP or browser code.
+* Callers create the telemetry channel explicitly and pass its subscription to `Server::bind`.
 
 ## Validation and limits
 
-Required evidence includes startup ordering, retained SSE after source termination, sequence and age continuity, multi-client delivery, and coordinated shutdown.
-Automated tests and independent review do not establish simulator or phone compatibility.
-The complete MSFS2024-to-EFI path requires separate observations on actual iOS Safari and Android Chrome.
-The receiver evidence from #5 remains scoped to its recorded environment and does not establish this integrated acceptance.
+| Evidence scope | Requirement or limit |
+| --- | --- |
+| Application lifecycle and delivery | Verify startup ordering, retained SSE after source termination, sequence and age continuity, multi-client delivery, and coordinated shutdown |
+| Automated tests and independent review | Do not establish simulator or phone compatibility |
+| Complete MSFS2024-to-EFI path | Requires separate observations on actual iOS Safari and Android Chrome |
+| [Receiver and local-publication evidence](../sources/simconnect.md#live-publication-evidence) | Remains scoped to its recorded environment and does not establish integrated acceptance |

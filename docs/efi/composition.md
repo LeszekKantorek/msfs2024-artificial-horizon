@@ -2,27 +2,34 @@
 
 Instrument ownership, shared helpers, public operations, and delivery boundaries.
 
-## Panel composition
+## Component responsibilities
 
-The panel presents attitude, slip/skid, turn rate, IAS, GS, TAS, speed ranges and trend, altitude, pressure, selected-altitude alerts, vertical speed, heading, and the selected-heading bug.
-Rendering and scheduling have separate responsibilities. Visual objects own their object-specific calculations:
+| Component | Module or boundary | Responsibility |
+| --- | --- | --- |
+| Application assembly | `app.js` | Assemble telemetry, status, panel, layout, resize observation, and page lifecycle |
+| Telemetry client | `telemetry/client.js` | Validate messages and own EventSource, sequence handling, retries, expiry, source/transport status, and start/stop |
+| Validation | `telemetry/validation.js` | Pure envelope validation and independent optional-value normalization |
+| Frame scheduler | `frame-scheduler.js` | Retain the latest frame, coalesce draws, check expiry, and cancel invalid work |
+| Panel | `panel.js` | Compose instruments, assign layers, own and resize the common attitude clip, and delegate resize, acceptance, rendering, and invalidation |
+| Layout | `layout.js` | Allocate CSS-pixel regions, including the background extent and central readable area |
+| Instrument composition | Feature entry points | Select frame fields and delegate concrete geometry and readings to visual objects |
+| Visual object | Feature objects | Own nodes, geometry, calculations, and local availability |
+| Fixed symbols | `fixed-symbols/` | Draw references that do not move with the world |
+| Status | `status.js` | Present accessible source/transport status and global unavailability without owning the connection |
+| Shared helpers | `helpers.js` | Named clamp, SVG creation, and attribute updates without import-time DOM access |
 
-| Module | Responsibility |
-| --- | --- |
-| `app.js` | Assemble telemetry, status, panel, resize observation, and page lifecycle |
-| `telemetry/client.js` | Own EventSource, sequence handling, retries, expiry, status, and start/stop lifecycle |
-| `telemetry/validation.js` | Pure snapshot validation and independent optional-value normalization |
-| `frame-scheduler.js` | Retain the latest frame, coalesce draws, check expiry, and cancel invalid work |
-| `panel.js` | Compose instruments, own the common attitude clip, and delegate resize/render/invalidation |
-| `status.js` | Accessible status, and global unavailability |
-| `helpers.js` | Named clamp, SVG creation, and attribute updates without import-time DOM access |
+Slip/skid, turn rate, layout, status, and scheduler remain small standalone modules.
+The [telemetry client](telemetry.md#connection-lifecycle-and-freshness) enforces sample age even without new samples.
+The [frame lifecycle](lifecycle.md) defines scheduling and cancellation.
 
-* Final background opacity acceptance requires real-phone evidence.
-* Later feature issues add their instrument modules with real demo data.
-* Implementation does not establish real-device acceptance.
-* GitHub issues own real-device acceptance evidence.
+## Instrument composition
 
-## Module composition
+The panel presents these indications:
+
+* Attitude, slip/skid, and turn rate.
+* IAS, GS, TAS, speed ranges, and trend.
+* Altitude, pressure, selected-altitude alerts, and vertical speed.
+* Heading and the selected-heading bug.
 
 ```text
 Panel
@@ -37,21 +44,10 @@ Panel
 ```
 
 * A module does not require one file per graphic element.
-* Add future instruments in their feature issues, without empty implementations or production placeholder readings.
+* Adding an instrument requires explicit composition in the panel.
+* Adding a data dependency inside an instrument does not change its call in the panel.
 
-| Owner | Responsibility |
-| --- | --- |
-| Application assembly | Connect telemetry, panel, resize observation, and page lifecycle |
-| Telemetry client | Validate messages, preserve source/transport status, and expire data without new samples |
-| Frame scheduler | Retain the latest sample, coalesce redraws, check expiry, and cancel pending work |
-| Panel | Compose instruments, assign layers, and resize their shared attitude clip |
-| Layout | Allocate CSS-pixel regions, including the background extent and central readable area |
-| Instrument composition | Select frame fields and delegate concrete geometry/readings to visual objects |
-| Visual object | Own its nodes, geometry, calculations, and local availability |
-| Fixed symbols | Draw references that do not move with the world |
-| Status | Present source/transport status and global unavailability without owning the connection |
-
-Keep data conversion and rendering responsibilities within these boundaries:
+Data conversion and rendering follow these rules:
 
 * Use local instrument coordinates and named dimensions.
 * Keep telemetry units at the input and conversion to display coordinates inside the instrument.
@@ -62,9 +58,7 @@ Keep data conversion and rendering responsibilities within these boundaries:
 * Share helpers for matching rules with actual callers, such as mathematical `clamp` and SVG attribute updates.
 * Do not introduce a general rendering framework or a second renderer.
 
-Slip/skid, turn rate, layout, status, and scheduler remain small standalone modules.
-
-## Internal module seams
+## Visual object interfaces and ownership
 
 Each feature documents its factory interface in its Implementation section.
 
@@ -78,42 +72,45 @@ Internal objects use these ownership rules:
 * Visual closures retain nodes and initialized geometry without a latest-frame cache or timer.
 * The frame scheduler owns its timing work.
 
-## Pure calculations and helpers
+## Calculations and shared helpers
+
+### Object-specific calculations
 
 Object-specific calculations remain in the modules that implement their objects.
 Each feature's Implementation section documents its calculations, constants, and local helpers.
-Shared ownership rules apply across features:
 
 * Named pure exports support direct behavioral tests in Node without DOM.
 * Purity does not require a separate calculation file.
 * Feature-local helpers belong with their feature and serve actual shared rules.
 
-The mixed helper module preserves its import boundary:
+### Shared helper contracts
 
-* `helpers.js` exports `clamp(value, min, max)`, `svgElement(name, attributes, text)`, and `setAttributes(element, values)`.
-* Clamp clips infinities and preserves `NaN` propagation without normalizing invalid telemetry.
-* DOM access occurs when SVG creation executes, never during module import.
+`helpers.js` exposes these operations:
 
+| Operation | Contract |
+| --- | --- |
+| `clamp(value, min, max)` | Clip infinities and preserve `NaN` propagation without normalizing invalid telemetry |
+| `svgElement(name, attributes, text)` | Create an SVG element when called, with attributes and optional text |
+| `setAttributes(element, values)` | Update named attributes on an existing element |
+
+DOM access occurs when SVG creation executes, never during module import.
 The [visual-object decision](../adr/0005-visual-object-composition.md) records this mixed-helper compromise.
 
-## Delivery boundaries
+## Asset integration and extension constraints
 
-Delivery preserves production scope and asset integration:
-
-* Each implementation issue updates its tests, documentation, and mobile evidence.
-* Update embedded Rust asset routes and the fixture server when imports change.
-* The full development fixture uses production modules for all 17 included illustration elements.
-* No new telemetry fields, framework, build pipeline, Solid.js, three.js, or custom signals are required for #36 or #37.
+* Add instruments within the accepted product scope with deterministic Demo data, without empty implementations or production placeholder readings.
+* Update tests, documentation, and applicable mobile evidence when changing an instrument.
+* Update embedded Rust asset routes and the fixture server when imports change. The [server reference](../server.md#embedded-assets) defines asset registration constraints.
+* Use the [production fixture scope](rendering.md#production-fixture-scope) for full-panel checks.
+* Retain plain JavaScript, SVG, and SSE without an application framework, frontend build pipeline, or custom signals system.
+* Composition changes do not establish telemetry changes. Field extensions follow the [telemetry contract](../telemetry-contract.md#further-efi-extension-boundary) and accepted feature scope.
 
 ## Rationale and regression lessons
 
-Apply these composition and regression checks:
-
 * Keep object-specific calculations with their visual owner because pure behavior and DOM-free tests do not require a separate file.
 * Extract shared rules only for actual independent consumers, not a planned instrument or a test-only file boundary.
-* Preserve coherent resize and fresh readings in one animation callback, including pending geometry under the unavailable cover.
-* Check background clipping with browser hit testing and a narrowed-clip negative check because path geometry excludes ancestor clips.
-* Distinguish intentional background overlap from collisions between painted indications.
-* Keep real-device acceptance evidence separate from desktop checks.
+* Preserve [coherent geometry and fresh readings](lifecycle.md#coalesced-frame-rendering) in one animation callback, including pending geometry under the unavailable cover.
+* Apply the [painted-bound and clipping checks](rendering.md#painted-bounds-and-clipping-checks) to distinguish background overlap from indication collisions.
+* Keep real-device acceptance evidence separate from desktop checks. GitHub issues own real-device acceptance evidence.
 
-Evidence limit: a source review does not establish final validation or real iOS Safari and Android Chrome acceptance.
+> Implementation and source review do not establish final validation or real iOS Safari and Android Chrome acceptance.

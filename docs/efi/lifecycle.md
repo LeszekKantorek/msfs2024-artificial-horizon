@@ -2,7 +2,32 @@
 
 Normalized frames, per-sample acceptance, shared scheduling, and expiry.
 
-## Panel interface and frame lifecycle
+## Normalized frame contract
+
+| Frame field | Meaning |
+| --- | --- |
+| `attitude`, `slip_skid`, `turn_rate_dps` | Values from one accepted sample |
+| `ias_kt`, `tas_kt`, `gs_kt` | Independently normalized speeds from the same accepted sample, or `null` |
+| `airspeed_profile`, `ias_acceleration_ktps` | Independently normalized configuration and source acceleration, or `null` |
+| `altitude_ft` | Independently normalized signed altitude, or `null` |
+| `baro_setting` | Normalized positive finite pressure, or `null` for missing or invalid data |
+| `selected_altitude_ft` | Independently normalized signed selected altitude, or `null` |
+| `vertical_speed_fpm` | Independently normalized signed ft/min, or `null` |
+| `heading_deg`, `selected_heading_deg` | Independently normalized magnetic degrees in `[0, 360)`, or `null` |
+| `expiresAt` | Original monotonic expiry deadline |
+| `status` | Copied `source`, `transport`, and `state` values |
+
+Instruments share the frame under these rules:
+
+* Every instrument receives the same complete frame and selects its own fields without mutating the frame or another instrument.
+* Nested frame values are also read-only.
+* Instruments consume normalized frames.
+* Missing or invalid optional readings arrive as `null`, without invented zero values or legacy fallbacks.
+* Future feature issues define additions to the frame and wire contract separately.
+
+> The frame is an internal presentation value, not a new SSE schema.
+
+## Panel interface
 
 ```js
 panel.resize(layout);
@@ -18,36 +43,15 @@ panel.invalidate(reason);
 | `render(frame, now)` | Apply one fresh, coherent presentation frame. Return the earliest next monotonic visual deadline, or `null` |
 | `invalidate(reason)` | Obscure invalid indications immediately. Do not substitute level flight or zero values |
 
-| Frame field | Meaning |
-| --- | --- |
-| `attitude`, `slip_skid`, `turn_rate_dps` | Values from one accepted sample |
-| `ias_kt`, `tas_kt`, `gs_kt` | Independently normalized speeds from the same accepted sample, or `null` |
-| `airspeed_profile`, `ias_acceleration_ktps` | Independently normalized configuration and source acceleration, or `null` |
-| `altitude_ft` | Independently normalized signed altitude, or `null` |
-| `baro_text` | Verbatim source-formatted display string, or `null` for missing/non-string data |
-| `baro_setting` | Omitted when absent on the wire. Otherwise, normalized pressure or `null` when invalid. Present invalid data takes precedence over legacy text |
-| `selected_altitude_ft` | Independently normalized signed selected altitude, or `null` |
-| `vertical_speed_fpm` | Independently normalized signed ft/min, or `null` |
-| `heading_deg`, `selected_heading_deg` | Independently normalized magnetic degrees in `[0, 360)`, or `null` |
-| `expiresAt` | Original monotonic expiry deadline |
-| `status` | Copied `source`, `transport`, and `state` values |
+`composePanel` delegates optional acceptance and invalidation operations to instruments.
+It renders instruments before status and returns the earliest visual deadline from its instruments.
+The [instrument composition](composition.md#instrument-composition) defines the hierarchy and extension rules.
 
-Instruments share the frame under these rules:
+## Initialization and geometry updates
 
-* Every instrument receives the same complete frame and selects its own fields without mutating the frame or another instrument.
-* Nested frame values are also read-only.
-* Instruments consume normalized frames.
-* Missing or invalid optional readings arrive as `null`, without invented zero values, except that `baro_setting` preserves wire-field presence for legacy compatibility.
-* `resize(layout)` must run before the first `render(frame)`.
-* Initialization supplies real geometry without substitute defaults.
-* Future feature issues define additions to the frame and wire contract separately.
-
-> The frame is an internal presentation value, not a new SSE schema.
-
-The [module composition](composition.md#module-composition) shows the instrument hierarchy.
-`composePanel` delegates optional acceptance and invalidation operations to those instruments.
-During rendering, it delegates instrument updates before rendering status.
-Panel rendering returns the earliest visual deadline from its instruments.
+* Create instrument elements once during initialization.
+* Run `resize(layout)` before the first `render(frame)`.
+* Supply real geometry without substitute defaults.
 
 | Component | Initialization | Resize | Render |
 | --- | --- | --- | --- |
@@ -55,34 +59,77 @@ Panel rendering returns the earliest visual deadline from its instruments.
 | Fixed symbols | Create references once | Update reference geometry | No per-frame render method |
 | Panel | Compose instrument modules | Assign shared attitude clip, then delegate geometry updates | Delegate the same frame without scale formulas or path construction |
 
-* Adding a data dependency inside an instrument does not change its call in the panel.
-* Adding an instrument requires explicit composition in the panel.
+## Sample acceptance and drawing
 
-The scheduler coordinates samples, layout, and invalidation in this sequence:
+### Per-sample acceptance
 
-1. Create instrument elements once during initialization.
-2. On each fresh accepted sample, delegate `accept(frame, now)` before retaining the newest sample and requesting at most one animation frame.
-3. On resize with a retained sample, keep the newest layout and request at most one animation frame. A BARO unit change can also request a redraw without accepting a new sample.
-4. Before drawing, check the original deadline, then apply the pending layout and render the fresh frame in the same callback.
-5. On invalidation, cancel pending drawing, discard the sample, and invoke `panel.invalidate(reason)` immediately.
-6. Apply any pending layout under the unavailable cover, updating geometry immediately when no sample remains.
-7. After reconnect or resume, wait for a new valid sample before restoring indications.
+1. Reject an already expired incoming frame through invalidation.
+2. If the retained frame has expired, invalidate it before accepting the new frame to reset instrument history.
+3. Cancel obsolete timing work and delegate `accept(frame, now)` for each fresh accepted sample without DOM writes.
+4. Retain the newest sample and request at most one animation frame.
 
-Freshness and status handling follow these rules:
-
-* Resize and local preference redraws never renew the sample deadline or advance per-sample history.
-* Transport expiry detection continues even when no new samples arrive.
 * Fresh samples with unchanged numeric values still renew freshness.
-* Optional failures affect only their indications.
-* Source/transport loss invalidates the panel.
 * Do not interpolate or extrapolate current readings between accepted samples.
 
-Timed visual changes use the shared scheduling and cancellation path:
+### Coalesced frame rendering
 
-* Instrument render operations can return a monotonic next-update deadline.
-* Panel composition selects the earliest.
-* The scheduler accepts injectable `now`, `setTimer`, and `clearTimer` dependencies.
-* One timer requests the common animation frame at the earlier of the visual deadline and sample expiry.
+The scheduler retains one latest sample and at most one pending draw.
+Each animation callback follows this sequence:
+
+1. Check the retained sample's original deadline. Invalidate expired data instead of drawing it.
+2. Apply the pending layout.
+3. Cancel obsolete timing work and render the fresh frame in the same callback.
+4. Schedule the next timed visual update if the panel returns a finite deadline.
+
+### Resize and local preference redraws
+
+| Event | Action | Preserved constraint |
+| --- | --- | --- |
+| Resize with a retained sample | Keep the newest layout and request at most one animation frame | Apply geometry with fresh readings in the same callback |
+| Resize without a retained sample | Apply geometry immediately under the unavailable cover | Do not restore invalid indications |
+| BARO unit change | Request a redraw without accepting a new sample | Do not advance per-sample history |
+
+Resize and local preference redraws never renew the sample deadline or advance per-sample history.
+
+## Timed visual updates
+
+The scheduler retains at most one visual timer.
+
+| Owner | Contract |
+| --- | --- |
+| Instrument render operation | Return a monotonic next-update deadline when needed |
+| Panel composition | Select the earliest deadline |
+| Scheduler | Accept injectable `now`, `setTimer`, and `clearTimer` dependencies |
+| Visual timer | Request the common animation frame at the earlier of the visual deadline and sample expiry |
+
+* Create the visual timer only when rendering returns a finite deadline.
 * New samples cancel obsolete timing work.
 * Rendering checks the retained sample's original deadline.
-* Invalidation cancels their pending work and prevents an apparently valid alert from remaining active.
+* Transport expiry detection continues without new samples through the [telemetry client](telemetry.md#connection-lifecycle-and-freshness).
+
+## Invalidation and recovery
+
+| Condition | Effect |
+| --- | --- |
+| Optional input failure | Affect only that indication |
+| Source/transport loss or sample expiry | Invalidate the panel |
+| Reconnect or resume | Wait for a new valid sample before restoring indications |
+
+Invalidation follows this sequence:
+
+1. Cancel timed updates and pending drawing.
+2. Discard the retained sample.
+3. Invoke `panel.invalidate(reason)` immediately, obscuring invalid indications and resetting instrument state.
+4. Apply any pending layout under the unavailable cover.
+
+> Cancellation prevents an apparently valid timed alert from remaining active after invalidation. Do not substitute level flight or zero values.
+
+## Validation invariants
+
+| Behavior | Validation source |
+| --- | --- |
+| Shared frame, expiry, resize, pause, and recovery | [Shared EFI checks](../testing/pfd.md#responsive-efi-layout-and-desktop-checks) |
+| Per-sample history and timed alert cancellation | [Selected-altitude checks](selected-altitude.md#testing) |
+| Transport freshness and reconnect | [Client coverage](telemetry.md#client-and-validation-coverage) |
+
+These contracts define expected behavior. Desktop checks do not establish real-device acceptance.

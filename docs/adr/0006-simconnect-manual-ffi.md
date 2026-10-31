@@ -6,13 +6,13 @@ Decision status: Accepted.
 
 The integration preserves these boundaries:
 
-* [#5](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) establishes native pitch and bank acquisition before HTTP/SSE and EFI integration in [#6](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/6).
+* Native acquisition publishes normalized telemetry through application composition to HTTP/SSE and the EFI browser.
 * The existing library, `Publisher`, latest-value watch channel, and browser contract remain suitable.
 * Direct control over a small native API supports diagnostics without an SDK build dependency.
-* [ADR 0001](0001-rust-http-sse.md) deferred FFI selection. Its process, transport, and normalized-state decisions remain unchanged.
-* The accepted scope selects manual bindings. Wrapper selection is outside this iteration.
-* The main application replaces the separate diagnostic executable.
-* Default DLL selection beside the EXE and optional append logs replace the mandatory DLL override and generated logs.
+* [ADR 0001](0001-rust-http-sse.md) defines process, transport, and normalized-state boundaries.
+* The accepted scope selects manual bindings without a third-party wrapper.
+* Acquisition and optional diagnostics run in the main application.
+* DLL selection defaults beside the EXE. An absolute override and append logging are optional.
 
 ## Decision
 
@@ -29,7 +29,7 @@ The integration preserves these boundaries:
 | Execution | One long-running worker owns one active connection and all SimConnect calls |
 | Memory | Validate message types and lengths, respect packed layouts, copy owned values, retain no native buffer across dispatch |
 | Telemetry | Adapter normalization and publication through the caller's existing typed `Publisher` and watch channel |
-| Entry point | Main executable with `--source demo` or `--source simconnect`. No HTTP/SSE in #5 |
+| Entry point | Main executable with `--source demo` or `--source simconnect`. Application composition owns HTTP/SSE |
 
 The binding surface remains limited:
 
@@ -48,7 +48,7 @@ Integration constraints preserve the existing architecture:
 * Expose no Cargo features or SDK build dependencies.
 * Accept the existing publisher and shutdown signal from the caller. Create no hidden channel or sample queue.
 * Keep demo independent of the SDK. Never load SimConnect for demo or select demo after simulator loss.
-* Connect this same module to the server in #6 rather than adding another receiver.
+* Connect this module to the server through application composition without another receiver.
 * Resolve the full DLL path before opening diagnostics or loading native code.
 * Apply explicit override precedence without fallback. Do not search `PATH`, the working directory, or SDK installations.
 
@@ -63,11 +63,11 @@ Integration constraints preserve the existing architecture:
 | Later write or flush failure | Disable diagnostics, continue acquisition and cleanup, report immediately and at shutdown |
 | Outcomes | Separate acquisition result from diagnostic status. An interrupted journal does not establish a complete measurement |
 
-The [feature guide](../simconnect.md#diagnostic-logging) owns operational details and record formats.
+The [feature guide](../sources/simconnect.md#diagnostic-logging) owns operational details and record formats.
 
-### Live-publication amendment
+### Live publication
 
-The [accepted evidence in #5](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) supports removing the provisional live-to-`waiting` gate within the tested setup:
+Live publication follows these rules within the [documented evidence limits](../sources/simconnect.md#live-publication-evidence):
 
 * Use native radians and local conversion. Requested degrees and repeated radians remain diagnostic only.
 * Record raw values before normalization and publication when logging is enabled.
@@ -75,7 +75,7 @@ The [accepted evidence in #5](https://github.com/LeszekKantorek/msfs2024-artific
 * Invalidate retained attitude on pause, invalid input, disconnect, and flight or simulator transitions.
 * Require a new sample after resume. Publish each eligible acquisition, including equal values, with its original receive time.
 * Keep the 1000 ms freshness limit. Cached values, queries, and heartbeats do not refresh age.
-* Use schema 4 for enabled publication. Historical schemas 1–3 retain their original waiting gate.
+* Use diagnostic schema 4 for enabled publication. Interpret recorded sessions through the [diagnostic schema rules](../sources/simconnect.md#diagnostic-schema-interpretation).
 
 ## Alternatives and consequences
 
@@ -99,7 +99,7 @@ Ownership has these consequences:
 * The project maintains signatures, constants, layouts, and SDK compatibility.
 * Header-derived Rust layout tests can repeat translation errors. They do not independently prove the SDK ABI.
 * SDK artifacts, local installation paths, and generated session output remain outside commits.
-* Distribution rights must be established in [#8](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/8). Dynamic loading and other projects' practices establish no redistribution permission.
+* Establish distribution rights before distributing SDK artifacts. Dynamic loading and other projects' practices establish no redistribution permission.
 
 ### Evidence limits
 
@@ -109,9 +109,9 @@ Evidence and decision records have separate scopes:
 | --- | --- |
 | This ADR | Binding, ownership, loading, and publication decisions |
 | SDK header source | Inspected declarations, not general simulator and DLL compatibility |
-| [#5 acceptance record](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) | Tested environment, paired simulator observations, execution results, and accepted deferrals |
-| [Feature limits](../simconnect.md#rationale-and-regression-lessons) | Current compatibility, readiness, angle, performance, and untested-path qualifications |
-| Earlier simulator sessions | Candidate behavior under the former gate. The changed publication path has automated regression coverage |
+| [Receiver acceptance record](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) | Tested environment, paired simulator observations, execution results, and accepted deferrals |
+| [Feature limits](../sources/simconnect.md#recorded-evidence-limits) | Current compatibility, readiness, angle, performance, and untested-path qualifications |
+| [Recorded diagnostic schemas](../sources/simconnect.md#diagnostic-schema-interpretation) | Candidate-state observations do not necessarily establish actual publication. Automated publication regressions do not replace physical simulator evidence |
 | Runtime metadata | Environment context, not independent proof of a binary's source or compiler |
 
 > Acceptance of this decision does not certify precise cockpit angles, universal readiness detection, or HTTP/SSE and mobile EFI integration.
@@ -123,5 +123,5 @@ Evidence and decision records have separate scopes:
 | Contradictory receive, wake, CPU, or shutdown observations | Reconsider the receive and wait strategy |
 | Contradictory lifecycle or sign observations | Compare raw records with independent simulator observations before changing interpretation |
 | Suspected ABI or buffer-boundary error | Suspend the affected unsafe native path |
-| Contradictory availability | Keep the affected path unavailable and investigate before relying on it in #6 |
+| Contradictory availability | Keep the affected path unavailable and investigate before relying on its telemetry |
 | New APIs, dependencies, helpers, queues, or telemetry contracts | Demonstrate the need and agree on a scope amendment |

@@ -7,6 +7,9 @@
 * Present options and trade-offs for material project decisions; do not treat discussion as approval.
 * Distinguish facts, hypotheses, proposals, and accepted decisions. Question assumptions when evidence warrants it, and surface unresolved conflicts between sources.
 * Check the current repository and relevant remote state when they may have changed; do not rely on conversation memory as the current state.
+* Do not automatically edit historical or completed GitHub issues. Change those records only at the user's explicit request.
+* Maintain the roadmap and unfinished issues only within authorized work. An open issue alone does not authorize editorial changes.
+* Preserve useful issue requirements in their documentation owner without rewriting the source issue. Follow the [issue-record rules](.context/repository-instructions.md#github-issue-records).
 
 ## Context selection
 
@@ -32,6 +35,8 @@ Use these maps whenever a task needs project knowledge. Select rows by the reque
 
 ## Documentation ownership
 
+* [Roadmap issue #9](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9) is the sole roadmap. Read delivery order and dependencies there. Do not create or maintain a separate roadmap document.
+
 Agent-facing technical materials, including `.context/`, `AGENTS.md`, `SKILL.md`, and skill reference files, may link into `.context/`.
 Project documentation, user instructions, and other non-agent documentation must not link into `.context/`.
 Before creating documentation, check whether an existing document owns the subject. Avoid duplicating implementation details that are clear from code.
@@ -40,6 +45,9 @@ Keep feature requirements, presentation, implementation details, and acceptance 
 
 ## Project constraints
 
+* Treat the server, telemetry contract, and embedded Web as one application. Rebuild and deliver the complete application after every change.
+* Do not maintain backward compatibility with earlier application versions. Update producers, consumers, and fixtures together without legacy adapters or fallbacks to previous formats or values.
+* Keep documentation links out of application source code and runtime output. Documentation may reference code.
 * Write project text in English and preserve the MIT license.
 * Keep credentials, SDK binaries, local SDK paths, and generated output out of commits.
 * Target Windows x64 MSVC for Rust work and keep default checks independent of the simulator.
