@@ -35,9 +35,10 @@ An `EACCES` connection failure to `127.0.0.1` can indicate that the current sand
 
 Local socket or filesystem permission failures can prevent integration tests from exercising their intended behavior. Record the failing tests and native errors. Verify whether the execution environment permits their required loopback and file operations. If those operations are blocked, use an appropriately approved environment. Rerun the affected tests and retain their actual outcomes. Do not infer that every permission error is caused by sandboxing.
 
-## Evidence
+## Diagnostic limits
 
-* During #20 validation, error 5 prevented removal of the running debug executable. Checks passed with separate target output.
-* Browser launch and fixture reachability failures occurred across sandbox boundaries. Running the fixture and browser together enabled the checks.
-* During #87–#89, the configured Playwright module was absent, while a bundled workspace copy worked. A separate sandboxed run then failed with loopback `EACCES`. The browser suite and Rust socket and filesystem tests passed in an environment with the necessary access.
-* These observations establish conditional recovery paths, not a universal cause for either symptom.
+* Error 5 alone does not establish a file lock or SAC failure. Check the exact executable and task-owned process.
+* A missing Playwright module and a blocked loopback connection require separate checks, even when they occur in one run.
+* Confirm browser launch independently from fixture reachability.
+* Use a permitted environment that supports the required socket and file operations, then rerun the affected checks.
+* A successful recovery establishes that tested path, not a universal cause for similar symptoms.

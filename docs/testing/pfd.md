@@ -14,7 +14,7 @@ Controlled browser inputs, desktop commands, layout checks, and full-panel accep
 3. Enter one JSON line at a time in the server terminal.
 4. Inspect the result after each line.
 
-```json
+```jsonl
 {"state":"live","hold":false,"malformed":false}
 {"state":"paused"}
 {"state":"disconnected"}
@@ -60,7 +60,7 @@ No fixture page or fixture control script enters the Rust binary.
 
 The scripted desktop checks use Playwright with an installed browser.
 They are required for the EFI changes in the [validation matrix](index.md#validation-by-change-scope) and optional for unrelated exploration.
-It adds no application dependency or frontend build step.
+Playwright adds no application dependency or frontend build step.
 
 Browser tests are grouped under `tests/browser/`:
 
@@ -77,15 +77,26 @@ Install the test tool in ignored local storage if it is not already available:
 
 ```powershell
 npm install --prefix .local/browser --no-save playwright
+```
+
+Set `PLAYWRIGHT_MODULE` to the actual package location. For the local installation above, use:
+
+```powershell
 $env:PLAYWRIGHT_MODULE = Join-Path $PWD '.local/browser/node_modules/playwright'
 $env:BROWSER_CHANNEL = 'msedge'
+```
+
+Run these checks when required by the validation matrix. Build the release binary first using the [automated checks](automated.md#automated-checks).
+Pass the executable from that build explicitly:
+
+```powershell
 node tests/browser/pfd-browser.mjs
 node tests/browser/pfd-runtime-browser.mjs target/x86_64-pc-windows-msvc/release/msfs2024-artificial-horizon.exe
 ```
 
 | Script | Input | Checks | Output |
 | --- | --- | --- | --- |
-| `pfd-browser.mjs` | Real web assets and isolated loopback fixture on an OS-assigned port | Viewports, poses, partial/old snapshots, stale states, resize, lifecycle, identity, frozen frames, hierarchy/paint order, shared clips, and background coverage | Screenshots under `.local/pfd-browser/`, including opacity candidates in both orientations against sky and ground |
+| `pfd-browser.mjs` | Real web assets and isolated loopback fixture on an OS-assigned port | Viewports, poses, snapshots with missing optional fields and attitude-only publications, stale states, resize, lifecycle, identity, frozen frames, hierarchy/paint order, shared clips, and background coverage | Screenshots under `.local/pfd-browser/`, covering both orientations against sky and ground |
 | `pfd-runtime-browser.mjs` | Release binary built from the checked source and passed explicitly | Every current imported module with HTTP 200/JavaScript MIME, Rust demo SSE, coherent bank/turn state within 25 seconds, and restart recovery without reload | `.local/pfd-runtime-landscape.png` |
 
 The scripted geometry checks include these regression cases:
@@ -100,14 +111,8 @@ Asset checks cover the current module graph:
 * The [EFI composition guide](../efi/composition.md#component-responsibilities) describes runtime ownership. The [feature directory](../efi/index.md#features) identifies implementing modules.
 * `src/http/assets.rs` registers the current modules, HTML, and CSS through explicit mappings.
 * `tests/http.rs` checks the explicit embedded routes and JavaScript MIME.
-* Both browser scripts check retired routes return 404 without compatibility facades.
-
-Shared retired helpers map to the following owner.
-Feature pages list their retired routes; both browser scripts must check those routes return 404:
-
-| Retired route | Current owner |
-| --- | --- |
-| `/math.js`, `/svg.js` | `/helpers.js` |
+* Both browser scripts must check unregistered routes return `404` without compatibility aliases.
+* Apply the [server asset contract](../server.md#embedded-assets) to route registration.
 
 Pure checks follow the existing module boundaries:
 
@@ -118,13 +123,13 @@ Pure checks follow the existing module boundaries:
 > Review the screenshots: geometry checks alone do not establish readability.
 > Synthetic padding and page events do not establish actual cutout, browser-bar, or background behavior on phones.
 
-## Planned EFI demo acceptance
+## EFI Demo acceptance
 
 > The procedures apply to the EFI demo and do not establish passing results or live EFI compatibility.
 
 * Each feature issue owns its automated and real-phone evidence.
 * Use the [device evidence template](devices.md#real-phone-acceptance-procedure).
-* Preserve original simulator acceptance scope.
+* Keep Demo evidence separate from [simulator, device, and performance evidence](evidence.md#measurements-and-evidence).
 
 | Area | Scenarios and acceptance |
 | --- | --- |
@@ -138,7 +143,7 @@ Pure checks follow the existing module boundaries:
 | Lifecycle | Wi-Fi recovery, server restart, lock/background/resume, source pause/stale/invalid states, partial failures |
 | Recovery | Fresh sample before valid readings return. No duplicate subscription |
 
-1. In #20, inspect layout fixtures for the complete intended arrangement before later slices add live demo values.
+1. Inspect the full 17-element layout fixture before changing geometry or adding an instrument.
 2. Check real-phone readability with each added instrument.
 3. Run the [automated checks](automated.md#automated-checks) and follow [CONTRIBUTING](../../CONTRIBUTING.md).
 4. Update the feature's contract fixtures and procedures in the same PR.
@@ -149,28 +154,28 @@ Pure checks follow the existing module boundaries:
 
 These checks cover instrument composition, layers, and visual objects:
 
-* #36 implements modular rendering.
-* #37 implements layer containers and full-panel background coverage.
-* #56 composes visual objects and keeps object-specific calculations with their implementations under [ADR 0005](../adr/0005-visual-object-composition.md).
-* Opacity acceptance requires real-phone results.
+* Preserve instrument module boundaries and their rendering contracts.
+* Preserve layer containers and full-panel background coverage.
+* Keep object-specific calculations with their visual implementations under [ADR 0005](../adr/0005-visual-object-composition.md).
+* Validate the accepted background opacity of `0.65` without fixture overrides.
 * Run the [automated checks](automated.md#automated-checks) for each implementation PR.
 * Record real iOS Safari and Android Chrome results separately from desktop evidence.
 
 > This document defines procedures, not passing results.
 
-| Owner | Checks |
+| Area | Checks |
 | --- | --- |
-| #36: lifecycle | Coalesce latest samples, preserve deadlines through resize, cancel invalid work, and renew freshness for unchanged fresh values |
-| #36: recovery | Expire without new samples, reject an expired sample before paint, and recover after reconnect and resume only with fresh data |
-| #36: assets | Serve every imported module through the compiled Rust server and the development fixture server |
-| #36: DOM ownership | Preserve SVG node identity across samples and resize. Check actual transformed geometry, not only transform strings |
-| #37: layers | Fill the entire panel with sky/ground, clip pitch markings centrally, and preserve fixed references and layer order |
-| #37: readability | Check digits, ticks, and value windows against sky and ground, and record the selected background opacity |
-| #37: bounds | Permit intentional background overlap, reject content collisions, and include painted strokes in bounds checks |
-| #37: invalidation | Obscure the expanded background on global loss, keeping optional failures local |
-| #56: ownership | Same complete read-only frame at instrument entry points, concrete child inputs, immediate-parent shared hosts/clips, and no visual frame cache/timer |
-| #56: composition | Preserve hierarchy, defs/paint order, SVG identity, ARIA, common attitude clip, and coherent once-per-frame transforms |
-| #56: assets | Verify the complete module graph through explicit Rust/fixture registration and HTTP/MIME checks, with the listed retired routes returning 404 |
+| Lifecycle | Coalesce latest samples, preserve deadlines through resize, cancel invalid work, and renew freshness for unchanged fresh values |
+| Recovery | Expire without new samples, reject an expired sample before paint, and recover after reconnect and resume only with fresh data |
+| Assets | Serve every imported module through the compiled Rust server and the development fixture server |
+| DOM ownership | Preserve SVG node identity across samples and resize. Check actual transformed geometry, not only transform strings |
+| Layers | Fill the entire panel with sky/ground, clip pitch markings centrally, and preserve fixed references and layer order |
+| Readability | Check digits, ticks, and value windows against sky and ground, using the default background opacity of `0.65` |
+| Bounds | Permit intentional background overlap, reject content collisions, and include painted strokes in bounds checks |
+| Invalidation | Obscure the expanded background on global loss, keeping optional failures local |
+| Ownership | Same complete read-only frame at instrument entry points, concrete child inputs, immediate-parent shared hosts/clips, and no visual frame cache/timer |
+| Composition | Preserve hierarchy, defs/paint order, SVG identity, ARIA, common attitude clip, and coherent once-per-frame transforms |
+| Assets | Verify the complete module graph through explicit Rust/fixture registration and HTTP/MIME checks, with unregistered routes returning `404` |
 
 Record refactor validation against the final revision:
 
@@ -178,22 +183,24 @@ Record refactor validation against the final revision:
 2. Record the tested commit, environment, complete logs, native exits, and [build provenance](evidence.md#build-provenance).
 3. Describe and assess each [screenshot difference](evidence.md#screenshot-comparisons) without inventing an unverified cause.
 4. Run required final checks on the combined revision, following the [evidence reuse rules](index.md#evidence-reuse).
-5. Keep actual iOS Safari and Android Chrome acceptance unchecked until passing device evidence exists.
+5. Record required iOS Safari and Android Chrome checks under the [manual acceptance rules](evidence.md#manual-acceptance).
 6. Record remaining checks in the owning issue or a linked validation record.
 
-Apply the [shared phone procedure](devices.md#real-phone-acceptance-procedure) for #37 and compare opacity with [phone fixtures](devices.md#phone-fixture-setup):
+For background presentation changes, apply the [shared phone procedure](devices.md#real-phone-acceptance-procedure) using [phone fixtures](devices.md#phone-fixture-setup):
 
 1. Open the full 17-element development fixture.
-2. Compare `/layout.html?opacity=0.50`, `0.65`, and `0.80` against sky and ground.
-3. Record the selected value and real-device evidence in #37.
+2. Open `/layout.html` without opacity overrides. Check readability against sky and ground in both orientations at the default `0.65`.
+3. Verify opacity affects background shapes only. Record observations in the validation record.
 4. Include extreme poses in the shared layout scenarios.
 5. Repeat lifecycle checks after geometry changes without renewing the sample deadline.
 
-Later feature slices extend these checks:
+Accepted values remain the baseline. Repeated device checks follow the [retest criteria](evidence.md#repeat-tests-and-follow-up-tasks).
+
+Instrument changes require these integration checks:
 
 * Keep unfinished readings out of production.
 * Repeat relevant layer checks with real demo indications.
-* #26 collects full-panel acceptance after all preceding instrument steps.
+* Check all 17 elements together in the full panel.
 
 ## Geometry and paint regression checks
 
@@ -204,7 +211,7 @@ Later feature slices extend these checks:
 * Test painted symbol extents, including stroke clearance, rather than only instrument-region bounds.
 * Exclude hidden SVG labels and intersect visible bounds with their ancestor clips when checking content collisions.
 * After changing a browser viewport, wait for SVG `viewBox` dimensions to match its CSS bounds before measuring glyphs. A fresh sample alone does not confirm completed resize geometry.
-* For #37 and later, distinguish overlapping background coverage from non-overlapping indication content using the [painted-bound checks](../efi/rendering.md#painted-bounds-and-clipping-checks).
+* Distinguish overlapping background coverage from non-overlapping indication content using the [painted-bound checks](../efi/rendering.md#painted-bounds-and-clipping-checks).
 * Keep desktop Edge evidence separate from required real iOS Safari and Android Chrome acceptance.
 
 ### Paint order checks
@@ -223,21 +230,21 @@ The [altitude trend acceptance procedure](../efi/altitude-trend.md#acceptance-sc
 
 ## Feature acceptance ownership
 
-Each instrument feature issue owns:
+Each instrument requires validation of these areas:
 
 * Typed data, shared deterministic demo, SSE consumer, and visible indication.
 * Focused tests and affected documentation.
-* Readability evidence from real iOS Safari and Android Chrome, starting with the first slice.
+* Readability evidence from real iOS Safari and Android Chrome.
 
-#26 also owns full-panel acceptance of all 17 elements.
-This does not expand #7 or establish live EFI compatibility.
+Full-panel acceptance covers all 17 elements together.
+Demo results do not establish live EFI compatibility or measured simulator performance.
 
 Acceptance criteria:
 
 * [ ] Missing data never becomes zero.
 * [ ] An invalid optional instrument value affects only that indication.
 * [ ] Source/transport loss invalidates the panel.
-* [ ] Reconnect, fresh data after resume, and sample expiry remain correct through every slice.
+* [ ] Reconnect, fresh data after resume, and sample expiry remain correct after instrument changes.
 * [ ] Level, nose up/down, left/right bank, and combined attitudes display correctly.
 * [ ] Network/server interruptions recover automatically.
 * [ ] Paused, disconnected, invalid, and stale states remain explicit.
