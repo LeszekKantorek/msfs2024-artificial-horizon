@@ -12,10 +12,8 @@ User-aircraft flight instrument reception with optional diagnostics.
 | Acquisition | One native worker in the provider module within the existing Rust package. Publish normalized telemetry through the caller-owned channel |
 | Telemetry | Existing [states, validity, and freshness](../telemetry-contract.md#freshness-and-status) |
 | Scope | Standard aircraft attitude and available optional instrument data through the same HTTP/SSE and browser contract as Demo. Each optional indication is independent |
-| Distribution | Packaging and DLL redistribution conditions in [#8](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/8) |
+| Distribution | Establish redistribution rights before distributing SDK artifacts. Runtime DLL loading does not establish permission |
 | Repository | No SDK files, installation paths, or generated diagnostics in Git |
-
-> Runtime DLL loading does not establish redistribution permission.
 
 ## Usage
 
@@ -372,7 +370,7 @@ Integrated acceptance follows these requirements:
 
 * Use the final release artifact and the [real-device procedure](../testing/devices.md#real-phone-acceptance-procedure).
 * Run the following scenarios separately on actual iOS Safari and Android Chrome.
-* Keep the receiver's #5 evidence separate from these end-to-end results.
+* Keep receiver and local-publication evidence separate from these end-to-end results.
 
 | Scenario | Expected result |
 | --- | --- |

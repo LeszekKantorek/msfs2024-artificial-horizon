@@ -137,7 +137,7 @@ The shared altitude, target, and vertical-speed demo repeats after 3960 samples 
 
 | Time | Altitude / target |
 | --- | --- |
-| 0-18 seconds | Existing six signed sweeps, without selected altitude |
+| 0-18 seconds | Six signed sweeps, without selected altitude |
 | 18-108 seconds | Approach 10000 ft from 8500 ft, hold, then depart to 10300 ft |
 | 108-198 seconds | Approach 1000 ft from 2500 ft, hold, then depart to 700 ft |
 
@@ -154,7 +154,7 @@ Each 90-second approach uses this schedule:
 
 Related cycles and validation remain shared:
 
-* Attitude, speeds, coordinated-turn values, and pressure retain their existing 18-second cycles.
+* Attitude, speeds, coordinated-turn values, and pressure use 18-second cycles.
 * `tests/fixtures/selected-altitude-samples.json` contains independent checkpoints.
 * See [selected-altitude presentation](../efi/selected-altitude.md#presentation) for alert rules and display validity.
 
@@ -197,10 +197,87 @@ Heading boundaries and validation follow these rules:
 
 * Phase boundaries use the starting phase's values.
 * Normalization wraps calculations into `[0, 360)`.
-* The producer still wraps after 3960 samples.
+* The producer wraps after 3960 samples.
 * The altitude cycle remains 198 seconds.
 * `tests/fixtures/heading-samples.json` supplies independent checkpoints, including both north crossings.
 * See [heading presentation](../efi/heading.md#presentation) and [heading acceptance](../efi/heading.md#testing).
+
+## Planned scenario playback
+
+These requirements define planned YAML playback and recorded-session conversion.
+The public API and scenario timing sections describe the current Rust-defined provider.
+
+### Scenario source and default content
+
+The planned provider uses one scenario data source:
+
+* Store the default scenario in the repository as `demo_scenario.yaml`.
+* Define scenario values and timing in YAML without duplicating them in Rust.
+* Keep parsing, validation, and playback logic in Rust.
+* Preserve every default value, phase, cycle, transition, and unavailable-field case defined in this document.
+* Include attitude, coordinated turn, IAS, TAS, GS, speed profiles, references, and IAS acceleration.
+* Include altitude, BARO, vertical speed, selected altitude, current heading, and selected heading.
+* Use the [current telemetry contract](../telemetry-contract.md), including numeric BARO, without legacy-format fallbacks.
+
+Independent checkpoints verify default-scenario equivalence. They do not replace the scenario requirements and numeric definitions above.
+
+### Scenario selection
+
+The planned CLI has these selection rules:
+
+| Input or condition | Required behavior |
+| --- | --- |
+| `--source demo --scenario <path>` | Read the selected scenario |
+| Demo without `--scenario` | Use the repository-owned default scenario through a deployment-safe selection mechanism |
+| `--scenario` with SimConnect | Reject the combination. Do not add a SimConnect probe or scenario mode |
+| Missing, unreadable, or malformed selected file | Report an actionable error without silently selecting another scenario |
+| Unsupported scenario format or version | Reject the input without legacy adapters |
+| Library invocation | Receive typed source configuration from application composition. Do not read process arguments in the provider |
+
+Preserve the usual Demo startup when no scenario path is supplied.
+Scenario delivery follows the [application delivery contract](../architecture.md#application-delivery-contract).
+
+### Playback semantics
+
+Playback preserves the shared runtime boundaries:
+
+* Publish scenario data through the existing `Publisher`, HTTP/SSE, and EFI path.
+* Use one producer shared by all clients and the existing latest-state distribution.
+* Make playback deterministic, with explicit repeat and end behavior.
+* Validate the timeline and numeric values before relying on them for publication.
+* Preserve pauses, data gaps, and missing or unavailable indications.
+* Apply the [freshness rules](../telemetry-contract.md#age-calculation). Replaying cached data must not make it appear newly live.
+* Preserve controlled shutdown and the [provider responsibilities](index.md#shared-responsibilities).
+* Identify replay as `Source::Demo`. Recorded data does not represent a current live flight.
+* Require no simulator, SDK, or SimConnect DLL for playback.
+
+### Recorded-session conversion
+
+Conversion must produce the same scenario format consumed by Demo:
+
+* Provide a documented conversion procedure for recorded SimConnect logs.
+* Select one session explicitly when a log contains appended sessions.
+* Preserve event timing, data gaps, and missing or unavailable values.
+* Exclude diagnostic-only records and local environment metadata from scenario data.
+* Keep generated real-session logs and local SDK paths outside commits.
+* Interpret log records using the [diagnostic schema rules](simconnect.md#diagnostic-schema-interpretation).
+
+### Playback acceptance requirements
+
+Validate the planned provider against these criteria:
+
+| Boundary | Required evidence |
+| --- | --- |
+| Default scenario | Independent checkpoints cover all values, cycles, boundary samples, optional fields, and unavailable cases |
+| Data ownership | YAML contains the scenario content without a second copy in Rust |
+| End-to-end delivery | Default and explicitly selected scenarios reach the real HTTP/SSE server and EFI browser |
+| Log conversion | One selected session produces replayable data with preserved timing and availability |
+| Invalid input | File, format, version, CLI, timeline, and numeric errors produce actionable failures without silent scenario substitution |
+| Runtime | Deterministic checks cover timing, repeat/end behavior, pause/gap handling, equal fresh samples, multiple clients, and shutdown |
+| Validation scope | Apply the [application checks](../testing/automated.md#automated-checks) and affected [desktop browser checks](../testing/pfd.md#responsive-efi-layout-and-desktop-checks) |
+| Usage documentation | Describe default selection, custom paths, conversion, and Demo source identity |
+
+These criteria define required checks, not completed validation or simulator and device acceptance.
 
 ## Validation
 

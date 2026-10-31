@@ -7,6 +7,9 @@
 * Present options and trade-offs for material project decisions; do not treat discussion as approval.
 * Distinguish facts, hypotheses, proposals, and accepted decisions. Question assumptions when evidence warrants it, and surface unresolved conflicts between sources.
 * Check the current repository and relevant remote state when they may have changed; do not rely on conversation memory as the current state.
+* Do not automatically edit historical or completed GitHub issues. Change those records only at the user's explicit request.
+* Maintain the roadmap and unfinished issues only within authorized work. An open issue alone does not authorize editorial changes.
+* Preserve useful issue requirements in their documentation owner without rewriting the source issue. Follow the [issue-record rules](.context/repository-instructions.md#github-issue-records).
 
 ## Context selection
 
