@@ -136,9 +136,9 @@ Before marking work complete, confirm that required checks pass and acceptance c
 
 ## Workflow
 
-1. Establish the requested outcome and validation expectations. Use an issue when requested or useful to organize work; do not create one solely to publish a PR.
+1. Establish the requested outcome and validation expectations. Consult a related issue when available.
 2. Check dependencies in the [roadmap](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9).
-3. Create a branch from current `main` named `codex/<topic>`. An issue number is optional.
+3. Create a branch from current `main` named `change/<topic>`.
 4. Implement one reviewable outcome under the [change requirements](#change-requirements).
 5. Update affected documentation, contracts, and fixtures.
 6. Select and run checks through the [validation scope matrix](docs/testing/index.md#validation-by-change-scope).
@@ -150,19 +150,19 @@ Use [project-prepare-pr](.agents/skills/project-prepare-pr/SKILL.md) to prepare 
 The skill owns the preparation procedure; this document retains the contribution requirements and acceptance-tracking rules.
 Describe what changed, why, and important design choices or consequences.
 
-* Link a relevant issue when one exists. Use a closing keyword only when the PR completes that issue. Neither an issue link nor an acceptance checklist is required.
-* Record applicable validation evidence in the PR or a durable linked record when there is no issue. No fixed test-status section, command list, or checklist is required.
+* Link a relevant issue when one exists. Use a closing keyword only when the PR completes that issue. Issue linkage and acceptance checklists are optional.
+* Record applicable validation evidence in the PR, a related issue, or a durable linked record. No fixed test-status section or command list is required.
 
 ### Acceptance criteria and additional verification
 
-1. Select required validation from the change scope, whether or not a checklist is present.
+1. Select required validation from the change scope.
 2. Record confirming results in the PR, a related issue, or a durable linked record, including the tested commit and relevant environment.
 3. If an issue uses an acceptance checklist, place its task items under `Acceptance criteria`. Mark them checked only after required validation confirms them.
 4. Leave supplied unconfirmed criteria unchecked. Record remaining verification and expected results in the PR, related issue, or linked record.
 5. Keep supplied checklists accurate. Unchecked criteria in a closing-linked issue and any visible unchecked PR task block the acceptance status.
 
 Draft PRs can retain incomplete acceptance; complete it before merge.
-An absent issue or checklist does not block acceptance. A successful status does not replace required local validation.
+A successful status does not replace required local validation.
 Use the [acceptance control reference](docs/pr-acceptance.md#checklist-scope) for parser rules and [status meanings](docs/pr-acceptance.md#understand-the-result) for blocking conditions.
 
 ### Promote agreed findings

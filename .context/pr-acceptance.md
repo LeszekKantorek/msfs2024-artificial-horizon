@@ -11,4 +11,4 @@ status: active
 | Activate the required check | [Activation order](../docs/pr-acceptance.md#activate-merge-blocking) |
 | Change the acceptance workflow | [Validator checks](../docs/pr-acceptance.md#validate-changes-to-the-control), [trust boundary](../docs/pr-acceptance.md#trust-boundary) |
 
-Run test suites and builds locally. Evidence belongs to the PR, a related issue, or a durable linked record. Issue links and checklists are optional; supplied unchecked items still block acceptance.
+Run test suites and builds locally. Use the author responsibilities above for evidence records and the checklist scope for selected tasks.

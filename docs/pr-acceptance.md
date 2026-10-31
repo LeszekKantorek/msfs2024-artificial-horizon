@@ -18,31 +18,27 @@ The sections below define how the control interprets those records and publishes
 
 ### Issue references
 
-Issue linkage is optional. When the PR completes an issue, use one closing keyword per issue, for example `Closes #21. Fixes #48.`
+Issue linkage is optional. Link a related issue when available; use a closing keyword when the PR completes it, for example `Closes #21. Fixes #48.`
 
 | Reference | Result |
 | --- | --- |
-| No issue reference | Allowed; no issue fetch is needed |
 | Non-closing reference such as `Refs #21` | Informational; does not select an issue for validation |
 | Issue number in the same repository | Supported |
 | Qualified reference to an issue in the same repository | Supported |
 | GitHub issue URL for the same repository | Supported |
 | Cross-repository reference | Validation failure |
 | PR number instead of an issue | Validation failure |
-| Issue without an acceptance checklist | Allowed |
 
 ### Checklist scope
 
-The validator applies these selection rules:
+The validator checks issues selected by closing references and their `Acceptance criteria` task items when present. It also checks visible PR task items.
 
 | Location or format | Treatment |
 | --- | --- |
 | Tasks supplied under a closing-linked issue's `Acceptance criteria` heading, including nested subsections | All supplied tasks must be checked |
-| Missing or empty issue acceptance checklist | Allowed; no placeholder tasks are required |
 | Tasks elsewhere in the issue | Outside this control |
 | Visible unchecked PR tasks in any section | Block the status |
 | Fenced or indented code, HTML comments, and quoted task lists | Excluded from task validation |
-| PR without task items | Allowed; any supplied closing references and issue criteria are still checked |
 
 Checklist parsing and wording follow these rules:
 
@@ -51,9 +47,7 @@ Checklist parsing and wording follow these rules:
 * The pinned [Marked parser](https://marked.js.org/using_advanced) reads GFM tokens without rendering HTML.
 * The control checks issue and PR checkboxes independently.
 * PR wording may reflect the PR context without matching or copying issue text.
-* A PR without task items needs no dummy checkbox to satisfy the validator.
 * Track required automated and manual validation evidence in the PR, a related issue, or a durable linked record under [CONTRIBUTING](../CONTRIBUTING.md#acceptance-criteria-and-additional-verification).
-* PR descriptions explain the change, rationale, and consequences; they need no test-status section, command list, or testing checklist.
 
 > A checked box records a verification claim. The workflow cannot establish whether a physical-device test occurred.
 
@@ -64,7 +58,7 @@ Checklist parsing and wording follow these rules:
 | `pending` | A PR event started fresh validation | Wait for the result |
 | `failure` | Supplied closing references are invalid, supplied issue criteria or PR tasks are unchecked, or metadata changed during validation | Read the workflow log and correct the listed items |
 | `error` | Current GitHub data could not be read or validation failed | Resolve the API failure and rerun the workflow |
-| `success` | Supplied closing references, issue criteria, and PR tasks satisfy the control; absence of an issue or checklist is allowed | Mandatory local validation and other repository protections still apply |
+| `success` | All supplied closing references and selected task items pass validation | Mandatory local validation and other repository protections still apply |
 
 ### Validation triggers
 
@@ -113,7 +107,7 @@ After API access recovers:
 5. Retain or add `Acceptance criteria`, with GitHub Actions as its source. Preserve every unrelated protection and valid status requirement.
 6. Save the ruleset.
 7. Check that it remains active, targets `main`, and has no unintended bypass actors.
-8. Confirm that a PR without an issue or checklist succeeds, while supplied unchecked issue criteria or visible unchecked PR tasks still block acceptance.
+8. Confirm that valid supplied references and completed tasks pass, while invalid closing references or supplied unchecked tasks block acceptance.
 9. Complete remaining verification in the PR, related issue, or durable linked record and update any supplied criteria.
 10. Confirm a successful acceptance status.
 
@@ -138,14 +132,14 @@ The suite covers these boundaries:
 | Repeated execution | Repeated runs |
 
 Run this suite locally when changing the validator or its workflow.
-The `PR acceptance` workflow remains active to validate supplied closing references, issue criteria, and PR tasks. It publishes a successful status for an eligible PR without an issue or checklist; it does not run this suite, application tests, or builds.
+The `PR acceptance` workflow validates supplied closing references, issue criteria, and PR tasks. It does not run this suite, application tests, or builds.
 
 ### Verify deployment
 
 1. Merge the reviewed validator change into trusted `main` before testing the new behavior in the hosted workflow.
 2. Inspect the active rules for `main`. Retain the required `Acceptance criteria` status and unrelated protections.
-3. With authorization to publish a test PR, open a representative PR without an issue reference or checklist.
-4. Confirm that the hosted workflow publishes `Acceptance criteria: success` for its current head.
+3. With authorization to publish test PRs, verify representative metadata cases from the validator suite against the deployed workflow.
+4. Confirm that the hosted workflow publishes the expected `Acceptance criteria` status for each tested head.
 5. Record the PR, head revision, workflow run, and result in the delivery evidence. Local tests alone do not establish this deployed result.
 
 ### Trust boundary
