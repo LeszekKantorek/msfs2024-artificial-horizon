@@ -31,7 +31,7 @@ Desktop emulation does not establish device acceptance.
 2. Start the compiled demo on the private LAN using the [phone setup](../../README.md#use-your-phone). Open its printed URL on each phone.
 3. Exercise the feature's cycle and controlled inputs, inspecting values, symbols, and local failure marks against both sky and ground.
 4. Check portrait, short landscape, rotation, browser-bar changes, safe areas, and undistorted, readable indications without scrolling or collisions.
-5. Use the [minimum usable dimensions](../project-brief.md#mobile-presentation) and the feature's painted-bounds criteria when checking layout.
+5. Use the [minimum usable dimensions](../efi/rendering.md#layout-and-readable-regions) and the feature's painted-bounds criteria when checking layout.
 6. Exercise lock/unlock, app switching, and browser hide/restore. Require a fresh sample before valid indications return.
 7. Disable and restore Wi-Fi. Check the unavailable cover and retry status, followed by fresh-data recovery without reload.
 8. Stop and restart the server on the same port. Require recovery despite sequence restart and no duplicate subscriptions.

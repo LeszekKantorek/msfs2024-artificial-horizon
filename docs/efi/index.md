@@ -2,10 +2,61 @@
 
 The compact electronic flight instrument (EFI) combines attitude, speed, altitude, heading, and coordinated-turn indications in one responsive, read-only panel.
 The artificial horizon is its attitude indication.
-The [project terminology](../project-brief.md#terminology) defines these terms and the `pfd` technical identifier.
+The [project terminology](#terminology) defines these terms and the `pfd` technical identifier.
 
 Each feature page groups its requirements, presentation, implementation, testing, and rationale.
 Shared pages define contracts used across instruments.
+
+## Terminology
+
+* Electronic Flight Instrument (EFI) names the complete compact instrument in this project.
+* Artificial horizon names its attitude indication and remains part of the application name.
+* The intended presentation resembles a small standby instrument rather than a complete integrated cockpit display. This does not imply an independent backup data source.
+* Primary Flight Display (PFD) describes a display role and is not exclusive to the Garmin G1000. Garmin describes the G5 as an [electronic flight instrument usable as a primary or backup instrument](https://www.garmin.com/en-US/blog/aviation/garmin-introduces-electronic-flight-instrument-experimental-aircraft/).
+
+Test scripts, fixture variables, and ADRs use the technical identifier `pfd`.
+Their names do not expand the product scope. Use EFI in new descriptions of the project.
+
+## Product scope and reference
+
+* Preserve mobile readability, low delay, explicit unavailable states, and G5-inspired hierarchy with original assets.
+* Keep simulator access read-only. Do not add menus, knobs, simulator editing, or synchronization commands.
+* The [accepted local BARO preference](../adr/0003-responsive-pfd-demo.md#local-baro-unit-preference-amendment) refines the original prohibition on browser controls. It sends no simulator commands.
+* The original simulator MVP covered pitch/bank, scales, aircraft references, and source/connection status under #5-#8.
+* Additional live EFI data was deferred in that original scope. Current [SimConnect capabilities and evidence](../sources/simconnect.md#live-publication-evidence) include optional instruments.
+* Attitude-only publications still leave optional readings unavailable. Source failure must never select Demo silently.
+* Demo scenarios supply selected altitude, magnetic heading, selected-heading bugs, and barometric setting through separate feature slices.
+
+| Reference | Location |
+| --- | --- |
+| Reference guide | Garmin G5 Part 23 AML STC Pilot's Guide |
+| File / revision | `190-01112-12_02.pdf`, document 190-01112-12 Rev. 2 |
+| Illustration | Section 3.3, printed **Page 8 of 25**, physical PDF page **13** |
+| Behavior | Subsequent subsections |
+
+Use original graphics. Do not embed PDF screenshots or copy the bezel.
+
+| Included illustration items | EFI capability | Feature issue |
+| --- | --- | --- |
+| 2, 3, 5, 7, 10 | Attitude, pitch scale, aircraft reference, slip/skid, turn rate | [#20](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/20) |
+| 1, 4, 8 | Airspeed tape, current IAS, ground speed | [#21](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/21) |
+| 21, extends 1 | V-speed references, speed ranges, six-second trend, VNE indications | [#22](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/22) |
+| 9, 13, 15 | Barometric setting, current altitude, altimeter tape | [#23](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/23) |
+| 11, 16 | Selected-altitude bug/readout, approach/deviation alerts | [#24](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/24) |
+| 12 | Vertical speed | [#25](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/25) |
+| 18, 20 | Current heading and selected-heading bug | [#26](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/26) |
+
+**Coverage: 17 of 22 illustration items.**
+
+| Exclusion | Rule |
+| --- | --- |
+| CDI (6), vertical navigation guidance (14), navigation course (17), ground track (19), battery (22) | No UI space, model fields, or demo scenarios |
+| HSI, ILS, GPS glidepath, VNAV | Outside scope. Current and selected heading remain EFI indications |
+| Flight director, autopilot controls, recording, internet hosting | Outside scope |
+| Full G5 replica | Outside scope |
+
+* Original default units: kt, ft, ft/min, inHg, and degrees. The [BARO preference](altitude.md) adds local hPa and STD presentation.
+* Demo speed thresholds belong to an explicit synthetic profile, not assumed real-aircraft performance. Live profile availability follows the [SimConnect observations](../sources/simconnect.md#optional-instrument-observations).
 
 ## Features
 
@@ -56,7 +107,7 @@ Presentation components retain these responsibilities:
 
 | Subject | Governing source | Defines |
 | --- | --- | --- |
-| Product scope | [Project brief](../project-brief.md) | Coverage and exclusions |
+| Product scope | [Product scope and reference](#product-scope-and-reference) | Coverage and exclusions |
 | System integration | [Browser boundary](../architecture.md#browser-boundary) | Integration and delivery constraints |
 | Original Demo extension | [ADR 0003](../adr/0003-responsive-pfd-demo.md) | Original extension scope and decision |
 | Instrument composition | [ADR 0004](../adr/0004-modular-pfd-presentation.md) | Instrument boundaries and layers |
@@ -91,7 +142,7 @@ Closely coupled objects share a feature page. Independently changed behavior has
 | Reusable commands, phone setup, and evidence templates | [Shared testing pages](../testing/index.md) |
 | Wire fields, normalization contract, units, and compatibility | [Telemetry contract](../telemetry-contract.md) |
 | Source scenario definitions and timing | [Demo provider](../sources/demo.md) |
-| Product coverage and exclusions | [Project brief](../project-brief.md#scope-and-acceptance) |
+| Product coverage and exclusions | [Product scope and reference](#product-scope-and-reference) |
 | Execution results and acceptance status | Related GitHub issues and PRs |
 
 Apply these ownership rules when updating documentation:
@@ -102,6 +153,8 @@ Apply these ownership rules when updating documentation:
 * Keep cross-module contracts and reusable procedures on shared pages, with links to local details.
 
 ## Validation and evidence limits
+
+[Feature acceptance ownership](../testing/pfd.md#feature-acceptance-ownership) defines shared criteria and the scope of accumulated Demo evidence.
 
 | Need | Source |
 | --- | --- |

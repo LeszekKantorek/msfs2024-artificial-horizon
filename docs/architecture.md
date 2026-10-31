@@ -245,6 +245,9 @@ The `msfs2024_artificial_horizon` library exposes these boundaries:
 
 Package organization follows these constraints:
 
+* Use Rust, HTTP, and server-to-browser SSE with a clap CLI.
+* Keep HTML, CSS, JavaScript, and SVG without an application framework or build pipeline.
+
 * Put reusable logic in one library package and thin executables in `src/bin/`.
 * Add packages or services only for a concrete need.
 
@@ -275,6 +278,18 @@ Executable configuration follows these rules:
 | Prepare development tools | [Development environment](../CONTRIBUTING.md#environment-setup) |
 
 ## Deployment
+
+### Deployment assumptions
+
+* The server runs on the Windows x64 PC that runs MSFS2024.
+* Phones share the PC's trusted local network.
+* Use requires no internet access or remote hosting.
+* One aircraft source feeds all phones.
+* There are no accounts, database, per-user simulator sessions, or persistent telemetry history.
+
+> These are planning assumptions, not claims of implemented deployment behavior. Revisit deployment and access control before adding remote access.
+
+### Network configuration
 
 | Setting | Rule |
 | --- | --- |

@@ -7,7 +7,21 @@ Panel-wide geometry, layer allocation, cross-module paint order, and shared SVG/
 * Separate background coverage from the central area reserved for readable attitude symbols.
 * Intentional background overlap is allowed.
 * Collisions between digits, ticks, and unrelated symbols are not allowed.
-* Preserve responsive sizing, safe areas, and the minima in the [brief](../project-brief.md#mobile-presentation).
+> No fixed aspect ratio, including 4:3. Adapt geometry to available width and height.
+
+| Area | Layout rule |
+| --- | --- |
+| Portrait | Attitude center, IAS left, altitude right. Compact VSI below altitude. Altitude trend over the left ticks and below the selected-altitude bug. Heading above |
+| Landscape | Use extra width and reduced height. Retain familiar instrument positions |
+| Instrument sizing | Size digits, symbols, tapes, and horizon independently. Preserve undistorted symbols and readable central attitude |
+| Page chrome | Minimize bezel, headings, and margins |
+| Status | Do not show a source badge. Show unavailable reasons on the full-panel cover. Retain accessible source/transport state |
+| Viewport | Account for safe areas, cutouts, and browser bars. Fit without scrolling from 320 CSS px in both orientations |
+| Minimum usable height | 240 CSS px after browser bars and safe areas, including short landscape |
+
+
+* Target iOS Safari and Android Chrome in portrait and landscape.
+* The first slice (#20) required assessing all intended elements with development-only fixtures before later additions reduced horizon space.
 
 ## Layer allocation
 
@@ -19,6 +33,7 @@ Panel-wide geometry, layer allocation, cross-module paint order, and shared SVG/
 | 3 | Fixed aircraft reference, other scales and indications | Transparent space around symbols |
 | 4 | Warnings and unavailability | Cover the affected invalid indications, including the expanded horizon on global loss |
 
+* The opaque sky/ground background fills side, heading, and supplemental regions as well as the central area.
 * A module can own elements in several layers.
 * Instrument-specific warning geometry remains with its instrument.
 
@@ -80,3 +95,9 @@ Follow the [opacity comparison procedure](../testing/pfd.md#modular-and-layered-
 Record real-device acceptance evidence in the owning GitHub issue.
 
 > Keep real-device evidence separate from desktop checks. Implementation and source review do not establish final validation or actual phone acceptance.
+
+## Composition provenance
+
+* #36 separated existing modules without changing the image.
+* #37 introduced layered composition without a top status bar.
+* Those steps added no telemetry fields or functional tape readings. Background opacity remains subject to mobile acceptance.

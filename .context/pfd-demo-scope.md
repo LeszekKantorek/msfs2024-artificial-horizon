@@ -5,7 +5,8 @@ status: active
 
 | Decision | Canonical source |
 | --- | --- |
-| Coverage, exclusions, units, mobile acceptance responsibilities | [Project brief](../docs/project-brief.md) |
+| Coverage, exclusions, and units | [EFI scope](../docs/efi/index.md#product-scope-and-reference) |
+| Mobile layout and acceptance responsibilities | [Rendering](../docs/efi/rendering.md#layout-and-readable-regions), [feature acceptance](../docs/testing/pfd.md#feature-acceptance-ownership) |
 | Feature order and technical prerequisites | [Roadmap](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9) |
 | Modules, layers, and instrument scope | [Panel presentation](../docs/efi/index.md), [ADR 0004](../docs/adr/0004-modular-pfd-presentation.md) |
 | Additive fields and preserved attitude-only provider | [ADR 0003](../docs/adr/0003-responsive-pfd-demo.md), [contract](../docs/telemetry-contract.md) |

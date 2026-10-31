@@ -58,7 +58,7 @@ Review the choice of structure independently from the wording:
 | --- | --- |
 | [README](../README.md) | First run, phone access, available behavior, limitations |
 | [CONTRIBUTING](../CONTRIBUTING.md) | Developer setup, context tooling, contribution workflow |
-| [Brief](../docs/project-brief.md) | Requirements, scope, assumptions, success criteria |
+| [EFI scope](../docs/efi/index.md#product-scope-and-reference) | Product coverage, exclusions, reference illustration, and terminology |
 | [Architecture](../docs/architecture.md) | End-to-end flow, boundaries, application lifecycle, deployment, and fundamental library contracts |
 | [Server](../docs/server.md) | HTTP API, routers, embedded assets, health, SSE delivery, and connection shutdown |
 | [Sources](../docs/sources/index.md) | Shared acquisition responsibilities and provider navigation |
@@ -73,5 +73,5 @@ Review the choice of structure independently from the wording:
 
 ## Instrument terminology
 
-Use [project terminology](../docs/project-brief.md#terminology): EFI for the complete instrument, artificial horizon for the attitude indication.
+Use [project terminology](../docs/efi/index.md#terminology): EFI for the complete instrument, artificial horizon for the attitude indication.
 Keep technical identifiers consistent with their consumers.

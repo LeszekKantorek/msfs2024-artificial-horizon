@@ -2,7 +2,7 @@
 | --- | --- |
 | [Start the demo](../README.md#start-the-demo) | Building and running the demo for the first time. |
 | [Phone access](../README.md#use-your-phone) | Connecting a phone to the demo over the private LAN. |
-| [Product scope](../docs/project-brief.md#scope-and-acceptance) | Determining included behavior, exclusions, or acceptance ownership. |
+| [Product scope](../docs/efi/index.md#product-scope-and-reference) | Determining included behavior, exclusions, and reference coverage. |
 | [Architecture boundaries](../docs/architecture.md#components-and-execution) | Locating component responsibilities before changing a runtime boundary. |
 | [HTTP server](../docs/server.md) | Changing routers, assets, health, SSE delivery, or connection shutdown. |
 | [Source providers](../docs/sources/index.md) | Selecting or changing acquisition and normalization responsibilities. |

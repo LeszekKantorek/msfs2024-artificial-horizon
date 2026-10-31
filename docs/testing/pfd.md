@@ -220,3 +220,27 @@ Apply these checks when changing SVG layers.
 * Include capture, pinned edges, both directions, signed values, missing data, expiry, and recovery when applicable.
 
 The [altitude trend acceptance procedure](../efi/altitude-trend.md#acceptance-scenarios) gives the concrete #63 scenarios.
+
+## Feature acceptance ownership
+
+Each instrument feature issue owns:
+
+* Typed data, shared deterministic demo, SSE consumer, and visible indication.
+* Focused tests and affected documentation.
+* Readability evidence from real iOS Safari and Android Chrome, starting with the first slice.
+
+#26 also owns full-panel acceptance of all 17 elements.
+This does not expand #7 or establish live EFI compatibility.
+
+Acceptance criteria:
+
+* [ ] Missing data never becomes zero.
+* [ ] An invalid optional instrument value affects only that indication.
+* [ ] Source/transport loss invalidates the panel.
+* [ ] Reconnect, fresh data after resume, and sample expiry remain correct through every slice.
+* [ ] Level, nose up/down, left/right bank, and combined attitudes display correctly.
+* [ ] Network/server interruptions recover automatically.
+* [ ] Paused, disconnected, invalid, and stale states remain explicit.
+* [ ] Unchanged attitude with fresh callbacks remains valid.
+
+> These criteria define expected behavior, not completion status. Record results in the owning issues.

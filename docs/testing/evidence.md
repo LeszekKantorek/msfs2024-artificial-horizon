@@ -27,6 +27,24 @@ Record the measurement environment and observations:
 * Keep hardware-dependent tasks open until observations support acceptance. Apply the [manual acceptance rules](#sources-and-limits).
 * Unit tests cannot certify simulator or phone behavior.
 
+### Initial measurement targets
+
+These proposed targets require measurements on real equipment. They are not claims of achieved performance.
+
+| Measure | Initial target |
+| --- | --- |
+| Sample publication | 20 Hz, configurable after measurement |
+| End-to-end latency, healthy LAN | p95 <= 150 ms |
+| Active-page stale indication | Within 1 second of the last usable sample |
+| Layout | Usable from 320 CSS px, both orientations |
+| Concurrent use | Two phones for 30 minutes without growing queues |
+
+* The 20 Hz target originated in the MVP plan. Current source cadence is defined by the [telemetry contract](../telemetry-contract.md#framing).
+* Record the first tested aircraft, phones, browser versions, and later changes to the tested setup.
+* Mobile performance and any need for interpolation require measurements and a separate accepted change. Current rendering does not interpolate.
+* Use the [SimConnect evidence limits](../sources/simconnect.md#live-publication-evidence) for compatibility, sign/unit conversion, and lifecycle observations.
+* [ADR 0006](../adr/0006-simconnect-manual-ffi.md) governs manual FFI. Runtime/SDK distribution conditions require separate evidence and do not follow from a successful run.
+
 ### Build provenance
 
 Distinguish build execution from artifact creation:
