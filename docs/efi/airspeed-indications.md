@@ -181,11 +181,11 @@ Shared browser commands, phone setup, and evidence rules are linked from those c
 
 | Area | Expected behavior |
 | --- | --- |
-| Profile | Independently optional positive thresholds and references. Invalid bounds hide only dependent intervals; redline supports warnings without VNE |
+| Profile | Independently optional positive thresholds and references. Invalid bounds hide only dependent intervals. Redline supports warnings without VNE |
 | Ranges | Red below 40, white 40-85, green 50-110, yellow 110-140, red/white from 140 kt. White overlays the left half of green where their intervals overlap |
 | Range clipping | Unbounded overspeed ranges clip to the tape. Literal expectations cover infinite bounds and preserve `NaN` coordinates without zero substitution |
 | Range lane | Red, green, yellow, and striped bands share `x = tape width - 18` and 6 CSS px width. White uses the same left edge and 3 CSS px width, painted above green |
-| Range paint | At IAS 65 kt, inspect 72 kt above the readout: white covers the left half and green remains visible on the right. Reversing their SVG order must fail the same paint check; restore the original order afterward |
+| Range paint | At IAS 65 kt, inspect 72 kt above the readout: white covers the left half and green remains visible on the right. Reversing their SVG order must fail the same paint check. Restore the original order afterward |
 | Trend thickness | Airspeed and altitude trends share a 3 CSS px stroke and the same magenta at their respective axes. Check positive/negative prediction and both clip boundaries |
 | Scale clearance | Check the positions and dimensions in [scale geometry](#geometry-clipping-and-paint-order). Preserve readable labels, exact reference speed anchors, and the opaque IAS pointer |
 | Boundaries | Values below, at, and above every threshold retain coherent geometry. Marker positions match configured speeds |

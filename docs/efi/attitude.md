@@ -20,7 +20,7 @@ Wire definitions: [attitude fields and conventions](../telemetry-contract.md#fie
 | Pitch | Finite degrees in `[-90, 90]` |
 | Roll | Finite degrees in `[-180, 180)` |
 | Slip/skid | Normalized displacement from -1 left to +1 right, with zero centered |
-| Turn rate | Display span of +/-6 deg/s; values beyond it use edge arrows |
+| Turn rate | Display span of +/-6 deg/s. Values beyond it use edge arrows |
 | Missing or invalid slip/skid or turn rate | Hide only its moving indication and show a local unavailable mark |
 | Missing attitude | Never substitute level flight |
 
@@ -107,6 +107,48 @@ Pitch translation remains nested inside bank rotation. Background, attitude, and
 | Fixed symbols | Layer 3, origin at attitude center | Same panel attitude clip uses `layout.attitude` |
 | Slip/skid and turn rate | Own translated origins | Panel bounds |
 
+#### SVG hierarchy
+
+These attitude subtrees remain nested after panel assembly:
+
+```text
+#layer-background [clip: #background-clip]
+`-- .moving-world [translate to attitude center]
+    |-- #world-rotation
+    |   `-- #world-pitch
+    |       |-- .sky
+    |       |-- .ground
+    |       `-- .horizon-line
+    `-- g [clip: #pitch-clip]
+        `-- #scale-rotation
+            `-- #scale-pitch
+                `-- #pitch-ladder
+
+#layer-symbols
+|-- #bank-pointer-clip [clip: #attitude-clip]
+|   `-- #bank-pointer-origin [translate to attitude center]
+|       `-- #bank-pointer [bank rotation only]
+`-- #fixed-symbols-clip [clip: #attitude-clip]
+    `-- #fixed-symbols [translate to attitude center]
+        |-- #bank-scale
+        |-- .aircraft-outline
+        `-- .aircraft
+
+#layer-warnings
+`-- #warning-origin [translate to attitude center]
+    `-- g [clip: #pitch-clip]
+        `-- #warning-rotation
+            `-- #warning-pitch
+                `-- #pitch-warnings
+```
+
+* The diagram shows attitude subtrees. Other instruments share the symbols and warnings layers.
+* World, scale, and warning rotation groups contain their corresponding pitch-translation groups.
+* Clip hosts remain outside those rotation and pitch-translation groups.
+* The bank pointer receives bank rotation without pitch translation. Fixed symbols receive neither flight transform.
+* `createPanel` mounts the bank-pointer clip before the fixed-symbols clip through `createHorizon` and `createFixedSymbols`.
+* Rendering and resize preserve these parent-child relationships.
+
 Paint fixed children in this order:
 
 1. Bank scale.
@@ -157,8 +199,8 @@ Independent fixtures retain separate scopes:
 ### Desktop geometry and availability transitions
 
 * Check pitch geometry immediately after `ResizeObserver`, before the next animation callback.
-* Check matching world/pitch/chevron transforms, fixed aircraft/outline paths, and original SVG hierarchy across poses and resize.
-* Module regression checks cover presentation, pose signs, combined transforms, slip/skid, turn rate, and local unavailable indications.
+* Check matching world/pitch/chevron transforms, fixed aircraft/outline paths, and the [SVG hierarchy](#svg-hierarchy) across poses and resize.
+* Check the current image, pose signs, combined transforms, slip/skid, turn rate, and local unavailable indications.
 
 ### Controlled attitude and turn inputs
 
