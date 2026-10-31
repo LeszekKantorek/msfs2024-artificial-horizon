@@ -6,8 +6,13 @@ status: active
 * Retain decisions, explanations, findings, and rules that help a future task, with their rationale and conditions of use.
 * Link to canonical documents instead of copying their content.
 * Remove session progress and expired task-specific permissions from reusable knowledge.
-* Preserve conditions, uncertainty, and evidence limits. Omit the history and provenance of documentation changes.
-* Apply [accepted values and test evidence](writing-style.md#accepted-values-and-test-evidence) when preserving decisions or recording unresolved findings.
+* Preserve conditions, uncertainty, and evidence limits under the [evidence interpretation rules](../docs/testing/evidence.md#historical-evidence-and-current-claims).
+* Follow [document responsibilities](writing-style.md#document-responsibilities) when separating current rationale from implementation chronicles.
+* Before restoring a historical requirement, check later accepted decisions and its current documentation owner. Use Git history to resolve discrepancies.
+* Distinguish product settings, test tolerances, and measured results. A value appearing in a test does not establish a product requirement.
+* Remove obsolete pending items for completed work while retaining useful constraints and lessons.
+* Preserve active plans under the [plan-preservation rules](iterative-development.md#accepted-plans-and-handoffs). Removing obsolete expectations does not authorize deleting those plans.
+* Apply [accepted values and test evidence](../docs/testing/evidence.md#accepted-values-and-test-evidence) when preserving decisions or recording unresolved findings.
 * Use concise technical English and the [writing style](writing-style.md).
 * Use tables or diagrams only when they reduce reading effort.
 * Keep independent topics separate so agents can read only relevant entries.

@@ -172,6 +172,13 @@ Collect reusable implementation findings in [#9](https://github.com/LeszekKantor
 3. Apply the requested labels and set the actual parent/sub-issue relationship when a parent is required.
 4. Verify the saved labels and the parent shown in GitHub's Relationships section.
 
+Each follow-up issue must remain usable without the originating conversation or local notes:
+
+* State the problem, relevant context, agreed scope, and exclusions.
+* Link the canonical requirements rather than making the issue their only source.
+* Include acceptance criteria and their validation method, with observable expected results.
+* Preserve supporting findings and unresolved questions with their actual status.
+
 > A reference in the description or an epic task list does not establish a parent/sub-issue relationship.
 
 ## Project guidance

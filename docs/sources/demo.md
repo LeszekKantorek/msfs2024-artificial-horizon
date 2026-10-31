@@ -214,6 +214,7 @@ The planned provider uses one scenario data source:
 * Store the default scenario in the repository as `demo_scenario.yaml`.
 * Define scenario values and timing in YAML without duplicating them in Rust.
 * Keep parsing, validation, and playback logic in Rust.
+* Allow external scenario data to change without recompiling the application. Changes to parsing, validation, or playback logic require a rebuild.
 * Preserve every default value, phase, cycle, transition, and unavailable-field case defined in this document.
 * Include attitude, coordinated turn, IAS, TAS, GS, speed profiles, references, and IAS acceleration.
 * Include altitude, BARO, vertical speed, selected altitude, current heading, and selected heading.

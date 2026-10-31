@@ -27,3 +27,11 @@ Use [project-plan-change](../.agents/skills/project-plan-change/SKILL.md) to tur
 * Preserve prior-stage evidence when an amendment changes later implementation boundaries.
 
 The local progress reporting rule does not restrict publication of a requested final result.
+
+## Findings outside the current scope
+
+* Record the observation, expected behavior, supporting evidence, and status without expanding the authorized implementation scope.
+* Distinguish accepted requirements from implemented behavior. A documented target does not establish that the code already meets it.
+* Keep unresolved proposals separate from agreed follow-up work.
+* Before removing a local record, preserve agreed outstanding work in an authorized destination that does not depend on that record.
+* Use [finding promotion](../CONTRIBUTING.md#promote-agreed-findings) for self-contained follow-up issues. Publication still requires authorization.

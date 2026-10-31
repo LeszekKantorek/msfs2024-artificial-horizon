@@ -3,6 +3,7 @@
 ## Working with the user
 
 * Treat analysis, discussion, and review as separate from authorization to implement or change GitHub. Complete explicitly requested work without confirming routine steps.
+* Reassess pending actions when the user changes the instruction. Tool approval does not expand the user's authorization.
 * Keep to the requested scope. Do not start unrelated work or add speculative abstractions or documentation.
 * Present options and trade-offs for material project decisions; do not treat discussion as approval.
 * Distinguish facts, hypotheses, proposals, and accepted decisions. Question assumptions when evidence warrants it, and surface unresolved conflicts between sources.
@@ -45,7 +46,8 @@ Keep feature requirements, presentation, implementation details, and acceptance 
 
 ## Project constraints
 
-* Treat the server, telemetry contract, and embedded Web as one application. Rebuild and deliver the complete application after every change.
+* Treat the server, telemetry contract, and embedded Web as one application. Rebuild and deliver the complete application after changes to application code or build inputs. Documentation-only changes require no application build.
+* Run screenshot tests and inspect the captures when browser JavaScript or display behavior changes. Select checks through the validation scope matrix.
 * Do not maintain backward compatibility with earlier application versions. Update producers, consumers, and fixtures together without legacy adapters or fallbacks to previous formats or values.
 * Keep documentation links out of application source code and runtime output. Documentation may reference code.
 * Write project text in English and preserve the MIT license.

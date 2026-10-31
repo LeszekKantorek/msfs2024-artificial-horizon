@@ -1,6 +1,53 @@
 # Measurements and validation evidence
 
-Measurement limits, build provenance, and matched screenshot comparisons.
+Test records, acceptance rules, measurement limits, build provenance, and matched screenshot comparisons.
+
+## Test evidence records
+
+Record enough information to identify the checked behavior, reproduce the check, and understand the result's limits.
+Store results in the owning issue or a linked validation record when publication is authorized.
+Keep change dates and execution status with that record.
+
+| Field | Record |
+| --- | --- |
+| Scope | Requirement, acceptance criterion, or failure being checked |
+| Tested state | Source revision and relevant local changes; artifact identity for binary-dependent checks |
+| Environment | Relevant platform, configuration, dependencies, and test conditions |
+| Method and inputs | Exact automated command or manual steps, input values, and relevant timing |
+| Expected result | Observable behavior and applicable limits, distinct from the observed result |
+| Observed result | Actual behavior, failures, measurements with units, and native exit codes for executed commands |
+| Supporting material | Available logs, screenshots, reports, or recordings and their locations |
+| Result status | Passed, failed, not run, or inconclusive, with reasons for missing or inconclusive checks |
+| Origin and limits | Directly performed check, supplied observation, or reused result; covered scenarios and unresolved uncertainty |
+
+Apply the detailed record requirements only to the relevant kind of check:
+
+| Check | Additional requirements |
+| --- | --- |
+| Compiled application | [Build provenance](#build-provenance) |
+| Visual comparison | [Matched captures and visual inspection](#screenshot-comparisons) |
+| Performance measurement | [Method, environment, units, and uncertainty](#measurements-and-evidence) |
+| Actual phone | [Mobile acceptance records](devices.md#mobile-acceptance-records), without public phone models or exact mobile OS/browser versions |
+| Earlier validation | [Evidence reuse](index.md#evidence-reuse), including why the result remains applicable |
+
+Preserve the origin and scope of each claim:
+
+* Use "Reported" for supplied observations and "Verified" only for checks directly performed.
+* Attribute reused results to their original record. A reviewer receiving results has not independently repeated those checks.
+* Keep expected behavior, observed behavior, and possible causes separate.
+* Preserve missing details, uncertainty, and approval requirements without inventing results.
+* Command success establishes only the checks performed by that command. It does not establish visual or device acceptance.
+* Report only recorded or performed tests. A passing check does not establish untested scenarios.
+* Apply [manual acceptance](#manual-acceptance) to explicit operator confirmation. Record supplied details without making absent logs or metadata a new acceptance prerequisite.
+
+## Accepted values and test evidence
+
+* Treat values delivered by an accepted task as established unless the user has raised objections to those values.
+* Document these values as current requirements or settings, without provisional labels or pending-acceptance notes.
+* Missing separate measurements or device records do not reopen acceptance of these values.
+* Do not add unresolved-value entries to local follow-up records solely because separate test evidence is missing.
+* Acceptance of a value does not establish a particular measurement or device test.
+* Preserve actual reported problems and conflicting requirements as separate findings with their scope and evidence.
 
 ## Measurements and evidence
 
@@ -111,6 +158,12 @@ Report uncertainty explicitly:
 
 ## Select evidence by failure risk
 
+* Identify the actual contract or defect each test protects.
+* Exercise the production configuration when claiming production coverage. An injected experimental variant does not establish the deployed default's behavior.
+* Keep experimental checks distinct from product acceptance tests.
+* Derive expected results independently of the implementation under test.
+* Retain synthetic inputs, mocks, invalid values, and boundary cases when they exercise actual behavior or an accepted contract.
+
 1. Map each changed requirement and preserved invariant to a plausible failure.
 2. Select a check that observes the required behavior independently of its implementation.
 3. Define controlled inputs, expected results, relevant boundaries, and recovery scenarios.
@@ -149,6 +202,12 @@ Use complementary evidence for different requirements:
 
 ## Sources and limits
 
+### Historical evidence and current claims
+
+* Retain revisions, dates, environments, and conditions needed to interpret recorded results.
+* Describing an older diagnostic schema for evidence interpretation does not require the current application to support that format.
+* Keep recorded observations distinct from current requirements and implementation status.
+
 ### Manual acceptance
 
 * Explicit operator confirmation is sufficient within its stated scope.
@@ -169,3 +228,4 @@ Request another manual test only for one of these reasons:
 
 * Later usability findings can become separate follow-up tasks.
 * Reopen accepted work only when findings establish a failure of its requirements.
+* Distinguish an incomplete historical record from a current coverage gap. Correcting the record alone does not revoke accepted results.

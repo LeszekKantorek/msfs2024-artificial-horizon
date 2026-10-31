@@ -43,7 +43,8 @@ Use criteria that affect the actual outcome.
 
 Follow the existing ADR examples and [document responsibilities](../../../.context/writing-style.md#document-responsibilities).
 
-* Record the date, decision status, problem context, selected option, alternatives, rationale, and consequences.
+* Record the decision status, problem context, selected option, alternatives, rationale, and consequences.
+* Write the status as a plain line. Do not require a date or use a metadata table.
 * Retain evidence limits, deferred options, and conditions for reconsidering the decision.
 * Link the originating issue and canonical contracts rather than duplicating their full contents.
 * Explain which earlier decision changes and preserve unaffected requirements when a later decision replaces part of it.

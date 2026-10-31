@@ -140,7 +140,7 @@ The [EFI guide](efi/index.md) defines extension scope and routes presentation wo
 
 The server, telemetry contract, and embedded Web form one application:
 
-* Rebuild and deliver the complete application after every change.
+* Rebuild and deliver the complete application after changes to application code or build inputs. Documentation-only changes require no application build.
 * Update producers, consumers, embedded assets, and fixtures together.
 * Support the current application as a whole, without backward compatibility guarantees for earlier versions.
 * Add no legacy adapters, compatibility aliases, or fallbacks to previous formats or values.

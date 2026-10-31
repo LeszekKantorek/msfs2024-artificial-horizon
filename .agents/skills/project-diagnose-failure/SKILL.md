@@ -14,6 +14,9 @@ Establish a reproducible failure mechanism or a bounded unresolved diagnosis, th
 Follow this sequence within the affected task scope.
 
 1. Record the expected behavior and the observed failure separately.
+   Classify the case as current application behavior, a public API contract, or hypothetical use.
+   An absent application caller does not exclude a public API contract violation.
+   Hypothetical use alone does not establish an application defect or authorize a correction.
 2. Identify the revision, relevant local changes, environment, exact command or interaction, inputs, and native exit code.
 3. Preserve relevant logs, screenshots, and artifact provenance without exposing credentials or unrelated data.
 4. Select the [diagnostic boundary](../../../.context/error-diagnosis.md#select-the-diagnostic-boundary). Check its environment recovery and execution restrictions before reproducing the failure.

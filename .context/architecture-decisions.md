@@ -18,7 +18,7 @@ An accepted decision does not establish implementation, simulator compatibility,
 | Move calculations, shared helpers, child nodes, or clips between visual objects | [ADR 0005 decision](../docs/adr/0005-visual-object-composition.md#decision), [rationale and consequences](../docs/adr/0005-visual-object-composition.md#rationale-and-consequences) | Places object-specific calculations with their visual objects. Use [current module seams](../docs/efi/composition.md#visual-object-interfaces-and-ownership). The decision adds no scheduler or telemetry ownership. |
 | Change application composition, producer failure, startup order, or shutdown coordination | [ADR 0007 decision](../docs/adr/0007-application-composition.md#decision), [alternatives](../docs/adr/0007-application-composition.md#alternatives-and-consequences) | Defines producer ownership and source-failure isolation. Retains one active publisher, the latest-state channel, SSE delivery, and native shutdown limits. |
 | Change SimConnect bindings, native ownership, loading, or diagnostic assumptions | [ADR 0006 decision](../docs/adr/0006-simconnect-manual-ffi.md#decision), [alternatives](../docs/adr/0006-simconnect-manual-ffi.md#alternatives-and-consequences) | [SimConnect scope and evidence](#simconnect-scope-and-evidence) and [evidence limits](../docs/adr/0006-simconnect-manual-ffi.md#evidence-limits). |
-| Change application interfaces, wire fields, units, or meaning | [Application delivery contract](../docs/architecture.md#application-delivery-contract), [wire contract](../docs/telemetry-contract.md#compatibility) | Server, contract, and embedded Web form one application. Rebuild everything after every change. Update consumers and fixtures together without backward compatibility or legacy fallbacks. |
+| Change application interfaces, wire fields, units, or meaning | [Application delivery contract](../docs/architecture.md#application-delivery-contract), [wire contract](../docs/telemetry-contract.md#compatibility) | Server, contract, and embedded Web form one application. Rebuild the complete application after changes to application code or build inputs. Documentation-only changes require no application build. Update consumers and fixtures together without backward compatibility or legacy fallbacks. |
 
 For current SimConnect implementation boundaries and remaining evidence, use [SimConnect integration](../docs/sources/simconnect.md).
 ADR 0006 defines native ownership and live-publication conditions. Receiver evidence does not establish integrated simulator or mobile acceptance.
@@ -45,7 +45,7 @@ Evidence has these limits:
 ## Application delivery rules
 
 * Treat the server, telemetry contract, and embedded Web as one application under the [delivery contract](../docs/architecture.md#application-delivery-contract).
-* Rebuild and deliver the complete application after every change.
+* Rebuild and deliver the complete application after changes to application code or build inputs. Documentation-only changes require no application build.
 * Update producers, consumers, and fixtures together without backward compatibility guarantees.
 * Add no legacy adapters or fallbacks to previous formats or values.
 * Keep documentation links out of application source code and runtime output.

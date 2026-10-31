@@ -13,24 +13,18 @@ status: active
 * Use `>` notes for constraints and diagrams for flows.
 * Format identifiers as inline code and commands as fenced code blocks.
 * Use `[ ]` checklists for procedures or criteria, not duplicate task status.
-* Preserve requirements, units, limits, uncertainty, and the distinction between plans, implementation, and device acceptance.
+* Preserve requirements, units, limits, uncertainty, and the distinction between proposed and implemented behavior.
 * Before removing moved or shortened text, verify where each requirement, constraint, and caveat remains in the canonical documentation.
+* Compare individual conditions, exceptions, values, and obligation levels when moving content. A requirement must not become a description or optional example.
+* Organize content for retrieval and understanding. Shortening the text is not an independent goal.
 * Check sentence length, ambiguity, and consistent terminology directly using these project rules.
 * Check [Markdown structure](#markdown-structure) separately from sentence clarity and technical accuracy.
 * Link to the canonical source instead of repeating commands or rules.
 
-## Accepted values and test evidence
-
-* Treat values delivered by an accepted task as established unless the user has raised objections to those values.
-* Document these values as current requirements or settings, without provisional labels or pending-acceptance notes.
-* Missing separate measurements or device records do not reopen acceptance of these values.
-* Do not add unresolved-value entries to local follow-up records solely because separate test evidence is missing.
-* Report only recorded or performed tests. Acceptance of a value does not establish a particular measurement or device test.
-* Preserve actual reported problems and conflicting requirements as separate findings with their scope and evidence.
-
 ## Markdown structure
 
 * For feature pages, follow the section structure and Markdown conventions of one representative page of the same type.
+* Allow sections specific to the feature. A shared structure does not require identical pages.
 
 Choose the construct by the information it carries:
 
@@ -44,6 +38,7 @@ Choose the construct by the information it carries:
 Review the choice of structure independently from the wording:
 
 * Review each created or changed section as a whole, including unchanged surrounding text affected by the edit.
+* When a recurring formatting problem is reported across a document, inspect the whole requested document, not only the quoted passage.
 * Classify independent facts, mappings, ordered actions, and connected explanations before choosing their Markdown structure.
 * For feature pages, compare the document with the representative page, including lists, tables, steps, and paragraph grouping.
 * Keep reference facts and independent rules in lists or tables instead of narrative blocks.
@@ -53,15 +48,18 @@ Review the choice of structure independently from the wording:
 
 ## Impersonal project records
 
-* Describe results, decisions, procedures, and evidence without personal narration.
+* Describe results, decisions, and procedures without personal narration.
 * Apply this rule to all project text covered above.
 * Avoid references such as "the owner", "owner-assisted", "the user reported", or "the assistant verified".
-* Use wording such as "Tested on...", "Confirmed using...", "Based on documentation...", and "Accepted for this iteration...".
-* Use "Reported..." for supplied observations and "Verified..." only for checks directly performed.
-* Preserve sources, relevant environments, missing details, uncertainty, and approval requirements. Keep change dates and work status in the owning issue or evidence record.
+* Use impersonal wording such as "The configuration selects..." or "The decision requires...".
 * Keep technical ownership terms when they describe resource management or responsibilities.
 
 ## Document responsibilities
+
+* Select the owner by the subject of the rule, not the task that revealed it.
+* Update incoming links when moving content. Required link changes do not justify keeping content under the wrong owner.
+* Describe current requirements and behavior directly. Omit implementation chronicles and accounts of document edits.
+* Retain rationale that explains the current decision. Distinguish accepted planned behavior from the existing implementation.
 
 | Source | Owns |
 | --- | --- |
@@ -72,13 +70,13 @@ Review the choice of structure independently from the wording:
 | [Server](../docs/server.md) | HTTP API, routers, embedded assets, health, SSE delivery, and connection shutdown |
 | [Sources](../docs/sources/index.md) | Shared acquisition responsibilities and provider navigation |
 | [Demo](../docs/sources/demo.md) | Deterministic scenarios, source API, timing, and validation references |
-| [SimConnect](../docs/sources/simconnect.md) | Native configuration, API, diagnostics, implementation, tests, and evidence limits |
+| [SimConnect](../docs/sources/simconnect.md) | Native configuration, API, diagnostics, implementation, and tests |
 | [Panel presentation](../docs/efi/index.md) | Feature requirements, presentation, implementation, rationale, and acceptance scenarios; shared composition, lifecycle, and rendering contracts |
 | [Contract](../docs/telemetry-contract.md) | Wire interface, units, validity, freshness |
-| [Testing](../docs/testing/index.md) | Shared check commands, runtime and device procedures, validation selection, and evidence templates; feature scenarios remain on feature pages |
+| [Testing](../docs/testing/index.md) | Shared check commands, runtime and device procedures, and validation selection; feature scenarios remain on feature pages |
 | [Roadmap](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9) | Order and dependencies |
 | [ADRs](../docs/adr/) | Decisions and decision lifecycle, not implementation status |
-| GitHub Issues / PRs | Task status, execution results, acceptance evidence |
+| GitHub Issues / PRs | Task status and execution results |
 
 ## Instrument terminology
 
