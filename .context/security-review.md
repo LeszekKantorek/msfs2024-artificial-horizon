@@ -48,7 +48,7 @@ Select checks for actual changes rather than adding unrelated security work.
 
 ## Sources and limits
 
-* Implementation example: [BARO rendering](../web/altitude/baro.js) assigns source-formatted text through `textContent` rather than HTML parsing.
+* Assign display text through `textContent` rather than HTML parsing. Apply this rule to [BARO rendering](../web/altitude/baro.js) and other text readouts.
 * This entry defines a review procedure rather than a completed security audit or a vulnerability assessment.
 * A private-network restriction does not add authentication or encryption.
 * Report current dependency security claims only with evidence for the actual versions and review date.

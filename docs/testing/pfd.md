@@ -129,7 +129,7 @@ Pure checks follow the existing module boundaries:
 | Area | Scenarios and acceptance |
 | --- | --- |
 | End-to-end values | Independent fixtures agree across typed Rust data, deterministic demo, SSE, and display. Clients share values |
-| Compatibility | Old v1 snapshots display attitude. Missing EFI fields display unavailable, never zero. No excluded-instrument placeholders |
+| Optional indications | Current attitude-only publications display attitude. Missing EFI fields display unavailable, never zero. No excluded-instrument placeholders |
 | Instrument failures | Missing/invalid optional values affect only their indication. Source/transport loss invalidates the panel |
 | Timing | Controlled clocks check shared freshness and expiry before pending draw. No wall-clock sleeps |
 | Instrument geometry | Apply all [feature scenarios](../efi/index.md#features) during full-panel acceptance |

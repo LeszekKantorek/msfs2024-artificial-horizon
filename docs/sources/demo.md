@@ -216,7 +216,7 @@ Select validation by scope:
 | Profile and acceleration | `tests/fixtures/airspeed-profile.json` and `tests/fixtures/speed-indications.json` |
 | Shared scenario | Independent altitude, target, VSI, and heading checkpoints referenced in the scenario sections |
 | Multiple clients | Matching source samples from one acquisition channel, without per-client scenarios |
-| Compatibility | Attitude-only publication clears optional indications; old v1 snapshots remain usable |
+| Optional indications | Current attitude-only publication clears optional indications while preserving valid attitude |
 
 > Demo and desktop evidence do not establish simulator compatibility or actual iOS Safari and Android Chrome acceptance.
 

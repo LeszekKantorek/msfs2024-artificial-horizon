@@ -170,7 +170,7 @@ Inspect `.local/pfd-browser/altitude-*` screenshots in narrow portrait and short
 
 #### Tape footers and BARO
 
-The desktop layout script runs `tests/browser/checks/tape-footer-browser-checks.mjs` against both compositions.
+Validate both compositions against these required footer and BARO criteria:
 
 | Check | Expected behavior |
 | --- | --- |

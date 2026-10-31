@@ -170,7 +170,7 @@ Shared browser commands, phone setup, and evidence rules are linked from those c
 
 | Area | Expected behavior |
 | --- | --- |
-| Compatibility | Old snapshots show attitude with unavailable IAS/GS. Unsupported envelopes remain globally invalid |
+| Optional indications | Current attitude-only publications show attitude with unavailable IAS/GS. Unsupported envelopes remain globally invalid |
 | Input | Zero and fractional speeds are valid. Negative/non-finite/malformed/missing speeds affect only their own indication |
 | Presentation | IAS major labels every 10 kt, minor ticks every 2 kt, fixed pointer, rolling digits, no negative scale labels |
 | Rollover | Check 9.5 → 10, 99.5 → 100, and reverse transitions. Leading zeros stay blank |
