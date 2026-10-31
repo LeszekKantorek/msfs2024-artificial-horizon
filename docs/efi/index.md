@@ -64,7 +64,7 @@ Presentation components retain these responsibilities:
 | Current SimConnect instruments | [SimConnect observations](../sources/simconnect.md#optional-instrument-observations) | Available optional instruments and observation limits |
 | Deterministic source behavior | [Demo requirements](../sources/demo.md#requirements-and-usage) | Deterministic scenarios and source-selected values |
 | Telemetry extensions | [Extension contract](../telemetry-contract.md#further-efi-extension-boundary) | Additive fields, validity, fixtures, and attitude-only compatibility |
-| Delivery order | [Roadmap](../roadmap.md) | Work sequence and dependencies |
+| Delivery order | [Roadmap](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9) | Work sequence and dependencies |
 
 EFI extensions preserve these scope limits:
 

@@ -67,7 +67,7 @@ Review the choice of structure independently from the wording:
 | [Panel presentation](../docs/efi/index.md) | Feature requirements, presentation, implementation, rationale, and acceptance scenarios; shared composition, lifecycle, and rendering contracts |
 | [Contract](../docs/telemetry-contract.md) | Wire interface, units, validity, freshness |
 | [Testing](../docs/testing/index.md) | Shared check commands, runtime and device procedures, validation selection, and evidence templates; feature scenarios remain on feature pages |
-| [Roadmap](../docs/roadmap.md) | Order and dependencies |
+| [Roadmap](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9) | Order and dependencies |
 | [ADRs](../docs/adr/) | Decisions and decision lifecycle, not implementation status |
 | GitHub Issues / PRs | Task status, execution results, acceptance evidence |
 

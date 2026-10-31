@@ -32,6 +32,8 @@ Use these maps whenever a task needs project knowledge. Select rows by the reque
 
 ## Documentation ownership
 
+* [Roadmap issue #9](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9) is the sole roadmap. Read delivery order and dependencies there. Do not create or maintain a separate roadmap document.
+
 Agent-facing technical materials, including `.context/`, `AGENTS.md`, `SKILL.md`, and skill reference files, may link into `.context/`.
 Project documentation, user instructions, and other non-agent documentation must not link into `.context/`.
 Before creating documentation, check whether an existing document owns the subject. Avoid duplicating implementation details that are clear from code.

@@ -2,7 +2,7 @@
 
 End-to-end data flow, component responsibilities, application lifecycle, and library boundaries.
 
-> This document defines architecture. [GitHub Issues](roadmap.md) track implementation and acceptance.
+> This document defines architecture. [GitHub Issues](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9) track implementation and acceptance.
 
 ## System overview
 

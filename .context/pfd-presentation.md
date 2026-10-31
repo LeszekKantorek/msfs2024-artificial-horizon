@@ -14,7 +14,7 @@ Read the canonical contract for the boundary being changed:
 | Initialization, sample acceptance, scheduling, and invalidation | [Frame lifecycle](../docs/efi/lifecycle.md#initialization-and-geometry-updates), [invalidation and recovery](../docs/efi/lifecycle.md#invalidation-and-recovery) |
 | Shared clips, paint order, stable nodes, state resets, accessibility | [Clipping and transforms](../docs/efi/rendering.md#clipping-and-transforms), [paint order](../docs/efi/rendering.md#cross-module-paint-order), [SVG/CSS interface](../docs/efi/rendering.md#svg-and-css-interface) |
 | Composition rationale and helpers compromise | [ADR 0004](../docs/adr/0004-modular-pfd-presentation.md), [ADR 0005](../docs/adr/0005-visual-object-composition.md) |
-| Future instrument scope and dependencies | [Roadmap](../docs/roadmap.md) |
+| Future instrument scope and dependencies | [Roadmap](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9) |
 | Calculation ownership and extraction rationale | [Composition lessons](../docs/efi/composition.md#rationale-and-regression-lessons) |
 | Resize coherence and clipping regressions | [Coalesced rendering](../docs/efi/lifecycle.md#coalesced-frame-rendering), [painted-bound checks](../docs/efi/rendering.md#painted-bounds-and-clipping-checks) |
 | Telemetry validation, callbacks, and reentrancy | [Telemetry operations](../docs/efi/telemetry.md#implementation), [callback limits](../docs/efi/telemetry.md#callback-reentrancy-limits) |

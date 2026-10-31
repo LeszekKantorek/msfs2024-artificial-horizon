@@ -154,4 +154,4 @@ Proposed targets require measurements on real equipment:
 * Mobile performance and the need for interpolation.
 * First tested aircraft, phones, and browser versions.
 
-Record tested versions in validation. See the [roadmap](roadmap.md) for issue ownership and dependencies.
+Record tested versions in validation. See the [roadmap](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9) for issue ownership and dependencies.

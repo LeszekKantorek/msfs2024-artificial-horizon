@@ -24,7 +24,7 @@ The target composition places side instruments over a shared attitude background
 * Add future instruments only in their existing feature issues.
 
 The [presentation document](../efi/index.md) owns detailed responsibilities, interfaces, and layer rules.
-The [roadmap](../roadmap.md) owns delivery order and technical prerequisites.
+The [roadmap](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9) owns delivery order and technical prerequisites.
 Planning is tracked in [#35](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/35).
 Implementation is tracked in [#36](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/36) and [#37](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/37).
 
