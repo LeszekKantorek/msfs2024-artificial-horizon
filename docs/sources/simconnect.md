@@ -295,9 +295,18 @@ Reference: [SimConnect request API](https://docs.flightsimulator.com/msfs2024/re
 | Diagnostic validity | `affects_sample_validity: false` separates diagnostic observations from primary-radian validation. |
 | Rejected attitudes | Rejected attitudes retain `message: "Unknown"` and `rejected_simobject_data`. The latter contains received headers, expected request and definition IDs, and match results. Rejected payloads are not interpreted. |
 | Unsupported messages | Other unsupported message IDs remain `Unknown`. |
-| Current schema | Schema 4 records `live_publication_enabled: true` and bounded `validation_scope`. |
+| Current schema | Schema 4 records `live_publication_enabled: true`. Evidence limits belong to this guide, not diagnostic records. |
 | Retained candidate names | Retained `candidate_state` and `candidate_attitude` names use `candidate_is_hypothesis: false`. |
-| Historical schemas | Historical schemas 1–3 withheld candidate live. Schema 2 could reject cross-unit disagreements. |
+
+### Diagnostic schema interpretation
+
+Interpret recorded evidence according to its diagnostic schema:
+
+| Diagnostic schema | Evidence interpretation |
+| --- | --- |
+| 1–3 | Candidate live states do not establish live telemetry publication |
+| 2 | Cross-unit disagreements could invalidate samples. Account for this when interpreting recorded invalid states |
+| 4 | Records identify enabled live publication. Schema version alone does not establish integrated simulator or mobile acceptance |
 
 ## Testing
 
@@ -396,7 +405,7 @@ Fault tests and acceptance records have these requirements:
 | Source | Purpose |
 | --- | --- |
 | [#5 acceptance record](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/5) | Tested environments and evidence limits |
-| [ADR 0006](../adr/0006-simconnect-manual-ffi.md#live-publication-amendment) | Decision to enable live publication |
+| [ADR 0006](../adr/0006-simconnect-manual-ffi.md#live-publication) | Decision to enable live publication |
 
 ### Recorded evidence limits
 

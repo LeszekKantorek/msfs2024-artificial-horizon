@@ -136,6 +136,22 @@ The [EFI guide](efi/index.md) defines extension scope and routes presentation wo
 
 ## Telemetry flow and contracts
 
+### Application delivery contract
+
+The server, telemetry contract, and embedded Web form one application:
+
+* Rebuild and deliver the complete application after every change.
+* Update producers, consumers, embedded assets, and fixtures together.
+* Support the current application as a whole, without backward compatibility guarantees for earlier versions.
+* Add no legacy adapters, compatibility aliases, or fallbacks to previous formats or values.
+* Keep optional data availability separate from version compatibility. Missing current optional readings remain unavailable.
+* Keep documentation links out of application source code and runtime output.
+
+Coordinated delivery avoids maintaining separate server and browser compatibility paths.
+Mixed application versions are unsupported.
+
+### End-to-end flow
+
 ```text
 Rust process: Provider -> Publisher -> latest state -> Subscription -> Snapshot -> SSE
 Browser:      SSE -> validate -> latest sample -> animation frame -> SVG/DOM
@@ -195,7 +211,7 @@ Delivery and presentation have separate owners:
 
 ## Application lifecycle
 
-[ADR 0007](adr/0007-application-composition.md) defines composition and supersedes the original producer ownership in ADR 0002.
+[ADR 0007](adr/0007-application-composition.md) defines application composition, producer ownership, and source-failure behavior.
 
 ### Startup
 

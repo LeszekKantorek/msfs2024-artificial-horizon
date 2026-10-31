@@ -129,7 +129,7 @@ Pressure, display references, and validation follow these rules:
 * Transitions between sweeps are synthetic test cases, not a physical flight trajectory or a pressure-response model.
 * `tests/fixtures/altitude-samples.json` contains independent checkpoints and cycle boundaries.
 * [Altitude presentation](../efi/altitude.md#presentation) defines the display limits and rolling drums.
-* Numeric BARO uses the same pressure as the legacy text, converted with `HPA_PER_INHG`.
+* Convert scenario pressure to `baro_setting.pressure_hpa` with `HPA_PER_INHG`. The browser owns display-unit formatting.
 
 ### Selected-altitude phases
 

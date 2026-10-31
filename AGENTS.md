@@ -42,6 +42,9 @@ Keep feature requirements, presentation, implementation details, and acceptance 
 
 ## Project constraints
 
+* Treat the server, telemetry contract, and embedded Web as one application. Rebuild and deliver the complete application after every change.
+* Do not maintain backward compatibility with earlier application versions. Update producers, consumers, and fixtures together without legacy adapters or fallbacks to previous formats or values.
+* Keep documentation links out of application source code and runtime output. Documentation may reference code.
 * Write project text in English and preserve the MIT license.
 * Keep credentials, SDK binaries, local SDK paths, and generated output out of commits.
 * Target Windows x64 MSVC for Rust work and keep default checks independent of the simulator.

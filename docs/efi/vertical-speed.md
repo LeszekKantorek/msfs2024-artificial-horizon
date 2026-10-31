@@ -153,8 +153,8 @@ Enter these JSON lines into the fixture terminal:
 {"vertical_speed_fpm":9999.01}
 {"vertical_speed_fpm":-9999.01}
 {"vertical_speed_fpm":null}
-{"vertical_speed_fpm":1500,"altitude_ft":null,"baro_text":null}
-{"vertical_speed_fpm":1500,"altitude_ft":8500,"baro_text":"29.92 inHg","hold":true}
+{"vertical_speed_fpm":1500,"altitude_ft":null,"baro_setting":null}
+{"vertical_speed_fpm":1500,"altitude_ft":8500,"baro_setting":{"pressure_hpa":1013.25},"hold":true}
 {"hold":false}
 ```
 

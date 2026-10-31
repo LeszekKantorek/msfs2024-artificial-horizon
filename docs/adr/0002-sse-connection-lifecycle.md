@@ -1,10 +1,10 @@
 # ADR 0002: Pull-driven SSE with socket lifecycle deadlines
 
-Decision status: Accepted. Producer ownership, joining, and fatal-source-failure behavior are superseded by [ADR 0007](0007-application-composition.md).
+Decision status: Accepted. [ADR 0007](0007-application-composition.md) defines application composition and producer ownership.
 
 ## Context
 
-* #3 needs independent subscriptions without replay or acquisition backpressure.
+* Clients need independent subscriptions without replay or acquisition backpressure.
 * A latest-value watch channel already owns freshness.
 * HTTP polls the SSE body only when it needs more data.
 * A timeout inside that body cannot reliably close a socket with stalled writes.
@@ -20,7 +20,7 @@ Decision status: Accepted. Producer ownership, joining, and fatal-source-failure
 * Add no per-client acquisition tasks, queues, or cached wire snapshots.
 * Keep provider state separate from HTTP liveness.
 * End streams when their source channel closes.
-* Keep producer ownership and joining in `Server::run`.
+* Application composition owns producer startup and joining. The server owns HTTP delivery and connection closure.
 
 ### Socket deadlines
 
@@ -59,7 +59,7 @@ Deadlines operate below the SSE body and preserve Axum's accept-error handling.
 | Custom Hyper task supervisor | More control, but duplicates connection ownership unnecessarily |
 
 * The write deadline measures socket progress, not phone receipt.
-* Finite HTTP/TCP buffers can add delay. Measure it on real devices in #7.
-* Fatal producer failure shuts HTTP down and returns an error.
+* Finite HTTP/TCP buffers can add delay. Measure it on real devices using the [measurement procedure](../testing/evidence.md#measurements-and-evidence).
+* Producer failure alone does not stop HTTP. Application composition reports the failure and retains unavailable telemetry.
 * Recoverable source failures produce explicit telemetry states without demo fallback.
-* #7 owns real-phone lifecycle and long-duration memory evidence.
+* Record real-phone lifecycle and long-duration memory evidence separately from automated socket checks.

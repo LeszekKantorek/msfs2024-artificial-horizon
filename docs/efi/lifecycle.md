@@ -10,8 +10,7 @@ Normalized frames, per-sample acceptance, shared scheduling, and expiry.
 | `ias_kt`, `tas_kt`, `gs_kt` | Independently normalized speeds from the same accepted sample, or `null` |
 | `airspeed_profile`, `ias_acceleration_ktps` | Independently normalized configuration and source acceleration, or `null` |
 | `altitude_ft` | Independently normalized signed altitude, or `null` |
-| `baro_text` | Verbatim source-formatted display string, or `null` for missing/non-string data |
-| `baro_setting` | Omitted when absent on the wire. Otherwise, normalized pressure or `null` when invalid. Present invalid data takes precedence over legacy text |
+| `baro_setting` | Normalized positive finite pressure, or `null` for missing or invalid data |
 | `selected_altitude_ft` | Independently normalized signed selected altitude, or `null` |
 | `vertical_speed_fpm` | Independently normalized signed ft/min, or `null` |
 | `heading_deg`, `selected_heading_deg` | Independently normalized magnetic degrees in `[0, 360)`, or `null` |
@@ -23,7 +22,7 @@ Instruments share the frame under these rules:
 * Every instrument receives the same complete frame and selects its own fields without mutating the frame or another instrument.
 * Nested frame values are also read-only.
 * Instruments consume normalized frames.
-* Missing or invalid optional readings arrive as `null`, without invented zero values, except that `baro_setting` preserves wire-field presence for legacy compatibility.
+* Missing or invalid optional readings arrive as `null`, without invented zero values or legacy fallbacks.
 * Future feature issues define additions to the frame and wire contract separately.
 
 > The frame is an internal presentation value, not a new SSE schema.

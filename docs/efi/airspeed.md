@@ -189,7 +189,7 @@ Run the automated checks and both desktop browser scripts for airspeed implement
 
 ### Desktop geometry and availability transitions
 
-For changes to footer geometry, also apply the [shared GS/BARO and unit-label checks](altitude.md#tape-footers-and-source-formatted-baro).
+For changes to footer geometry, also apply the [shared GS/BARO and unit-label checks](altitude.md#tape-footers-and-baro).
 
 Regression #56 covers composition recovery:
 

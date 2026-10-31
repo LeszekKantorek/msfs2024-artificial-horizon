@@ -22,6 +22,7 @@ Decision status: Accepted.
 | Source | Explicit demo provider or Windows SimConnect provider |
 | Platform | Windows x64 MSVC for library, binaries, demo, and CI |
 | SDK | Optional dependencies. Default Windows checks require no MSFS |
+| Delivery | Rebuild and deliver server, telemetry contract, and embedded Web together. Provide no backward compatibility with earlier application versions |
 
 Axum provides [SSE responses and keep-alives](https://docs.rs/axum/latest/axum/response/sse/).
 EventSource supports reconnecting streams. The [MDN SSE guide](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events) describes framing and heartbeat comments.
@@ -51,7 +52,9 @@ EventSource supports reconnecting streams. The [MDN SSE guide](https://developer
 * Test the intended small client count.
 * Measure JSON bandwidth on actual phones at the proposed rate.
 * One process simplifies installation. Simulator integration must not block HTTP.
-* Defer FFI selection until the Windows spike establishes compatibility.
+* Use minimal manual SimConnect FFI and runtime DLL loading under [ADR 0006](0006-simconnect-manual-ffi.md).
+* Update producers, consumers, and fixtures together under the [application delivery contract](../architecture.md#application-delivery-contract).
+* Add no legacy adapters or fallbacks to previous formats or values.
 
 ## Validation of the choice
 

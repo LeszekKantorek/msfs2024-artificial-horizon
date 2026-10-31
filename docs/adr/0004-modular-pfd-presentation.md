@@ -4,10 +4,9 @@ Decision status: Accepted.
 
 ## Context
 
-The attitude implementation combines several instruments in one SVG view module.
-Adding tapes to that module would make geometry and update responsibilities harder to follow.
-The target composition places side instruments over a shared attitude background.
-[ADR 0003](0003-responsive-pfd-demo.md) already separates layout, geometry, and DOM updates.
+Combining unrelated instruments in one SVG module obscures geometry and update responsibilities.
+Instrument composition places side instruments over a shared attitude background.
+[ADR 0003](0003-responsive-pfd-demo.md) separates layout, geometry, and DOM updates.
 
 ## Decision
 
@@ -20,13 +19,11 @@ The target composition places side instruments over a shared attitude background
 * Preserve one sample deadline through layout changes and cancel pending drawing on invalidation.
 * Put the opaque attitude background behind translucent tape backgrounds.
 * Keep text, ticks, and value windows readable, with separate clipping for central pitch markings.
-* Deliver the structural refactor before changing the composition.
-* Add future instruments only in their existing feature issues.
+* Validate structural refactoring separately from intentional composition changes.
+* Add instruments only within the accepted product scope.
 
 The [presentation document](../efi/index.md) owns detailed responsibilities, interfaces, and layer rules.
 The [roadmap](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9) owns delivery order and technical prerequisites.
-Planning is tracked in [#35](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/35).
-Implementation is tracked in [#36](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/36) and [#37](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/37).
 
 ## Alternatives and consequences
 
@@ -36,10 +33,12 @@ Implementation is tracked in [#36](https://github.com/LeszekKantorek/msfs2024-ar
 | Instrument modules with one frame scheduler | Select for explicit ownership and a traceable update path |
 | Solid.js, three.js, or a custom signals system | Defer because module boundaries do not require a technology migration |
 
-Two preparation steps precede the remaining feature slices.
-The refactor preserves the existing image; the next step changes background coverage and layering.
-Layer validation must distinguish intentional overlap from content collisions.
-Both steps require regression evidence, including real-phone checks.
-No wire contract or live-simulator scope changes follow from this decision.
+Composition changes require these checks:
+
+* Preserve appearance during structural refactoring unless a visual change is explicitly accepted.
+* Validate intentional changes to background coverage and layering separately.
+* Distinguish intentional overlap from content collisions.
+* Record regression evidence, including real-phone checks, for refactoring and composition changes.
+* Keep wire contracts and live-simulator scope independent of visual composition decisions.
 
 > Acceptance records the design decision, not completed implementation or device validation.

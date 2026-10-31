@@ -8,10 +8,10 @@ HTTP must remain available before the simulator starts and after acquisition fai
 The existing receiver takes ownership of `Publisher`. Releasing its final watch sender would otherwise close SSE streams.
 The application needs to retain unavailable state without adding another receiver, sample queue, or distribution layer.
 
-| ADR 0002 scope | Effect of this decision |
+| Responsibility | Governing decision |
 | --- | --- |
-| Producer ownership, joining, and fatal-source-failure behavior | Superseded |
-| SSE delivery, channel-closure semantics, socket deadlines, and browser recovery | Remain applicable |
+| Producer ownership, joining, and source-failure behavior | This ADR |
+| SSE delivery, channel-closure semantics, socket deadlines, and browser recovery | [ADR 0002](0002-sse-connection-lifecycle.md) |
 
 ## Decision
 
@@ -71,7 +71,7 @@ Recovery preserves source identity, sequence continuity, and the last accepted s
 The selected boundary has these consequences:
 
 * The server boundary supports another contract-compatible source through application composition without changing HTTP or browser code.
-* The public server API changes. Callers must create the telemetry channel explicitly.
+* Callers create the telemetry channel explicitly and pass its subscription to `Server::bind`.
 
 ## Validation and limits
 
@@ -80,4 +80,4 @@ The selected boundary has these consequences:
 | Application lifecycle and delivery | Verify startup ordering, retained SSE after source termination, sequence and age continuity, multi-client delivery, and coordinated shutdown |
 | Automated tests and independent review | Do not establish simulator or phone compatibility |
 | Complete MSFS2024-to-EFI path | Requires separate observations on actual iOS Safari and Android Chrome |
-| Receiver evidence from #5 | Remains scoped to its recorded environment and does not establish integrated acceptance |
+| [Receiver and local-publication evidence](../sources/simconnect.md#live-publication-evidence) | Remains scoped to its recorded environment and does not establish integrated acceptance |

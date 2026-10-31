@@ -54,7 +54,7 @@ Configuration follows these rules:
 | `HEAD` for a registered asset | Matching response headers without the body |
 | `GET /health` | `200` JSON `{"status":"ok"}` when HTTP is serving |
 | `GET /api/v1/events` | `200 text/event-stream` when using the telemetry router |
-| Unregistered asset path | `404`, without a compatibility facade |
+| Unregistered asset path | `404`, without aliases or compatibility facades |
 
 Routes and streaming responses follow these constraints:
 
@@ -77,7 +77,7 @@ Asset delivery follows these constraints:
 
 * Embed assets in the binary. Runtime delivery requires no working-directory files or frontend build.
 * Preserve paths, MIME types, status codes, response bodies, and GET/HEAD behavior when reorganizing asset code.
-* Replaced root and calculation-module routes return 404 without compatibility facades.
+* Serve assets only at their registered paths under the [HTTP route contract](#http-routes).
 * Add no wildcard routes, directory serving, runtime file access, or dependencies for asset registration.
 * Update embedded routes and the development fixture server together when browser imports change.
 
@@ -131,7 +131,7 @@ Shutdown ownership and evidence have these limits:
 The lifecycle decisions have these scopes:
 
 * [ADR 0002](adr/0002-sse-connection-lifecycle.md) records the socket design and alternatives.
-* [ADR 0007](adr/0007-application-composition.md) supersedes ADR 0002's original producer ownership and fatal-source-failure behavior.
+* [ADR 0007](adr/0007-application-composition.md) defines application composition, producer ownership, and source-failure behavior.
 
 ## Validation
 

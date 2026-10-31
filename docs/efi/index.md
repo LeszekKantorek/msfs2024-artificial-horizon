@@ -21,7 +21,7 @@ Their names do not expand the product scope. Use EFI in new descriptions of the 
 
 * Preserve mobile readability, low delay, explicit unavailable states, and G5-inspired hierarchy with original assets.
 * Keep simulator access read-only. Do not add menus, knobs, simulator editing, or synchronization commands.
-* The [accepted local BARO preference](../adr/0003-responsive-pfd-demo.md#local-baro-unit-preference-amendment) refines the original prohibition on browser controls. It sends no simulator commands.
+* The [accepted local BARO preference](../adr/0003-responsive-pfd-demo.md#local-baro-display-preference) refines the original prohibition on browser controls. It sends no simulator commands.
 * The original simulator MVP covered pitch/bank, scales, aircraft references, and source/connection status under #5-#8.
 * Additional live EFI data was deferred in that original scope. Current [SimConnect capabilities and evidence](../sources/simconnect.md#live-publication-evidence) include optional instruments.
 * Attitude-only publications still leave optional readings unavailable. Source failure must never select Demo silently.

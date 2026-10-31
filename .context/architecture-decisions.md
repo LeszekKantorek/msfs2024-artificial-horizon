@@ -6,27 +6,50 @@ status: active
 ## Find the governing decision
 
 Select decisions by the proposed change, then read their rationale and current contracts.
-The scope column distinguishes later refinements and exceptions from the original decision.
+The scope column identifies current responsibilities and evidence limits.
 An accepted decision does not establish implementation, simulator compatibility, or device acceptance.
 
 | Proposed change or question | Decision and rationale | Current scope and related constraints |
 | --- | --- | --- |
-| Change the Rust/browser stack, transport, or process boundaries | [ADR 0001 decision](../docs/adr/0001-rust-http-sse.md#decision), [alternatives](../docs/adr/0001-rust-http-sse.md#alternatives-and-trade-offs) | Initial baseline; [current boundaries](../docs/architecture.md#components-and-execution) and [build policy](build-validation.md) govern platform and package features. [Reconsideration triggers](../docs/adr/0001-rust-http-sse.md#validation-of-the-choice) include remote access, commands, history, and scale. |
-| Change subscriptions, backpressure, deadlines, or reconnects | [ADR 0002 decision](../docs/adr/0002-sse-connection-lifecycle.md#decision), [alternatives and limits](../docs/adr/0002-sse-connection-lifecycle.md#alternatives-and-consequences) | Refines the SSE baseline. Use the [framing contract](../docs/telemetry-contract.md#framing) for wire behavior; socket progress does not prove phone receipt. |
-| Change PFD scope, responsive layout, controls, or live-data integration | [ADR 0003 decision](../docs/adr/0003-responsive-pfd-demo.md#decision), [alternatives](../docs/adr/0003-responsive-pfd-demo.md#alternatives-and-trade-offs) | Read-only demo scope and [product scope](../docs/efi/index.md#product-scope-and-reference), [acceptance ownership](../docs/testing/pfd.md#feature-acceptance-ownership). [Evidence limits](../docs/adr/0003-responsive-pfd-demo.md#consequences-and-validation) separate demo results from live compatibility. |
-| Change instrument composition, shared frames, or layers | [ADR 0004 decision](../docs/adr/0004-modular-pfd-presentation.md#decision), [rationale](../docs/adr/0004-modular-pfd-presentation.md#alternatives-and-consequences) | Instrument-level baseline, refined internally by [ADR 0005](../docs/adr/0005-visual-object-composition.md#decision). The [presentation map](../docs/efi/index.md#features) leads to current interfaces and layer rules. |
-| Move calculations, shared helpers, child nodes, or clips between visual objects | [ADR 0005 decision](../docs/adr/0005-visual-object-composition.md#decision), [rationale and consequences](../docs/adr/0005-visual-object-composition.md#rationale-and-consequences) | Places object-specific calculations with their visual objects. Use [current module seams](../docs/efi/composition.md#visual-object-interfaces-and-ownership); it adds no scheduler or telemetry ownership. |
-| Change application composition, producer failure, startup order, or shutdown coordination | [ADR 0007 decision](../docs/adr/0007-application-composition.md#decision), [alternatives](../docs/adr/0007-application-composition.md#alternatives-and-consequences) | Supersedes ADR 0002 producer ownership and fatal-source failure only. Retains one active publisher, latest-state channel, SSE delivery and native shutdown limits. |
-| Change SimConnect bindings, native ownership, loading, or diagnostic assumptions | [ADR 0006 decision](../docs/adr/0006-simconnect-manual-ffi.md#decision), [alternatives](../docs/adr/0006-simconnect-manual-ffi.md#alternatives-and-consequences) | [SimConnect scope and evidence](#simconnect-scope-and-evidence); [evidence limits](../docs/adr/0006-simconnect-manual-ffi.md#evidence-limits). |
-| Remove a wire field or change its meaning or units | [Compatibility rule and accepted BARO exception](../docs/telemetry-contract.md#compatibility), [BARO decision provenance](../docs/efi/altitude.md#rationale-and-regression-lessons) | The #65 exception applies only to that replacement. It does not authorize future breaking changes within v1. |
+| Change the Rust/browser stack, transport, or process boundaries | [ADR 0001 decision](../docs/adr/0001-rust-http-sse.md#decision), [alternatives](../docs/adr/0001-rust-http-sse.md#alternatives-and-trade-offs) | Use the [current boundaries](../docs/architecture.md#components-and-execution) and [build policy](build-validation.md) govern platform and package features. [Reconsideration triggers](../docs/adr/0001-rust-http-sse.md#validation-of-the-choice) include remote access, commands, history, and scale. |
+| Change subscriptions, backpressure, deadlines, or reconnects | [ADR 0002 decision](../docs/adr/0002-sse-connection-lifecycle.md#decision), [alternatives and limits](../docs/adr/0002-sse-connection-lifecycle.md#alternatives-and-consequences) | Defines SSE delivery and connection lifecycle. Use the [framing contract](../docs/telemetry-contract.md#framing) for wire behavior. Socket progress does not prove phone receipt. |
+| Change PFD scope, responsive layout, controls, or live-data integration | [ADR 0003 decision](../docs/adr/0003-responsive-pfd-demo.md#decision), [alternatives](../docs/adr/0003-responsive-pfd-demo.md#alternatives-and-trade-offs) | Instrument scope, local BARO display preference, and [product scope](../docs/efi/index.md#product-scope-and-reference), [acceptance ownership](../docs/testing/pfd.md#feature-acceptance-ownership). [Evidence limits](../docs/adr/0003-responsive-pfd-demo.md#consequences-and-validation) separate demo results from live compatibility. |
+| Change instrument composition, shared frames, or layers | [ADR 0004 decision](../docs/adr/0004-modular-pfd-presentation.md#decision), [rationale](../docs/adr/0004-modular-pfd-presentation.md#alternatives-and-consequences) | Instrument composition with internal visual-object boundaries defined by [ADR 0005](../docs/adr/0005-visual-object-composition.md#decision). The [presentation map](../docs/efi/index.md#features) leads to current interfaces and layer rules. |
+| Move calculations, shared helpers, child nodes, or clips between visual objects | [ADR 0005 decision](../docs/adr/0005-visual-object-composition.md#decision), [rationale and consequences](../docs/adr/0005-visual-object-composition.md#rationale-and-consequences) | Places object-specific calculations with their visual objects. Use [current module seams](../docs/efi/composition.md#visual-object-interfaces-and-ownership). The decision adds no scheduler or telemetry ownership. |
+| Change application composition, producer failure, startup order, or shutdown coordination | [ADR 0007 decision](../docs/adr/0007-application-composition.md#decision), [alternatives](../docs/adr/0007-application-composition.md#alternatives-and-consequences) | Defines producer ownership and source-failure isolation. Retains one active publisher, the latest-state channel, SSE delivery, and native shutdown limits. |
+| Change SimConnect bindings, native ownership, loading, or diagnostic assumptions | [ADR 0006 decision](../docs/adr/0006-simconnect-manual-ffi.md#decision), [alternatives](../docs/adr/0006-simconnect-manual-ffi.md#alternatives-and-consequences) | [SimConnect scope and evidence](#simconnect-scope-and-evidence) and [evidence limits](../docs/adr/0006-simconnect-manual-ffi.md#evidence-limits). |
+| Change application interfaces, wire fields, units, or meaning | [Application delivery contract](../docs/architecture.md#application-delivery-contract), [wire contract](../docs/telemetry-contract.md#compatibility) | Server, contract, and embedded Web form one application. Rebuild everything after every change. Update consumers and fixtures together without backward compatibility or legacy fallbacks. |
 
 For current SimConnect implementation boundaries and remaining evidence, use [SimConnect integration](../docs/sources/simconnect.md).
-ADR 0006 separates the original structural acceptance and guard origin from the later bounded live-publication decision and remaining evidence limits in #5.
+ADR 0006 defines native ownership and live-publication conditions. Receiver evidence does not establish integrated simulator or mobile acceptance.
 Use the [change map](component-changes.md) to locate affected contracts and validation after selecting the decision.
 
 ## SimConnect scope and evidence
 
-Accepts manual minimal FFI/runtime loading in one existing-package worker, refining ADR 0001. The decision selects the main app, DLL beside EXE by default, optional absolute override and optional exact-file append diagnostics. [Live publication](../docs/adr/0006-simconnect-manual-ffi.md#live-publication-amendment) permits live publication within the [documented limits](../docs/sources/simconnect.md#live-publication-evidence), retaining lifecycle/numeric/freshness checks. Historical schemas 1–3 retain the guard; schema 4 enables live publication. Exact readiness timing, quantitative angle agreement, broader compatibility and full CPU coverage remain limits. Reuse applicable evidence; rerun for a concrete affected condition or contradiction.
+ADR 0006 selects these native integration boundaries:
+
+* Use minimal manual FFI and runtime loading in one worker within the existing package.
+* Run acquisition in the main application.
+* Select the DLL beside the EXE by default, with an optional absolute override.
+* Support optional exact-file append diagnostics.
+* Apply the [live-publication conditions](../docs/adr/0006-simconnect-manual-ffi.md#live-publication), including lifecycle, numeric, and freshness checks.
+
+Evidence has these limits:
+
+* Exact readiness timing and quantitative cockpit-angle agreement are not established.
+* Broader simulator compatibility and full CPU coverage remain unverified.
+* Receiver evidence does not establish the integrated HTTP/SSE-to-EFI path or actual mobile behavior.
+* Interpret stored logs through the [diagnostic schema rules](../docs/sources/simconnect.md#diagnostic-schema-interpretation).
+* Reuse applicable evidence. Rerun checks for an affected condition or contradictory observation.
+
+## Application delivery rules
+
+* Treat the server, telemetry contract, and embedded Web as one application under the [delivery contract](../docs/architecture.md#application-delivery-contract).
+* Rebuild and deliver the complete application after every change.
+* Update producers, consumers, and fixtures together without backward compatibility guarantees.
+* Add no legacy adapters or fallbacks to previous formats or values.
+* Keep documentation links out of application source code and runtime output.
+* Optional readings can be unavailable within the current contract. Do not confuse this with support for previous formats.
 
 ## Decision procedure
 

@@ -6,7 +6,7 @@ Signed altitude tape and rolling drums, independent BARO, and the altitude compo
 
 * Display source-supplied altitude for its pressure setting without browser pressure correction.
 * Keep altitude and BARO independently optional.
-* Preserve legacy BARO strings verbatim when the numeric BARO field is absent.
+* Show BARO as unavailable when numeric pressure is missing or invalid. Do not use a legacy text fallback.
 * Treat finite altitude outside the display range as valid telemetry.
 
 Wire definitions: [telemetry contract](../telemetry-contract.md#optional-altitude-and-pressure-setting).
@@ -37,16 +37,14 @@ Altitude and pressure have independent local states:
 
 ### BARO formatting and local unit selection
 
-The presence of `baro_setting` selects numeric presentation, including when its value is invalid:
+BARO presentation uses `baro_setting.pressure_hpa`:
 
 | Input or selection | Display and interaction |
 | --- | --- |
 | Valid numeric pressure, inHg selected | Two decimal places in inHg |
 | Valid numeric pressure, hPa selected | Whole hPa |
 | Valid numeric pressure, STD selected | `STD` |
-| `baro_setting` absent, legacy string present | Preserve the string verbatim, including empty or whitespace strings. Do not convert or switch it |
-| `baro_setting` absent, legacy value missing, null, or non-string | Red `X`; switching is unavailable |
-| Present invalid numeric field | Red `X`; switching is unavailable, without fallback to legacy text |
+| Missing, null, or invalid numeric pressure | Red `X`. Switching is unavailable, without fallback to legacy text |
 | Valid numeric text does not fit | Red `X`; retain the unit control so another selection can display if it fits |
 
 * With valid numeric pressure, a touch or click cycles through inHg, hPa, and STD.
@@ -135,7 +133,7 @@ Use the [altitude contract](../telemetry-contract.md#optional-altitude-and-press
 | Signed altitude and range boundaries | Correct direction, zero crossing, rolling digits, carries, and local overflow |
 | Independent availability | Missing altitude preserves valid BARO; pressure failure preserves altitude |
 | Resize and recovery | Fixed tick spacing, wider coverage on taller tapes, retained nodes, and recovery after local or global loss |
-| Numeric and legacy BARO | Apply numeric precedence, local unit selection, text-fit handling, and verbatim legacy presentation |
+| Numeric BARO | Apply local unit selection, text-fit handling, and independent availability without legacy fallbacks |
 
 ### Automated checks and independent fixtures
 
@@ -144,17 +142,17 @@ Node and browser tests cover calculations, clips, stable nodes, painted glyph bo
 
 | Check | Expected behavior |
 | --- | --- |
-| Rust types and publication | Finite signed feet, verbatim BARO strings, independent omission, shared age, attitude-only clearing, and stale suppression |
+| Rust types and publication | Finite signed feet, positive finite pressure, independent omission, shared age, attitude-only clearing, and stale suppression |
 | Independent demo fixture | Six altitude sweeps, all segment endpoints, pressure changes, zero crossing, and repeated cycles |
 | Node tape geometry | Fixed pixel spacing, known tick positions, wider spans and more labels on taller tapes, signed ticks, and direction |
 | Node readouts | 20-ft drums, carries, fractions, signs, and range boundaries |
 | Node client and scheduler | Independent field normalization, old snapshots, unchanged callback shape, reconnect/resume, coalescing, and expiry before resize draw |
 
-For [#89](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/89), verify numeric BARO and local selection:
+Verify numeric BARO and local selection:
 
 | Check | Coverage |
 | --- | --- |
-| Automated calculations and state | Conversion from one pressure, malformed data, legacy text, expiry, and recovery |
+| Automated calculations and state | Conversion from one pressure, missing and malformed data, expiry, and recovery |
 | Browser interaction | Local inHg/hPa/STD cycle, saved preference after reload, unavailable storage, and text fit |
 | Selection boundary | No simulator commands and no renewal of the sample deadline |
 
@@ -170,18 +168,17 @@ Browser fixtures cover both compositions:
 
 Inspect `.local/pfd-browser/altitude-*` screenshots in narrow portrait and short landscape, including long signed readouts over sky and ground.
 
-#### Tape footers and source-formatted BARO
+#### Tape footers and BARO
 
-Issue [#65](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/65) owns the revised footer and BARO acceptance.
 The desktop layout script runs `tests/browser/checks/tape-footer-browser-checks.mjs` against both compositions.
 
 | Check | Expected behavior |
 | --- | --- |
-| Rust, SSE, normalization, and SVG | When `baro_setting` is absent, `23.83 inHg`, `1026 hPa`, and `BARO` reach the readout unchanged |
-| Availability and recovery | With `baro_setting` absent, missing, null, and non-string legacy data show red `X`. Empty and whitespace strings remain available. Expiry and recovery follow the common sample deadline |
+| Rust, SSE, normalization, and SVG | Source pressure reaches the readout through `baro_setting`. The local unit determines formatting |
+| Availability and recovery | Missing, null, or invalid pressure shows red `X` without legacy fallback. Expiry and recovery follow the common sample deadline |
 | Unit labels and scales | Literal `[KT]` and `[FT]` have the same font and visual height, with 1 px above and below desktop glyph bounds; both clips fill their allocated height |
 | GS | Label and value share a 13 px font without a suffix; one-, two-, and three-digit values fit without overlap; opaque background matches BARO and the inset frame matches speed-trend magenta |
-| BARO | Required examples fit at minimum width, centered in one cyan 11 px text node over opaque dark background with an inset cyan border |
+| BARO | Formatted inHg, hPa, and STD readings fit at minimum width, centered in one cyan 11 px text node over opaque dark background with an inset cyan border |
 | Background edges | Both 32 px footers meet their tape backgrounds and SVG edges at whole and fractional bounds, including simulated safe-area padding |
 | IAS fallback | Four reference values fit between the warning and persistent `[KT]`, without a second unit heading |
 
@@ -236,4 +233,4 @@ Retain these reasons and validation lessons when changing the presentation:
 * Keep landscape pixel spacing during resize and reveal more altitude on taller tapes. Do not use a fixed 400-ft span.
 * A 24-pixel pressure background caused a 2-pixel text collision in Edge. The corrected height is 32 pixels.
 * Check actual pressure glyph bounds and the centered text anchor separately. Font side bearings can produce a subpixel visual offset.
-* The #65 BARO replacement deliberately ships server and embedded Web together. Its [versioning exception](../telemetry-contract.md#compatibility) is limited to that replacement.
+* Server, telemetry contract, and embedded Web follow the [application delivery contract](../architecture.md#application-delivery-contract). Backward compatibility is not a project requirement.

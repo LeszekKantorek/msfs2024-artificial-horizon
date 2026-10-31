@@ -15,7 +15,7 @@
 | `FlightSample::with_vertical_speed(speed)` | Add independently optional source-supplied vertical speed |
 | `Heading`, `SelectedHeading` | Finite magnetic degrees in `[0, 360)`, with `new` and `degrees` methods |
 | `FlightSample::with_heading(heading, selected)` | Add independently optional current and selected magnetic heading |
-| `FlightSample::with_altitude(altitude, baro_text)` | Add independently optional altitude and ready-to-display BARO text (`Option<String>`) |
+| `FlightSample::with_altitude` | Add independently optional altitude |
 | `BaroSetting`, `FlightSample::with_baro_setting` | Add independently optional positive finite hPa pressure |
 | `FlightSample` | One acquisition with attitude and independently optional indications |
 | `FlightSample::with_speeds(ias, gs)` | Add independently optional speeds. The existing `new` constructor remains attitude/turn-only |
@@ -94,7 +94,6 @@ These durations are initial tuning values.
 | `airspeed_profile` | Optional validated speed configuration, defined below |
 | `ias_acceleration_ktps` | Optional finite source-supplied IAS acceleration in knots per second |
 | `altitude_ft` | Optional finite signed barometric altitude in feet for the source pressure setting |
-| `baro_text` | Optional source-formatted BARO display string, including any unit text |
 | `baro_setting` | Optional object with positive finite `pressure_hpa` |
 | `selected_altitude_ft` | Optional finite signed selected altitude in feet, supplied by the source and read-only |
 | `vertical_speed_fpm` | Optional finite signed feet per minute. Positive means climb, negative means descent, zero means level |
@@ -162,19 +161,17 @@ Speed fields extend the live example above:
 * Altitude and BARO are independently optional and share the sample sequence, age, and expiry deadline.
 * Rust omits absent values and BARO fields outside `live`. Attitude-only publication clears them.
 * Missing, null, nonnumeric, or non-finite altitude becomes unavailable independently of pressure and other indications.
-* Missing, null, or non-string BARO text becomes unavailable independently of altitude.
-* Every string is preserved verbatim, including an empty string, spaces, `23.83 inHg`, `1026 hPa`, or `BARO`.
-* The optional `baro_setting` contains positive finite `pressure_hpa`. Its presence takes precedence over legacy text. Present invalid data is unavailable.
-* The SimConnect provider omits both BARO fields if pressure is unavailable. String-only producers remain supported.
-* When `baro_setting` is absent, the producer owns legacy text formatting and unit identification. `BARO` has no appended unit.
-* Each sample replaces both previous values; missing values never become zero or retain a previous reading.
+* The optional `baro_setting` contains positive finite `pressure_hpa`. Missing, null, or invalid pressure is unavailable independently of altitude.
+* The SimConnect provider omits `baro_setting` if pressure is unavailable.
+* The browser formats pressure using the local display unit. Do not substitute source-formatted text for missing numeric pressure.
+* Each sample replaces the previous altitude and pressure values. Missing values never become zero or retain a previous reading.
 * Finite altitude values outside the presentation limits remain valid telemetry.
 * Source or transport loss invalidates the entire panel.
 
 Example additions to a live v1 snapshot:
 
 ```json
-{"altitude_ft": -120.0, "baro_text": "29.92 inHg", "baro_setting": {"pressure_hpa": 1013.25}}
+{"altitude_ft": -120.0, "baro_setting": {"pressure_hpa": 1013.25}}
 ```
 
 See the [Demo provider](sources/demo.md#altitude-and-pressure) for the deterministic scenario and fixture references.
@@ -285,15 +282,18 @@ Unavailable state example:
 
 | Change / input | Required behavior |
 | --- | --- |
-| Add an optional field | Compatible with v1 |
-| Remove or change field meaning, units, or states | Introduce a new version and endpoint |
+| Add, remove, or change a field, units, or states | Update producers, consumers, and fixtures together. Rebuild and deliver the complete application |
+| Earlier application versions or mixed server/browser versions | Unsupported. Provide no legacy adapter or fallback to previous formats or values |
 | Unknown field | Client ignores it |
 | Malformed message, unknown state, non-finite/out-of-range attitude | Client rejects it |
 
-The BARO replacement in [#65](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/65) is an accepted exception to the versioning rule.
-It replaced the numeric pressure representation with `baro_text` within v1 because the server and embedded browser ship together.
-That change provides no adapter for the former BARO representation; consumers must update with the delivered server and browser.
-The exception applies only to that replacement. Future removals or meaning changes follow the versioning rule above.
+The server, contract, and embedded Web follow the [application delivery contract](architecture.md#application-delivery-contract).
+The endpoint and schema identifier describe the current application contract, not a promise of backward compatibility.
+Changes do not require parallel endpoints or retained legacy schemas solely to support earlier application versions.
+
+* `baro_inhg` is unsupported and has no adapter.
+* The current `baro_setting.pressure_hpa` field is distinct from `baro_inhg`.
+* Update consumers with the delivered server and browser.
 
 ## Freshness and status
 
@@ -336,9 +336,9 @@ stale         = estimated age >= 1,000 ms
 Each feature slice must:
 
 * Define its optional normalized fields, units, independent validity, and freshness handling.
-* Add compatible Rust/browser fixtures with the fields.
+* Update Rust and browser fixtures with the fields.
 * Preserve attitude fields, state meanings, and pitch/bank-only publication.
-* Keep old snapshots usable for attitude. Missing extensions remain unavailable in old snapshots and attitude-only publications.
+* Keep attitude-only publications valid under the current contract. Missing optional fields remain unavailable.
 * Invalidate only the affected indication for malformed optional instrument data.
 * Preserve existing envelope/attitude validation and global source/transport invalidation.
 
@@ -346,7 +346,7 @@ Constraints:
 
 * Do not advertise unimplemented fields as current contract fields.
 * Never substitute zero or demo values for missing data.
-* The attitude-only SimConnect integration in #6 need not populate EFI extensions.
+* SimConnect publishes available optional instrument data through the shared telemetry contract.
 * Selected values remain source-supplied and read-only.
 * Add no control endpoint.
-* Feature issues own exact schema additions.
+* Document wire fields, units, and validation in this contract. Add matching Rust and browser fixtures.
