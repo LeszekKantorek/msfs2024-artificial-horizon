@@ -87,7 +87,7 @@ The altitude composition sets the paint order:
 Use the [validation scope matrix](../testing/index.md#validation-by-change-scope) and the feature checks below.
 Shared browser commands, phone setup, and evidence rules are linked from those checks.
 
-Issue [#63](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/63) owns the corrected placement and paint order.
+The [geometry and paint-order contract](#geometry-clipping-and-paint-order) defines placement and overlap.
 
 ### Acceptance scenarios
 
@@ -102,7 +102,7 @@ The automated checks cover these visible results:
 | Readout overlap | The opaque altitude window and its border cover the trend and bug |
 | VSI readout | Aligned text edges, contained glyphs, unchanged window dimensions and three-pixel painted gap |
 | Invalid inputs and recovery | Zero or missing required data hides the trend. BARO/target loss does not hide it |
-| Resize | Tape width and pixel spacing remain unchanged. The outside four pixels return to the horizon and heading |
+| Resize | Preserve tape width and pixel spacing. Keep the trend inside the altitude allocation without a separate outside lane |
 
 ### Automated checks and desktop geometry
 
@@ -117,33 +117,33 @@ Verify that the negative checks detect incorrect layering:
 3. Restore the original order before the next check.
 
 Wait for the SVG `viewBox` to match its CSS bounds before measuring resized geometry.
-Capture the placement regression:
+Check trend placement in both compositions:
 
-1. Capture matching before/after scenes at 320x480 portrait, 568x240 short landscape, and the 320x240 minimum.
+1. Capture current scenes at 320x480 portrait, 568x240 short landscape, and the 320x240 minimum.
 2. Include climb, descent, capture in both directions, negative-altitude capture, and both pinned edges on production and fixture pages.
 3. Record the input values, viewport, tested commit, and browser version with the screenshots.
 4. Inspect `.local/pfd-browser/altitude-trend-*` for upward/downward paint over the left ticks and below the turquoise bug.
 
 ### Real-phone checks
 
-For #63, repeat the placement scenarios on actual iOS Safari and Android Chrome:
+Repeat the placement scenarios on actual iOS Safari and Android Chrome:
 
 1. Apply the [shared phone procedure](../testing/devices.md#real-phone-acceptance-procedure).
 2. Repeat the [desktop scenes](#automated-checks-and-desktop-geometry), including rotation, browser bars, and safe areas.
 3. Confirm readable digits and strokes, correct layering, and recovery after source or connection loss.
-4. Record device, OS/browser versions, commit, observations, and screenshots in #63 or its PR.
+4. Record device, OS/browser versions, commit, observations, and screenshots with the acceptance results.
 
-For #25, include these trend checks in the shared phone procedure:
+Include these trend checks in the shared phone procedure:
 
 * Check that the magenta trend extends up for climb, down for descent, and disappears during holds.
 * Check that the trend covers intersecting ticks and that the notched turquoise bug covers the trend.
 
-> Keep the device criterion unchecked until both real-device records exist. Desktop viewport checks do not establish iOS Safari or Android Chrome acceptance.
+> Keep missing device evidence explicit until both real-device records exist. Desktop viewport checks do not establish iOS Safari or Android Chrome acceptance.
 
 ## Rationale and regression lessons
 
-Removing the former four-pixel outside reservation returns that width to the horizon and heading strip while preserving the altitude tape width.
-The overlay placement replaces the outside-lane requirement under [#63](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/63).
+* The trend overlays the altitude tape's left-side ticks without an additional width allocation.
+* Preserve the altitude tape, attitude, and heading allocations.
 
 * Keep prediction based on source VSI. Browser altitude differences do not supply the rate.
 * Preserve independent availability: missing altitude hides the trend but does not invalidate a valid numeric VSI indication.

@@ -116,7 +116,7 @@ Invalidation clears history through the panel and cancels pending timer and fram
 Use the [validation scope matrix](../testing/index.md#validation-by-change-scope) and the feature checks below.
 Shared browser commands, phone setup, and evidence rules are linked from those checks.
 
-Issue [#24](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/24) owns selected-altitude and alert evidence.
+The [selected-altitude implementation record](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/24) contains recorded results. Desktop results do not establish real-phone acceptance.
 
 ### Acceptance scenarios
 
@@ -137,7 +137,7 @@ The [automated Rust and Node commands](../testing/automated.md#automated-checks)
 
 | Boundary | Checks |
 | --- | --- |
-| Rust model and demo | Finite signed targets, independent omission, shared freshness, old publications, two SSE clients, 198-second checkpoints and unchanged 18-second cycles |
+| Rust model and demo | Finite signed targets, independent omission, shared freshness, current attitude-only publications, two SSE clients, 198-second checkpoints and the other 18-second cycles |
 | Alert transitions | Both approach directions, exact thresholds, unrounded values, skipped bands, sustained values, target changes, capture, departure, return and repeat departure |
 | Controlled time | 250-ms flash phases, completion at 5000 ms, delayed/early callbacks, identical fresh samples, resize, coalesced samples and expiry before draw |
 | Invalidation | Local missing/overflow values, paused/stale/disconnected/waiting/invalid states, suspension, timed alert cancellation under a controlled monotonic clock, stale callbacks and silent recovery |
@@ -158,10 +158,10 @@ Inspect screenshots at `.local/pfd-browser/selected-altitude-*`.
 
 ### Real-phone checks
 
-Apply the [shared phone procedure](../testing/devices.md#real-phone-acceptance-procedure) for #24, with these alert-specific checks:
+Apply the [shared phone procedure](../testing/devices.md#real-phone-acceptance-procedure) with these alert-specific checks:
 
 1. Watch the 198-second demo for both approach directions, full flash intervals, target changes, and yellow deviation.
-2. Check the pinned bug and selected value against sky and ground in portrait and short landscape, including 320 CSS px width.
+2. Check the pinned bug and selected value against sky and ground in portrait and short landscape. Include a 320 CSS px viewport width.
 3. Use [phone fixtures](../testing/devices.md#phone-fixture-setup) for target loss, malformed targets, both overflow boundaries, current-altitude loss, pressure-only loss, and return into capture.
 4. Perform the shared loss and resume scenarios during an alert. Recovery requires fresh data and silent initialization.
 
@@ -183,5 +183,5 @@ These lessons explain the lifecycle and validation constraints:
 * Advance history before coalescing draws so transitions between animation frames remain observable.
 * Reset expired history before accepting recovery data. The expiry callback may not have run yet.
 * Keep history with the selected visual object and timing with the common scheduler to preserve one cancellation path.
-* Entry into +/-200 ft as capture, silent initialization, 2 Hz flashing, and persistent yellow are project decisions for #24. Garmin does not fully specify these behaviors.
+* Entry into +/-200 ft as capture, silent initialization, 2 Hz flashing, and persistent yellow are project decisions. Garmin does not fully specify these behaviors.
 * Compare SVG matrix positions with a subpixel tolerance because fractional values use single-precision matrices.

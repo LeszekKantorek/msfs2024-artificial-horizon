@@ -89,7 +89,7 @@ Composition follows these boundaries:
 
 * Keep pure calculations in the visual objects that implement them.
 * Use separate altitude tape and drums because their scale, signed values, and 20-ft digit steps differ from IAS.
-* Selected-altitude and alert rules extend the instrument under #24 without introducing a general tape abstraction.
+* Selected-altitude indications and alerts belong to the altitude instrument. Do not introduce a general tape abstraction.
 * The current implementation has no instrument base class, general tape renderer, generic IAS/altitude tape, or shared lower-indication controller.
 
 ### Geometry, layers, clipping, and paint order
@@ -101,7 +101,7 @@ Composition follows these boundaries:
 | Minor tick spacing | 20 ft at fixed 8 CSS px intervals |
 | Major tick spacing | 100 ft at fixed 40 CSS px intervals |
 | Visible span | 400 ft at 160 CSS px tape height; 1000 ft at 400 CSS px |
-| Minimum-height landscape | Match the former 400-ft scale at 160 CSS px tape height |
+| Minimum-height landscape | Display 400 ft at 160 CSS px tape height |
 | BARO allocation | Bottom 32 CSS px of the right column, reaching the panel edge |
 | BARO border | One-pixel cyan border inset by half a pixel over an opaque value-window background |
 | BARO text | One centered cyan text node, 11 CSS px, weight 600 |
@@ -122,7 +122,7 @@ The [altitude trend geometry and paint order](altitude-trend.md#geometry-clippin
 Use the [validation scope matrix](../testing/index.md#validation-by-change-scope) and the feature checks below.
 Shared browser commands, phone setup, and evidence rules are linked from those checks.
 
-Issue [#23](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/23) owns altitude and pressure evidence, including separate real-phone acceptance.
+The [altitude implementation record](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/23) contains recorded results. Device acceptance requires evidence for the tested build and configuration.
 
 ### Acceptance scenarios
 
@@ -146,7 +146,7 @@ Node and browser tests cover calculations, clips, stable nodes, painted glyph bo
 | Independent demo fixture | Six altitude sweeps, all segment endpoints, pressure changes, zero crossing, and repeated cycles |
 | Node tape geometry | Fixed pixel spacing, known tick positions, wider spans and more labels on taller tapes, signed ticks, and direction |
 | Node readouts | 20-ft drums, carries, fractions, signs, and range boundaries |
-| Node client and scheduler | Independent field normalization, old snapshots, unchanged callback shape, reconnect/resume, coalescing, and expiry before resize draw |
+| Node client and scheduler | Independent field normalization, current attitude-only publications, the shared callback shape, reconnect/resume, coalescing, and expiry before resize draw |
 
 Verify numeric BARO and local selection:
 
@@ -186,7 +186,7 @@ Inspect `.local/pfd-browser/footer-*` screenshots at 320×480, 326×246, and 568
 
 ### Real-phone checks
 
-Apply the [shared phone procedure](../testing/devices.md#real-phone-acceptance-procedure) for #23, with these altitude-specific checks:
+Apply the [shared phone procedure](../testing/devices.md#real-phone-acceptance-procedure) with these altitude-specific checks:
 
 1. Watch a complete cycle for climbing, descending, negative altitude, zero crossing, digit carries, and pressure changes.
 2. Check the 100/20-ft markings, fixed pointer, rolling digits, aligned `[KT]`/`[FT]`, and BARO presentation.
@@ -197,14 +197,14 @@ Additional phone checks retain their acceptance scope:
 
 | Scope | Checks |
 | --- | --- |
-| #65 | Inspect footer readability and edge seams throughout the shared phone layout scenarios |
-| #89 | Check reload and portrait/landscape readability on available phones. Record the devices actually checked |
+| Footer readability | Inspect footer readability and edge seams throughout the shared phone layout scenarios |
+| BARO preference | Check reload and portrait/landscape readability on available phones. Record the devices actually checked |
 
 > Real iOS Safari and Android Chrome acceptance remains separate from desktop checks.
 
 ### Live BARO acceptance
 
-For #89, `KOHLSMAN SETTING HG:1` supplies pressure for the same indexed altimeter as indicated altitude.
+`KOHLSMAN SETTING HG:1` supplies pressure for the same indexed altimeter as indicated altitude.
 Validate the source and local selection against the cockpit:
 
 1. Adjust cockpit pressure and verify the index 1 indication, including which cockpit control corresponds to that index.
@@ -222,10 +222,26 @@ Validate the source and local selection against the cockpit:
 | HTTP/SSE | Both clients receive the same altitude/pressure and sample age; unavailable snapshots omit extensions |
 | Release runtime | Embedded altitude modules with correct MIME, Rust SSE values in SVG/ARIA, numeric BARO presentation, and recovery after restart |
 
-* Run the release-runtime script after building the final embedded Web assets, including the #65 footer and BARO checks.
+* Run the release-runtime script after building the final embedded Web assets, including the footer and BARO checks.
 * Check altitude rolling digits during full-panel acceptance.
 
+## Evidence and limitations
+
+The [BARO validation record](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/89) distinguishes these evidence scopes:
+
+| Evidence | Result and limit |
+| --- | --- |
+| Controlled desktop checks | Touch emulation, unavailable storage, and text-selection styling were checked. Emulated touch does not establish behavior on a physical phone. |
+| Reported interaction | The local unit cycle and preference persistence after reload were confirmed. The record does not explicitly identify the device for these observations. |
+| Reported Android observation | Instrument text did not trigger text selection. This result does not establish iOS behavior or other device configurations. |
+| Reported flight observation | Changing cockpit pressure changed the application indication. The aircraft and specific cockpit instrument were not supplied. |
+
+These observations do not replace the [live BARO acceptance procedure](#live-baro-acceptance) for a particular aircraft and device.
+
 ## Rationale and regression lessons
+
+The altitude and pressure reference is Garmin G5 Guide 190-01112-12 Rev. 2, sections 3.3.4 and 3.3.5.
+The local BARO unit cycle and STD selection are application decisions, not claims about the guide's controls.
 
 Retain these reasons and validation lessons when changing the presentation:
 

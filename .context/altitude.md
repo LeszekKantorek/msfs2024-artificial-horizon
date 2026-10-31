@@ -13,8 +13,8 @@ Select the source for the affected boundary:
 | Demo sweeps and pressure cycles | [Demo altitude and pressure](../docs/sources/demo.md#altitude-and-pressure) |
 | Tape spacing, drums, display limits, BARO formatting, and availability | [Altitude presentation](../docs/efi/altitude.md#presentation) |
 | Automated and device checks | [Altitude acceptance](../docs/efi/altitude.md#acceptance-scenarios), [footer and BARO checks](../docs/efi/altitude.md#tape-footers-and-baro) |
-| Public evidence and accepted scope | [Issue #23](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/23), [PR #59](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/pull/59), [footer revision #65](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/65) |
-| Live BARO checks and evidence limits | [Live acceptance](../docs/efi/altitude.md#live-baro-acceptance) |
+| Requirements and scope | [Altitude requirements](../docs/efi/altitude.md#requirements), [footer and BARO criteria](../docs/efi/altitude.md#tape-footers-and-baro) |
+| Live BARO checks and evidence limits | [Live acceptance](../docs/efi/altitude.md#live-baro-acceptance), [recorded evidence limits](../docs/efi/altitude.md#evidence-and-limitations) |
 | Implementation and accepted tape/BARO refinements | [Implementation](../docs/efi/altitude.md#implementation), [rationale and regression lessons](../docs/efi/altitude.md#rationale-and-regression-lessons) |
 
 ### G1000 STD source limitation
@@ -23,7 +23,12 @@ During one recorded [#89](https://github.com/LeszekKantorek/msfs2024-artificial-
 
 The accepted [BARO presentation](../docs/efi/altitude.md#presentation) uses a local inHg, hPa, and STD cycle. Local STD does not report or change cockpit mode. Reconsider simulator synchronization only with evidence for the selected aircraft and an accessible source of its mode.
 
-For #89, controlled browser checks covered touch emulation and the text-selection style. BARO switching and absence of text selection were separately confirmed on Android. The confirmation does not establish behavior on other devices. Apply the shared [evidence limits](../docs/testing/evidence.md#select-evidence-by-failure-risk) when assessing desktop and actual-phone results.
+Use the [BARO evidence scopes](../docs/efi/altitude.md#evidence-and-limitations) when interpreting recorded results:
+
+* Keep emulated touch separate from physical-device evidence.
+* An Android result does not establish iOS behavior or other device configurations.
+* Do not assign an unidentified-device observation to Android without supporting evidence.
+* Apply the shared [evidence limits](../docs/testing/evidence.md#select-evidence-by-failure-risk) to desktop and actual-phone results.
 
 ## Altitude trend
 

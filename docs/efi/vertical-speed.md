@@ -15,7 +15,7 @@ Wire definitions: [telemetry contract](../telemetry-contract.md#optional-vertica
 
 * Place the compact numeric window below current altitude.
 * Align its right border with the altitude window and its value with the right edge of altitude's digits.
-* Display feet per minute without a visible unit label or arrow.
+* Display feet per minute without a visible unit label, separate VSI scale, or direction arrow.
 
 ### Input availability, rounding, and display limits
 
@@ -88,7 +88,7 @@ VSI corrects text positioning for glyph bounds, including the wider unavailable 
 Use the [validation scope matrix](../testing/index.md#validation-by-change-scope) and the feature checks below.
 Shared browser commands, phone setup, and evidence rules are linked from those checks.
 
-Issue [#25](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/25) owns VSI evidence.
+The [VSI implementation record](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/25) contains evidence for specific presentation revisions. Those results do not establish acceptance of every subsequent revision.
 
 ### Acceptance scenarios
 
@@ -112,9 +112,9 @@ Automated acceptance covers these boundaries:
 
 | Boundary | Checks |
 | --- | --- |
-| Rust model and SSE | Finite signed rates, zero, no telemetry limit, omission, state clearing, shared age, stale suppression, old snapshots, and matching clients |
-| Scenario | Independent 3960-sample checkpoints, every jump and phase, analytic altitude/rate agreement, 25 ft/s producing +1500 ft/min, and unchanged other cycles |
-| Node calculations | Signed zero, rounding, raw +/-9999 boundaries, invalid values, window geometry, recovered horizon width, and label/tick obstruction |
+| Rust model and SSE | Finite signed rates, zero, no telemetry limit, omission, state clearing, shared age, stale suppression, current attitude-only publications, and matching clients |
+| Scenario | Independent 3960-sample checkpoints, every jump and phase, analytic altitude/rate agreement, 25 ft/s producing +1500 ft/min, and the other documented cycles |
+| Node calculations | Signed zero, rounding, raw +/-9999 boundaries, invalid values, window geometry, the current attitude allocation, and label/tick obstruction |
 | Shared lifecycle | Latest coherent frame, resize without renewed freshness, expiry before drawing, pause/disconnect, reconnect and background/resume without duplicate subscriptions |
 
 Retain the selected-altitude alert regressions, including expiry while flashing and delayed callback cancellation.
@@ -125,6 +125,7 @@ Run both [desktop browser scripts](../testing/pfd.md#responsive-efi-layout-and-d
 Check these SVG properties:
 
 * Shared font family and color, 13-pixel VSI text, and matching right text edges.
+* A painted right-text-edge difference below 0.02 CSS px, including the unavailable `X`, in both compositions through resize.
 * A 51-by-27 window with a three-pixel painted gap and contained text bounds.
 * Selected target bug, label and tick clearance, retained nodes, and partial loss.
 
@@ -133,32 +134,32 @@ Also run the [altitude trend prediction checks](altitude-trend.md#automated-chec
 
 ### Real-phone checks
 
-Apply the [shared phone procedure](../testing/devices.md#real-phone-acceptance-procedure) for #25, with these VSI-specific checks:
+Apply the [shared phone procedure](../testing/devices.md#real-phone-acceptance-procedure) with these VSI-specific checks:
 
 1. Watch the 198-second altitude/VSI cycle for `0` during holds, positive climb, and negative descent directly below altitude.
 2. Inspect matching readout styles, the narrower rectangle, selected target/bug, and pressure against sky and ground.
 3. Use [phone fixtures](../testing/devices.md#phone-fixture-setup) with the inputs below for signed limits, partial failures, and missing data.
 
-Enter these JSON lines into the fixture terminal:
+   Enter these JSON lines into the fixture terminal:
 
-```json
-{"vertical_speed_fpm":1500}
-{"vertical_speed_fpm":-1500}
-{"vertical_speed_fpm":0}
-{"vertical_speed_fpm":2000.01}
-{"vertical_speed_fpm":-2000.01}
-{"vertical_speed_fpm":9999}
-{"vertical_speed_fpm":-9999}
-{"vertical_speed_fpm":-9999,"altitude_ft":-60,"selected_altitude_ft":-100}
-{"vertical_speed_fpm":9999.01}
-{"vertical_speed_fpm":-9999.01}
-{"vertical_speed_fpm":null}
-{"vertical_speed_fpm":1500,"altitude_ft":null,"baro_setting":null}
-{"vertical_speed_fpm":1500,"altitude_ft":8500,"baro_setting":{"pressure_hpa":1013.25},"hold":true}
-{"hold":false}
-```
+   ```json
+   {"vertical_speed_fpm":1500}
+   {"vertical_speed_fpm":-1500}
+   {"vertical_speed_fpm":0}
+   {"vertical_speed_fpm":2000.01}
+   {"vertical_speed_fpm":-2000.01}
+   {"vertical_speed_fpm":9999}
+   {"vertical_speed_fpm":-9999}
+   {"vertical_speed_fpm":-9999,"altitude_ft":-60,"selected_altitude_ft":-100}
+   {"vertical_speed_fpm":9999.01}
+   {"vertical_speed_fpm":-9999.01}
+   {"vertical_speed_fpm":null}
+   {"vertical_speed_fpm":1500,"altitude_ft":null,"baro_setting":null}
+   {"vertical_speed_fpm":1500,"altitude_ft":8500,"baro_setting":{"pressure_hpa":1013.25},"hold":true}
+   {"hold":false}
+   ```
 
-4. Run the [trend phone checks for #25](altitude-trend.md#real-phone-checks).
+4. Run the [trend phone checks](altitude-trend.md#real-phone-checks).
 
 > Desktop checks do not establish real iOS Safari or Android Chrome acceptance.
 

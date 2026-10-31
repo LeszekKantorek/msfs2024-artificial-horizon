@@ -30,4 +30,4 @@ Read the canonical contract for the boundary being changed:
 
 ## Paint order checks
 
-Use the [shared paint-order procedure](../docs/testing/pfd.md#paint-order-checks) for layer changes and the [altitude-trend scenarios](../docs/efi/altitude-trend.md#acceptance-scenarios) for #63 overlap checks.
+Use the [shared paint-order procedure](../docs/testing/pfd.md#paint-order-checks) for layer changes and the [altitude-trend scenarios](../docs/efi/altitude-trend.md#acceptance-scenarios) for trend, bug, and readout overlap checks.

@@ -36,15 +36,15 @@ Their names do not expand the product scope. Use EFI in new descriptions of the 
 
 Use original graphics. Do not embed PDF screenshots or copy the bezel.
 
-| Included illustration items | EFI capability | Feature issue |
+| Included illustration items | EFI capability | Feature documentation |
 | --- | --- | --- |
-| 2, 3, 5, 7, 10 | Attitude, pitch scale, aircraft reference, slip/skid, turn rate | [#20](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/20) |
-| 1, 4, 8 | Airspeed tape, current IAS, ground speed | [#21](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/21) |
-| 21, extends 1 | V-speed references, speed ranges, six-second trend, VNE indications | [#22](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/22) |
-| 9, 13, 15 | Barometric setting, current altitude, altimeter tape | [#23](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/23) |
-| 11, 16 | Selected-altitude bug/readout, approach/deviation alerts | [#24](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/24) |
-| 12 | Vertical speed | [#25](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/25) |
-| 18, 20 | Current heading and selected-heading bug | [#26](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/26) |
+| 2, 3, 5, 7, 10 | Attitude, pitch scale, aircraft reference, slip/skid, turn rate | [Attitude](attitude.md) |
+| 1, 4, 8 | Airspeed tape, current IAS, ground speed | [IAS and GS](airspeed.md) |
+| 21, extends 1 | V-speed references, speed ranges, six-second trend, VNE indications | [Speed indications](airspeed-indications.md) |
+| 9, 13, 15 | Barometric setting, current altitude, altimeter tape | [Altitude and BARO](altitude.md) |
+| 11, 16 | Selected-altitude bug/readout, approach/deviation alerts | [Selected altitude](selected-altitude.md) |
+| 12 | Vertical speed | [Vertical speed](vertical-speed.md) |
+| 18, 20 | Current heading and selected-heading bug | [Heading](heading.md) |
 
 **Coverage: 17 of 22 illustration items.**
 

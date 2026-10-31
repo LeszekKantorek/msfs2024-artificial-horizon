@@ -219,7 +219,7 @@ Apply these checks when changing SVG layers.
 * Preserve controlled inputs and baseline provenance under the [screenshot comparison procedure](evidence.md#screenshot-comparisons).
 * Include capture, pinned edges, both directions, signed values, missing data, expiry, and recovery when applicable.
 
-The [altitude trend acceptance procedure](../efi/altitude-trend.md#acceptance-scenarios) gives the concrete #63 scenarios.
+The [altitude trend acceptance procedure](../efi/altitude-trend.md#acceptance-scenarios) defines the trend, bug, and readout overlap scenarios.
 
 ## Feature acceptance ownership
 
