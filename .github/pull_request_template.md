@@ -2,9 +2,7 @@
 
 Describe the problem and resulting behavior.
 
-## Related issue
-
-Closes #...
+<!-- Optional: link a relevant issue. Use Closes #N only when this PR completes it. -->
 
 ## Rationale and consequences
 

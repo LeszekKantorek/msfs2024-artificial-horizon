@@ -111,6 +111,6 @@ The [visual-object decision](../adr/0005-visual-object-composition.md) records t
 * Extract shared rules only for actual independent consumers, not a planned instrument or a test-only file boundary.
 * Preserve [coherent geometry and fresh readings](lifecycle.md#coalesced-frame-rendering) in one animation callback, including pending geometry under the unavailable cover.
 * Apply the [painted-bound and clipping checks](rendering.md#painted-bounds-and-clipping-checks) to distinguish background overlap from indication collisions.
-* Keep real-device acceptance evidence separate from desktop checks. GitHub issues own real-device acceptance evidence.
+* Keep real-device acceptance evidence separate from desktop checks. Record real-device acceptance evidence in the PR, a related issue, or a durable linked validation record.
 
 > Implementation and source review do not establish final validation or real iOS Safari and Android Chrome acceptance.

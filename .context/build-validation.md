@@ -12,4 +12,4 @@ status: active
 * Passing checks without a simulator does not establish SDK or simulator compatibility.
 * Application compilation, Rust/JavaScript tests, and acceptance-validator tests run locally; local validation remains mandatory for the selected scope.
 * Keep [PR acceptance](../.github/workflows/acceptance.yml) and its trusted-code boundary. Remove the `Build & Test` required status from the `main` ruleset while preserving `Acceptance criteria` and unrelated protections.
-* Record actual validation evidence in the owning issue or a linked validation record. PR descriptions explain the change, rationale, and consequences without mandatory test-status sections, command lists, or testing checklists.
+* Record actual validation evidence in the PR, a related issue, or a durable linked validation record. PR descriptions explain the change, rationale, and consequences without mandatory test-status sections, command lists, or testing checklists.

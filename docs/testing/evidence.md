@@ -5,7 +5,7 @@ Test records, acceptance rules, measurement limits, build provenance, and matche
 ## Test evidence records
 
 Record enough information to identify the checked behavior, reproduce the check, and understand the result's limits.
-Store results in the owning issue or a linked validation record when publication is authorized.
+Store results in the PR, a related issue, or a durable linked validation record when publication is authorized.
 Keep change dates and execution status with that record.
 
 | Field | Record |

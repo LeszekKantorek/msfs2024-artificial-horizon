@@ -1,7 +1,7 @@
 # Testing guide
 
 Select shared checks by the changed boundary, then add the affected feature's acceptance scenarios.
-Record results and acceptance progress in the owning GitHub issue or a linked validation record.
+Record results and acceptance progress in the PR, a related GitHub issue, or a durable linked validation record.
 
 ## Find the required procedure
 

@@ -36,7 +36,7 @@ Preserve accepted decisions while resolving the current task.
 
 Use this procedure for a detailed plan, with depth proportional to the change.
 
-1. Read the issue, supplied documents, applicable reference images, and contracts selected through project maps.
+1. Read the requested outcome, any related issue, supplied documents, applicable reference images, and contracts selected through project maps.
 2. Check the current implementation and identify the base revision.
 3. Resolve replaced requirements from their authority and record which earlier requirements still apply.
 4. State the intended result, accepted decisions, scope boundaries, and behavior that must remain unchanged.
