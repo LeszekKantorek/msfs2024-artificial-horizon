@@ -19,6 +19,7 @@ Use the requested outcome, current branch and diff, related issues, and availabl
    * When starting a new branch, follow the [contribution workflow](../../../CONTRIBUTING.md#workflow).
 3. Establish the scope and prerequisites from the available records:
    * Read the Task when available, its Work Item, and the relevant Initiative under the [work organization model](../../../docs/work-organization.md).
+   * Use [issue and artifact retrieval](../../../.context/repository-instructions.md#read-github-issue-context) for those records before assessing scope or completion.
    * For work without an issue, use the agreed outcome.
 4. Review the diff against the agreed scope and [change requirements](../../../CONTRIBUTING.md#change-requirements).
    Exclude local plans, credentials, SDK material, and build output.

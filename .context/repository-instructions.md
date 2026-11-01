@@ -18,6 +18,31 @@ Use [finding promotion](../CONTRIBUTING.md#promote-agreed-findings) to continue 
 
 ## GitHub issue records
 
+### Read GitHub issue context
+
+Before planning or execution, read the issue and its required parent context:
+
+1. Fetch current issue content, metadata, and relevant comments. Always list artifacts separately, even when the issue response does not mention them.
+   Refresh this context for new execution sessions or relevant changes.
+2. Check each response before continuing. Treat failed or incomplete reads as missing context, not an empty artifact list.
+   Resolve missing context before dependent work.
+   For pagination, request another page after each successful page containing 100 artifacts.
+   Stop after a successful page containing fewer than 100 artifacts.
+3. Read complete artifact content and relevant linked material. Retrieve individual artifacts when their content is missing or truncated.
+   Reuse previously read content only when its identity and update time remain unchanged.
+   Inspect HTML source without running embedded code.
+4. Compare artifacts with the issue, current contracts, and accepted decisions.
+   Resolve consequential conflicts before dependent work. Keep proposals distinct from accepted requirements.
+5. Cite artifact URLs and `updated_at` values in plans and handoffs.
+
+List artifacts through a supported reader or the connector's general fetch operation:
+
+`GET /repos/{owner}/{repo}/issues/{issue_number}/artifacts?per_page=100&page=1`
+
+See the [issue artifacts REST API](https://docs.github.com/en/rest/issues/artifacts) for individual retrieval and response details.
+
+### Maintain issue records
+
 Issue maintenance follows these authorization boundaries:
 
 * Do not automatically correct historical or completed issues, including their text, checklists, links, or status.

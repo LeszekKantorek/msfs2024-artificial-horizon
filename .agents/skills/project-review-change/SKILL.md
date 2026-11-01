@@ -21,6 +21,7 @@ Review the agreed diff and assess the returned findings in this order:
    * Report self-review separately from independent review.
 3. After implementation and applicable validation, prepare the [Task handoff](../../../.context/iterative-development.md#accepted-plans-and-handoffs) with these inputs:
    * Supply the Task, accepted decisions and amendments, applicable contracts, preserved invariants, validation evidence, and known limitations.
+   * Establish issue-based requirements through [issue and artifact retrieval](../../../.context/repository-instructions.md#read-github-issue-context). Include the relevant artifact references and unresolved reads in the review handoff.
    * Include a governing supplied plan when one exists. A local handoff index is optional.
    * For work without a Task or accepted plan, state that explicitly and use the agreed scope.
 4. Request a separate read-only review of that state under these scope requirements:
