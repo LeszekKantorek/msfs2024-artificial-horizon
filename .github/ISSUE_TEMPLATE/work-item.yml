@@ -6,6 +6,8 @@ body:
   - type: markdown
     attributes:
       value: |
+        If there is nothing to enter in a field, use `N/A`.
+
         A parent Initiative can be linked through GitHub's Relationships control.
 
         Prepare and maintain this Work Item under these requirements:
@@ -44,6 +46,6 @@ body:
     id: dependencies
     attributes:
       label: Dependencies
-      description: Link prerequisite issues or state None.
+      description: Link prerequisite issues or state N/A.
     validations:
       required: true

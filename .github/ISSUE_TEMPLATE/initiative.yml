@@ -6,6 +6,8 @@ body:
   - type: markdown
     attributes:
       value: |
+        If there is nothing to enter in a field, use `N/A`.
+
         Work Items can be linked through GitHub's Relationships controls.
   - type: textarea
     id: goal
@@ -39,6 +41,6 @@ body:
     id: dependencies
     attributes:
       label: Dependencies
-      description: State delivery dependencies and ordering constraints, or None.
+      description: State delivery dependencies and ordering constraints, or N/A.
     validations:
       required: true
