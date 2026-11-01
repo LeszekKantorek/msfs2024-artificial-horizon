@@ -5,8 +5,12 @@ status: active
 
 ## Repository rules
 
-[AGENTS](../AGENTS.md#project-constraints) owns the project constraints and [CONTRIBUTING](../CONTRIBUTING.md#change-requirements) owns contribution requirements.
-Use the [workflow](../CONTRIBUTING.md#workflow) for branch and PR preparation, and [acceptance tracking](../CONTRIBUTING.md#acceptance-criteria-and-additional-verification) for evidence and pending checks.
+Use these owners for repository requirements and procedures:
+
+* Apply the project constraints in [AGENTS](../AGENTS.md#project-constraints).
+* Apply the contribution requirements in [CONTRIBUTING](../CONTRIBUTING.md#change-requirements).
+* Follow the [workflow](../CONTRIBUTING.md#workflow) for branch and PR preparation.
+* Use [acceptance tracking](../CONTRIBUTING.md#acceptance-criteria-and-additional-verification) for evidence and pending checks.
 
 ## Follow-up findings
 
@@ -25,11 +29,14 @@ Issue maintenance follows these authorization boundaries:
 * Report obsolete links or contradictory statements in historical issues instead of silently repairing them.
 * Honor explicit exclusions for individual issues, even when they remain open.
 
-Documentation owns requirements and contracts. Issues track work, unresolved proposals, execution results, and acceptance evidence.
-The [work organization model](../docs/work-organization.md) defines each level, completion, and the separate migration of existing issues.
-The main conversation retains execution gaps and consultation details under [execution reporting](iterative-development.md#record-execution-findings).
+Keep records in the owners defined by the [work organization model](../docs/work-organization.md):
 
+* Keep requirements and contracts in documentation.
+* Keep work, unresolved proposals, execution results, and acceptance evidence in Issues.
+* Retain execution gaps and consultation details in the main conversation under [execution reporting](iterative-development.md#record-execution-findings).
 * State requirements so they can be understood without opening an issue.
 * Issue links can identify work or supporting evidence. They must not replace the requirement in its documentation owner.
 * Keep accepted requirements for future features in documentation, explicitly marked as planned.
 * An unresolved idea does not become a requirement merely because it appears in an issue.
+
+Use the work organization model when checking completion or planning a separately authorized migration of existing Issues.

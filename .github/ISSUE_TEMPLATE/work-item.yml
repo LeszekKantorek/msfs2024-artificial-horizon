@@ -6,9 +6,12 @@ body:
   - type: markdown
     attributes:
       value: |
-        Set the actual parent Initiative through GitHub's parent/sub-issue relationship after publication.
-        The parent reference in this form does not create that relationship.
-        Plan only the Tasks justified by current evidence. Completing current Tasks does not automatically complete this Work Item.
+        Prepare and maintain this Work Item under these requirements:
+
+        * After publication, set and verify the actual parent Initiative through GitHub's parent/sub-issue relationship.
+          The parent reference in this form does not create that relationship.
+        * Base Task instructions on current evidence. Use diagnostic Tasks when required findings are unavailable.
+        * Confirm this Work Item's acceptance criteria before closing it. Completed Tasks alone do not establish its result.
   - type: input
     id: parent
     attributes:

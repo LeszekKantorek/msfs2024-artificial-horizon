@@ -10,15 +10,18 @@ Shared pages define contracts used across instruments.
 
 ## Terminology
 
+Use these terms consistently in project documentation:
+
 * Electronic Flight Instrument (EFI) names the complete compact instrument in this project.
 * Artificial horizon names its attitude indication and remains part of the application name.
 * The intended presentation resembles a small standby instrument rather than a complete integrated cockpit display. This does not imply an independent backup data source.
 * Primary Flight Display (PFD) describes a display role and is not exclusive to the Garmin G1000. Garmin describes the G5 as an [electronic flight instrument usable as a primary or backup instrument](https://www.garmin.com/en-US/blog/aviation/garmin-introduces-electronic-flight-instrument-experimental-aircraft/).
 
-Test scripts, fixture variables, and ADRs use the technical identifier `pfd`.
-Their names do not expand the product scope. Use EFI in new descriptions of the project.
+* Use EFI in new project descriptions. The `pfd` identifier in scripts, fixture variables, and ADRs does not expand product scope.
 
 ## Product scope and reference
+
+Preserve these product requirements and evidence limits:
 
 * Preserve mobile readability, low delay, explicit unavailable states, and G5-inspired hierarchy with original assets.
 * Keep simulator access read-only. Do not add menus, knobs, simulator editing, or synchronization commands.
@@ -34,7 +37,9 @@ Their names do not expand the product scope. Use EFI in new descriptions of the 
 | Illustration | Section 3.3, printed **Page 8 of 25**, physical PDF page **13** |
 | Behavior | Subsequent subsections |
 
-Use original graphics. Do not embed PDF screenshots or copy the bezel.
+Apply these requirements when using the reference guide:
+
+* Create original graphics rather than embedding PDF screenshots or copying the bezel.
 
 | Included illustration items | EFI capability | Feature documentation |
 | --- | --- | --- |
@@ -66,7 +71,10 @@ Use original graphics. Do not embed PDF screenshots or copy the bezel.
 STD is a local display mode, not a pressure unit or confirmation of the cockpit setting.
 The [BARO reference](altitude.md) defines local preference behavior and conversion from transport pressure in hPa.
 
-* Demo speed thresholds belong to an explicit synthetic profile, not assumed real-aircraft performance. Live profile availability follows the [SimConnect observations](../sources/simconnect.md#optional-instrument-observations).
+Apply these speed-profile constraints:
+
+* Define Demo thresholds in an explicit synthetic profile without assuming real-aircraft performance.
+* Determine live profile availability from the [SimConnect observations](../sources/simconnect.md#optional-instrument-observations).
 
 ## Features
 
@@ -172,6 +180,8 @@ Apply these ownership rules when updating documentation:
 | Check shared geometry and integration | [Shared EFI checks](../testing/pfd.md) |
 | Perform real-phone acceptance | [Device procedure](../testing/devices.md#real-phone-acceptance-procedure) |
 | Record results, missing checks, and evidence | [Evidence rules](../testing/evidence.md), with results in the responsible issue or PR |
+
+Apply these validation and acceptance requirements:
 
 * Shared validation procedures supplement feature checks. They do not replace them.
 * Record actual iOS Safari and Android Chrome evidence separately in the responsible feature issue.

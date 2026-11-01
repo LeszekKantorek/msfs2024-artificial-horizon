@@ -41,11 +41,16 @@ Cargo builds the application before starting it.
 
 ### 3. Open the display
 
-Open [http://127.0.0.1:8080](http://127.0.0.1:8080) on the PC.
-Expect a moving attitude display, a left-side airspeed tape with TAS above it, ground speed, and a right-side altitude tape with pressure setting.
-Press `Ctrl+C` in PowerShell to stop the server gracefully.
+Check the display and stop the server when finished:
+
+1. Open [http://127.0.0.1:8080](http://127.0.0.1:8080) on the PC.
+2. Check that attitude moves and that the left airspeed tape has TAS above it and ground speed.
+   The right altitude tape must show the pressure setting.
+3. Press `Ctrl+C` in PowerShell to stop the server gracefully.
 
 ## Use your phone
+
+Connect the phone to the server through the trusted private network:
 
 1. Connect the PC and phone to the same trusted private network.
 2. Stop the local server with `Ctrl+C` if it is still running.
@@ -64,14 +69,18 @@ Rust demo + HTTP server  --Wi-Fi--> Safari / Chrome
                          telemetry
 ```
 
+Apply these browser and connection requirements:
+
 * Use iOS Safari or Android Chrome. Rotate between portrait and landscape.
 * Text selection is disabled on the instrument panel to prevent accidental selection when touching the display.
 * Check the printed interface when a VPN or multiple adapters are active.
 * If address detection fails, use `ipconfig` to find the PC's private IP.
 * You can bind that IP directly with `--listen-address`.
 
-> Use the PC's LAN IP on the phone. `localhost` refers to the phone itself.
-> LAN access has no authentication. Do not forward the port on your router.
+Apply these LAN access constraints:
+
+* Use the PC's LAN IP on the phone. `localhost` refers to the phone itself.
+* Do not forward the server port on your router. LAN access has no authentication.
 
 ## Options and troubleshooting
 
@@ -94,17 +103,24 @@ Select native reception with `--source simconnect`:
 cargo run --locked --release --bin msfs2024-artificial-horizon -- --source simconnect --log ".local\simconnect-sessions\active-pause.jsonl"
 ```
 
-Place `SimConnect.dll` beside the running executable, or add `--dll` with its absolute path.
-The default DLL location is independent of the working directory.
-Optional `--log` appends sessions to exactly the supplied file; distinguish scenarios by filename.
-See [SimConnect setup and scenarios](docs/sources/simconnect.md) for requirements and observation procedures.
-This mode starts HTTP/SSE with the same address and port options as Demo.
-Add `--listen-address 0.0.0.0 --port 8080` for access from the trusted private network.
-Open the printed URL on the PC or phone.
-HTTP remains available if SimConnect cannot start; the display shows unavailable data and the console explains the source failure.
-Live publication requires a running simulator, a loaded flight, zero pause flags, and a fresh valid sample.
-Recorded sessions support signs, pause/menu unavailability, fresh-sample recovery and reconnect in the tested setup; see [evidence and limits](docs/sources/simconnect.md#live-publication-evidence).
-The #5 receiver evidence does not establish integrated live-browser or mobile acceptance. Broader compatibility and complete performance coverage are not established.
+Configure native reception under these requirements:
+
+* Place `SimConnect.dll` beside the running executable, or add `--dll` with its absolute path.
+  The default DLL location is independent of the working directory.
+* If using `--log`, supply the exact file to append. Use distinct filenames to distinguish scenarios.
+* Follow [SimConnect setup and scenarios](docs/sources/simconnect.md) for the applicable requirements and observation procedures.
+* Use the same HTTP/SSE address and port options as Demo.
+  Add `--listen-address 0.0.0.0 --port 8080` for access from the trusted private network.
+* Open the printed URL on the PC or phone.
+
+Interpret source availability and recorded results under these limits:
+
+* If SimConnect cannot start, HTTP remains available with unavailable display data. The console explains the source failure.
+* Live publication requires a running simulator, a loaded flight, zero pause flags, and a fresh valid sample.
+* Recorded sessions support signs, pause/menu unavailability, fresh-sample recovery, and reconnect in the tested setup.
+  The [evidence and limits](docs/sources/simconnect.md#live-publication-evidence) define that coverage.
+* The #5 receiver evidence does not establish integrated live-browser or mobile acceptance.
+  Broader compatibility and complete performance coverage remain unverified.
 
 ## Project guide
 

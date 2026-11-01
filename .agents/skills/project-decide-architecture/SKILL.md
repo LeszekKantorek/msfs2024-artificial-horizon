@@ -11,7 +11,7 @@ Produce an evidence-based architecture comparison and ADR with accurate decision
 
 ## Steps
 
-Use this sequence for a material architecture choice rather than routine implementation detail.
+Use this sequence when the requested outcome requires a material architecture choice:
 
 1. Read the Task, its Work Item, and the relevant Initiative or supplied scope. Define the problem, current outcome, and next agreed use.
 2. Use the [governing-decision map](../../../.context/architecture-decisions.md#find-the-governing-decision) to select applicable ADRs, then read the current architecture and contracts for the affected boundary.
@@ -19,15 +19,24 @@ Use this sequence for a material architecture choice rather than routine impleme
 4. List required invariants and the evidence that would make the change necessary.
 5. Compare viable options, including retaining the existing design when it can meet the requirement.
 6. Evaluate each option against the criteria below and identify unresolved evidence.
-7. Use a focused experiment within the authorized scope when a material uncertainty prevents a supported choice. If the required evidence is unavailable, retain the unresolved alternatives and identify the evidence needed to choose.
-8. Compare options and explain the smallest supported structural change that serves the agreed use. Sol may select technical solutions within accepted requirements. If evidence is insufficient, retain the decision as unresolved.
-9. Record the material choice or unresolved comparison in an ADR with its actual decision status. A recommendation remains proposed until acceptance is established. Sol's explicit technical decision within authorized scope can establish acceptance. A change to approved requirements or direction requires a human decision.
+7. Resolve missing evidence under these constraints:
+   * Use a focused experiment within authorized scope when a material uncertainty prevents a supported choice.
+   * If required evidence is unavailable, retain unresolved alternatives and identify the evidence needed to choose.
+8. Compare options and explain the smallest supported structural change that serves the agreed use under these decision boundaries:
+   * Sol may select technical solutions within accepted requirements.
+   * If evidence is insufficient, retain the decision as unresolved.
+9. Record the material choice or unresolved comparison in an ADR under these status requirements:
+   * Keep a recommendation proposed until acceptance is established.
+   * Sol's explicit technical decision within authorized scope can establish acceptance.
+   * Obtain a human decision for changes to approved requirements or project direction.
 10. Update affected contracts and Task guidance after the decision enters the accepted scope. Preserve the decision, rationale, and any superseded requirements explicitly.
-11. Identify the validation needed for later implementation. If implementation is already authorized and performed, validate its outcome separately from the architectural rationale; this decision procedure does not itself authorize implementation.
+11. Identify the validation needed for later implementation under these authorization and evidence constraints:
+    * If implementation is authorized and performed, validate its outcome separately from the architectural rationale.
+    * Perform implementation only within its authorized scope. This decision procedure does not grant implementation permission.
 
 ## Comparison criteria
 
-Use criteria that affect the actual outcome.
+Compare options using criteria that affect the actual outcome:
 
 | Criterion | Question | Existing example |
 | --- | --- | --- |
@@ -41,7 +50,7 @@ Use criteria that affect the actual outcome.
 
 ## ADR and delivery records
 
-Follow the existing ADR examples and [documentation ownership](../../../AGENTS.md#documentation-ownership).
+Follow the existing ADR examples and [documentation ownership](../../../AGENTS.md#documentation-ownership) under these requirements:
 
 * Record the decision status, problem context, selected option, alternatives, rationale, and consequences.
 * Write the status as a plain line. Do not require a date or use a metadata table.
@@ -55,8 +64,10 @@ Follow the existing ADR examples and [documentation ownership](../../../AGENTS.m
 
 ## Completion checks
 
-Check that the ADR identifies the problem, viable options including the current design, governing constraints, comparison, rationale, consequences, and actual status.
-Retain uncertainties, unavailable experiments, superseded portions of earlier decisions, and conditions for reconsideration.
-Use the [change map](../../../.context/component-changes.md) to identify affected contracts and validation without duplicating their contents in the ADR.
-An accepted ADR does not establish implementation, simulator compatibility, or real-device acceptance.
-The [decision guidance](../../../.context/architecture-decisions.md#sources-and-limits) explains applicable boundaries and evidence limits.
+Check the decision record against these requirements:
+
+* Confirm that the ADR states the problem, viable options including the current design, constraints, comparison, rationale, consequences, and actual status.
+* Retain uncertainties, unavailable experiments, superseded portions of earlier decisions, and conditions for reconsideration.
+* Use the [change map](../../../.context/component-changes.md) to identify affected contracts and validation without duplicating their contents in the ADR.
+* Report implementation, simulator compatibility, and real-device acceptance separately from the ADR's acceptance status.
+* Apply the boundaries and evidence limits in the [decision guidance](../../../.context/architecture-decisions.md#sources-and-limits).

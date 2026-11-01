@@ -14,6 +14,8 @@ status: active
 | Performance measurements and evidence limits | [Measurements](../docs/testing/evidence.md#measurements-and-evidence), [device acceptance](../docs/testing/devices.md#real-phone-acceptance-procedure) |
 | SDK distribution requirements | [SimConnect requirements](../docs/sources/simconnect.md#requirements) |
 
+Apply these instrument-scope and evidence constraints:
+
 * The instrument scope includes Demo and available SimConnect data. See [SimConnect](../docs/sources/simconnect.md) and [ADR 0008](../docs/adr/0008-partial-airspeed-profile.md).
 * Apply the scope: no battery, HSI, or navigation guidance, and responsive layout instead of fixed 4:3.
 * Treat scope as planned until source and implementation evidence establish that it exists.

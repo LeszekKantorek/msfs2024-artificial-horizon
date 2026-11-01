@@ -6,8 +6,10 @@ body:
   - type: markdown
     attributes:
       value: |
-        Add Work Items through GitHub's actual parent/sub-issue relationships after publication.
-        Links and checklists do not create those relationships.
+        Organize this Initiative's Work Items under these requirements:
+
+        * After publication, add Work Items through GitHub's actual parent/sub-issue relationships.
+        * Verify the saved relationships. Links and checklists in the issue body do not establish parent relationships.
   - type: textarea
     id: goal
     attributes:

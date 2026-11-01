@@ -5,6 +5,8 @@ status: active
 
 ## Knowledge maintenance
 
+Maintain project knowledge under these requirements:
+
 * Select the context skill matching preservation, maintenance, mapping, diagnosis, compilation, or session review. Reuse established findings and decisions rather than repeating completed analysis.
 * Retain decisions, explanations, findings, and rules useful to future work, with their rationale and conditions of use.
 * Follow [documentation maintenance](../CONTRIBUTING.md#documentation-maintenance) for migration completeness, current status, and historical requirements.
@@ -29,20 +31,24 @@ These formats apply to `.context/` entries, their index, and navigation. They ar
 | `.context/index.md` | Keep a table-only map with each active entry once and concrete selection conditions |
 | Direct documentation routes | Include recurring tasks that can go directly to a canonical document or section |
 
+Maintain navigation and retrieval under these requirements:
+
 * Put direct routes in the [index](index.md) and conditional routes in [task guidance](task-guidance.md).
 * When moving knowledge, update incoming links, index rows, and replacement paths.
 * Exclude session records from knowledge retrieval under [hook maintenance](#hook-maintenance).
 
 ## Reinstall context skills
 
-Use [setup and skill sources](../CONTRIBUTING.md#3-prepare-agent-skills-and-hooks) for the tested revision and installation commands.
+Use [setup and skill sources](../CONTRIBUTING.md#3-prepare-agent-skills-and-hooks) to identify the tested revision and installation commands before reinstalling:
 
 1. Inspect the repository diff and preserve intentional local changes before replacing installed files.
 2. Install the six context skills from the pinned revision in setup.
 3. Update `skills-lock.json` and `.agents/skills/` together.
 4. Compare the installed files and hooks with the selected upstream revision.
 
-* Keep installer-generated `computedHash` values as source provenance; do not substitute local hash calculations.
+Preserve these constraints during reinstallation:
+
+* Keep installer-generated `computedHash` values as source provenance. Do not substitute local hash calculations.
 * Keep the six context skills byte-identical to the tested upstream revision while evaluating their behavior.
 * Keep `procedural-skill-creator` installed from `LeszekKantorek/agent-skills`.
 * Preserve the [exclusions](../.gitignore) that include the six context skills and `procedural-skill-creator` while excluding unrelated local skills.
@@ -62,24 +68,30 @@ The project skills below are versioned locally. They are separate from the pinne
 | [project-review-change](../.agents/skills/project-review-change/SKILL.md) | Edit its `SKILL.md` | [Evidence selection and limits](../docs/testing/evidence.md#select-evidence-by-failure-risk) |
 | [project-decide-architecture](../.agents/skills/project-decide-architecture/SKILL.md) | Edit its `SKILL.md` | [Governing-decision map and sources](architecture-decisions.md) |
 
-Each project skill owns its name, description, goal, and procedure. Edit its `SKILL.md` directly.
-Keep one maintained copy of each procedure; documentation and maps link to the owning skill.
-After edits, check selection conditions, relative links, and preservation of constraints and evidence limits.
-The project skill directories are explicitly included by [.gitignore](../.gitignore); unrelated local skills remain ignored.
-Keep agent planning rationale, diagnostic maps, and evidence limits in `.context`, with references to the owning skills.
-Project and user documentation retain their relevant requirements and evidence in `docs/`.
-Select skills by task; no fixed sequence of project skills is required. Apply project-write-content to Markdown and technical-writing-rules to language within its scope.
+Maintain project procedures under these ownership and validation requirements:
 
+* Edit each skill's name, description, goal, and procedure in its owning `SKILL.md`.
+* Keep one maintained copy of each procedure. Documentation and maps must link to that owner.
+* After edits, check selection conditions, relative links, retained constraints, and evidence limits.
+* Preserve the project skill inclusions in [.gitignore](../.gitignore). Unrelated local skills must remain ignored.
+* Keep agent planning rationale, diagnostic maps, and evidence limits in `.context`, with references to the owning skills.
+* Keep project and user requirements and evidence in their relevant `docs/` owners.
+* Select skills by the requested outcome. No fixed sequence of project skills is required.
+* Apply project-write-content to Markdown and technical-writing-rules to language within its scope.
 * Use [procedural-skill-creator](../.agents/skills/procedural-skill-creator/SKILL.md) when designing or revising a skill's executable procedure.
 * Keep publicly required rationale and evidence in project documentation; edit procedure steps only in their designated owner.
 
 ## Session tooling compatibility
+
+Preserve these session-tooling contracts:
 
 * The session registry is UTF-8 CSV at `.context/sessions.log`, with an OS-backed `.context/.sessions.lock`.
 * The tools do not read or migrate `.context/sessions/`. Retain that metadata separately; absence from the CSV registry does not establish review.
 * Keep session-tooling tests upstream in `context-skills`.
 
 ## Hook maintenance
+
+Maintain the hook integration under these requirements:
 
 * Read [hook setup](../CONTRIBUTING.md#session-hooks) for sources, events, dependencies, and trust steps.
 * Preserve unrelated hooks when updating the integration.

@@ -5,8 +5,10 @@ status: active
 
 ## Practical selection
 
-Use this table for tasks that need more than one source or a condition-dependent route.
+This table selects sources for tasks that cross knowledge areas or require a condition-dependent route.
 [AGENTS](../AGENTS.md#context-selection) owns context selection and the fallback to the index.
+
+Use these direct routes when their conditions apply:
 
 * For instrument input changes, use the [wire contract](../docs/telemetry-contract.md#fields-and-conventions).
 * For geometry or layer changes, use [layout validation](../docs/testing/pfd.md#geometry-and-paint-regression-checks).

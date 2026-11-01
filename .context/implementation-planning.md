@@ -38,8 +38,12 @@ The planning skill owns Task preparation, while [Task execution](iterative-devel
 
 ## Sources and limits
 
-Select evidence appropriate to the change, and distinguish independent review from validation.
-Instruction review and scenario walkthroughs establish document coverage. They do not establish actual agent behavior, model selection, or successful GitHub publication.
+Interpret planning evidence under these limits:
+
+* Select evidence that addresses the changed behavior and its failure risks.
+* Report independent review separately from validation.
+* Treat instruction reviews and scenario walkthroughs as evidence of document coverage.
+  Claims about agent behavior, model selection, or GitHub publication require observed results of those operations.
 
 ## Plan quality checks
 

@@ -3,9 +3,14 @@ description: Execute Tasks, verify context, consult Sol, preserve accepted decis
 status: active
 ---
 
-Use [project-decide-architecture](../.agents/skills/project-decide-architecture/SKILL.md) to assess material structural choices against the current outcome and next agreed use.
-Use [project-plan-change](../.agents/skills/project-plan-change/SKILL.md) to turn the accepted choice into executable Tasks.
 The [work organization model](../docs/work-organization.md) defines the hierarchy and responsibilities.
+
+Select the procedure that matches the requested result:
+
+* Use [project-decide-architecture](../.agents/skills/project-decide-architecture/SKILL.md) to assess material structural choices against the current outcome and next agreed use.
+* Use [project-plan-change](../.agents/skills/project-plan-change/SKILL.md) to turn the accepted choice into executable Tasks.
+
+Apply these scope and component-boundary requirements:
 
 * Keep speculative frameworks and later issues outside current scope.
 * Do not postpone useful structural changes solely because the current skeleton works.
@@ -14,6 +19,8 @@ The [work organization model](../docs/work-organization.md) defines the hierarch
 * Apply the [PFD composition rules](../docs/efi/composition.md#rationale-and-regression-lessons) for calculation ownership and extraction to actual shared consumers.
 
 ## Accepted plans and handoffs
+
+Prepare and preserve handoffs under these requirements:
 
 * Use a self-contained Task as the primary execution handoff. Read its complete instructions, decisions, invariants, and applicable amendments before edits or delegation.
 * Preserve supplied accepted plans verbatim and locally, including their original language. Retain existing plans and their amendments without requiring future handoffs to use `.local/plans/`.
@@ -24,6 +31,8 @@ The [work organization model](../docs/work-organization.md) defines the hierarch
 
 ### Prepare Task context
 
+Prepare the context before executing the Task:
+
 1. Read the Task, its Work Item, and the source sections required for its scope. Establish the intended result, constraints, dependencies, and validation.
 2. Check the current revision and relevant changes. Verify cited files, sections, line ranges, and consequential assumptions against current code and contracts.
 3. If lines have moved, locate the intended passage by meaning and record a consequential mismatch. Line references remain valid handoff tools when checked.
@@ -32,21 +41,34 @@ The [work organization model](../docs/work-organization.md) defines the hierarch
 
 ### Consult Sol
 
-Consult when a missing requirement, ambiguous contract, conflicting source, unexpected dependency, or unresolved technical choice needs broader analysis.
-Consult as soon as that need is clear. No fixed number of failed attempts is required.
+Use consultation when any of these conditions requires broader analysis:
+
+* A requirement or consequential technical decision is missing from the Task.
+* A contract is ambiguous or the required sources conflict.
+* An unexpected dependency requires analysis beyond routine implementation.
+
+Start the consultation when the need is established, without waiting for a fixed number of failed attempts:
 
 1. State the problem, affected criterion, relevant code and source sections, evidence, attempted checks, and one concrete question.
-2. Start a Sol Medium subagent when active instructions authorize consultation delegation and the environment supports it.
-   Check model-selection capabilities before requesting a model. Do not claim that a model or reasoning setting was selected when the host cannot select it.
+2. Start a Sol Medium subagent when active instructions authorize consultation delegation and the environment supports it:
+   * Check model-selection capabilities before requesting a model.
+   * Do not claim that a model or reasoning setting was selected when the host cannot select it.
 3. Sol compares viable solutions and chooses the best supported technical solution within the accepted scope. Routine technical decisions do not require human confirmation.
-4. If a solution conflicts with approved requirements or changes project direction, record the conflict. Obtain the human decision before dependent work.
-   Continue possible work within the accepted scope. Do not mark unmet criteria complete.
+4. If a solution conflicts with approved requirements or changes project direction, apply these requirements:
+   * Record the conflict and obtain the human decision before dependent work.
+   * Continue possible work within the accepted scope.
+   * Keep unmet criteria unconfirmed.
 5. Terra records the question, considered options, chosen solution, rationale, and subsequent result in the main conversation, then continues execution.
 
-If delegation or the requested model is unavailable, report the limitation without silently substituting a model.
-Continue independent work and routine decisions within scope. Keep the unresolved dependent work explicit rather than claiming the consultation or Task completed.
+If delegation or the requested model is unavailable, apply these requirements:
+
+* Report the unavailable capability without silently substituting another model.
+* Continue independent work and routine decisions within the accepted scope.
+* Record unresolved dependent work explicitly. Do not claim that an unavailable consultation or incomplete Task was completed.
 
 ### Record execution findings
+
+Preserve execution findings under these requirements:
 
 * Record missing Task information, context gaps, contradictions, and important independent decisions in the main conversation, including problems resolved successfully.
 * Record consultation reasons, questions, options, decisions, rationale, and whether the resulting solution worked. A subagent transcript alone is insufficient.
@@ -72,11 +94,15 @@ Finish in the main conversation with a self-contained summary covering every fie
 | Unresolved problems | Remaining limitations, risks, missing information, and unconfirmed criteria |
 | Planning feedback | What similar Tasks should include to prevent unnecessary analysis or consultation |
 
-State explicitly when there were no significant gaps, consultations, independent decisions, or unresolved problems.
-A completion claim, file list, or link to a local journal does not replace this summary.
-The main conversation must support later JSON session review through the existing Context Skills without access to temporary files or subagent histories.
+The summary must satisfy these completeness requirements:
+
+* State explicitly when there were no significant gaps, consultations, independent decisions, or unresolved problems.
+* Include the information in the table rather than substituting a completion claim, file list, or link to a local journal.
+* Preserve enough information for JSON session review through the existing Context Skills without access to temporary files or subagent histories.
 
 ## Findings outside the current scope
+
+Handle findings without expanding the authorized scope:
 
 * Record the observation, expected behavior, supporting evidence, and status without expanding the authorized implementation scope.
 * Distinguish accepted requirements from implemented behavior. A documented target does not establish that the code already meets it.
