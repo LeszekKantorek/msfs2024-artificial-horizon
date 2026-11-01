@@ -15,20 +15,20 @@
 | [Validation scope](../docs/testing/index.md#validation-by-change-scope) | Selecting required checks and shared commands, runtime and device procedures; feature scenarios remain on feature pages. |
 | [Developer setup](../CONTRIBUTING.md) | Finding development setup, context tooling, and contribution workflow. |
 | [Documentation maintenance](../CONTRIBUTING.md#documentation-maintenance) | Moving or consolidating documentation, preserving meaning, or checking historical requirements. |
-| [Roadmap](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9) | Reading delivery order and dependencies. |
-| [Issue records](repository-instructions.md#github-issue-records) | Distinguishing requirements from task status and execution results in issues and PRs. |
+| [Work organization](../docs/work-organization.md) | Finding the issue hierarchy, responsibilities, iterative planning, completion rules, and adoption boundaries. |
+| [MVP Initiative target](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9) | Reading MVP goals and delivery dependencies; migration from the existing roadmap is separate. |
 | [Architecture decision records](../docs/adr/) | Reading decisions and their lifecycle rather than implementation status. |
 | [Contribution workflow](../CONTRIBUTING.md#workflow) | Preparing an issue, branch, or PR. |
 | [Acceptance tracking](../CONTRIBUTING.md#acceptance-criteria-and-additional-verification) | Recording verified criteria, evidence, and pending checks. |
-| [Repository rules](repository-instructions.md) | Finding contribution constraints, acceptance criteria, or follow-up rules. |
+| [Repository rules and issue records](repository-instructions.md) | Finding contribution constraints, acceptance and follow-up rules, or distinguishing requirements from issue status and execution evidence. |
 | [PR acceptance control](pr-acceptance.md) | Diagnosing acceptance status, changing the validator, or activating its required check. |
 | [Task guidance selection](task-guidance.md) | The direct route is unclear, a task crosses several areas, or routing guidance itself needs maintenance. |
-| [Implementation planning](implementation-planning.md) | Finding planning rationale and evidence limits, or the owning project-plan-change skill. |
+| [Implementation planning](implementation-planning.md) | Finding the rationale and evidence limits for iterative Work Item planning and self-contained Tasks, or the owning project-plan-change skill. |
 | [Error diagnosis](error-diagnosis.md) | Selecting symptom-specific boundaries and restrictions, or the owning project-diagnose-failure skill. |
 | [Security review](security-review.md) | Reviewing changes to network exposure, input handling, dependencies, secrets, permissions, or CI trust boundaries. |
 | [Changes across components](component-changes.md) | Selecting contracts and checks for behavior changes across providers, telemetry, HTTP, and the browser. |
 | [Architecture decisions](architecture-decisions.md) | Finding governing decisions, their scope and history, or the owning project-decide-architecture skill. |
-| [Iterative development](iterative-development.md) | Choosing module boundaries or preserving accepted plans, handoffs, and amendments locally without publishing them. |
+| [Iterative development](iterative-development.md) | Executing Tasks, checking context, consulting Sol, preserving accepted decisions, and reporting gaps and results in the main conversation. |
 | [Windows validation](windows-validation.md) | Diagnosing SAC blocking, error 4551, or Rust E0463. |
 | [Build validation](build-validation.md) | Changing Cargo features, local build commands, workflow checks, or required statuses. |
 | [Local validation environment](local-validation-environment.md) | Diagnosing missing Playwright, blocked local test operations, executable replacement, or fixture reachability. |

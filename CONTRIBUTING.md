@@ -26,8 +26,10 @@ git clone https://github.com/LeszekKantorek/msfs2024-artificial-horizon.git
 cd msfs2024-artificial-horizon
 ```
 
-Run subsequent commands from the repository root.
-Use the Windows x64 MSVC toolchain when installing rustup.
+Prepare the toolchain under these requirements:
+
+* Run subsequent commands from the repository root.
+* Use the Windows x64 MSVC toolchain when installing rustup.
 
 ```powershell
 rustup default stable
@@ -61,8 +63,10 @@ The project also includes [procedural-skill-creator](https://github.com/LeszekKa
 npx --yes skills add LeszekKantorek/agent-skills --agent codex --skill procedural-skill-creator --copy -y
 ```
 
-Choose the skill that fits the task; no skill sequence is required.
-Follow [AGENTS.md](AGENTS.md#context-selection) for agent work and procedure selection.
+Select agent guidance under these requirements:
+
+* Choose the skill that fits the Task. No fixed skill sequence is required.
+* Follow [AGENTS.md](AGENTS.md#context-selection) for agent work and procedure selection.
 
 #### Session hooks
 
@@ -92,17 +96,22 @@ To prepare the hooks:
 3. Open `/hooks` after installation or hook changes.
 4. Review and trust the project definitions as described in the [hook documentation](https://learn.chatgpt.com/docs/hooks).
 
-> Hooks register session metadata. They do not read transcripts or run reviews automatically.
-> Use `context-review-sessions` with `context-preserve` to process pending records later.
+Apply these hook and session-review constraints:
 
-The registry uses UTF-8 CSV with `session_date`, `session_id`, `path`, and `reviewed_date` columns.
-Exclude `.context/sessions.log` and `.context/.sessions.lock` from commits and knowledge retrieval.
-The session tools do not migrate or read `.context/sessions/`. Retain its metadata separately without treating its records as reviewed.
+* Treat hook output as session metadata. Hooks do not read transcripts or run reviews automatically.
+* Use `context-review-sessions` with `context-preserve` to process pending records later.
 
-For reinstalls, preserve intentional local changes, use the pinned revision above, and update installed skills and `skills-lock.json` together.
-Keep installer-generated hashes as source provenance and preserve unrelated hooks.
+Maintain the session registry and installed integration under these requirements:
+
+* Preserve the UTF-8 CSV columns `session_date`, `session_id`, `path`, and `reviewed_date` in the registry.
+* Exclude `.context/sessions.log` and `.context/.sessions.lock` from commits and knowledge retrieval.
+* Retain `.context/sessions/` metadata separately without treating it as reviewed. The session tools do not migrate or read that directory.
+* For reinstalls, preserve intentional local changes and use the pinned revision in [agent setup](#3-prepare-agent-skills-and-hooks).
+* Update installed skills and `skills-lock.json` together. Preserve installer-generated hashes as source provenance and keep unrelated hooks.
 
 ### 4. Check the environment
+
+Check the environment before starting development:
 
 1. Run the [automated checks](docs/testing/automated.md#automated-checks), including the build and tests.
 2. Start the demo:
@@ -128,32 +137,39 @@ Apply the [project constraints](AGENTS.md#project-constraints) and the requireme
 | Telemetry | Update compatible fixtures and consumers with the [wire contract](docs/telemetry-contract.md) |
 | Documentation | Distinguish planned behavior, implementation, and confirmed device acceptance under the [writing guidance](#writing-guidance) |
 
-Before delivery, apply the [validation scope matrix](docs/testing/index.md#validation-by-change-scope) and [evidence reuse rules](docs/testing/index.md#evidence-reuse).
-Local validation remains mandatory; GitHub Actions does not compile the application or run its test suites.
-Record results in the PR, a related issue, or a durable linked validation record against the tested revision and environment, including observations and unavailable checks.
-Use the [acceptance procedure](#acceptance-criteria-and-additional-verification) to track completion.
-Before marking work complete, confirm that required checks pass and acceptance criteria have supporting evidence.
+Before delivery, satisfy these validation and evidence requirements:
+
+* Apply the [validation scope matrix](docs/testing/index.md#validation-by-change-scope) and [evidence reuse rules](docs/testing/index.md#evidence-reuse).
+* Run required local validation. GitHub Actions does not compile the application or run its test suites.
+* Record the tested revision, environment, observations, results, and unavailable checks in the PR, related issue, or durable linked validation record.
+* Track completion through the [acceptance procedure](#acceptance-criteria-and-additional-verification).
+* Confirm that required checks pass and acceptance criteria have supporting evidence before marking work complete.
 
 ## Workflow
 
-1. Establish the requested outcome and validation expectations. Consult a related issue when available.
-2. Check dependencies in the [roadmap](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9).
+Follow the [work organization model](docs/work-organization.md) for issue levels, responsibilities, and iterative planning when carrying out this workflow:
+
+1. Read the Task, its Work Item, and the relevant Initiative. For work without an issue, establish the requested outcome and validation expectations directly.
+2. Check prerequisites and current context against the relevant source sections and code. Use accepted decisions and report consequential gaps before dependent work.
 3. Create a branch from current `main` named `change/<topic>`.
-4. Implement one reviewable outcome under the [change requirements](#change-requirements).
+4. Deliver one reviewable outcome under the [change requirements](#change-requirements). A diagnostic, research, or documentation Task does not require application code changes.
 5. Update affected documentation, contracts, and fixtures.
 6. Select and run checks through the [validation scope matrix](docs/testing/index.md#validation-by-change-scope).
 7. Follow [PR preparation](#prepare-a-pull-request) to prepare the description or publish the requested PR.
 
 ### Prepare a pull request
 
-Use [project-prepare-pr](.agents/skills/project-prepare-pr/SKILL.md) to prepare a local description or publish the requested PR.
-The skill owns the preparation procedure; this document retains the contribution requirements and acceptance-tracking rules.
-Describe what changed, why, and important design choices or consequences.
+Use [project-prepare-pr](.agents/skills/project-prepare-pr/SKILL.md) for local descriptions or authorized publication under these contribution requirements:
 
-* Link a relevant issue when one exists. Use a closing keyword only when the PR completes that issue. Issue linkage and acceptance checklists are optional.
+* Describe what changed, why, and important design choices or consequences.
+* Link the Task when one exists and reference its Work Item for context. Use a closing keyword only when the PR completes that issue's criteria.
+* A Task can use several PRs or no PR. Do not close its Work Item or Initiative solely because this PR completes a Task.
+* Issue linkage and acceptance checklists remain optional for work without an issue. Task instructions must still define observable acceptance criteria.
 * Record applicable validation evidence in the PR, a related issue, or a durable linked record. No fixed test-status section or command list is required.
 
 ### Acceptance criteria and additional verification
+
+Verify and record acceptance in this order:
 
 1. Select required validation from the change scope.
 2. Record confirming results in the PR, a related issue, or a durable linked record, including the tested commit and relevant environment.
@@ -161,18 +177,28 @@ Describe what changed, why, and important design choices or consequences.
 4. Leave supplied unconfirmed criteria unchecked. Record remaining verification and expected results in the PR, related issue, or linked record.
 5. Keep supplied checklists accurate. Unchecked criteria in a closing-linked issue and any visible unchecked PR task block the acceptance status.
 
-Draft PRs can retain incomplete acceptance; complete it before merge.
-A successful status does not replace required local validation.
-Use the [acceptance control reference](docs/pr-acceptance.md#checklist-scope) for parser rules and [status meanings](docs/pr-acceptance.md#understand-the-result) for blocking conditions.
+Apply the [completion rules](docs/work-organization.md#completion-and-evidence) at each issue level:
+
+* Close a Task only after its outcome and required verification are supported by evidence. A diagnostic result must distinguish confirmed findings from unresolved causes.
+* Evaluate each Work Item and Initiative against its own result and criteria. Completed children alone do not establish acceptance.
+* Keep a Work Item open for further planning when diagnostic results identify additional work or leave its required result unconfirmed.
+* Change issue status and publish evidence only within authorized GitHub work.
+
+Apply these merge and status constraints:
+
+* Draft PRs can retain incomplete acceptance. Complete required acceptance before merge.
+* Perform required local validation even when the acceptance status succeeds.
+* Use the [acceptance control reference](docs/pr-acceptance.md#checklist-scope) for parser rules and [status meanings](docs/pr-acceptance.md#understand-the-result) for blocking conditions.
 
 ### Promote agreed findings
 
-Collect reusable implementation findings in [#9](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9), referencing the originating task.
+Use confirmed findings to continue Work Item planning or define an agreed follow-up through these steps:
 
-1. Review a finding after its originating task closes and agree on the follow-up scope.
-2. Create the agreed issue with an outcome, acceptance criteria, and a link to the originating task.
-3. Apply the requested labels and set the actual parent/sub-issue relationship when a parent is required.
-4. Verify the saved labels and the parent shown in GitHub's Relationships section.
+1. Review the evidence, distinguish established findings from hypotheses, and define the authorized follow-up scope.
+   Diagnostic results can support further planning before the originating Task closes.
+2. Preserve durable requirements and reusable findings in their documentation owners. Link the originating Task and relevant results in the follow-up context.
+3. Prepare a Work Item or Task at the appropriate level. Publish it only when authorized; otherwise, return a complete draft.
+4. For authorized publication, verify label availability, apply the level label, and establish and verify the actual parent/sub-issue relationship.
 
 Each follow-up issue must remain usable without the originating conversation or local notes:
 
@@ -181,9 +207,11 @@ Each follow-up issue must remain usable without the originating conversation or 
 * Include acceptance criteria and their validation method, with observable expected results.
 * Preserve supporting findings and unresolved questions with their actual status.
 
-> A reference in the description or an epic task list does not establish a parent/sub-issue relationship.
+> A reference in the description or a checklist does not establish a parent/sub-issue relationship.
 
 ## Project guidance
+
+Apply these contribution and documentation requirements:
 
 * Apply the [change requirements](#change-requirements) and [acceptance procedure](#acceptance-criteria-and-additional-verification) before submitting a change.
 * Follow the [writing guidance](#writing-guidance) for documentation, knowledge entries, code comments, commit messages, and GitHub issues, comments, and PRs.
@@ -191,18 +219,22 @@ Each follow-up issue must remain usable without the originating conversation or 
 
 ## Writing guidance
 
+Write project text under these requirements:
+
 * Apply [technical-writing-rules](.agents/skills/technical-writing-rules/SKILL.md) for English technical language and accuracy within its scope.
 * Write concise, impersonal English with consistent terms across project text, including agent instructions and context entries.
 * Describe results, decisions, and procedures without personal narration such as "the owner", "owner-assisted", "the user reported", or "the assistant verified". Use wording such as "The configuration selects..." or "The decision requires...".
 * Retain technical ownership terms when they describe resource management or responsibilities.
 * Use the [project terminology](docs/efi/index.md#terminology): EFI for the complete instrument, artificial horizon for attitude indication. Keep technical identifiers consistent with their consumers.
 * Preserve requirements, units, limits, and uncertainty. Distinguish planned behavior, implementation, and confirmed acceptance.
-* Keep supplied accepted plans local and verbatim, including their original language.
+* Keep supplied accepted plan originals local and verbatim, including their original language. Prepare Task instructions in English while preserving accepted requirements and decisions.
 * Put feature requirements, presentation, implementation details, and tests on the owning feature page. Keep shared procedures in the testing guide.
 * Link canonical public documentation rather than agent context. Check moved content, links, anchors, and Markdown paragraph boundaries.
 * Use [project-write-content](.agents/skills/project-write-content/SKILL.md) for Markdown structure and examples, including when writing is part of implementation. Explicit project conventions take precedence over conflicting general defaults.
 
 ### Documentation maintenance
+
+Maintain documentation under these requirements:
 
 * Organize content for retrieval and understanding. Shortening text is not an independent goal.
 * Describe current requirements and behavior directly. Omit implementation chronicles and accounts of document edits from current reference documentation.

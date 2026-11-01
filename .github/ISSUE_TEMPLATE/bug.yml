@@ -1,7 +1,23 @@
 name: Bug report
-description: Report incorrect instrument, server, or connection behavior.
+description: Report incorrect behavior as a Work Item. A confirmed cause or proposed fix is not required.
 title: "[Bug]: "
+labels: ["work-item", "bug"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        This report is a Work Item and must meet these requirements:
+
+        * Describe observed behavior separately from suspected causes. A confirmed cause or proposed fix is not required.
+        * After publication, set and verify the actual parent Initiative through GitHub's parent/sub-issue relationship.
+          The parent reference in this form does not create that relationship.
+  - type: input
+    id: parent
+    attributes:
+      label: Parent Initiative
+      description: Identify the Initiative by issue number or URL, then verify its actual parent relationship after publication.
+    validations:
+      required: true
   - type: textarea
     id: environment
     attributes:

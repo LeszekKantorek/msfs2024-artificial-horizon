@@ -31,9 +31,11 @@
 | `tests/fixtures/snapshots.json` | Independent wire examples |
 | `tests/fixtures/attitudes.json` | Independent known poses |
 
-The model exposes no HTTP endpoint.
-`FlightSample` is cloneable rather than copyable. Publication owns its BARO text, and snapshot reads clone the sample.
-The additive builders preserve the original attitude/turn constructor and attitude-only publication path.
+Preserve these model boundaries and ownership rules:
+
+* Keep HTTP endpoints outside the telemetry model.
+* Preserve `FlightSample` as cloneable rather than copyable. Publication owns its BARO text, and snapshot reads clone the sample.
+* Preserve the original attitude/turn constructor and attitude-only publication path when using the additive builders.
 
 ## HTTP surface
 
@@ -50,10 +52,12 @@ data: {"schema_version":1,"sequence":42,"source":"demo","state":"live","sample_a
 
 ```
 
-1. Send a full named `telemetry` event on subscription.
-2. Send a full event on each publication.
-3. Send state transitions promptly.
-4. End every event with an empty line.
+Send SSE events under these requirements:
+
+* Send a full named `telemetry` event on subscription.
+* Send a full event on each publication.
+* Send state transitions promptly.
+* End every event with an empty line.
 
 | Timing | Initial value / rule |
 | --- | --- |
@@ -65,6 +69,8 @@ data: {"schema_version":1,"sequence":42,"source":"demo","state":"live","sample_a
 | Server shutdown | End HTTP connections with a five-second grace. Application composition separately stops acquisition |
 
 These durations are initial tuning values.
+
+Preserve these connection and delivery requirements:
 
 * Keep only one connection and retry timer active per page.
 * Omit SSE `id`. Ignore supplied `Last-Event-ID` and send latest state without history replay.
@@ -100,12 +106,16 @@ These durations are initial tuning values.
 | `heading_deg` | Optional finite magnetic heading in `[0, 360)`. Zero means north |
 | `selected_heading_deg` | Independently optional finite selected magnetic heading in `[0, 360)` |
 
+Normalize incoming telemetry under these requirements:
+
 * Providers convert SDK values to these conventions.
 * Check conversion in the SimConnect spike. Do not infer SimVar units from names alone.
 * If you introduce interpolation, use the shortest angular distance across roll wrap.
 * Do not clamp invalid or non-finite values into apparently valid telemetry.
 
 ### Optional coordinated-turn indications
+
+Apply these availability, validation, and presentation requirements:
 
 * Rust omits absent optional fields and all extensions in non-live snapshots.
 * New clients accept missing or `null` fields as unavailable indications.
@@ -138,6 +148,8 @@ Extended live example:
 
 ### Optional speed indications
 
+Apply these speed-field lifecycle and validity requirements:
+
 * Rust omits absent speeds and all three speed fields in non-live snapshots.
 * Each speed is independently optional. Missing, `null`, malformed, negative, or non-finite browser values become unavailable.
 * Speeds share the accepted sample's sequence, age, and expiry deadline with attitude.
@@ -156,6 +168,8 @@ Speed fields extend the live example above:
 `tests/fixtures/speed-samples.json` defines independent speed-profile checkpoints.
 
 ### Optional altitude and pressure setting
+
+Apply these independent altitude and pressure requirements:
 
 * Altitude is a source-supplied indication for its pressure setting; the browser does not calculate pressure corrections.
 * Altitude and BARO are independently optional and share the sample sequence, age, and expiry deadline.
@@ -177,6 +191,8 @@ Example additions to a live v1 snapshot:
 See the [Demo provider](sources/demo.md#altitude-and-pressure) for the deterministic scenario and fixture references.
 
 ### Optional selected altitude
+
+Apply these target availability and lifecycle requirements:
 
 * `selected_altitude_ft` is independently optional and shares the sample sequence, age, and expiry deadline.
 * Rust exposes `SelectedAltitude::new(feet)` and `FlightSample::with_selected_altitude` without changing existing constructors.
@@ -259,8 +275,8 @@ These extensions follow the existing sample lifecycle:
 * Missing, null, or malformed acceleration becomes unavailable independently of the profile and current readings.
 * Unknown additive profile fields are ignored. Each known threshold and reference is independently optional. Missing, null, or invalid members are omitted independently; an empty profile is unavailable. No global ordering or reference-to-VNE constraint applies.
 * Source/transport loss invalidates the panel. Local IAS loss does not invalidate a valid profile.
+* Use source-supplied acceleration rather than deriving it from browser receipt intervals.
 
-The browser never computes acceleration from browser receipt intervals.
 [Ranges, references, and trend](efi/airspeed-indications.md#presentation) defines the prediction, clipping, warnings, and fallback presentation.
 
 See the [Demo provider](sources/demo.md#speed-cycle-and-profile) for the deterministic scenario and fixture references.
@@ -287,10 +303,11 @@ Unavailable state example:
 | Unknown field | Client ignores it |
 | Malformed message, unknown state, non-finite/out-of-range attitude | Client rejects it |
 
-The server, contract, and embedded Web follow the [application delivery contract](architecture.md#application-delivery-contract).
-The endpoint and schema identifier describe the current application contract, not a promise of backward compatibility.
-Changes do not require parallel endpoints or retained legacy schemas solely to support earlier application versions.
+Apply these application and pressure-field compatibility constraints:
 
+* Deliver the server, contract, and embedded Web together under the [application delivery contract](architecture.md#application-delivery-contract).
+* Treat the endpoint and schema identifier as the current application contract, without a promise of backward compatibility.
+* Changes do not require parallel endpoints or retained legacy schemas solely to support earlier application versions.
 * `baro_inhg` is unsupported and has no adapter.
 * The current `baro_setting.pressure_hpa` field is distinct from `baro_inhg`.
 * Update consumers with the delivered server and browser.
@@ -315,6 +332,8 @@ estimated age = server sample_age_ms + browser monotonic time since receipt
 stale         = estimated age >= 1,000 ms
 ```
 
+Compute and preserve sample age under these requirements:
+
 * Compute server age with a monotonic clock immediately before sending.
 * Repeated equal values from fresh callbacks are valid samples.
 * Publishing a cached value again does not reset age.
@@ -324,6 +343,8 @@ stale         = estimated age >= 1,000 ms
 
 ### Browser indication
 
+Render source and transport availability under these requirements:
+
 * Keep transport states (`connecting` / `reconnecting`) separate from source state.
 * Obscure or flag attitude after errors, timeout, background/resume, or unavailable source.
 * Never replace unavailable attitude with a credible level horizon.
@@ -331,9 +352,14 @@ stale         = estimated age >= 1,000 ms
 
 ## Further EFI extension boundary
 
-> The fields above define current v1. The [EFI scope](efi/index.md#product-scope-and-reference) defines coverage and exclusions. Planned additions belong to [roadmap issue #9](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9).
+The fields above define current v1. The [EFI scope](efi/index.md#product-scope-and-reference) defines coverage and exclusions.
 
-Each feature slice must:
+Organize extension requirements and delivery under these rules:
+
+* Keep extension requirements in their feature or contract owner.
+* Plan delivery in the relevant Work Items and Tasks under the [work organization model](work-organization.md).
+
+Each feature slice must meet these integration requirements:
 
 * Define its optional normalized fields, units, independent validity, and freshness handling.
 * Update Rust and browser fixtures with the fields.
@@ -342,7 +368,7 @@ Each feature slice must:
 * Invalidate only the affected indication for malformed optional instrument data.
 * Preserve existing envelope/attitude validation and global source/transport invalidation.
 
-Constraints:
+Extensions must preserve these source and control constraints:
 
 * Do not advertise unimplemented fields as current contract fields.
 * Never substitute zero or demo values for missing data.
