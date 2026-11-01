@@ -16,6 +16,7 @@ Use these direct routes when their conditions apply:
 
 | Task | Read first | Extend only when relevant |
 | --- | --- | --- |
+| Read or refresh GitHub issue context | [Issue and artifact retrieval](repository-instructions.md#read-github-issue-context) | Before issue-based planning or execution, and when another project procedure uses issue context |
 | Preserve findings or review knowledge | The context skill matching the task and [knowledge conventions](agent-maintenance.md#knowledge-maintenance) | [Markdown structure](../.agents/skills/project-write-content/SKILL.md) when writing entries; [tool maintenance](agent-maintenance.md#project-procedure-skills) when changing skills |
 | Plan a Work Item | [project-plan-change](../.agents/skills/project-plan-change/SKILL.md) | [Planning rationale](implementation-planning.md#why-these-details-matter) when choosing detail; [work organization](../docs/work-organization.md) for hierarchy and publication boundaries |
 | Execute a Task or verify its context | [Task context preparation](iterative-development.md#prepare-task-context) | [Accepted plans and handoffs](iterative-development.md#accepted-plans-and-handoffs) when supplied plans or amendments govern execution; select contracts and checks by the affected behavior |

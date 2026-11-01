@@ -41,6 +41,7 @@ Planning must respect these scope and authorization rules:
 Establish the planning inputs and their authority:
 
 * Read the Work Item, its Initiative, supplied material, prior Task results, and sources selected through [task guidance](../../../.context/task-guidance.md#practical-selection).
+* Apply [issue and artifact retrieval](../../../.context/repository-instructions.md#read-github-issue-context) to the required issues before resolving decisions or drafting Tasks. Carry relevant artifact references and unresolved reads into the handoff.
 * For work without an Issue, use the supplied outcome. Identify the intended parent only if publication is requested.
 * Identify the base revision, relevant local changes, current implementation, source authority, and replaced requirements.
 * Establish the result, scope, constraints, invariants, existing dependencies, and acceptance criteria that remain unconfirmed.

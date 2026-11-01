@@ -13,7 +13,8 @@ Produce an evidence-based architecture comparison and ADR with accurate decision
 
 Use this sequence when the requested outcome requires a material architecture choice:
 
-1. Read the Task, its Work Item, and the relevant Initiative or supplied scope. Define the problem, current outcome, and next agreed use.
+1. Read the Task, its Work Item, and the relevant Initiative through [issue and artifact retrieval](../../../.context/repository-instructions.md#read-github-issue-context).
+   For work without an issue, use the supplied scope. Define the problem, current outcome, and next agreed use.
 2. Use the [governing-decision map](../../../.context/architecture-decisions.md#find-the-governing-decision) to select applicable ADRs, then read the current architecture and contracts for the affected boundary.
 3. Check the implementation separately from target design and unverified integration assumptions.
 4. List required invariants and the evidence that would make the change necessary.

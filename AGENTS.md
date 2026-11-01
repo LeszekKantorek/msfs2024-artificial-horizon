@@ -34,6 +34,7 @@ Retrieve project context in this order:
 
 Apply these reading and validation constraints:
 
+* Before planning or executing issue-based work, read the [GitHub issue context, including artifacts](.context/repository-instructions.md#read-github-issue-context).
 * A link is a reference, not an instruction to read every linked document recursively.
 * Reuse relevant content already read in this conversation while it remains applicable and unchanged.
 * Read README for startup or user-facing behavior, architecture for changed boundaries, and CONTRIBUTING for the applicable contribution stage.

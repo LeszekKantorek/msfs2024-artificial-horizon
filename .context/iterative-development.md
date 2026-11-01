@@ -33,7 +33,8 @@ Prepare and preserve handoffs under these requirements:
 
 Prepare the context before executing the Task:
 
-1. Read the Task, its Work Item, and the source sections required for its scope. Establish the intended result, constraints, dependencies, and validation.
+1. Read the Task and its Work Item through [issue and artifact retrieval](repository-instructions.md#read-github-issue-context).
+   Then read the source sections required for its scope. Establish the intended result, constraints, dependencies, and validation.
 2. Check the current revision and relevant changes. Verify cited files, sections, line ranges, and consequential assumptions against current code and contracts.
 3. If lines have moved, locate the intended passage by meaning and record a consequential mismatch. Line references remain valid handoff tools when checked.
 4. Resolve routine implementation details within scope. Use accepted decisions without redesigning them merely because the Task entered a new session.

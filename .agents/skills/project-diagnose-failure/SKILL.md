@@ -11,6 +11,7 @@ Establish a reproducible failure mechanism or a bounded unresolved diagnosis, th
 
 ## Steps
 
+For issue-based diagnosis, read [issue and artifact context](../../../.context/repository-instructions.md#read-github-issue-context) before establishing requirements or earlier findings.
 Follow this sequence within the affected task scope.
 
 1. Record the expected behavior and the observed failure separately.
