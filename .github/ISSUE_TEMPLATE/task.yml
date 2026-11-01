@@ -6,19 +6,12 @@ body:
   - type: markdown
     attributes:
       value: |
+        A parent Work Item can be linked through GitHub's Relationships control.
+
         Prepare and complete this Task under these requirements:
 
-        * After publication, set and verify the actual parent Work Item through GitHub's parent/sub-issue relationship.
-          The parent reference in this form does not create that relationship.
         * Include the testing and review applicable to this Task's outcome.
         * Verify the assigned result before completion. An investigation can deliver that result without code changes or a PR.
-  - type: input
-    id: parent
-    attributes:
-      label: Parent Work Item
-      description: Identify the Work Item by issue number or URL, then verify its actual parent relationship after publication.
-    validations:
-      required: true
   - type: textarea
     id: outcome
     attributes:

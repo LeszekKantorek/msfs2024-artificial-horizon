@@ -6,19 +6,12 @@ body:
   - type: markdown
     attributes:
       value: |
+        A parent Initiative can be linked through GitHub's Relationships control.
+
         Prepare and maintain this Work Item under these requirements:
 
-        * After publication, set and verify the actual parent Initiative through GitHub's parent/sub-issue relationship.
-          The parent reference in this form does not create that relationship.
         * Base Task instructions on current evidence. Use diagnostic Tasks when required findings are unavailable.
         * Confirm this Work Item's acceptance criteria before closing it. Completed Tasks alone do not establish its result.
-  - type: input
-    id: parent
-    attributes:
-      label: Parent Initiative
-      description: Identify the Initiative by issue number or URL, then verify its actual parent relationship after publication.
-    validations:
-      required: true
   - type: textarea
     id: outcome
     attributes:
