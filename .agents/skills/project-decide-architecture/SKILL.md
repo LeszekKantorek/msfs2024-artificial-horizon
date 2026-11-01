@@ -13,16 +13,16 @@ Produce an evidence-based architecture comparison and ADR with accurate decision
 
 Use this sequence for a material architecture choice rather than routine implementation detail.
 
-1. Define the problem, current outcome, and next agreed use from the issue and roadmap.
+1. Read the Task, its Work Item, and the relevant Initiative or supplied scope. Define the problem, current outcome, and next agreed use.
 2. Use the [governing-decision map](../../../.context/architecture-decisions.md#find-the-governing-decision) to select applicable ADRs, then read the current architecture and contracts for the affected boundary.
 3. Check the implementation separately from target design and unverified integration assumptions.
 4. List required invariants and the evidence that would make the change necessary.
 5. Compare viable options, including retaining the existing design when it can meet the requirement.
 6. Evaluate each option against the criteria below and identify unresolved evidence.
 7. Use a focused experiment within the authorized scope when a material uncertainty prevents a supported choice. If the required evidence is unavailable, retain the unresolved alternatives and identify the evidence needed to choose.
-8. Recommend the smallest structural change supported by evidence that serves the agreed use, and explain its costs. If evidence is insufficient, record the decision as unresolved rather than inventing certainty.
-9. Record the material choice or unresolved comparison in an ADR with its actual decision status. A recommendation remains proposed until acceptance is established; do not mark it accepted merely because this skill produced it.
-10. Update affected contracts and the implementation plan after the decision enters the accepted scope.
+8. Compare options and explain the smallest supported structural change that serves the agreed use. Sol may select technical solutions within accepted requirements. If evidence is insufficient, retain the decision as unresolved.
+9. Record the material choice or unresolved comparison in an ADR with its actual decision status. A recommendation remains proposed until acceptance is established. Sol's explicit technical decision within authorized scope can establish acceptance. A change to approved requirements or direction requires a human decision.
+10. Update affected contracts and Task guidance after the decision enters the accepted scope. Preserve the decision, rationale, and any superseded requirements explicitly.
 11. Identify the validation needed for later implementation. If implementation is already authorized and performed, validate its outcome separately from the architectural rationale; this decision procedure does not itself authorize implementation.
 
 ## Comparison criteria
@@ -50,7 +50,7 @@ Follow the existing ADR examples and [documentation ownership](../../../AGENTS.m
 * Explain which earlier decision changes and preserve unaffected requirements when a later decision replaces part of it.
 * Distinguish proposed choices, accepted decisions, implemented behavior, and verified acceptance.
 * Keep delivery status and execution results in the issue or PR.
-* Preserve accepted plans and amendments under the [local handoff rules](../../../.context/iterative-development.md#accepted-plans-and-handoffs).
+* Preserve accepted decisions, supplied plans, and amendments under the [Task handoff rules](../../../.context/iterative-development.md#accepted-plans-and-handoffs).
 * Apply [project-plan-change](../project-plan-change/SKILL.md) and [evidence selection](../../../docs/testing/evidence.md#select-evidence-by-failure-risk) and [independent review guidance](../../../docs/testing/evidence.md#independent-subagent-review) after resolving the architectural choice.
 
 ## Completion checks

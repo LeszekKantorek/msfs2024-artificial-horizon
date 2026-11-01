@@ -11,7 +11,7 @@ status: active
 * Keep independent topics separate so agents can read only relevant entries. Link canonical sources instead of repeating their commands or rules.
 * Remove session progress and expired task-specific permissions from reusable knowledge.
 * Remove obsolete pending items for completed work while retaining useful constraints and lessons.
-* Preserve active plans under the [plan-preservation rules](iterative-development.md#accepted-plans-and-handoffs). Removing obsolete expectations does not authorize deleting those plans.
+* Preserve existing accepted plans and amendments under the [handoff rules](iterative-development.md#accepted-plans-and-handoffs). Tasks are the primary future handoff; this does not authorize deleting existing plans.
 * For discrepancies outside the editing scope, follow [findings outside the current scope](iterative-development.md#findings-outside-the-current-scope).
 
 ### Local entry and index convention
@@ -55,7 +55,7 @@ The project skills below are versioned locally. They are separate from the pinne
 | Skill | Procedure owner | Supporting knowledge |
 | --- | --- | --- |
 | [project-write-content](../.agents/skills/project-write-content/SKILL.md) | Edit its `SKILL.md` and Markdown examples | Language remains in `technical-writing-rules`; project conventions remain in [writing guidance](../CONTRIBUTING.md#writing-guidance) |
-| [project-plan-change](../.agents/skills/project-plan-change/SKILL.md) | Edit its `SKILL.md` | [Planning rationale and sources](implementation-planning.md); [handoff requirements](iterative-development.md#accepted-plans-and-handoffs) |
+| [project-plan-change](../.agents/skills/project-plan-change/SKILL.md) | Edit its `SKILL.md` for Work Item planning and self-contained Tasks | [Planning rationale](implementation-planning.md); [Task execution and handoffs](iterative-development.md#accepted-plans-and-handoffs) |
 | [project-diagnose-failure](../.agents/skills/project-diagnose-failure/SKILL.md) | Edit its `SKILL.md` | [Symptom map and sources](error-diagnosis.md); environment restrictions remain in their entries |
 | [project-validate-presentation](../.agents/skills/project-validate-presentation/SKILL.md) | Edit its `SKILL.md` | Feature checks, commands, and evidence requirements remain in testing documentation |
 | [project-prepare-pr](../.agents/skills/project-prepare-pr/SKILL.md) | Edit its `SKILL.md` | Acceptance criteria and CI interpretation retain their existing owners |
@@ -85,6 +85,8 @@ Select skills by task; no fixed sequence of project skills is required. Apply pr
 * Preserve unrelated hooks when updating the integration.
 * The startup reminder describes the six context skills without prescribing a sequence.
 * Use `context-review-sessions` with `context-preserve` for pending-session review and completion bookkeeping.
+* Task execution must leave a [complete main-conversation summary](iterative-development.md#final-task-summary) for later JSON session analysis, including resolved gaps and consultation results.
+* Do not assume that local journals, detailed test reports, or separate subagent transcripts remain available after execution. No session-analysis tooling changes are required by this reporting rule.
 * Exclude the CSV registry, its lock, and session metadata under `.context/sessions/` from knowledge retrieval and commits.
 * Stop and PreCompact allow five seconds; Interrupt and SessionEnd retain the host's three-second maximum.
 * An unavailable transcript prevents content review but does not prove that the session performed no work.

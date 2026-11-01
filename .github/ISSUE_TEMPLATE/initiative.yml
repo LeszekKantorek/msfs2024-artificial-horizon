@@ -1,0 +1,45 @@
+name: Initiative
+description: A project goal and expected result, delivered through Work Items.
+title: "[Initiative]: "
+labels: ["initiative"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Add Work Items through GitHub's actual parent/sub-issue relationships after publication.
+        Links and checklists do not create those relationships.
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What project goal does this Initiative serve?
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Expected result
+      description: Describe the result that confirms delivery of the goal.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: State coverage, exclusions, constraints, and relevant canonical requirements.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List observable completion conditions and required evidence as Markdown checkboxes. Completed children alone do not establish acceptance.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: State delivery dependencies and ordering constraints, or None.
+    validations:
+      required: true

@@ -1,26 +1,54 @@
-name: Implementation task
-description: A reviewable outcome with acceptance criteria and dependencies.
+name: Task
+description: A self-contained implementation, diagnostic, research, documentation, or infrastructure assignment.
 title: "[Task]: "
+labels: ["task"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Set the actual parent Work Item through GitHub's parent/sub-issue relationship after publication.
+        The parent reference in this form does not create that relationship.
+        Include applicable testing and review within this Task. A verified investigation result can complete a Task without code changes or a PR.
+  - type: input
+    id: parent
+    attributes:
+      label: Parent Work Item
+      description: Identify the Work Item by issue number or URL, then verify its actual parent relationship after publication.
+    validations:
+      required: true
   - type: textarea
     id: outcome
     attributes:
       label: Outcome
-      description: What should users or contributors be able to do?
+      description: State the concrete behavior, investigation result, or other deliverable.
     validations:
       required: true
   - type: textarea
     id: scope
     attributes:
       label: Scope
-      description: Include relevant architecture or contract references.
+      description: Identify affected modules or documents, exclusions, constraints, and behavior or contracts that must remain unchanged.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Link required document sections, useful checked line ranges, relevant code, and earlier results. Include enough context for another session.
+    validations:
+      required: true
+  - type: textarea
+    id: guidance
+    attributes:
+      label: Implementation guidance
+      description: State the chosen direction, accepted decisions, assumptions, component responsibilities, dependencies, and required actions. Bound investigations without presuming their result.
     validations:
       required: true
   - type: textarea
     id: acceptance
     attributes:
       label: Acceptance criteria
-      description: List observable results as Markdown checkboxes.
+      description: List observable completion conditions and expected results as Markdown checkboxes.
     validations:
       required: true
   - type: textarea
@@ -33,5 +61,7 @@ body:
   - type: textarea
     id: validation
     attributes:
-      label: Validation plan
-      description: Automated tests, manual scenarios, and required hardware.
+      label: Validation
+      description: State required checks, applicable review, expected results, evidence to record, and unavailable checks or hardware.
+    validations:
+      required: true

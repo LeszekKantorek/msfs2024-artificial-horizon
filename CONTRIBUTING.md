@@ -136,10 +136,12 @@ Before marking work complete, confirm that required checks pass and acceptance c
 
 ## Workflow
 
-1. Establish the requested outcome and validation expectations. Consult a related issue when available.
-2. Check dependencies in the [roadmap](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9).
+Follow the [work organization model](docs/work-organization.md) for issue levels, responsibilities, and iterative planning.
+
+1. Read the Task, its Work Item, and the relevant Initiative. For work without an issue, establish the requested outcome and validation expectations directly.
+2. Check prerequisites and current context against the relevant source sections and code. Use accepted decisions and report consequential gaps before dependent work.
 3. Create a branch from current `main` named `change/<topic>`.
-4. Implement one reviewable outcome under the [change requirements](#change-requirements).
+4. Deliver one reviewable outcome under the [change requirements](#change-requirements). A diagnostic, research, or documentation Task does not require application code changes.
 5. Update affected documentation, contracts, and fixtures.
 6. Select and run checks through the [validation scope matrix](docs/testing/index.md#validation-by-change-scope).
 7. Follow [PR preparation](#prepare-a-pull-request) to prepare the description or publish the requested PR.
@@ -150,7 +152,9 @@ Use [project-prepare-pr](.agents/skills/project-prepare-pr/SKILL.md) to prepare 
 The skill owns the preparation procedure; this document retains the contribution requirements and acceptance-tracking rules.
 Describe what changed, why, and important design choices or consequences.
 
-* Link a relevant issue when one exists. Use a closing keyword only when the PR completes that issue. Issue linkage and acceptance checklists are optional.
+* Link the Task when one exists and reference its Work Item for context. Use a closing keyword only when the PR completes that issue's criteria.
+* A Task can use several PRs or no PR. Do not close its Work Item or Initiative solely because this PR completes a Task.
+* Issue linkage and acceptance checklists remain optional for work without an issue. Task instructions must still define observable acceptance criteria.
 * Record applicable validation evidence in the PR, a related issue, or a durable linked record. No fixed test-status section or command list is required.
 
 ### Acceptance criteria and additional verification
@@ -161,18 +165,26 @@ Describe what changed, why, and important design choices or consequences.
 4. Leave supplied unconfirmed criteria unchecked. Record remaining verification and expected results in the PR, related issue, or linked record.
 5. Keep supplied checklists accurate. Unchecked criteria in a closing-linked issue and any visible unchecked PR task block the acceptance status.
 
+Apply the [completion rules](docs/work-organization.md#completion-and-evidence) at each issue level:
+
+* Close a Task only after its outcome and required verification are supported by evidence. A diagnostic result must distinguish confirmed findings from unresolved causes.
+* Evaluate each Work Item and Initiative against its own result and criteria. Completed children alone do not establish acceptance.
+* Keep a Work Item open for further planning when diagnostic results identify additional work or leave its required result unconfirmed.
+* Change issue status and publish evidence only within authorized GitHub work.
+
 Draft PRs can retain incomplete acceptance; complete it before merge.
 A successful status does not replace required local validation.
 Use the [acceptance control reference](docs/pr-acceptance.md#checklist-scope) for parser rules and [status meanings](docs/pr-acceptance.md#understand-the-result) for blocking conditions.
 
 ### Promote agreed findings
 
-Collect reusable implementation findings in [#9](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9), referencing the originating task.
+Use confirmed findings to continue planning the relevant Work Item or define an agreed follow-up.
+The originating Task does not have to close before its diagnostic results can support further planning.
 
-1. Review a finding after its originating task closes and agree on the follow-up scope.
-2. Create the agreed issue with an outcome, acceptance criteria, and a link to the originating task.
-3. Apply the requested labels and set the actual parent/sub-issue relationship when a parent is required.
-4. Verify the saved labels and the parent shown in GitHub's Relationships section.
+1. Review the evidence, distinguish established findings from hypotheses, and define the authorized follow-up scope.
+2. Preserve durable requirements and reusable findings in their documentation owners. Link the originating Task and relevant results in the follow-up context.
+3. Prepare a Work Item or Task at the appropriate level. Publish it only when authorized; otherwise, return a complete draft.
+4. For authorized publication, verify label availability, apply the level label, and establish and verify the actual parent/sub-issue relationship.
 
 Each follow-up issue must remain usable without the originating conversation or local notes:
 
@@ -181,7 +193,7 @@ Each follow-up issue must remain usable without the originating conversation or 
 * Include acceptance criteria and their validation method, with observable expected results.
 * Preserve supporting findings and unresolved questions with their actual status.
 
-> A reference in the description or an epic task list does not establish a parent/sub-issue relationship.
+> A reference in the description or a checklist does not establish a parent/sub-issue relationship.
 
 ## Project guidance
 
@@ -197,7 +209,7 @@ Each follow-up issue must remain usable without the originating conversation or 
 * Retain technical ownership terms when they describe resource management or responsibilities.
 * Use the [project terminology](docs/efi/index.md#terminology): EFI for the complete instrument, artificial horizon for attitude indication. Keep technical identifiers consistent with their consumers.
 * Preserve requirements, units, limits, and uncertainty. Distinguish planned behavior, implementation, and confirmed acceptance.
-* Keep supplied accepted plans local and verbatim, including their original language.
+* Keep supplied accepted plan originals local and verbatim, including their original language. Prepare Task instructions in English while preserving accepted requirements and decisions.
 * Put feature requirements, presentation, implementation details, and tests on the owning feature page. Keep shared procedures in the testing guide.
 * Link canonical public documentation rather than agent context. Check moved content, links, anchors, and Markdown paragraph boundaries.
 * Use [project-write-content](.agents/skills/project-write-content/SKILL.md) for Markdown structure and examples, including when writing is part of implementation. Explicit project conventions take precedence over conflicting general defaults.

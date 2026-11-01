@@ -112,13 +112,14 @@ The #5 receiver evidence does not establish integrated live-browser or mobile ac
 | --- | --- |
 | Run checks or test a phone | [Testing](docs/testing/index.md) |
 | Contribute a change | [Contributing](CONTRIBUTING.md) |
+| Understand planning and execution | [Work organization](docs/work-organization.md) |
 | Use the Rust library or understand the design | [Architecture](docs/architecture.md#application-composition) |
 | Understand HTTP APIs, assets, and connection shutdown | [Server](docs/server.md) |
 | Develop or validate a source provider | [Sources](docs/sources/index.md) |
 | Find deterministic Demo scenarios | [Demo](docs/sources/demo.md) |
 | Consume telemetry | [Telemetry contract](docs/telemetry-contract.md) |
 | Run SimConnect reception or diagnostics | [SimConnect setup and scenarios](docs/sources/simconnect.md) |
-| Review scope and future work | [EFI scope](docs/efi/index.md#product-scope-and-reference) · [Roadmap](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9) |
+| Review scope and future work | [EFI scope](docs/efi/index.md#product-scope-and-reference) · [MVP Initiative target #9](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9), with [migration boundaries](docs/work-organization.md#adoption-boundaries) |
 | Understand the stack choice | [ADR 0001](docs/adr/0001-rust-http-sse.md) |
 | Track work | [GitHub Issues](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues) |
 

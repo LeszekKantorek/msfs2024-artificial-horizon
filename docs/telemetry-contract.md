@@ -331,7 +331,7 @@ stale         = estimated age >= 1,000 ms
 
 ## Further EFI extension boundary
 
-> The fields above define current v1. The [EFI scope](efi/index.md#product-scope-and-reference) defines coverage and exclusions. Planned additions belong to [roadmap issue #9](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9).
+> The fields above define current v1. The [EFI scope](efi/index.md#product-scope-and-reference) defines coverage and exclusions. Keep extension requirements in their feature or contract owner. Plan their delivery in the relevant Work Items and Tasks under the [work organization model](work-organization.md).
 
 Each feature slice must:
 

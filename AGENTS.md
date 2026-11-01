@@ -5,11 +5,11 @@
 * Treat analysis, discussion, and review as separate from authorization to implement or change GitHub. Complete explicitly requested work without confirming routine steps.
 * Reassess pending actions when the user changes the instruction. Tool approval does not expand the user's authorization.
 * Keep to the requested scope. Do not start unrelated work or add speculative abstractions or documentation.
-* Present options and trade-offs for material project decisions; do not treat discussion as approval.
+* Present options and trade-offs for material project decisions. Sol may resolve technical choices within accepted scope; changes to approved requirements or direction require a human decision.
 * Distinguish facts, hypotheses, proposals, and accepted decisions. Question assumptions when evidence warrants it, and surface unresolved conflicts between sources.
 * Check the current repository and relevant remote state when they may have changed; do not rely on conversation memory as the current state.
 * Do not automatically edit historical or completed GitHub issues. Change those records only at the user's explicit request.
-* Maintain the roadmap and unfinished issues only within authorized work. An open issue alone does not authorize editorial changes.
+* Maintain Initiatives, Work Items, and Tasks only within authorized work. Planning alone does not authorize publication or reorganization, and an open issue does not authorize editorial changes.
 * Preserve useful issue requirements in their documentation owner without rewriting the source issue. Follow the [issue-record rules](.context/repository-instructions.md#github-issue-records).
 
 ## Context selection
@@ -42,7 +42,7 @@ Use these maps whenever a task needs project knowledge. Select rows by the reque
 * For knowledge work, select the matching context skill and follow [knowledge maintenance](.context/agent-maintenance.md#knowledge-maintenance).
 * For skill design, use procedural-skill-creator under the [source ownership rules](.context/agent-maintenance.md#project-procedure-skills).
 
-* [Roadmap issue #9](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9) is the sole roadmap. Read delivery order and dependencies there. Do not create or maintain a separate roadmap document.
+* Follow the [work organization model](docs/work-organization.md) for Initiative → Work Item → Task. [MVP issue #9](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9) is the target MVP Initiative; its migration is separate. Keep delivery order and dependencies in GitHub, without a competing roadmap document.
 
 * Agent-facing technical materials, including `.context/`, `AGENTS.md`, `SKILL.md`, and skill reference files, may link into `.context/`.
 * Project documentation, user instructions, and other non-agent documentation must not link into `.context/`.
@@ -61,12 +61,16 @@ Use these maps whenever a task needs project knowledge. Select rows by the reque
 * Write project text in English and preserve the MIT license.
 * Keep credentials, SDK binaries, local SDK paths, and generated output out of commits.
 * Target Windows x64 MSVC for Rust work and keep default checks independent of the simulator.
-* Preserve accepted scope and user changes without an arbitrary file-count limit, and keep supplied implementation plans local and verbatim.
+* Preserve accepted scope and user changes without an arbitrary file-count limit. Keep supplied accepted plan originals local and verbatim; future Tasks are the primary execution handoff.
 * Report only validation actually performed or applicable recorded evidence, with missing checks stated explicitly.
 
 ## Project knowledge
 
 Select a project procedure directly when its outcome matches the task. Use [task guidance](.context/task-guidance.md#practical-selection) to select additional sources when their conditions apply.
+
+* Sol Medium plans and consults; Terra Medium executes under the [Task execution rules](.context/iterative-development.md#accepted-plans-and-handoffs).
+* During Task execution, Terra may delegate bounded technical consultations to Sol when supported. This permission does not authorize parallel implementation or GitHub changes.
+* Report execution results, gaps, consultations, decisions, and their effectiveness in the main conversation under the [final summary rules](.context/iterative-development.md#final-task-summary).
 
 ### Project procedures
 
@@ -75,7 +79,7 @@ Maintain each procedure in its owning `SKILL.md` under the [source ownership rul
 | Skill | Use |
 | --- | --- |
 | [project-write-content](.agents/skills/project-write-content/SKILL.md) | Construct and review Markdown using decision rules and examples while preserving meaning |
-| [project-plan-change](.agents/skills/project-plan-change/SKILL.md) | Prepare a detailed implementation plan with invariants and acceptance evidence |
+| [project-plan-change](.agents/skills/project-plan-change/SKILL.md) | Plan a Work Item as self-contained executable Tasks with decisions, context, and acceptance evidence |
 | [project-diagnose-failure](.agents/skills/project-diagnose-failure/SKILL.md) | Diagnose an observed application, test, build, or environment failure |
 | [project-validate-presentation](.agents/skills/project-validate-presentation/SKILL.md) | Validate EFI presentation and report the limits of desktop and device evidence |
 | [project-prepare-pr](.agents/skills/project-prepare-pr/SKILL.md) | Prepare a local PR description or publish the requested PR with accurate acceptance evidence |

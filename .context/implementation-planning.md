@@ -1,5 +1,5 @@
 ---
-description: Explain planning detail, preserved lessons, and evidence limits. Use project-plan-change to execute the planning procedure.
+description: Explain self-contained Tasks, iterative Work Item planning, preserved lessons, and evidence limits. Use project-plan-change for the procedure.
 status: active
 ---
 
@@ -12,6 +12,17 @@ The project-plan-change skill owns the [scope and authorization](../.agents/skil
 The project-plan-change skill owns the [planning steps](../.agents/skills/project-plan-change/SKILL.md#steps).
 
 ## Why these details matter
+
+The [work organization model](../docs/work-organization.md) defines the hierarchy.
+The planning skill owns Task preparation, while [Task execution](iterative-development.md#accepted-plans-and-handoffs) owns context checks, consultation, and reporting.
+
+| Planning property | Reason |
+| --- | --- |
+| Self-contained Task | Terra can execute in another session without reconstructing intent from temporary files or a previous conversation |
+| Decisions before dependent execution | Consequential choices are resolved once, while routine implementation remains with Terra |
+| Iterative planning | Investigation results justify the next Tasks without turning an unconfirmed cause into a correction plan |
+| Main-conversation feedback | Resolved gaps, consultation reasons, and decision results remain available for later JSON session review |
+| Result-based parent completion | Finishing the current Tasks does not hide an unmet Work Item or Initiative criterion |
 
 | Planning detail | Reason | Current altitude-trend example |
 | --- | --- | --- |
@@ -28,6 +39,7 @@ The project-plan-change skill owns the [planning steps](../.agents/skills/projec
 ## Sources and limits
 
 Select evidence appropriate to the change, and distinguish independent review from validation.
+Instruction review and scenario walkthroughs establish document coverage. They do not establish actual agent behavior, model selection, or successful GitHub publication.
 
 ## Plan quality checks
 
