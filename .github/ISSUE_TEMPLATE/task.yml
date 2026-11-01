@@ -61,10 +61,3 @@ body:
       description: Link prerequisite issues or state None.
     validations:
       required: true
-  - type: textarea
-    id: validation
-    attributes:
-      label: Validation
-      description: State required checks, applicable review, expected results, evidence to record, and unavailable checks or hardware.
-    validations:
-      required: true
