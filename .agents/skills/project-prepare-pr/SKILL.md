@@ -15,10 +15,10 @@ Use the requested outcome, current branch and diff, related issues, and availabl
 
 1. Establish whether the request is for a local description or a published PR. Keep draft-only work local; a request to open a draft PR authorizes publication.
 2. Inspect the current branch, base, working changes, and existing PRs under these constraints:
-   * Preserve unrelated changes and use the branch already selected for the Task.
+   * Preserve unrelated changes and use the branch already selected for the Subtask.
    * When starting a new branch, follow the [contribution workflow](../../../CONTRIBUTING.md#workflow).
 3. Establish the scope and prerequisites from the available records:
-   * Read the Task when available, its Work Item, and the relevant Initiative under the [work organization model](../../../docs/work-organization.md).
+   * Read the Subtask when available, its Task, and the relevant Epic under the [work organization model](../../../docs/work-organization.md).
    * Use [issue and artifact retrieval](../../../.context/repository-instructions.md#read-github-issue-context) for those records before assessing scope or completion.
    * For work without an issue, use the agreed outcome.
 4. Review the diff against the agreed scope and [change requirements](../../../CONTRIBUTING.md#change-requirements).
@@ -28,12 +28,12 @@ Use the requested outcome, current branch and diff, related issues, and availabl
    * Run missing applicable checks locally. Correct established defects within scope and repeat affected checks.
    * Record the tested revision, environment, results, and unavailable checks in the PR, related issue, or durable linked validation record.
 6. Reconcile completion under [acceptance tracking](../../../CONTRIBUTING.md#acceptance-criteria-and-additional-verification):
-   * Check the Task's criteria, or related issue criteria when there is no Task, and reconcile supplied PR tasks.
+   * Check the Subtask's criteria, or related issue criteria when there is no Subtask, and reconcile supplied PR tasks.
    * Leave unconfirmed items unchecked and record remaining verification with the evidence. Keep incomplete work in draft status.
    * Require separate evidence before claiming parent completion.
 7. Prepare the description using the [PR template](../../../.github/pull_request_template.md) and these content requirements:
    * State the problem, resulting behavior, rationale, and important consequences.
-   * Link the Task when available and reference its Work Item for context. A Task can use several PRs or no PR.
+   * Link the Subtask when available and reference its Task for context. A Subtask can use several PRs or no PR.
    * Use `Closes #N` only when the PR completes that issue's criteria. A closing keyword does not establish pending acceptance.
    * Keep a test-status section, command list, and checklist optional.
    * For a description-only request, deliver the draft and stop before publication.

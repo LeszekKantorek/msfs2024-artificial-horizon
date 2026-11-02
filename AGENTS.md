@@ -11,7 +11,7 @@ Apply these scope, authorization, and communication requirements:
 * Distinguish facts, hypotheses, proposals, and accepted decisions. Question assumptions when evidence warrants it, and surface unresolved conflicts between sources.
 * Check the current repository and relevant remote state when they may have changed; do not rely on conversation memory as the current state.
 * Do not automatically edit historical or completed GitHub issues. Change those records only at the user's explicit request.
-* Maintain Initiatives, Work Items, and Tasks only within authorized work. Planning alone does not authorize publication or reorganization, and an open issue does not authorize editorial changes.
+* Maintain Epics, Tasks, and Subtasks only within authorized work. Planning alone does not authorize publication or reorganization, and an open issue does not authorize editorial changes.
 * Preserve useful issue requirements in their documentation owner without rewriting the source issue. Follow the [issue-record rules](.context/repository-instructions.md#github-issue-records).
 
 ## Context selection
@@ -53,8 +53,8 @@ Use the owning writing and knowledge procedures:
 
 Organize issue-based work under these requirements:
 
-* Follow the [work organization model](docs/work-organization.md) for Initiative → Work Item → Task.
-* Treat [MVP issue #9](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9) as the target MVP Initiative. Its migration is a separate authorized change.
+* Follow the [work organization model](docs/work-organization.md) for Epic → Task → Subtask.
+* Treat [MVP issue #9](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9) as the target MVP Epic. Its migration is a separate authorized change.
 * Keep delivery order and dependencies in GitHub without maintaining a competing roadmap document.
 
 Keep documentation in its subject's owner:
@@ -78,17 +78,17 @@ Apply these delivery, platform, and evidence requirements:
 * Write project text in English and preserve the MIT license.
 * Keep credentials, SDK binaries, local SDK paths, and generated output out of commits.
 * Target Windows x64 MSVC for Rust work and keep default checks independent of the simulator.
-* Preserve accepted scope and user changes without an arbitrary file-count limit. Keep supplied accepted plan originals local and verbatim; future Tasks are the primary execution handoff.
+* Preserve accepted scope and user changes without an arbitrary file-count limit. Keep supplied accepted plan originals local and verbatim; future Subtasks are the primary execution handoff.
 * Report only validation actually performed or applicable recorded evidence, with missing checks stated explicitly.
 
 ## Project knowledge
 
 Select and execute project procedures under these requirements:
 
-* Select a procedure whose outcome matches the Task. Use [task guidance](.context/task-guidance.md#practical-selection) for additional sources when their conditions apply.
-* Sol Medium plans and consults; Terra Medium executes under the [Task execution rules](.context/iterative-development.md#accepted-plans-and-handoffs).
-* During Task execution, Terra may delegate bounded technical consultations to Sol when supported. This permission does not authorize parallel implementation or GitHub changes.
-* Report execution results, gaps, consultations, decisions, and their effectiveness in the main conversation under the [final summary rules](.context/iterative-development.md#final-task-summary).
+* Select a procedure whose outcome matches the requested work. Use [task guidance](.context/task-guidance.md#practical-selection) for additional sources when their conditions apply.
+* Sol Medium plans and consults; Terra Medium executes under the [Subtask execution rules](.context/iterative-development.md#accepted-plans-and-handoffs).
+* During Subtask execution, Terra may delegate bounded technical consultations to Sol when supported. This permission does not authorize parallel implementation or GitHub changes.
+* Report execution results, gaps, consultations, decisions, and their effectiveness in the main conversation under the [final summary rules](.context/iterative-development.md#final-subtask-summary).
 
 ### Project procedures
 
@@ -97,7 +97,7 @@ Maintain each procedure in its owning `SKILL.md` under the [source ownership rul
 | Skill | Use |
 | --- | --- |
 | [project-write-content](.agents/skills/project-write-content/SKILL.md) | Construct and review Markdown using decision rules and examples while preserving meaning |
-| [project-plan-change](.agents/skills/project-plan-change/SKILL.md) | Plan a Work Item as self-contained executable Tasks with decisions, context, and acceptance evidence |
+| [project-plan-change](.agents/skills/project-plan-change/SKILL.md) | Plan a Task as self-contained executable Subtasks with decisions, context, and acceptance evidence |
 | [project-diagnose-failure](.agents/skills/project-diagnose-failure/SKILL.md) | Diagnose an observed application, test, build, or environment failure |
 | [project-validate-presentation](.agents/skills/project-validate-presentation/SKILL.md) | Validate EFI presentation and report the limits of desktop and device evidence |
 | [project-prepare-pr](.agents/skills/project-prepare-pr/SKILL.md) | Prepare a local PR description or publish the requested PR with accurate acceptance evidence |

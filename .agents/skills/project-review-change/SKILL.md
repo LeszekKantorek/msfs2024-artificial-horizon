@@ -19,11 +19,11 @@ Review the agreed diff and assess the returned findings in this order:
    * Confirm that active instructions authorize subagent delegation and that the environment supports it. Selecting this skill does not grant authorization.
    * If delegation is unauthorized or unavailable, report independent review as unperformed and identify the missing prerequisite.
    * Report self-review separately from independent review.
-3. After implementation and applicable validation, prepare the [Task handoff](../../../.context/iterative-development.md#accepted-plans-and-handoffs) with these inputs:
-   * Supply the Task, accepted decisions and amendments, applicable contracts, preserved invariants, validation evidence, and known limitations.
+3. After implementation and applicable validation, prepare the [Subtask handoff](../../../.context/iterative-development.md#accepted-plans-and-handoffs) with these inputs:
+   * Supply the Subtask, accepted decisions and amendments, applicable contracts, preserved invariants, validation evidence, and known limitations.
    * Establish issue-based requirements through [issue and artifact retrieval](../../../.context/repository-instructions.md#read-github-issue-context). Include the relevant artifact references and unresolved reads in the review handoff.
    * Include a governing supplied plan when one exists. A local handoff index is optional.
-   * For work without a Task or accepted plan, state that explicitly and use the agreed scope.
+   * For work without a Subtask or accepted plan, state that explicitly and use the agreed scope.
 4. Request a separate read-only review of that state under these scope requirements:
    * For implementation review, inspect correctness, regressions, scope changes, and test or acceptance gaps.
    * Keep product redesign outside a documentation-format review.

@@ -1,13 +1,13 @@
 ---
 name: project-plan-change
-description: Plan a Work Item or coordinated project change as self-contained executable Tasks with decisions, context, dependencies, and acceptance evidence. Do not use for a small direct edit, executing accepted work, or recording an architecture decision alone.
+description: Plan a Task or coordinated project change as self-contained executable Subtasks with decisions, context, dependencies, and acceptance evidence. Do not use for a small direct edit, executing accepted work, or recording an architecture decision alone.
 ---
 
 # Plan a Project Change
 
 ## Goal
 
-Prepare the currently justified, executable Tasks for Terra Medium, with complete drafts when GitHub publication is not authorized.
+Prepare the currently justified, executable Subtasks for Terra Medium, with complete drafts when GitHub publication is not authorized.
 
 ## Model and execution defaults
 
@@ -21,13 +21,13 @@ Apply these model and staffing defaults:
 
 ## Scope and authorization
 
-The [work organization model](../../../docs/work-organization.md) defines Initiative, Work Item, and Task responsibilities.
+The [work organization model](../../../docs/work-organization.md) defines Epic, Task, and Subtask responsibilities.
 
 Planning must respect these scope and authorization rules:
 
 * Preserve accepted decisions while planning the requested outcome and its necessary prerequisites.
-* Distinguish planning, publishing Tasks, and reorganizing existing Issues. A planning request alone does not authorize GitHub changes.
-* When publication is not authorized, return complete Task drafts with intended parents and dependencies. Do not create Issues or labels.
+* Distinguish planning, publishing Subtasks, and reorganizing existing Issues. A planning request alone does not authorize GitHub changes.
+* When publication is not authorized, return complete Subtask drafts with intended parents and dependencies. Do not create Issues or labels.
 * Read a supplied accepted plan and its amendments completely. Implementation of that plan is already authorized when explicitly requested.
 * Resolve technical choices within accepted scope. Ask about changes to requirements or project direction before preparing dependent execution.
 * Use a short in-chat design for bounded work. Do not require an Issue for every small direct change.
@@ -36,12 +36,12 @@ Planning must respect these scope and authorization rules:
 
 ## Steps
 
-### 1. Establish the Work Item and current evidence
+### 1. Establish the Task and current evidence
 
 Establish the planning inputs and their authority:
 
-* Read the Work Item, its Initiative, supplied material, prior Task results, and sources selected through [task guidance](../../../.context/task-guidance.md#practical-selection).
-* Apply [issue and artifact retrieval](../../../.context/repository-instructions.md#read-github-issue-context) to the required issues before resolving decisions or drafting Tasks. Carry relevant artifact references and unresolved reads into the handoff.
+* Read the Task, its Epic, supplied material, prior Subtask results, and sources selected through [task guidance](../../../.context/task-guidance.md#practical-selection).
+* Apply [issue and artifact retrieval](../../../.context/repository-instructions.md#read-github-issue-context) to the required issues before resolving decisions or drafting Subtasks. Carry relevant artifact references and unresolved reads into the handoff.
 * For work without an Issue, use the supplied outcome. Identify the intended parent only if publication is requested.
 * Identify the base revision, relevant local changes, current implementation, source authority, and replaced requirements.
 * Establish the result, scope, constraints, invariants, existing dependencies, and acceptance criteria that remain unconfirmed.
@@ -61,33 +61,33 @@ Select the planning action from the available evidence and scope:
 | Evidence or scope condition | Planning action |
 | --- | --- |
 | Evidence supports a technical choice within accepted requirements | Select the best justified solution and record its rationale and constraints |
-| A missing fact prevents a justified correction | Prepare a bounded diagnostic or research Task with a question, discriminating observations, and expected evidence |
+| A missing fact prevents a justified correction | Prepare a bounded diagnostic or research Subtask with a question, discriminating observations, and expected evidence |
 | A choice changes approved requirements or project direction | Obtain the required human decision before preparing dependent execution |
-| Earlier Task results expose more work | Use the results to prepare the next justified Tasks and retain unconfirmed parent criteria |
+| Earlier Subtask results expose more work | Use the results to prepare the next justified Subtasks and retain unconfirmed parent criteria |
 
-Continue when each proposed Task has either resolved execution decisions or an explicit investigation outcome.
+Continue when each proposed Subtask has either resolved execution decisions or an explicit investigation outcome.
 
 ### 3. Decompose the currently ready work
 
-Decompose the Work Item under these requirements:
+Decompose the Task under these requirements:
 
 * Order complete outcomes by dependency. Establish contracts first, isolate risky mechanisms, and integrate observable results.
-* Prepare Tasks supported by current knowledge. Defer dependent implementation Tasks until the required investigation results are available.
-* Use [Task content](#task-content) for each assignment. Keep technical choices that affect execution explicit without prescribing every routine function detail.
+* Prepare Subtasks supported by current knowledge. Defer dependent implementation Subtasks until the required investigation results are available.
+* Use [Subtask content](#subtask-content) for each assignment. Keep technical choices that affect execution explicit without prescribing every routine function detail.
 * Define acceptance evidence before implementation actions. Include scenario inputs, expected results, and preserved behavior.
-* Keep testing and applicable review within the Task. Do not create separate Issues solely for routine validation or one per file or function.
-* A diagnostic, research, documentation, or infrastructure Task can complete without application code or a PR.
+* Keep testing and applicable review within the Subtask. Do not create separate Issues solely for routine validation or one per file or function.
+* A diagnostic, research, documentation, or infrastructure Subtask can complete without application code or a PR.
 * Use the [handoff rules](../../../.context/iterative-development.md#accepted-plans-and-handoffs) when a supplied plan governs execution.
 
-Continue when Terra can execute each ready Task without reconstructing intent or choosing an unresolved consequential contract.
+Continue when Terra can execute each ready Subtask without reconstructing intent or choosing an unresolved consequential contract.
 
 ### 4. Check the handoff and validation
 
 Check each draft against these requirements:
 
-* Compare its scope and decisions with the Work Item and [completion checks](#completion-checks).
+* Compare its scope and decisions with the Task and [completion checks](#completion-checks).
 * Apply [validation and acceptance](#validation-and-acceptance) to the changed behavior and its risks.
-* Reference the [execution rules](#escalation-and-handoff) for preparation, consultation, and reporting instead of duplicating them in each Task.
+* Reference the [execution rules](#escalation-and-handoff) for preparation, consultation, and reporting instead of duplicating them in each Subtask.
 * Record unavailable checks and evidence limitations alongside the affected criteria.
 
 Continue when each acceptance criterion has an expected result, a check, and evidence to record.
@@ -98,8 +98,8 @@ Deliver the result permitted by the requested scope:
 
 | Authorization | Deliverable |
 | --- | --- |
-| Planning only | Complete Task drafts, intended parent, dependency order, accepted decisions, and remaining Work Item questions |
-| Task publication included | Published Tasks with verified content, `task` labels, actual Work Item parents, and dependency references |
+| Planning only | Complete Subtask drafts, intended parent, dependency order, accepted decisions, and remaining Task questions |
+| Subtask publication included | Published Subtasks with verified content, `subtask` labels, actual Task parents, and dependency references |
 | Existing Issue reorganization requested | Only the explicitly authorized changes, preserving relationships, history, and delivery evidence |
 
 For authorized publication, complete these checks in order:
@@ -110,7 +110,7 @@ For authorized publication, complete these checks in order:
 
 Complete the planning handoff under these requirements:
 
-* Confirm the Work Item's own result and criteria before closing it. Completed Tasks alone do not establish that result.
+* Confirm the Task's own result and criteria before closing it. Completed Subtasks alone do not establish that result.
 * Deliver the drafts or verified records, the evidence needed for further planning, and the unconfirmed parent criteria.
 
 ### Decision contract
@@ -132,7 +132,7 @@ Apply these rules when resolving the boundaries:
 * Leave routine implementation details to the developer. Do not specify pseudocode for every function.
 * Do not present unresolved alternatives as an implementation-ready step.
 
-### Task content
+### Subtask content
 
 Include all six fields, with detail proportional to complexity and risk:
 
@@ -147,7 +147,7 @@ Include all six fields, with detail proportional to complexity and risk:
 
 Prepare the handoff content under these requirements:
 
-* Identify the Work Item parent and prerequisite Tasks. State explicitly when there are no prerequisites.
+* Identify the Task parent and prerequisite Subtasks. State explicitly when there are no prerequisites.
 * Link canonical sources instead of copying entire documents. Include the decisions, requirements, and constraints needed to avoid reconstructing the plan's intent.
 * Split assignments when outcomes are independent or a risky dependency needs a separate result.
 * Integrate observable results during execution rather than postponing all integration until the end.
@@ -156,10 +156,10 @@ Prepare the handoff content under these requirements:
 
 Use the owning execution sources for each handoff requirement:
 
-* Follow [Task context preparation](../../../.context/iterative-development.md#prepare-task-context) to verify current sources and accepted decisions before execution.
+* Follow [Subtask context preparation](../../../.context/iterative-development.md#prepare-subtask-context) to verify current sources and accepted decisions before execution.
 * Follow [Sol consultation](../../../.context/iterative-development.md#consult-sol) for the consultation procedure, autonomy boundaries, and model availability limits.
 * Follow [execution reporting](../../../.context/iterative-development.md#record-execution-findings) to retain findings during execution and use an optional local journal.
-* Require the [final Task summary](../../../.context/iterative-development.md#final-task-summary) to preserve gaps and decision results in the main conversation for later session review.
+* Require the [final Subtask summary](../../../.context/iterative-development.md#final-subtask-summary) to preserve gaps and decision results in the main conversation for later session review.
 
 ### Validation and acceptance
 
@@ -170,9 +170,9 @@ Select and record validation under these requirements:
 * After corrections, repeat affected checks and applicable review. Broaden checks only when a new risk or explicit requirement justifies it.
 * Include necessary documentation, context updates, and PR preparation when authorized. Keep unavailable checks explicit.
 * For visual changes, capture a baseline and matched inputs before implementation. Tests alone do not establish painted appearance or actual phone acceptance.
-* Combine related manual acceptance at the end when the tested revision and affected behavior are identified. Do not require operator acceptance after every Task.
+* Combine related manual acceptance at the end when the tested revision and affected behavior are identified. Do not require operator acceptance after every Subtask.
 * Apply the [manual acceptance rules](../../../docs/testing/evidence.md#sources-and-limits) to confirmations, missing artifacts, and requests for another test.
-* Keep full logs local and report meaningful results and evidence limits. Longer plans, more Tasks, agents, or repeated checks do not establish quality.
+* Keep full logs local and report meaningful results and evidence limits. Longer plans, more Subtasks, agents, or repeated checks do not establish quality.
 
 ## Completion checks
 
@@ -180,12 +180,12 @@ Compare the planning result with these completion conditions:
 
 | Check | Expected result |
 | --- | --- |
-| Work Item coverage | Ready Tasks serve its result; deferred work and unconfirmed criteria remain explicit |
-| Executability | Each Task supplies the six fields, parent, prerequisites, decisions, and preserved invariants |
+| Task coverage | Ready Subtasks serve its result; deferred work and unconfirmed criteria remain explicit |
+| Executability | Each Subtask supplies the six fields, parent, prerequisites, decisions, and preserved invariants |
 | Evidence | Each criterion maps to a check, expected result, and evidence record under [evidence selection](../../../docs/testing/evidence.md#select-evidence-by-failure-risk) |
 | Uncertainty | Investigation precedes dependent corrections; hypotheses are not presented as confirmed causes |
 | Context | Precise sources support execution without duplicated documents or dependence on temporary files |
-| Proportionality | Tasks deliver coherent results; parallel work has a concrete benefit and validation belongs to the work |
+| Proportionality | Subtasks deliver coherent results; parallel work has a concrete benefit and validation belongs to the work |
 | Authorization | Drafts, publication, and reorganization match the request; historical records remain protected |
 | Reporting | Execution routes require the main-conversation summary, including successfully resolved gaps and consultation results |
 

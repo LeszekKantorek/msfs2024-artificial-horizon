@@ -1,5 +1,5 @@
 ---
-description: Explain self-contained Tasks, iterative Work Item planning, preserved lessons, and evidence limits. Use project-plan-change for the procedure.
+description: Explain self-contained Subtasks, iterative Task planning, preserved lessons, and evidence limits. Use project-plan-change for the procedure.
 status: active
 ---
 
@@ -14,15 +14,15 @@ The project-plan-change skill owns the [planning steps](../.agents/skills/projec
 ## Why these details matter
 
 The [work organization model](../docs/work-organization.md) defines the hierarchy.
-The planning skill owns Task preparation, while [Task execution](iterative-development.md#accepted-plans-and-handoffs) owns context checks, consultation, and reporting.
+The planning skill owns Subtask preparation, while [Subtask execution](iterative-development.md#accepted-plans-and-handoffs) owns context checks, consultation, and reporting.
 
 | Planning property | Reason |
 | --- | --- |
-| Self-contained Task | Terra can execute in another session without reconstructing intent from temporary files or a previous conversation |
+| Self-contained Subtask | Terra can execute in another session without reconstructing intent from temporary files or a previous conversation |
 | Decisions before dependent execution | Consequential choices are resolved once, while routine implementation remains with Terra |
-| Iterative planning | Investigation results justify the next Tasks without turning an unconfirmed cause into a correction plan |
+| Iterative planning | Investigation results justify the next Subtasks without turning an unconfirmed cause into a correction plan |
 | Main-conversation feedback | Resolved gaps, consultation reasons, and decision results remain available for later JSON session review |
-| Result-based parent completion | Finishing the current Tasks does not hide an unmet Work Item or Initiative criterion |
+| Result-based parent completion | Finishing the current Subtasks does not hide an unmet Task or Epic criterion |
 
 | Planning detail | Reason | Current altitude-trend example |
 | --- | --- | --- |

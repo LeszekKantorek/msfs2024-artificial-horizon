@@ -65,7 +65,7 @@ npx --yes skills add LeszekKantorek/agent-skills --agent codex --skill procedura
 
 Select agent guidance under these requirements:
 
-* Choose the skill that fits the Task. No fixed skill sequence is required.
+* Choose the skill that fits the work. No fixed skill sequence is required.
 * Follow [AGENTS.md](AGENTS.md#context-selection) for agent work and procedure selection.
 
 #### Session hooks
@@ -149,10 +149,10 @@ Before delivery, satisfy these validation and evidence requirements:
 
 Follow the [work organization model](docs/work-organization.md) for issue levels, responsibilities, and iterative planning when carrying out this workflow:
 
-1. Read the Task, its Work Item, and the relevant Initiative. For work without an issue, establish the requested outcome and validation expectations directly.
+1. Read the Subtask, its Task, and the relevant Epic. For work without an issue, establish the requested outcome and validation expectations directly.
 2. Check prerequisites and current context against the relevant source sections and code. Use accepted decisions and report consequential gaps before dependent work.
 3. Create a branch from current `main` named `change/<topic>`.
-4. Deliver one reviewable outcome under the [change requirements](#change-requirements). A diagnostic, research, or documentation Task does not require application code changes.
+4. Deliver one reviewable outcome under the [change requirements](#change-requirements). A diagnostic, research, or documentation Subtask does not require application code changes.
 5. Update affected documentation, contracts, and fixtures.
 6. Select and run checks through the [validation scope matrix](docs/testing/index.md#validation-by-change-scope).
 7. Follow [PR preparation](#prepare-a-pull-request) to prepare the description or publish the requested PR.
@@ -162,9 +162,9 @@ Follow the [work organization model](docs/work-organization.md) for issue levels
 Use [project-prepare-pr](.agents/skills/project-prepare-pr/SKILL.md) for local descriptions or authorized publication under these contribution requirements:
 
 * Describe what changed, why, and important design choices or consequences.
-* Link the Task when one exists and reference its Work Item for context. Use a closing keyword only when the PR completes that issue's criteria.
-* A Task can use several PRs or no PR. Do not close its Work Item or Initiative solely because this PR completes a Task.
-* Issue linkage and acceptance checklists remain optional for work without an issue. Task instructions must still define observable acceptance criteria.
+* Link the Subtask when one exists and reference its Task for context. Use a closing keyword only when the PR completes that issue's criteria.
+* A Subtask can use several PRs or no PR. Do not close its Task or Epic solely because this PR completes a Subtask.
+* Issue linkage and acceptance checklists remain optional for work without an issue. Subtask instructions must still define observable acceptance criteria.
 * Record applicable validation evidence in the PR, a related issue, or a durable linked record. No fixed test-status section or command list is required.
 
 ### Acceptance criteria and additional verification
@@ -179,9 +179,9 @@ Verify and record acceptance in this order:
 
 Apply the [completion rules](docs/work-organization.md#completion-and-evidence) at each issue level:
 
-* Close a Task only after its outcome and required verification are supported by evidence. A diagnostic result must distinguish confirmed findings from unresolved causes.
-* Evaluate each Work Item and Initiative against its own result and criteria. Completed children alone do not establish acceptance.
-* Keep a Work Item open for further planning when diagnostic results identify additional work or leave its required result unconfirmed.
+* Close a Subtask only after its outcome and required verification are supported by evidence. A diagnostic result must distinguish confirmed findings from unresolved causes.
+* Evaluate each Task and Epic against its own result and criteria. Completed children alone do not establish acceptance.
+* Keep a Task open for further planning when diagnostic results identify additional work or leave its required result unconfirmed.
 * Change issue status and publish evidence only within authorized GitHub work.
 
 Apply these merge and status constraints:
@@ -192,12 +192,12 @@ Apply these merge and status constraints:
 
 ### Promote agreed findings
 
-Use confirmed findings to continue Work Item planning or define an agreed follow-up through these steps:
+Use confirmed findings to continue Task planning or define an agreed follow-up through these steps:
 
 1. Review the evidence, distinguish established findings from hypotheses, and define the authorized follow-up scope.
-   Diagnostic results can support further planning before the originating Task closes.
-2. Preserve durable requirements and reusable findings in their documentation owners. Link the originating Task and relevant results in the follow-up context.
-3. Prepare a Work Item or Task at the appropriate level. Publish it only when authorized; otherwise, return a complete draft.
+   Diagnostic results can support further planning before the originating Subtask closes.
+2. Preserve durable requirements and reusable findings in their documentation owners. Link the originating Subtask and relevant results in the follow-up context.
+3. Prepare a Task or Subtask at the appropriate level. Publish it only when authorized; otherwise, return a complete draft.
 4. For authorized publication, verify label availability, apply the level label, and establish and verify the actual parent/sub-issue relationship.
 
 Each follow-up issue must remain usable without the originating conversation or local notes:
@@ -227,7 +227,7 @@ Write project text under these requirements:
 * Retain technical ownership terms when they describe resource management or responsibilities.
 * Use the [project terminology](docs/efi/index.md#terminology): EFI for the complete instrument, artificial horizon for attitude indication. Keep technical identifiers consistent with their consumers.
 * Preserve requirements, units, limits, and uncertainty. Distinguish planned behavior, implementation, and confirmed acceptance.
-* Keep supplied accepted plan originals local and verbatim, including their original language. Prepare Task instructions in English while preserving accepted requirements and decisions.
+* Keep supplied accepted plan originals local and verbatim, including their original language. Prepare Subtask instructions in English while preserving accepted requirements and decisions.
 * Put feature requirements, presentation, implementation details, and tests on the owning feature page. Keep shared procedures in the testing guide.
 * Link canonical public documentation rather than agent context. Check moved content, links, anchors, and Markdown paragraph boundaries.
 * Use [project-write-content](.agents/skills/project-write-content/SKILL.md) for Markdown structure and examples, including when writing is part of implementation. Explicit project conventions take precedence over conflicting general defaults.
