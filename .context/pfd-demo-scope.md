@@ -7,7 +7,7 @@ status: active
 | --- | --- |
 | Coverage, exclusions, and units | [EFI scope](../docs/efi/index.md#product-scope-and-reference) |
 | Mobile layout and acceptance responsibilities | [Rendering](../docs/efi/rendering.md#layout-and-readable-regions), [feature acceptance](../docs/testing/pfd.md#feature-acceptance-ownership) |
-| Feature order and technical prerequisites | Relevant Work Items and Tasks under [MVP issue #9](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9); follow [adoption boundaries](../docs/work-organization.md#adoption-boundaries) until hierarchy migration |
+| Feature order and technical prerequisites | Relevant Tasks and Subtasks under [MVP issue #9](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9); follow [adoption boundaries](../docs/work-organization.md#adoption-boundaries) until hierarchy migration |
 | Modules, layers, and instrument scope | [Panel presentation](../docs/efi/index.md), [ADR 0004](../docs/adr/0004-modular-pfd-presentation.md) |
 | Optional fields and current attitude-only publication | [ADR 0003](../docs/adr/0003-responsive-pfd-demo.md), [contract](../docs/telemetry-contract.md) |
 | Planned YAML playback and recorded-session conversion | [Demo playback requirements](../docs/sources/demo.md#planned-scenario-playback) |

@@ -14,7 +14,7 @@ Use these owners for repository requirements and procedures:
 
 ## Follow-up findings
 
-Use [finding promotion](../CONTRIBUTING.md#promote-agreed-findings) to continue Work Item planning from confirmed results or define an agreed follow-up.
+Use [finding promotion](../CONTRIBUTING.md#promote-agreed-findings) to continue Task planning from confirmed results or define an agreed follow-up.
 
 ## GitHub issue records
 
@@ -47,7 +47,7 @@ Issue maintenance follows these authorization boundaries:
 
 * Do not automatically correct historical or completed issues, including their text, checklists, links, or status.
 * Change historical records only when the user explicitly requests that change.
-* Maintain Initiatives, Work Items, and Tasks only within the authorized scope. Planning, publication, and reorganization are separate permissions.
+* Maintain Epics, Tasks, and Subtasks only within the authorized scope. Planning, publication, and reorganization are separate permissions.
 * Return complete drafts when publication is not authorized. Verify labels and actual parent/sub-issue relationships after authorized publication.
 * An open issue is not permission to rewrite it during documentation review.
 * Preserve requirements in their canonical Markdown owner without editing the source issue.

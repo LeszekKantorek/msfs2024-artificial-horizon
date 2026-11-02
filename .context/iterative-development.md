@@ -1,5 +1,5 @@
 ---
-description: Execute Tasks, verify context, consult Sol, preserve accepted decisions, and report findings in the main conversation.
+description: Execute Subtasks, verify context, consult Sol, preserve accepted decisions, and report findings in the main conversation.
 status: active
 ---
 
@@ -8,7 +8,7 @@ The [work organization model](../docs/work-organization.md) defines the hierarch
 Select the procedure that matches the requested result:
 
 * Use [project-decide-architecture](../.agents/skills/project-decide-architecture/SKILL.md) to assess material structural choices against the current outcome and next agreed use.
-* Use [project-plan-change](../.agents/skills/project-plan-change/SKILL.md) to turn the accepted choice into executable Tasks.
+* Use [project-plan-change](../.agents/skills/project-plan-change/SKILL.md) to turn the accepted choice into executable Subtasks.
 
 Apply these scope and component-boundary requirements:
 
@@ -22,29 +22,29 @@ Apply these scope and component-boundary requirements:
 
 Prepare and preserve handoffs under these requirements:
 
-* Use a self-contained Task as the primary execution handoff. Read its complete instructions, decisions, invariants, and applicable amendments before edits or delegation.
+* Use a self-contained Subtask as the primary execution handoff. Read its complete instructions, decisions, invariants, and applicable amendments before edits or delegation.
 * Preserve supplied accepted plans verbatim and locally, including their original language. Retain existing plans and their amendments without requiring future handoffs to use `.local/plans/`.
-* If a supplied plan governs the Task, preserve its requirements in the handoff and identify the governing source and amendments.
+* If a supplied plan governs the Subtask, preserve its requirements in the handoff and identify the governing source and amendments.
 * Record subsequent corrections explicitly, with the date and the requirements they supersede. Do not silently rewrite accepted decisions or discard earlier evidence.
-* Keep optional local indexes and notes as supplements. Another session must not depend on their continued availability to understand a Task.
-* Publish Task instructions and delivery evidence only within authorized GitHub work. Do not commit supplied plan originals or use Issues as a running progress notebook.
+* Keep optional local indexes and notes as supplements. Another session must not depend on their continued availability to understand a Subtask.
+* Publish Subtask instructions and delivery evidence only within authorized GitHub work. Do not commit supplied plan originals or use Issues as a running progress notebook.
 
-### Prepare Task context
+### Prepare Subtask context
 
-Prepare the context before executing the Task:
+Prepare the context before executing the Subtask:
 
-1. Read the Task and its Work Item through [issue and artifact retrieval](repository-instructions.md#read-github-issue-context).
+1. Read the Subtask and its Task through [issue and artifact retrieval](repository-instructions.md#read-github-issue-context).
    Then read the source sections required for its scope. Establish the intended result, constraints, dependencies, and validation.
 2. Check the current revision and relevant changes. Verify cited files, sections, line ranges, and consequential assumptions against current code and contracts.
 3. If lines have moved, locate the intended passage by meaning and record a consequential mismatch. Line references remain valid handoff tools when checked.
-4. Resolve routine implementation details within scope. Use accepted decisions without redesigning them merely because the Task entered a new session.
+4. Resolve routine implementation details within scope. Use accepted decisions without redesigning them merely because the Subtask entered a new session.
 5. If missing information or a contradiction requires broader analysis, use [Consult Sol](#consult-sol). Continue independent authorized work while the dependent part remains unresolved.
 
 ### Consult Sol
 
 Use consultation when any of these conditions requires broader analysis:
 
-* A requirement or consequential technical decision is missing from the Task.
+* A requirement or consequential technical decision is missing from the Subtask.
 * A contract is ambiguous or the required sources conflict.
 * An unexpected dependency requires analysis beyond routine implementation.
 
@@ -65,22 +65,22 @@ If delegation or the requested model is unavailable, apply these requirements:
 
 * Report the unavailable capability without silently substituting another model.
 * Continue independent work and routine decisions within the accepted scope.
-* Record unresolved dependent work explicitly. Do not claim that an unavailable consultation or incomplete Task was completed.
+* Record unresolved dependent work explicitly. Do not claim that an unavailable consultation or incomplete Subtask was completed.
 
 ### Record execution findings
 
 Preserve execution findings under these requirements:
 
-* Record missing Task information, context gaps, contradictions, and important independent decisions in the main conversation, including problems resolved successfully.
+* Record missing Subtask information, context gaps, contradictions, and important independent decisions in the main conversation, including problems resolved successfully.
 * Record consultation reasons, questions, options, decisions, rationale, and whether the resulting solution worked. A subagent transcript alone is insufficient.
-* During long Tasks, record consequential findings in the main conversation as they arise to reduce loss if execution is interrupted.
-* An optional journal under Git-ignored `.local/` can hold the Task identifier, problem, consultation, decision, and result during execution.
+* During long Subtasks, record consequential findings in the main conversation as they arise to reduce loss if execution is interrupted.
+* An optional journal under Git-ignored `.local/` can hold the Subtask identifier, problem, consultation, decision, and result during execution.
 * Before finishing, transfer all significant journal findings into the main conversation. Local files, test reports, and separate subagent sessions might be unavailable later.
 * Keep full test logs local. Preserve the meaning of evidence and its limits in the conversation without copying entire logs or analyses.
 
 This process requires no separate consultation database, synchronization, new skill, or automatic GitHub publication.
 
-### Final Task summary
+### Final Subtask summary
 
 Finish in the main conversation with a self-contained summary covering every field below.
 
@@ -93,7 +93,7 @@ Finish in the main conversation with a self-contained summary covering every fie
 | Terra decisions | Important ambiguities resolved independently and the reasons for those choices |
 | Decision results | Whether the selected solutions worked and how they affected execution |
 | Unresolved problems | Remaining limitations, risks, missing information, and unconfirmed criteria |
-| Planning feedback | What similar Tasks should include to prevent unnecessary analysis or consultation |
+| Planning feedback | What similar Subtasks should include to prevent unnecessary analysis or consultation |
 
 The summary must satisfy these completeness requirements:
 
@@ -110,4 +110,4 @@ Handle findings without expanding the authorized scope:
 * Keep unresolved proposals separate from agreed follow-up work.
 * Record the finding in the main conversation. Preserve reusable knowledge in its documentation owner through the applicable Context Skill.
 * Before removing a local record, preserve agreed outstanding work in an authorized destination that does not depend on that record.
-* Use [finding promotion](../CONTRIBUTING.md#promote-agreed-findings) for self-contained follow-up issues or further planning of an open Work Item. Publication still requires authorization.
+* Use [finding promotion](../CONTRIBUTING.md#promote-agreed-findings) for self-contained follow-up issues or further planning of an open Task. Publication still requires authorization.

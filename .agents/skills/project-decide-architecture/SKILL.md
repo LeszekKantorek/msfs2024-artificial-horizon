@@ -13,7 +13,7 @@ Produce an evidence-based architecture comparison and ADR with accurate decision
 
 Use this sequence when the requested outcome requires a material architecture choice:
 
-1. Read the Task, its Work Item, and the relevant Initiative through [issue and artifact retrieval](../../../.context/repository-instructions.md#read-github-issue-context).
+1. Read the Subtask, its Task, and the relevant Epic through [issue and artifact retrieval](../../../.context/repository-instructions.md#read-github-issue-context).
    For work without an issue, use the supplied scope. Define the problem, current outcome, and next agreed use.
 2. Use the [governing-decision map](../../../.context/architecture-decisions.md#find-the-governing-decision) to select applicable ADRs, then read the current architecture and contracts for the affected boundary.
 3. Check the implementation separately from target design and unverified integration assumptions.
@@ -60,7 +60,7 @@ Follow the existing ADR examples and [documentation ownership](../../../AGENTS.m
 * Explain which earlier decision changes and preserve unaffected requirements when a later decision replaces part of it.
 * Distinguish proposed choices, accepted decisions, implemented behavior, and verified acceptance.
 * Keep delivery status and execution results in the issue or PR.
-* Preserve accepted decisions, supplied plans, and amendments under the [Task handoff rules](../../../.context/iterative-development.md#accepted-plans-and-handoffs).
+* Preserve accepted decisions, supplied plans, and amendments under the [Subtask handoff rules](../../../.context/iterative-development.md#accepted-plans-and-handoffs).
 * Apply [project-plan-change](../project-plan-change/SKILL.md) and [evidence selection](../../../docs/testing/evidence.md#select-evidence-by-failure-risk) and [independent review guidance](../../../docs/testing/evidence.md#independent-subagent-review) after resolving the architectural choice.
 
 ## Completion checks

@@ -1,19 +1,19 @@
-name: Initiative
-description: A project goal and expected result, delivered through Work Items.
-title: "[Initiative]: "
-labels: ["initiative"]
+name: Epic
+description: A project goal and expected result, delivered through Tasks.
+title: "[Epic]: "
+labels: ["epic"]
 body:
   - type: markdown
     attributes:
       value: |
         If there is nothing to enter in a field, use `N/A`.
 
-        Work Items can be linked through GitHub's Relationships controls.
+        Tasks can be linked through GitHub's Relationships controls.
   - type: textarea
     id: goal
     attributes:
       label: Goal
-      description: What project goal does this Initiative serve?
+      description: What project goal does this Epic serve?
     validations:
       required: true
   - type: textarea
