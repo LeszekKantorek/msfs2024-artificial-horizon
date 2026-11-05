@@ -33,22 +33,11 @@ struct ActiveJournal {
     last_flush: Instant,
     records: u64,
     session_id: String,
-    bytes: u64,
-    max_bytes: Option<u64>,
     separator: bool,
 }
 
 impl Journal {
-    #[cfg(test)]
     pub(super) fn open(path: Option<&Path>, protected_paths: &[&Path]) -> io::Result<Self> {
-        Self::open_with_limit(path, protected_paths, None)
-    }
-
-    pub(super) fn open_with_limit(
-        path: Option<&Path>,
-        protected_paths: &[&Path],
-        max_bytes: Option<u64>,
-    ) -> io::Result<Self> {
         let Some(path) = path else {
             return Ok(Self {
                 active: None,
@@ -98,16 +87,10 @@ impl Journal {
                 separator = true;
             }
         }
-        Self::start(file, path.to_owned(), bytes, max_bytes, separator)
+        Self::start(file, path.to_owned(), separator)
     }
 
-    fn start(
-        file: File,
-        path: PathBuf,
-        bytes: u64,
-        max_bytes: Option<u64>,
-        separator: bool,
-    ) -> io::Result<Self> {
+    fn start(file: File, path: PathBuf, separator: bool) -> io::Result<Self> {
         static NEXT_SESSION: AtomicU64 = AtomicU64::new(0);
         let started_unix_ns = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -124,8 +107,6 @@ impl Journal {
             last_flush: Instant::now(),
             records: 0,
             session_id,
-            bytes,
-            max_bytes,
             separator,
         };
         if let Err(error) = active.record("session_start", json!({
@@ -221,8 +202,6 @@ impl Journal {
                 last_flush: Instant::now(),
                 records: 0,
                 session_id: "injected-failure".into(),
-                bytes: 0,
-                max_bytes: None,
                 separator: false,
             }),
             status: DiagnosticStatus::Completed {
@@ -239,20 +218,11 @@ impl ActiveJournal {
             "elapsed_us": self.started.elapsed().as_micros().to_string(), "kind": kind, "data": data });
         let mut encoded = serde_json::to_vec(&record)?;
         encoded.push(b'\n');
-        let length = encoded.len() as u64 + u64::from(self.separator);
-        if self.max_bytes.is_some_and(|max| {
-            self.bytes
-                .checked_add(length)
-                .is_none_or(|total| total > max)
-        }) {
-            return Err(io::Error::other("diagnostic byte limit reached"));
-        }
         if self.separator {
             self.writer.write_all(b"\n")?;
             self.separator = false;
         }
         self.writer.write_all(&encoded)?;
-        self.bytes += length;
         self.records += 1;
         if flush || self.last_flush.elapsed() >= Duration::from_secs(1) {
             self.flush()?;
@@ -361,102 +331,6 @@ mod tests {
         fn drop(&mut self) {
             fs::remove_dir_all(&self.0).unwrap();
         }
-    }
-    #[test]
-    fn cap_rejects_initial_record_and_stops_later_records() {
-        let directory = TemporaryDirectory::new();
-        let path = directory.path("cap.jsonl");
-        assert!(Journal::open_with_limit(Some(&path), &[], Some(1)).is_err());
-        assert_eq!(fs::metadata(&path).unwrap().len(), 0);
-        let mut journal = Journal::open_with_limit(Some(&path), &[], Some(4096)).unwrap();
-        journal.record("oversized", || json!({"value": "x".repeat(4096)}), true);
-        assert!(matches!(journal.status(), DiagnosticStatus::Failed { .. }));
-        assert!(fs::metadata(&path).unwrap().len() < 4096);
-    }
-    #[test]
-    fn append_limit_counts_existing_and_interrupted_bytes_before_start() {
-        let directory = TemporaryDirectory::new();
-        for initial in [b"{\"old\":true}\n".as_slice(), b"{\"partial\":".as_slice()] {
-            let path = directory.path("append-cap.jsonl");
-            fs::write(&path, initial).unwrap();
-            assert!(
-                Journal::open_with_limit(Some(&path), &[], Some(initial.len() as u64)).is_err()
-            );
-            assert_eq!(fs::read(&path).unwrap(), initial);
-            assert!(
-                Journal::open_with_limit(Some(&path), &[], Some((initial.len() - 1) as u64))
-                    .is_err()
-            );
-            assert_eq!(fs::read(&path).unwrap(), initial);
-            let mut journal = Journal::open_with_limit(Some(&path), &[], Some(4096)).unwrap();
-            journal.finish();
-            let bytes = fs::read(&path).unwrap();
-            assert_eq!(&bytes[..initial.len()], initial);
-            let tail = &bytes[initial.len()..];
-            let tail = if initial.ends_with(b"\n") {
-                tail
-            } else {
-                assert_eq!(tail[0], b'\n');
-                &tail[1..]
-            };
-            assert_eq!(
-                serde_json::from_slice::<Value>(tail).unwrap()["kind"],
-                "session_start"
-            );
-        }
-    }
-
-    #[test]
-    fn interrupted_append_charges_separator_against_exact_limit() {
-        let directory = TemporaryDirectory::new();
-        let path = directory.path("separator.jsonl");
-        let prefix = b"{\"partial\":";
-        fs::write(&path, prefix).unwrap();
-        let record =
-            json!({"session_id":"test", "record":0, "elapsed_us":"0", "kind":"sample", "data": {}});
-        let length =
-            prefix.len() as u64 + 1 + serde_json::to_vec(&record).unwrap().len() as u64 + 1;
-        let make_active = |limit| ActiveJournal {
-            writer: BufWriter::new(OpenOptions::new().append(true).open(&path).unwrap()),
-            started: Instant::now() + Duration::from_secs(60),
-            last_flush: Instant::now(),
-            records: 0,
-            session_id: "test".into(),
-            bytes: prefix.len() as u64,
-            max_bytes: Some(limit),
-            separator: true,
-        };
-        let mut short = make_active(length - 1);
-        assert!(short.record("sample", json!({}), true).is_err());
-        drop(short);
-        assert_eq!(fs::read(&path).unwrap(), prefix);
-        let mut exact = make_active(length);
-        exact.record("sample", json!({}), true).unwrap();
-        assert_eq!(fs::metadata(&path).unwrap().len(), length);
-    }
-
-    #[test]
-    fn exact_limit_accepts_a_complete_record_and_rejects_the_next() {
-        let directory = TemporaryDirectory::new();
-        let path = directory.path("exact.jsonl");
-        let file = File::create(&path).unwrap();
-        let record =
-            json!({"session_id":"test", "record":0, "elapsed_us":"0", "kind":"sample", "data": {}});
-        let length = serde_json::to_vec(&record).unwrap().len() as u64 + 1;
-        let mut active = ActiveJournal {
-            writer: BufWriter::new(file),
-            started: Instant::now() + Duration::from_secs(60),
-            last_flush: Instant::now(),
-            records: 0,
-            session_id: "test".into(),
-            bytes: 0,
-            max_bytes: Some(length),
-            separator: false,
-        };
-        active.record("sample", json!({}), true).unwrap();
-        assert_eq!(fs::metadata(&path).unwrap().len(), length);
-        assert!(active.record("sample", json!({}), true).is_err());
-        assert_eq!(fs::metadata(&path).unwrap().len(), length);
     }
     #[test]
     fn nonfinite_values_retain_bits_and_classification_in_valid_json() {
@@ -595,8 +469,6 @@ mod tests {
             Journal::start(
                 File::open("Cargo.toml").unwrap(),
                 directory.path("injected.jsonl"),
-                0,
-                None,
                 false
             )
             .is_err()

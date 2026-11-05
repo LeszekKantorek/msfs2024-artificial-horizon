@@ -21,7 +21,6 @@ async fn missing_explicit_dll_returns_controlled_error_without_diagnostics() {
         SimConnectConfig {
             dll: Some(dll),
             log: None,
-            log_max_bytes: None,
         },
         publisher,
         std::future::pending(),
@@ -51,7 +50,6 @@ async fn official_dll_stops_on_requested_shutdown_and_uses_caller_channel() {
         SimConnectConfig {
             dll: Some(dll),
             log: Some(log.clone()),
-            log_max_bytes: None,
         },
         publisher,
         async {

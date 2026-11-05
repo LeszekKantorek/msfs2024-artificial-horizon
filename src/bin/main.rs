@@ -33,9 +33,6 @@ struct Cli {
     /// SimConnect only: append diagnostic JSONL to this file (optional).
     #[arg(long)]
     log: Option<PathBuf>,
-    /// Maximum total diagnostic file size in bytes; requires --log.
-    #[arg(long, requires = "log", value_parser = clap::value_parser!(u64).range(1..))]
-    log_max_bytes: Option<u64>,
 }
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
@@ -53,7 +50,7 @@ impl Cli {
         };
         let source = match self.source {
             CliSource::Demo => {
-                if self.dll.is_some() || self.log.is_some() || self.log_max_bytes.is_some() {
+                if self.dll.is_some() || self.log.is_some() {
                     return Err(Self::command().error(
                         ErrorKind::ArgumentConflict,
                         "--dll and --log require --source simconnect",
@@ -64,7 +61,6 @@ impl Cli {
             CliSource::Simconnect => SourceSelection::SimConnect(SimConnectConfig {
                 dll: self.dll,
                 log: self.log,
-                log_max_bytes: self.log_max_bytes,
             }),
         };
         Ok((config, source))
@@ -159,30 +155,10 @@ mod tests {
         assert_eq!(options.log, Some(PathBuf::from("sessions/test.jsonl")));
     }
     #[test]
-    fn diagnostic_limit_requires_log_and_positive_simconnect_value() {
-        assert!(
-            Cli::try_parse_from(["main", "--source", "simconnect", "--log-max-bytes", "10"])
-                .is_err()
-        );
-        assert!(
-            Cli::try_parse_from([
-                "main",
-                "--source",
-                "simconnect",
-                "--log",
-                "log.jsonl",
-                "--log-max-bytes",
-                "0"
-            ])
-            .is_err()
-        );
-        assert!(
-            Cli::try_parse_from(["main", "--log", "log.jsonl", "--log-max-bytes", "10"])
-                .unwrap()
-                .into_configuration()
-                .is_err()
-        );
-        let (_, source) = Cli::try_parse_from([
+    fn removed_diagnostic_limit_is_absent_and_rejected() {
+        let help = Cli::command().render_long_help().to_string();
+        assert!(!help.contains("--log-max-bytes"));
+        let error = Cli::try_parse_from([
             "main",
             "--source",
             "simconnect",
@@ -191,13 +167,8 @@ mod tests {
             "--log-max-bytes",
             "10",
         ])
-        .unwrap()
-        .into_configuration()
-        .unwrap();
-        let SourceSelection::SimConnect(config) = source else {
-            panic!("expected SimConnect")
-        };
-        assert_eq!(config.log_max_bytes, Some(10));
+        .unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::UnknownArgument);
     }
     #[test]
     fn diagnostic_options_require_simconnect_and_obsolete_options_are_rejected() {

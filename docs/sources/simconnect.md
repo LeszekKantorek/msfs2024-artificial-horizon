@@ -48,14 +48,13 @@ cargo run --locked --release --bin msfs2024-artificial-horizon -- --source simco
 | `--listen-address`, `--port` | HTTP settings for either source. Defaults are `127.0.0.1` and `8080` |
 | `--dll <file>` | Optional absolute override. Default: `SimConnect.dll` beside the running EXE |
 | `--log <file>` | Optional exact JSONL destination, absolute or relative to the working directory |
-| `--log-max-bytes <positive-integer>` | Optional maximum total log size, including existing bytes. Requires `--log` and SimConnect |
 | `--help`, `--version` | Information without opening a DLL or log |
 | `--shutdown-file <absolute-path>` | Optional initially absent file. Creating it requests coordinated shutdown |
 | `Ctrl+C` | Controlled shutdown that waits for the native worker |
 
 The CLI applies these restrictions:
 
-* `--dll`, `--log`, and `--log-max-bytes` require SimConnect.
+* `--dll` and `--log` require SimConnect.
 * Invalid HTTP settings and a relative DLL override are rejected before starting components.
 * `--simconnect` and `--scenario` are unsupported.
 * Log filenames distinguish scenarios. The application does not interpret them as metadata.
@@ -304,13 +303,13 @@ Trend freshness and history follow these rules:
 | Flush | Significant events, at least once per second while recording, and shutdown |
 | No logging | No journal, diagnostic environment collection, or raw-record formatting |
 
+The application places no size limit on the journal; it can grow throughout a requested logging session. The live observation harness separately limits its diagnostic reader to 32 MiB. Reaching that reader limit leaves observation evidence incomplete; it does not limit the journal on disk.
+
 Diagnostic failures remain independent of acquisition:
 
 | Condition | Result |
 | --- | --- |
 | Open or initial write failure | Abort producer startup before DLL loading. HTTP remains available |
-| Initial record exceeds the byte limit | Abort producer startup before DLL loading |
-| Later record exceeds the byte limit | Stop logging before the record, report the limit, and continue acquisition |
 | Later write or flush failure | Disable diagnostics, continue acquisition and cleanup, warn immediately and at shutdown |
 | Missing `session_end` | Unconfirmed termination |
 | Final result | `DiagnosticStatus` distinguishes disabled, completed, and failed logging independently of the native outcome |

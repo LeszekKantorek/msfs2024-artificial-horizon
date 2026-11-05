@@ -14,7 +14,7 @@ export function applicationArgs({ source, dll, runDirectory, logPath }, port) {
   if (logPath && !path.isAbsolute(logPath)) throw new Error('Diagnostic path must be absolute');
   const args = ['--source', source, '--listen-address', '127.0.0.1', '--port', String(port), '--shutdown-file', path.join(runDirectory, 'shutdown')];
   if (dll) args.push('--dll', dll);
-  if (logPath) args.push('--log', logPath, '--log-max-bytes', String(32 * 1024 * 1024));
+  if (logPath) args.push('--log', logPath);
   return args;
 }
 

@@ -26,7 +26,6 @@ use std::{
 pub struct SimConnectConfig {
     pub dll: Option<PathBuf>,
     pub log: Option<PathBuf>,
-    pub log_max_bytes: Option<u64>,
 }
 
 /// Acquisition and diagnostic outcomes remain independent.
@@ -105,11 +104,6 @@ pub async fn run(
             "publisher must identify the SimConnect source".into(),
         ));
     }
-    if config.log_max_bytes == Some(0) || (config.log_max_bytes.is_some() && config.log.is_none()) {
-        return early_error(SimConnectError::Configuration(
-            "log_max_bytes must be positive and requires a diagnostic log".into(),
-        ));
-    }
     let dll = match resolve_dll(config.dll.as_deref()) {
         Ok(dll) => dll,
         Err(error) => return early_error(error),
@@ -126,15 +120,8 @@ pub async fn run(
     let log_path = config.log.clone();
     let worker = match thread::Builder::new()
         .name("simconnect".into())
-        .spawn(move || {
-            worker_entry(
-                dll,
-                config.log,
-                config.log_max_bytes,
-                publisher,
-                &worker_stop,
-            )
-        }) {
+        .spawn(move || worker_entry(dll, config.log, publisher, &worker_stop))
+    {
         Ok(worker) => worker,
         Err(error) => return early_error(error.into()),
     };
@@ -184,7 +171,6 @@ impl Drop for Cancellation {
 fn worker_entry(
     dll: PathBuf,
     log: Option<PathBuf>,
-    log_max_bytes: Option<u64>,
     publisher: Publisher,
     stop: &Event,
 ) -> RunReport {
@@ -197,21 +183,20 @@ fn worker_entry(
             };
         }
     };
-    let mut journal =
-        match Journal::open_with_limit(log.as_deref(), &[&dll, &executable], log_max_bytes) {
-            Ok(journal) => journal,
-            Err(error) => {
-                return RunReport {
-                    diagnostics: log.map_or(DiagnosticStatus::Disabled, |path| {
-                        DiagnosticStatus::Failed {
-                            path,
-                            error: error.to_string(),
-                        }
-                    }),
-                    result: Err(error.into()),
-                };
-            }
-        };
+    let mut journal = match Journal::open(log.as_deref(), &[&dll, &executable]) {
+        Ok(journal) => journal,
+        Err(error) => {
+            return RunReport {
+                diagnostics: log.map_or(DiagnosticStatus::Disabled, |path| {
+                    DiagnosticStatus::Failed {
+                        path,
+                        error: error.to_string(),
+                    }
+                }),
+                result: Err(error.into()),
+            };
+        }
+    };
     if let Some(path) = &log {
         println!("Session log: {}", path.display());
     }
@@ -1397,7 +1382,6 @@ mod tests {
             SimConnectConfig {
                 dll: Some(dll),
                 log: Some(log.clone()),
-                log_max_bytes: None,
             },
             publisher,
             std::future::pending(),
