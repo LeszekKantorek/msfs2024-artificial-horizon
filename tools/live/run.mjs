@@ -33,12 +33,12 @@ export async function run(options) {
     app = await launchOwned({...options,exe:path.resolve(options.exe)}, AbortSignal.any([controller.signal,startup.signal]));
     result = await capture({...options,output:stream,signal:controller.signal,startupSignal:startup.signal});
     if (result.httpStatus >= 400) throw new Error(`HTTP ${result.httpStatus}`);
-  } catch (error) { failure = error; if (error.cleanup?.forced || error.cleanup?.error) failure = new Error(`Cleanup failed: ${error.cleanup.error ?? 'forced termination'}`); }
+  } catch (error) { failure = error; if (error.cleanup && (error.cleanup.forced || error.cleanup.error || error.cleanup.exitCode !== 0)) failure = new Error(`Cleanup failed: ${error.cleanup.error ?? (error.cleanup.forced ? 'forced termination' : error.cleanup.exitCode)}`); }
   finally {
     clearTimeout(timeout);
-    if (stream) { stream.end(); try { await finished(stream); } catch (error) { failure ??= error; } }
+    if (stream) { stream.end(); try { await finished(stream); } catch (error) { failure = error; } }
     else if (file) await file.close();
-    if (app) { const cleanup = await app.stop(); if (cleanup.forced || cleanup.error || cleanup.exitCode !== 0) failure ??= new Error(`Cleanup failed: ${cleanup.error ?? (cleanup.forced ? 'forced termination' : cleanup.exitCode)}`); }
+    if (app) { const cleanup = await app.stop(); if (cleanup.forced || cleanup.error || cleanup.exitCode !== 0) failure = new Error(`Cleanup failed: ${cleanup.error ?? (cleanup.forced ? 'forced termination' : cleanup.exitCode)}`); }
     process.removeListener('SIGINT', cancel);
   }
   if (failure && !(cancelled && failure.name === 'AbortError')) { console.error(failure.message); return 1; }

@@ -14,6 +14,7 @@ export async function launchOwned({exe, appArgs, url}, signal) {
   child.stderr.pipe(process.stderr, {end:false});
   const stop = () => stopped ??= (async () => {
     let error = null, forced = false;
+    if (exit) error = 'Application exited before shutdown was requested';
     if (!exit) {
       try { child.stdin.end('stop\n'); } catch (e) { error = e.message; }
       if (!await wait(exited, 10000)) {
