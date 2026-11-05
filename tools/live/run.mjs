@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { launchOwned } from './process.mjs';
 import { observeSse, waitForReadiness, JournalReader, observeJournal, correlatePublications, evaluateJournal, fieldAvailability } from './observe.mjs';
-import { observeBrowser, evaluateStableDisplay } from './browser.mjs';
+import { observeBrowser } from './browser.mjs';
 import { writeReport } from './report.mjs';
 export function parseArgs(args) {
  const values={}; const names=new Set(['source','dll','exe','duration-ms','ready-timeout-ms','port']);
@@ -57,12 +57,11 @@ export async function run(options) {
   catch(e) { checks.push(check('readiness',observationErrorStatus(e),e.message)); }
   if (controller.signal.aborted) { await journalTask; throw new Error('Observation stopped during readiness'); }
   const observationStarted=performance.now(); const timer=setTimeout(()=>controller.abort(),options.durationMs);
-  const tasks=[observeSse({endpoint:app.endpoint,source:options.source,signal:controller.signal,onObservation:record}),observeBrowser({endpoint:app.endpoint,source:options.source,signal:controller.signal,onObservation:record,outputDirectory:directory})];
+  const tasks=[observeSse({endpoint:app.endpoint,source:options.source,signal:controller.signal,onObservation:record}),observeBrowser({endpoint:app.endpoint,source:options.source,signal:controller.signal,onObservation:record})];
   const results=await Promise.allSettled(tasks); manifest.observationDurationMs=performance.now()-observationStarted; clearTimeout(timer); controller.abort();
   await journalTask;
-  for(const [i,result] of results.entries()) {const id=i?'browser receipt':'SSE telemetry'; if(result.status==='fulfilled') checks.push(check(id,result.value.check.status,result.value.check.reason,i?['Receipt and display are separate; exact rendered sample is unknown.']:[])); else checks.push(check(id,observationErrorStatus(result.reason),result.reason.message)); const cleanupError=result.status==='fulfilled' ? result.value.cleanupError : result.reason.cleanupError; if(i && cleanupError) checks.push(check('browser cleanup','inconclusive',cleanupError));}
+  for(const [i,result] of results.entries()) {const id=i?'browser receipt':'SSE telemetry'; if(result.status==='fulfilled') checks.push(check(id,result.value.check.status,result.value.check.reason,[])); else checks.push(check(id,observationErrorStatus(result.reason),result.reason.message)); const cleanupError=result.status==='fulfilled' ? result.value.cleanupError : result.reason.cleanupError; if(i && cleanupError) checks.push(check('browser cleanup','inconclusive',cleanupError));}
   for (const [field, result] of Object.entries(fieldAvailability(observations.filter(o=>o.kind==='sse').map(o=>o.snapshot)))) checks.push(check(`${field} availability`,result.status,result.reason));
-  const display=retained.counts().discarded ? {status:'inconclusive',reason:'Sampled receipts cannot establish a stable display window'} : evaluateStableDisplay(observations); checks.push(check('browser display correlation',display.status,display.reason,['Stable-value agreement does not identify one exact rendered sequence.']));
  } catch(error) { cleanup=error.cleanup ?? cleanup; checks.push(runFailureCheck(error,!!app)); }
  finally { if(app) cleanup=await app.stop(); process.removeListener('SIGINT',cancel); }
  manifest.observationCounts=retained.counts();

@@ -37,3 +37,20 @@ test('readiness protocol violations are failures, while observation limits are i
  assert.equal(runFailureCheck(new Error('Observation stopped during readiness'),true).id,'observation');
  assert.equal(runFailureCheck(new Error('Application exited'),false).status,'failed');
 });
+test('Demo command reports changing browser receipts without display artifacts', async () => {
+ const {execFile}=await import('node:child_process'); const {promisify}=await import('node:util'); const {readFile,readdir,rm}=await import('node:fs/promises');
+ assert.ok(process.env.S1_EXE,'Set S1_EXE to the rebuilt application');
+ const {stdout}=await promisify(execFile)(process.execPath,['tools/live/run.mjs','--source','demo','--exe',process.env.S1_EXE,'--duration-ms','3000'],{timeout:30000,env:process.env});
+ const directory=stdout.match(/Results: (.+)/)?.[1]?.trim(); assert.ok(directory,'command must report its result directory');
+ try {
+  const report=JSON.parse(await readFile(path.join(directory,'result.json'),'utf8'));
+  const observations=(await readFile(path.join(directory,'observations.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);
+  const receipts=observations.filter(o=>o.kind==='browser-receipt');
+  assert.equal(report.checks.find(c=>c.id==='browser receipt')?.status,'passed');
+  assert.equal(report.checks.some(c=>/display/i.test(c.id)),false);
+  assert.equal(observations.some(o=>o.kind==='browser-display'),false);
+  assert.ok(receipts.length>2); assert.ok(new Set(receipts.map(o=>JSON.stringify([o.snapshot.attitude,o.snapshot.ias_kt,o.snapshot.altitude_ft]))).size>1);
+  assert.equal((await readdir(directory)).some(name=>/\.png$/i.test(name)),false);
+  assert.equal(report.cleanup.graceful,true); assert.equal(report.cleanup.forced,false); assert.equal(report.cleanup.error,null);
+ } finally {await rm(directory,{recursive:true,force:true});}
+});
