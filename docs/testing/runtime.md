@@ -39,6 +39,7 @@ Use committed `Cargo.lock`. These checks require no simulator or SDK.
 
 Automated lifecycle tests cover normal shutdown and cancellation:
 
+* CLI tests send `stop` through standard input and check port reuse. End of input leaves the server running.
 * Library tests signal shutdown independently and rebind within a five-second completion timeout.
 * Cancellation tests abort a task or drop a polled server future after publication with two active SSE clients.
 * Server cancellation closes clients and releases the port without stopping externally owned publication.

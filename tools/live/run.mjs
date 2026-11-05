@@ -50,7 +50,7 @@ export async function run(options) {
   controller.signal.addEventListener('abort', abortStartup, {once:true});
   try { app=await launchOwned({...options,readyTimeoutMs:5000,exe,runDirectory:directory,logPath,onOutputLimit:()=>controller.abort()},startup.signal); }
   finally { controller.signal.removeEventListener('abort', abortStartup); }
-  Object.assign(manifest,{pid:app.pid,childStartedAt:app.startedAt,invocation:app.invocation,endpoint:app.endpoint,artifact:app.artifact,shutdownPath:app.shutdownPath});
+  Object.assign(manifest,{pid:app.pid,childStartedAt:app.startedAt,invocation:app.invocation,endpoint:app.endpoint,artifact:app.artifact});
   if (!options.exe) manifest.artifact.attribution='local build';
   const journalTask=journalReader ? observeJournal(logPath,journalReader,controller.signal).catch(e=>{journalError=e;}) : Promise.resolve();
   try { const readiness=await waitForReadiness({endpoint:app.endpoint,source:options.source,timeoutMs:options.readyTimeoutMs,signal:controller.signal,onObservation:record}); checks.push(check('readiness',readiness.status,readiness.reason)); }

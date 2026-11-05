@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
-import { stat, writeFile } from 'node:fs/promises';
+import { stat } from 'node:fs/promises';
 import net from 'node:net';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -12,7 +12,7 @@ const STREAM_CAP = 8 * 1024 * 1024;
 export function applicationArgs({ source, dll, runDirectory, logPath }, port) {
   if (logPath && source !== 'simconnect') throw new Error('Diagnostics require SimConnect');
   if (logPath && !path.isAbsolute(logPath)) throw new Error('Diagnostic path must be absolute');
-  const args = ['--source', source, '--listen-address', '127.0.0.1', '--port', String(port), '--shutdown-file', path.join(runDirectory, 'shutdown')];
+  const args = ['--source', source, '--listen-address', '127.0.0.1', '--port', String(port)];
   if (dll) args.push('--dll', dll);
   if (logPath) args.push('--log', logPath);
   return args;
@@ -96,10 +96,10 @@ export async function launchOwned(options, signal) {
   const port = options.port ?? await selectPort();
   if (signal?.aborted) throw new Error('Cancelled');
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid port');
-  const shutdownPath = path.join(runDirectory, 'shutdown');
   const args = applicationArgs(options, port);
   const startedAt = new Date().toISOString();
-  const child = spawn(exe, args, { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(exe, args, { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
+  child.stdin.on('error', () => {});
   const stdout = capture(child.stdout, path.join(runDirectory, 'stdout.txt'), options.onOutputLimit);
   const stderr = capture(child.stderr, path.join(runDirectory, 'stderr.txt'), options.onOutputLimit);
   let exit = null;
@@ -112,7 +112,7 @@ export async function launchOwned(options, signal) {
     let error = null, forced = false;
     let requested = false;
     if (!exit) {
-      try { await writeFile(shutdownPath, '', { flag: 'wx' }); requested = true; }
+      try { child.stdin.end('stop\n', writeError => { if (writeError) error = `Shutdown request failed: ${writeError.message}`; }); requested = true; }
       catch (e) { error = `Shutdown request failed: ${e.message}`; }
       await waitForExit(exited, options.shutdownTimeoutMs ?? 10000);
       if (!exit) {
@@ -151,7 +151,7 @@ export async function launchOwned(options, signal) {
     const verifiedAgain = await owner(port, options.ownershipTimeoutMs ?? 5000);
     if (verifiedAgain.length !== 1 || verifiedAgain[0] !== child.pid) throw new Error('Port ownership changed during startup');
     if (signal?.aborted || exit) throw new Error('Application stopped during startup');
-    return { pid: child.pid, startedAt, invocation: { executable: exe, args }, endpoint, artifact, shutdownPath, stop };
+    return { pid: child.pid, startedAt, invocation: { executable: exe, args }, endpoint, artifact, stop };
   } catch (error) {
     const cleanup = await stop();
     error.cleanup = cleanup;

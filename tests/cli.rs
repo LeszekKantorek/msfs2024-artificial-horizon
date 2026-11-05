@@ -75,31 +75,96 @@ fn occupied_port_exits_with_address_and_actionable_error() {
     assert!(error.contains("choose an available"));
 }
 
-#[test]
-fn shutdown_file_rejects_relative_and_existing_paths() {
-    let relative = cli(&["--shutdown-file", "relative.stop"]);
-    assert!(!relative.status.success());
-    assert!(
-        String::from_utf8(relative.stderr)
-            .unwrap()
-            .contains("absolute")
-    );
-    let existing = std::env::current_exe().unwrap();
-    let result = cli(&["--shutdown-file", existing.to_str().unwrap()]);
-    assert!(!result.status.success());
-    assert!(
-        String::from_utf8(result.stderr)
-            .unwrap()
-            .contains("already exists")
-    );
+fn stop_process(input: &[u8]) {
+    use std::io::Write;
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    drop(listener);
+    let mut child = Command::new(env!("CARGO_BIN_EXE_msfs2024-artificial-horizon"))
+        .args(["--port", &port.to_string()])
+        .stdin(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while TcpListener::bind(("127.0.0.1", port)).is_ok() {
+        assert!(Instant::now() < deadline);
+        thread::sleep(Duration::from_millis(10));
+    }
+    child
+        .stdin
+        .as_mut()
+        .unwrap()
+        .write_all(b"\nunknown\n")
+        .unwrap();
+    thread::sleep(Duration::from_millis(100));
+    assert!(child.try_wait().unwrap().is_none());
+    child.stdin.as_mut().unwrap().write_all(input).unwrap();
+    while child.try_wait().unwrap().is_none() {
+        if Instant::now() >= deadline {
+            child.kill().unwrap();
+            panic!("stop did not exit");
+        }
+        thread::sleep(Duration::from_millis(10));
+    }
+    assert!(child.wait().unwrap().success());
+    let listener = TcpListener::bind(("127.0.0.1", port)).unwrap();
+    drop(listener);
+    let mut restarted = Command::new(env!("CARGO_BIN_EXE_msfs2024-artificial-horizon"))
+        .args(["--port", &port.to_string()])
+        .stdin(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while TcpListener::bind(("127.0.0.1", port)).is_ok() {
+        assert!(Instant::now() < deadline);
+        thread::sleep(Duration::from_millis(10));
+    }
+    restarted
+        .stdin
+        .as_mut()
+        .unwrap()
+        .write_all(b"stop\n")
+        .unwrap();
+    while restarted.try_wait().unwrap().is_none() {
+        if Instant::now() >= deadline {
+            restarted.kill().unwrap();
+            panic!("restart did not exit");
+        }
+        thread::sleep(Duration::from_millis(10));
+    }
+    assert!(restarted.wait().unwrap().success());
 }
 
 #[test]
-fn help_documents_shutdown_file() {
-    let help = cli(&["--help"]);
+fn stop_lf_exits_and_releases_port() {
+    stop_process(b"stop\n");
+}
+#[test]
+fn stop_crlf_exits_and_releases_port() {
+    stop_process(b"stop\r\n");
+}
+#[test]
+fn stdin_eof_does_not_stop_server() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    drop(listener);
+    let mut child = Command::new(env!("CARGO_BIN_EXE_msfs2024-artificial-horizon"))
+        .args(["--port", &port.to_string()])
+        .stdin(Stdio::piped())
+        .spawn()
+        .unwrap();
+    drop(child.stdin.take());
+    thread::sleep(Duration::from_millis(500));
+    assert!(child.try_wait().unwrap().is_none());
+    child.kill().unwrap();
+    child.wait().unwrap();
+}
+#[test]
+fn shutdown_file_option_is_removed() {
     assert!(
-        String::from_utf8(help.stdout)
+        !String::from_utf8(cli(&["--help"]).stdout)
             .unwrap()
             .contains("--shutdown-file")
     );
+    assert!(!cli(&["--shutdown-file", "anything"]).status.success());
 }

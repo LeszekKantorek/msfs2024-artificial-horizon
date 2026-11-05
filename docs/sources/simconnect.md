@@ -49,7 +49,7 @@ cargo run --locked --release --bin msfs2024-artificial-horizon -- --source simco
 | `--dll <file>` | Optional absolute override. Default: `SimConnect.dll` beside the running EXE |
 | `--log <file>` | Optional exact JSONL destination, absolute or relative to the working directory |
 | `--help`, `--version` | Information without opening a DLL or log |
-| `--shutdown-file <absolute-path>` | Optional initially absent file. Creating it requests coordinated shutdown |
+| `stop` on standard input | A line containing `stop` requests coordinated shutdown |
 | `Ctrl+C` | Controlled shutdown that waits for the native worker |
 
 The CLI applies these restrictions:
@@ -419,7 +419,7 @@ A successful health response or a simulator process alone does not establish liv
 
 The manifest records the executable hash and local build provenance. To use an existing executable instead, pass its absolute path with `--exe`; its provenance is external and unverified. Each invocation starts a fresh process. Rebuild and run again after application changes. `--duration-ms` and `--ready-timeout-ms` accept 1 through 300000 and default to 30000; `--port` selects a loopback port from 1 through 65535. `--dll` is available only for SimConnect and must be absolute.
 
-The harness closes subscriptions and requests coordinated shutdown through an initially absent file. If the child does not exit within ten seconds, it terminates only that child and records forced cleanup. A blocked native call has no guaranteed graceful deadline. Check cleanup before starting another run; do not stop unrelated processes.
+The harness closes subscriptions and requests coordinated shutdown by sending `stop` on standard input. If the child does not exit within ten seconds, it terminates only that child and records forced cleanup. A blocked native call has no guaranteed graceful deadline. Check cleanup before starting another run; do not stop unrelated processes.
 
 Interpret correlations and evidence limits:
 

@@ -4,13 +4,7 @@ use msfs2024_artificial_horizon::{
     application::{self, SourceSelection},
     providers::simconnect::SimConnectConfig,
 };
-use std::{
-    io,
-    net::IpAddr,
-    path::{Path, PathBuf},
-    process::ExitCode,
-    time::Duration,
-};
+use std::{io, net::IpAddr, path::PathBuf, process::ExitCode};
 
 #[derive(Parser, Debug)]
 #[command(version, about)]
@@ -24,9 +18,6 @@ struct Cli {
     /// HTTP port, 1-65535 (default: 8080).
     #[arg(long, value_parser = clap::value_parser!(u16).range(1..))]
     port: Option<u16>,
-    /// Stop when this absolute, initially absent file is created.
-    #[arg(long)]
-    shutdown_file: Option<PathBuf>,
     /// SimConnect only: absolute DLL path; defaults to SimConnect.dll beside this EXE.
     #[arg(long)]
     dll: Option<PathBuf>,
@@ -70,18 +61,10 @@ impl Cli {
 #[tokio::main]
 async fn main() -> ExitCode {
     let cli = Cli::parse();
-    if let Some(path) = &cli.shutdown_file {
-        validate_shutdown_file(path).unwrap_or_else(|error| {
-            Cli::command()
-                .error(ErrorKind::ValueValidation, error)
-                .exit()
-        });
-    }
-    let shutdown_file = cli.shutdown_file.clone();
     let (config, source) = cli
         .into_configuration()
         .unwrap_or_else(|error| error.exit());
-    match application::run(config, source, shutdown(shutdown_file)).await {
+    match application::run(config, source, shutdown()).await {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
             eprintln!("Error: {error}");
@@ -90,39 +73,42 @@ async fn main() -> ExitCode {
     }
 }
 
-fn validate_shutdown_file(path: &Path) -> Result<(), String> {
-    if !path.is_absolute() {
-        return Err("--shutdown-file must be an absolute path".into());
-    }
-    match std::fs::metadata(path) {
-        Ok(_) => Err("--shutdown-file already exists".into()),
-        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
-        Err(error) => Err(format!("cannot inspect --shutdown-file: {error}")),
+fn read_stop_command(mut reader: impl io::BufRead) -> io::Result<bool> {
+    let mut line = String::new();
+    loop {
+        line.clear();
+        if reader.read_line(&mut line)? == 0 {
+            return Ok(false);
+        }
+        if line.trim_end_matches(['\r', '\n']) == "stop" {
+            return Ok(true);
+        }
     }
 }
 
-async fn shutdown(path: Option<PathBuf>) -> io::Result<()> {
-    let Some(path) = path else {
-        return tokio::signal::ctrl_c().await;
-    };
+async fn shutdown() -> io::Result<()> {
+    let (sender, receiver) = tokio::sync::oneshot::channel();
+    std::thread::spawn(move || match read_stop_command(io::stdin().lock()) {
+        Ok(true) => {
+            let _ = sender.send(());
+        }
+        Ok(false) => {}
+        Err(error) => eprintln!("Error reading stdin: {error}"),
+    });
     tokio::select! {
         result = tokio::signal::ctrl_c() => result,
-        result = async {
-            loop {
-                match std::fs::metadata(&path) {
-                    Ok(_) => return Ok(()),
-                    Err(error) if error.kind() == io::ErrorKind::NotFound => {},
-                    Err(error) => return Err(io::Error::new(error.kind(), format!("cannot inspect shutdown file: {error}"))),
-                }
-                tokio::time::sleep(Duration::from_millis(50)).await;
-            }
-        } => result,
+        _ = async { if receiver.await.is_err() { std::future::pending::<()>().await; } } => Ok(()),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn reads_stop_command_and_eof() {
+        assert!(read_stop_command(std::io::Cursor::new(b"ignored\r\nstop\r\n")).unwrap());
+        assert!(!read_stop_command(std::io::Cursor::new(b"ignored\n")).unwrap());
+    }
     #[test]
     fn default_demo_and_explicit_simconnect_share_http_configuration() {
         let (config, source) = Cli::try_parse_from(["main"])

@@ -118,8 +118,7 @@ test('does not report an already exited child as a successful shutdown request',
   const dir = await mkdtemp(path.join(tmpdir(), 'live process '));
   try {
     const app = await launchOwned({ exe, source: 'demo', runDirectory: dir });
-    const { writeFile } = await import('node:fs/promises');
-    await writeFile(app.shutdownPath, '');
+    process.kill(app.pid);
     for (let i = 0; i < 100; i++) {
       try { await fetch(`${app.endpoint}/health`); await new Promise(resolve => setTimeout(resolve, 50)); }
       catch { break; }

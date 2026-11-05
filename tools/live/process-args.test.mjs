@@ -5,7 +5,7 @@ import { applicationArgs } from './process.mjs';
 test('passes a diagnostic journal only to SimConnect', () => {
  const dir=path.resolve('.local/live/example'); const log=path.join(dir,'diagnostic.jsonl');
  const args=applicationArgs({source:'simconnect',runDirectory:dir,logPath:log},1234);
- assert.deepEqual(args,['--source','simconnect','--listen-address','127.0.0.1','--port','1234','--shutdown-file',path.join(dir,'shutdown'),'--log',log]);
+ assert.deepEqual(args,['--source','simconnect','--listen-address','127.0.0.1','--port','1234','--log',log]);
  assert.throws(()=>applicationArgs({source:'demo',runDirectory:dir,logPath:log},1234), /SimConnect/);
  assert.throws(()=>applicationArgs({source:'simconnect',runDirectory:dir,logPath:'relative'},1234), /absolute/);
  assert.ok(!applicationArgs({source:'demo',runDirectory:dir},1234).includes('--log'));

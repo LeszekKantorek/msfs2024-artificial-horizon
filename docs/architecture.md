@@ -211,7 +211,7 @@ Delivery and presentation have separate owners:
 
 ## Application lifecycle
 
-The executable supplies a shutdown trigger to application composition. It accepts Ctrl+C or, when configured, creation of an initially absent absolute shutdown file. File inspection errors request shutdown and are reported as errors.
+The executable supplies a shutdown trigger to application composition. It accepts Ctrl+C or a `stop` line on standard input. End of input disables the standard input trigger; read errors are reported and also disable that trigger.
 
 [ADR 0007](adr/0007-application-composition.md) defines application composition, producer ownership, and source-failure behavior.
 

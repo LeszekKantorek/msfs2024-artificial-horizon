@@ -1,11 +1,12 @@
-use std::{env, io::{Read, Write}, net::TcpListener, thread, time::Duration};
+use std::{env, io::{BufRead, Read, Write}, net::TcpListener, thread, time::Duration};
 fn main() {
     let args: Vec<_> = env::args().collect();
     let port = args.iter().position(|arg| arg == "--port").unwrap();
-    let shutdown = args.iter().position(|arg| arg == "--shutdown-file").unwrap();
+    let (sender, receiver) = std::sync::mpsc::channel();
+    thread::spawn(move || { for line in std::io::stdin().lock().lines() { if line.unwrap() == "stop" { let _ = sender.send(()); break; } } });
     let listener = TcpListener::bind(format!("127.0.0.1:{}", args[port + 1])).unwrap();
     listener.set_nonblocking(true).unwrap();
-    while !std::path::Path::new(&args[shutdown + 1]).exists() {
+    while receiver.try_recv().is_err() {
         if let Ok((mut stream, _)) = listener.accept() {
             let mut bytes = [0; 8192];
             let mut request = Vec::new();
