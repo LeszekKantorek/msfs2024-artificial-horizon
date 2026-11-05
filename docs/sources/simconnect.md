@@ -401,13 +401,33 @@ node tools/live/run.mjs --source simconnect --dll "$simconnectDll"
 
 The command builds the release application, starts its own process, verifies the loopback port owner, observes telemetry and the embedded browser, and requests shutdown. It writes a unique ignored `.local/live/<run-id>/` directory and prints its path. Use `--source demo` for a separate simulator-independent run. Explicit source selection is required; Demo is not live evidence.
 
-Inspect `result.json` for individual checks and cleanup, `manifest.json` for build and process identity, observation duration, and observed, retained, and discarded counts, and `observations.jsonl` for retained observations. Retention samples observations when its count or file-size bound is reached; stream checks validate every received event, but correlations cover only retained evidence. The directory also contains captured output, diagnostics for SimConnect, and applicable screenshots. Exit code 0 means all applicable checks passed; 1 indicates a failed check or cleanup; 2 indicates unavailable or inconclusive evidence; 130 indicates cancellation. Inspect the check details even when a run is incomplete. A successful health response or a simulator process alone does not establish live availability: require a bounded SimConnect observation with fresh live telemetry.
+Inspect the run evidence:
+
+* `result.json` contains individual checks and cleanup. Inspect the check details even when a run is incomplete.
+* `manifest.json` records build and process identity, observation duration, and observed, retained, and discarded counts.
+* `observations.jsonl` contains retained observations. Retention samples observations when its count or file-size bound is reached. Stream checks validate every received event, but correlations cover only retained evidence.
+* The directory also contains captured output and diagnostics for SimConnect. Normal observation checks browser receipts and produces no screenshots or rendered-display checks.
+
+| Exit code | Meaning |
+| --- | --- |
+| 0 | All applicable checks passed |
+| 1 | A check or cleanup failed |
+| 2 | Evidence is unavailable or inconclusive |
+| 130 | The run was cancelled |
+
+A successful health response or a simulator process alone does not establish live availability. Require a bounded SimConnect observation with fresh live telemetry.
 
 The manifest records the executable hash and local build provenance. To use an existing executable instead, pass its absolute path with `--exe`; its provenance is external and unverified. Each invocation starts a fresh process. Rebuild and run again after application changes. `--duration-ms` and `--ready-timeout-ms` accept 1 through 300000 and default to 30000; `--port` selects a loopback port from 1 through 65535. `--dll` is available only for SimConnect and must be absolute.
 
 The harness closes subscriptions and requests coordinated shutdown through an initially absent file. If the child does not exit within ten seconds, it terminates only that child and records forced cleanup. A blocked native call has no guaranteed graceful deadline. Check cleanup before starting another run; do not stop unrelated processes.
 
-Diagnostic publication and SSE correlation uses session and sequence identity. Raw acquisition correlation remains time-bounded. Browser receipt and rendered state are separate observations; receipt does not identify the exact rendered sample. Missing fields, sampling, truncated diagnostics, unavailable browser checks, and unobserved pause or recovery scenarios remain explicit limits. The diagnostic cap can end correlation before observation ends. Desktop observations do not establish phone acceptance.
+Interpret correlations and evidence limits:
+
+* Diagnostic publication and SSE correlation uses session and sequence identity. Raw acquisition correlation remains time-bounded.
+* Browser receipt does not establish rendered state or identify the exact rendered sample. For controlled visual checks or a separate diagnostic screenshot, use the [desktop procedure](../testing/pfd.md#responsive-efi-layout-and-desktop-checks). Desktop observations do not establish phone acceptance.
+* Missing fields, sampling, truncated diagnostics, unavailable browser checks, and unobserved pause or recovery scenarios remain explicit limits.
+* Optional application logging has no writer cap; the journal can grow throughout the session. The harness reader has a separate 32 MiB evidence budget. Exceeding it or missing diagnostics makes correlation incomplete.
+* Retention samples observations, so correlation covers retained samples only. Earlier capped-run results are historical evidence and do not validate the current uncapped writer.
 
 ### Official-DLL smoke check
 

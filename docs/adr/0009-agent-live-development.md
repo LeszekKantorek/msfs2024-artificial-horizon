@@ -46,7 +46,7 @@ The design uses Node.js for orchestration and Playwright for browser observation
 | Production Rust application | Own the single SimConnect connection, native lifecycle, validation, normalization, latest state, and HTTP/SSE |
 | Provider diagnostics | Expose relevant raw acquisition and mapping/publication decisions from the existing provider |
 | Harness SSE observer | Record actual published source, state, sequence, age, and field availability |
-| Playwright browser | Load the application's embedded assets and observe received telemetry and relevant rendered indications |
+| Playwright browser | Load the application's embedded assets and observe received telemetry |
 
 Observing application HTTP or diagnostics does not open another SimConnect connection.
 No simulator control endpoints, application framework, or production service are added.
@@ -73,7 +73,7 @@ The harness must not rely on a successful `/health` response as proof of endpoin
 | Executable hash, PID, start time, endpoint, and invocation | Identify the tested artifact and owned process; record source revision and dirty state separately from binary identity |
 | Diagnostic session and provider observations | Identify acquisition and mapping decisions; absent or failed diagnostics leave those claims unverified |
 | SSE observations | Establish actual publication with SimConnect source, sequence, state, age, and independent field availability |
-| Browser observations | Establish received data and relevant display behavior; an independent harness subscription does not prove browser receipt |
+| Browser observations | Establish received data; an independent harness subscription does not prove browser receipt |
 | Timing and correlation | Join by explicit identifiers where available; otherwise record timing bounds and ambiguity rather than claim exact sample identity |
 | Scenario checks | Define prerequisites, tolerances, observation windows, expected behavior, and outcome per check |
 
@@ -82,7 +82,13 @@ The harness must not rely on a successful `/health` response as proof of endpoin
 * Treat changing sequence and fresh acquisitions separately from changing aircraft values. A steady flight need not change every value.
 * Test missing-field propagation independently from numeric correctness. Agreement between layers does not independently verify simulator accuracy.
 * Continue applicable checks when a maneuver or aircraft condition is unavailable. Record loss and recovery only when actually observed.
-* Bound retained data and diagnostic volume. Detect missing diagnostic intervals and report incomplete correlation.
+* Bound retained observations and diagnostic reading. The optional application journal has no writer cap and can grow for the session. Detect missing diagnostic intervals and report incomplete correlation.
+
+## Amendment: contract observation and visual evidence
+
+Automated live observation checks data and actual browser receipts. It does not capture screenshots or assert display behavior. Controlled visual validation uses the [desktop procedure](../testing/pfd.md#responsive-efi-layout-and-desktop-checks) with matched scenes and screenshot inspection. A separately requested live diagnostic screenshot records the current display; it does not identify an exact received sequence. The shared browser session and capture utility support both procedures without adding another production provider.
+
+The harness diagnostic reader has a 32 MiB evidence budget, separate from the uncapped application journal. Retention sampling and missing diagnostics limit correlation; earlier capped-run results do not validate the current writer.
 
 ## Lifecycle and failure behavior
 

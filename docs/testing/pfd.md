@@ -62,6 +62,16 @@ The scripted desktop checks use Playwright with an installed browser.
 They are required for the EFI changes in the [validation matrix](index.md#validation-by-change-scope) and optional for unrelated exploration.
 Playwright adds no application dependency or frontend build step.
 
+Select the procedure for the evidence needed:
+
+| Need | Procedure and evidence |
+| --- | --- |
+| Live field availability or SSE contract | Use [bounded development observation](../sources/simconnect.md#bounded-development-observation). It checks data and browser receipts, without an image or display assertion. |
+| Geometry or visual regression | Run the controlled scripts below with matched scenes and inspect their screenshots under the [comparison rules](evidence.md#screenshot-comparisons). |
+| Live diagnostic image | Capture separately using the shared browser session and screenshot utility. A snapshot shows the current display and does not prove which received `sequence` it rendered. |
+
+For a diagnostic script, import `openBrowserSession` and `saveScreenshot` from `tools/browser/session.mjs`. Specify the application URL and viewport, wait for the relevant display state and settled layout before capture, and close the owned session in cleanup. Choose readiness for the question being investigated; a received sample alone does not establish settled geometry. Use the Playwright setup below. Do not treat this capture as a controlled visual comparison.
+
 Browser tests are grouped under `tests/browser/`:
 
 * `pfd-browser.mjs` runs controlled fixture checks.
