@@ -342,7 +342,7 @@ Reference: [SimConnect request API](https://docs.flightsimulator.com/msfs2024/re
 | `connection_attempt`, `api_result`, `native_error` | Connection generation, API results, sent-packet IDs, exception correlation |
 | `attitude_definition` | Selected profile with two or six fields |
 | `attitude_raw`, `attitude_sample` | Raw values, bits, and intervals before normalization and publication, then normalized attitude or validation error |
-| `instrument_sample`, `publication` | Optional raw input and actual published snapshot, with connection generation when available |
+| `instrument_sample` | Optional raw input |
 | `attitude_unit_check` | Diagnostic unit disagreement, changed bits in repeated radians, nonfinite probes |
 | `state_transition`, `connection_lost`, `reconnect_wait` | Lifecycle decision, published snapshot, reason, reconnect timing |
 | `dispatch_summary` | Packet and empty-dispatch counts, notification and timeout wakes, last HRESULT, silence |
@@ -356,7 +356,7 @@ Reference: [SimConnect request API](https://docs.flightsimulator.com/msfs2024/re
 | Diagnostic validity | `affects_sample_validity: false` separates diagnostic observations from primary-radian validation. |
 | Rejected attitudes | Rejected attitudes retain `message: "Unknown"` and `rejected_simobject_data`. The latter contains received headers, expected request and definition IDs, and match results. Rejected payloads are not interpreted. |
 | Unsupported messages | Other unsupported message IDs remain `Unknown`. |
-| Current schema | Schema 5 records actual publications and connection generations. |
+| Current schema | Schema 4 records native observations and lifecycle transitions without journaling each publication. |
 | Retained candidate names | Retained `candidate_state` and `candidate_attitude` names use `candidate_is_hypothesis: false`. |
 
 ### Diagnostic schema interpretation

@@ -345,7 +345,6 @@ fn connections(
         let result = (|| {
             journal.record("api_result", || json!({ "operation": "SimConnect_Open", "success": true, "generation": generation }), true);
             println!("SimConnect connected (session {generation}).");
-            journal.set_generation(Some(generation));
             lifecycle.connect();
             output.update(&lifecycle, journal, Instant::now(), None)?;
             session(
@@ -376,7 +375,6 @@ fn connections(
         drop(notification);
         lifecycle.disconnect();
         output.update(&lifecycle, journal, Instant::now(), None)?;
-        journal.set_generation(None);
         match result? {
             SessionEnd::Stop => return Ok(()),
             SessionEnd::Reconnect => {}
@@ -441,7 +439,6 @@ impl Output {
         let evaluation = lifecycle.evaluate(now);
         let transition = (state_name(evaluation.state), evaluation.reason);
         let changed = self.transition != Some(transition);
-        let mut published = false;
         match evaluation.state {
             // Publish each new acquisition, including equal angles. Timer ticks
             // and lifecycle queries must never republish a cached live sample.
@@ -451,22 +448,10 @@ impl Output {
                 {
                     self.publisher
                         .publish_sample_at(self.instruments.sample(attitude), at.into())?;
-                    published = true;
                 }
             }
-            state if changed => {
-                self.publisher.publish(state)?;
-                published = true;
-            }
+            state if changed => self.publisher.publish(state)?,
             _ => {}
-        }
-        if published {
-            let generation = journal.generation();
-            journal.record(
-                "publication",
-                || json!({"generation": generation, "snapshot": self.publisher.snapshot()}),
-                false,
-            );
         }
         self.instruments.dirty = false;
         if changed {
@@ -774,11 +759,10 @@ fn session(
                     }
                 }
                 Message::Instrument { index, value } => {
-                    let generation = journal.generation();
                     journal.record(
                         "instrument_sample",
                         || {
-                            json!({"generation": generation, "index":index,
+                            json!({"index":index,
                         "name":super::native::INSTRUMENT_FIELDS[index].0.to_string_lossy(),
                         "value":number(value),"active":lifecycle.active()})
                         },
@@ -795,9 +779,8 @@ fn session(
                 } => {
                     let now = packet_received_at;
                     sample_index += 1;
-                    let generation = journal.generation();
                     journal.record("attitude_raw", || json!({
-                        "generation": generation, "sample_index": sample_index,
+                        "sample_index": sample_index,
                         "raw": { "pitch_radians": number(radians[0]),
                             "pitch_degrees": unit_probe.as_ref().map(|p| number(p.degrees[0])),
                             "bank_radians": number(radians[1]),
@@ -832,7 +815,7 @@ fn session(
                     }
                     let candidate = candidate_attitude(radians);
                     journal.record("attitude_sample", || json!({
-                        "generation": generation, "sample_index": sample_index,
+                        "sample_index": sample_index,
                         "candidate_attitude": candidate.as_ref().ok(), "candidate_is_hypothesis": false,
                         "validation_error": candidate.as_ref().err().map(ToString::to_string),
                     }), false);
@@ -955,7 +938,7 @@ mod tests {
     }
 
     #[test]
-    fn publication_records_match_actual_subscription_and_skip_ticks() {
+    fn subscription_skips_ticks_and_journal_omits_publications() {
         let path = missing_dll().with_extension("jsonl");
         let mut journal = Journal::open(Some(&path), &[]).unwrap();
         let (publisher, subscription) = telemetry::channel(Source::SimConnect);
@@ -983,21 +966,17 @@ mod tests {
             .map(|line| serde_json::from_str(line).unwrap())
             .filter(|v: &Value| v["kind"] == "publication")
             .collect();
-        assert_eq!(records.len(), 1);
-        let mut recorded = records[0]["data"]["snapshot"].clone();
-        let mut actual = actual;
-        assert!(
-            recorded["sample_age_ms"].as_u64().unwrap()
-                <= actual["sample_age_ms"].as_u64().unwrap()
+        assert!(records.is_empty());
+        assert_eq!(actual["state"], "live");
+        assert_eq!(
+            serde_json::to_value(subscription.snapshot()).unwrap()["sequence"],
+            actual["sequence"]
         );
-        recorded.as_object_mut().unwrap().remove("sample_age_ms");
-        actual.as_object_mut().unwrap().remove("sample_age_ms");
-        assert_eq!(recorded, actual);
         std::fs::remove_file(path).unwrap();
     }
 
     #[test]
-    fn reconnect_and_optional_changes_record_actual_publications_with_generation() {
+    fn reconnect_and_optional_changes_reach_subscription() {
         let path = missing_dll().with_extension("jsonl");
         let mut journal = Journal::open(Some(&path), &[]).unwrap();
         let (publisher, subscription) = telemetry::channel(Source::SimConnect);
@@ -1009,7 +988,6 @@ mod tests {
         let mut lifecycle = Lifecycle::default();
         let now = Instant::now();
         let attitude = telemetry::Attitude::new(5.0, 2.0).unwrap();
-        journal.set_generation(Some(1));
         lifecycle.connect();
         lifecycle.sim(true);
         lifecycle.pause(0);
@@ -1050,7 +1028,6 @@ mod tests {
         lifecycle.disconnect();
         output.update(&lifecycle, &mut journal, now, None).unwrap();
         let disconnected = serde_json::to_value(subscription.snapshot()).unwrap();
-        journal.set_generation(Some(2));
         lifecycle.connect();
         lifecycle.sim(true);
         lifecycle.pause(0);
@@ -1061,26 +1038,8 @@ mod tests {
             .unwrap();
         let reconnected = serde_json::to_value(subscription.snapshot()).unwrap();
         journal.finish();
-        let records: Vec<Value> = std::fs::read_to_string(&path)
-            .unwrap()
-            .lines()
-            .map(|line| serde_json::from_str(line).unwrap())
-            .filter(|v: &Value| v["kind"] == "publication")
-            .collect();
-        assert_eq!(records.len(), 6);
-        for (record, mut actual, generation) in records
-            .iter()
-            .zip([first, equal, optional, expired, disconnected, reconnected])
-            .zip([1, 1, 1, 1, 1, 2])
-            .map(|((r, a), g)| (r, a, g))
-        {
-            assert_eq!(record["data"]["generation"], generation);
-            let mut snapshot = record["data"]["snapshot"].clone();
-            assert!(snapshot["sample_age_ms"].as_u64() <= actual["sample_age_ms"].as_u64());
-            snapshot.as_object_mut().unwrap().remove("sample_age_ms");
-            actual.as_object_mut().unwrap().remove("sample_age_ms");
-            assert_eq!(snapshot, actual);
-        }
+        assert_eq!(disconnected["state"], "disconnected");
+        assert_eq!(reconnected["state"], "live");
         std::fs::remove_file(path).unwrap();
     }
 
@@ -1397,7 +1356,7 @@ mod tests {
             .lines()
             .map(|line| serde_json::from_str(line).unwrap())
             .collect();
-        assert_eq!(records[0]["data"]["schema_version"], 5);
+        assert_eq!(records[0]["data"]["schema_version"], 4);
         assert_eq!(records[0]["data"]["live_publication_enabled"], true);
         assert!(records[0]["data"].get("attitude_signs_verified").is_none());
         assert!(

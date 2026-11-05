@@ -24,7 +24,6 @@ pub enum DiagnosticStatus {
 pub(super) struct Journal {
     active: Option<ActiveJournal>,
     status: DiagnosticStatus,
-    generation: Option<u64>,
 }
 
 struct ActiveJournal {
@@ -42,7 +41,6 @@ impl Journal {
             return Ok(Self {
                 active: None,
                 status: DiagnosticStatus::Disabled,
-                generation: None,
             });
         };
         // A missing DLL must not become a diagnostic log.
@@ -110,7 +108,7 @@ impl Journal {
             separator,
         };
         if let Err(error) = active.record("session_start", json!({
-            "schema_version": 5, "started_unix_ms": (started_unix_ns / 1_000_000).to_string(),
+            "schema_version": 4, "started_unix_ms": (started_unix_ns / 1_000_000).to_string(),
             "clock": "UTC Unix epoch milliseconds", "process_id": std::process::id(),
             "live_publication_enabled": true,
             "validation_scope": "recorded MSFS2024 sessions; see docs/simconnect.md#live-publication-evidence",
@@ -122,15 +120,7 @@ impl Journal {
         Ok(Self {
             active: Some(active),
             status: DiagnosticStatus::Completed { path },
-            generation: None,
         })
-    }
-
-    pub(super) fn set_generation(&mut self, generation: Option<u64>) {
-        self.generation = generation;
-    }
-    pub(super) fn generation(&self) -> Option<u64> {
-        self.generation
     }
 
     pub(super) fn enabled(&self) -> bool {
@@ -207,7 +197,6 @@ impl Journal {
             status: DiagnosticStatus::Completed {
                 path: PathBuf::from("injected-failure.jsonl"),
             },
-            generation: None,
         }
     }
 }
