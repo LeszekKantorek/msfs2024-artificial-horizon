@@ -74,3 +74,32 @@ fn occupied_port_exits_with_address_and_actionable_error() {
     assert!(error.contains(&address.to_string()));
     assert!(error.contains("choose an available"));
 }
+
+#[test]
+fn shutdown_file_rejects_relative_and_existing_paths() {
+    let relative = cli(&["--shutdown-file", "relative.stop"]);
+    assert!(!relative.status.success());
+    assert!(
+        String::from_utf8(relative.stderr)
+            .unwrap()
+            .contains("absolute")
+    );
+    let existing = std::env::current_exe().unwrap();
+    let result = cli(&["--shutdown-file", existing.to_str().unwrap()]);
+    assert!(!result.status.success());
+    assert!(
+        String::from_utf8(result.stderr)
+            .unwrap()
+            .contains("already exists")
+    );
+}
+
+#[test]
+fn help_documents_shutdown_file() {
+    let help = cli(&["--help"]);
+    assert!(
+        String::from_utf8(help.stdout)
+            .unwrap()
+            .contains("--shutdown-file")
+    );
+}

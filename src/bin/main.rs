@@ -4,7 +4,13 @@ use msfs2024_artificial_horizon::{
     application::{self, SourceSelection},
     providers::simconnect::SimConnectConfig,
 };
-use std::{net::IpAddr, path::PathBuf, process::ExitCode};
+use std::{
+    io,
+    net::IpAddr,
+    path::{Path, PathBuf},
+    process::ExitCode,
+    time::Duration,
+};
 
 #[derive(Parser, Debug)]
 #[command(version, about)]
@@ -18,12 +24,18 @@ struct Cli {
     /// HTTP port, 1-65535 (default: 8080).
     #[arg(long, value_parser = clap::value_parser!(u16).range(1..))]
     port: Option<u16>,
+    /// Stop when this absolute, initially absent file is created.
+    #[arg(long)]
+    shutdown_file: Option<PathBuf>,
     /// SimConnect only: absolute DLL path; defaults to SimConnect.dll beside this EXE.
     #[arg(long)]
     dll: Option<PathBuf>,
     /// SimConnect only: append diagnostic JSONL to this file (optional).
     #[arg(long)]
     log: Option<PathBuf>,
+    /// Maximum total diagnostic file size in bytes; requires --log.
+    #[arg(long, requires = "log", value_parser = clap::value_parser!(u64).range(1..))]
+    log_max_bytes: Option<u64>,
 }
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
@@ -41,7 +53,7 @@ impl Cli {
         };
         let source = match self.source {
             CliSource::Demo => {
-                if self.dll.is_some() || self.log.is_some() {
+                if self.dll.is_some() || self.log.is_some() || self.log_max_bytes.is_some() {
                     return Err(Self::command().error(
                         ErrorKind::ArgumentConflict,
                         "--dll and --log require --source simconnect",
@@ -52,6 +64,7 @@ impl Cli {
             CliSource::Simconnect => SourceSelection::SimConnect(SimConnectConfig {
                 dll: self.dll,
                 log: self.log,
+                log_max_bytes: self.log_max_bytes,
             }),
         };
         Ok((config, source))
@@ -60,15 +73,54 @@ impl Cli {
 
 #[tokio::main]
 async fn main() -> ExitCode {
-    let (config, source) = Cli::parse()
+    let cli = Cli::parse();
+    if let Some(path) = &cli.shutdown_file {
+        validate_shutdown_file(path).unwrap_or_else(|error| {
+            Cli::command()
+                .error(ErrorKind::ValueValidation, error)
+                .exit()
+        });
+    }
+    let shutdown_file = cli.shutdown_file.clone();
+    let (config, source) = cli
         .into_configuration()
         .unwrap_or_else(|error| error.exit());
-    match application::run(config, source, tokio::signal::ctrl_c()).await {
+    match application::run(config, source, shutdown(shutdown_file)).await {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
             eprintln!("Error: {error}");
             ExitCode::FAILURE
         }
+    }
+}
+
+fn validate_shutdown_file(path: &Path) -> Result<(), String> {
+    if !path.is_absolute() {
+        return Err("--shutdown-file must be an absolute path".into());
+    }
+    match std::fs::metadata(path) {
+        Ok(_) => Err("--shutdown-file already exists".into()),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(format!("cannot inspect --shutdown-file: {error}")),
+    }
+}
+
+async fn shutdown(path: Option<PathBuf>) -> io::Result<()> {
+    let Some(path) = path else {
+        return tokio::signal::ctrl_c().await;
+    };
+    tokio::select! {
+        result = tokio::signal::ctrl_c() => result,
+        result = async {
+            loop {
+                match std::fs::metadata(&path) {
+                    Ok(_) => return Ok(()),
+                    Err(error) if error.kind() == io::ErrorKind::NotFound => {},
+                    Err(error) => return Err(io::Error::new(error.kind(), format!("cannot inspect shutdown file: {error}"))),
+                }
+                tokio::time::sleep(Duration::from_millis(50)).await;
+            }
+        } => result,
     }
 }
 
@@ -105,6 +157,47 @@ mod tests {
         };
         assert!(options.dll.unwrap().is_absolute());
         assert_eq!(options.log, Some(PathBuf::from("sessions/test.jsonl")));
+    }
+    #[test]
+    fn diagnostic_limit_requires_log_and_positive_simconnect_value() {
+        assert!(
+            Cli::try_parse_from(["main", "--source", "simconnect", "--log-max-bytes", "10"])
+                .is_err()
+        );
+        assert!(
+            Cli::try_parse_from([
+                "main",
+                "--source",
+                "simconnect",
+                "--log",
+                "log.jsonl",
+                "--log-max-bytes",
+                "0"
+            ])
+            .is_err()
+        );
+        assert!(
+            Cli::try_parse_from(["main", "--log", "log.jsonl", "--log-max-bytes", "10"])
+                .unwrap()
+                .into_configuration()
+                .is_err()
+        );
+        let (_, source) = Cli::try_parse_from([
+            "main",
+            "--source",
+            "simconnect",
+            "--log",
+            "log.jsonl",
+            "--log-max-bytes",
+            "10",
+        ])
+        .unwrap()
+        .into_configuration()
+        .unwrap();
+        let SourceSelection::SimConnect(config) = source else {
+            panic!("expected SimConnect")
+        };
+        assert_eq!(config.log_max_bytes, Some(10));
     }
     #[test]
     fn diagnostic_options_require_simconnect_and_obsolete_options_are_rejected() {

@@ -227,6 +227,7 @@ mod tests {
                         address.port()
                     ))),
                     log: None,
+                    log_max_bytes: None,
                 })
             } else {
                 SourceSelection::Demo

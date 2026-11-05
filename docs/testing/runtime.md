@@ -2,6 +2,8 @@
 
 Startup, shutdown, subscriptions, controlled time, and deterministic demo fixtures.
 
+For a bounded new-process Demo or live SimConnect observation, follow the [development observation procedure](../sources/simconnect.md#bounded-development-observation).
+
 ## HTTP startup checks
 
 Prerequisites: Rust stable, rustfmt, and Clippy on Windows x64 MSVC.

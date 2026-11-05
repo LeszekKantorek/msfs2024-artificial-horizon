@@ -48,12 +48,14 @@ cargo run --locked --release --bin msfs2024-artificial-horizon -- --source simco
 | `--listen-address`, `--port` | HTTP settings for either source. Defaults are `127.0.0.1` and `8080` |
 | `--dll <file>` | Optional absolute override. Default: `SimConnect.dll` beside the running EXE |
 | `--log <file>` | Optional exact JSONL destination, absolute or relative to the working directory |
+| `--log-max-bytes <positive-integer>` | Optional maximum total log size, including existing bytes. Requires `--log` and SimConnect |
 | `--help`, `--version` | Information without opening a DLL or log |
+| `--shutdown-file <absolute-path>` | Optional initially absent file. Creating it requests coordinated shutdown |
 | `Ctrl+C` | Controlled shutdown that waits for the native worker |
 
 The CLI applies these restrictions:
 
-* `--dll` and `--log` require SimConnect.
+* `--dll`, `--log`, and `--log-max-bytes` require SimConnect.
 * Invalid HTTP settings and a relative DLL override are rejected before starting components.
 * `--simconnect` and `--scenario` are unsupported.
 * Log filenames distinguish scenarios. The application does not interpret them as metadata.
@@ -117,7 +119,7 @@ HTTP does not wait for DLL loading or simulator readiness.
 | Simulator absent or disconnected | HTTP serves unavailable data while the existing provider retries |
 | Producer exits or panics | Existing SSE streams stay open. New clients receive `disconnected` |
 | DLL load or export failure | HTTP stays available. Console diagnostics identify the failure without Demo fallback |
-| Ctrl+C or HTTP failure | Signal both components and wait for their results. HTTP failure returns an application error |
+| Caller-selected shutdown or HTTP failure | Signal both components and wait for their results. HTTP failure returns an application error |
 
 | Output | Contract |
 | --- | --- |
@@ -307,6 +309,8 @@ Diagnostic failures remain independent of acquisition:
 | Condition | Result |
 | --- | --- |
 | Open or initial write failure | Abort producer startup before DLL loading. HTTP remains available |
+| Initial record exceeds the byte limit | Abort producer startup before DLL loading |
+| Later record exceeds the byte limit | Stop logging before the record, report the limit, and continue acquisition |
 | Later write or flush failure | Disable diagnostics, continue acquisition and cleanup, warn immediately and at shutdown |
 | Missing `session_end` | Unconfirmed termination |
 | Final result | `DiagnosticStatus` distinguishes disabled, completed, and failed logging independently of the native outcome |
@@ -339,6 +343,7 @@ Reference: [SimConnect request API](https://docs.flightsimulator.com/msfs2024/re
 | `connection_attempt`, `api_result`, `native_error` | Connection generation, API results, sent-packet IDs, exception correlation |
 | `attitude_definition` | Selected profile with two or six fields |
 | `attitude_raw`, `attitude_sample` | Raw values, bits, and intervals before normalization and publication, then normalized attitude or validation error |
+| `instrument_sample`, `publication` | Optional raw input and actual published snapshot, with connection generation when available |
 | `attitude_unit_check` | Diagnostic unit disagreement, changed bits in repeated radians, nonfinite probes |
 | `state_transition`, `connection_lost`, `reconnect_wait` | Lifecycle decision, published snapshot, reason, reconnect timing |
 | `dispatch_summary` | Packet and empty-dispatch counts, notification and timeout wakes, last HRESULT, silence |
@@ -352,7 +357,7 @@ Reference: [SimConnect request API](https://docs.flightsimulator.com/msfs2024/re
 | Diagnostic validity | `affects_sample_validity: false` separates diagnostic observations from primary-radian validation. |
 | Rejected attitudes | Rejected attitudes retain `message: "Unknown"` and `rejected_simobject_data`. The latter contains received headers, expected request and definition IDs, and match results. Rejected payloads are not interpreted. |
 | Unsupported messages | Other unsupported message IDs remain `Unknown`. |
-| Current schema | Schema 4 records `live_publication_enabled: true`. Evidence limits belong to this guide, not diagnostic records. |
+| Current schema | Schema 5 records actual publications and connection generations. |
 | Retained candidate names | Retained `candidate_state` and `candidate_attitude` names use `candidate_is_hypothesis: false`. |
 
 ### Diagnostic schema interpretation
@@ -363,7 +368,8 @@ Interpret recorded evidence according to its diagnostic schema:
 | --- | --- |
 | 1–3 | Candidate live states do not establish live telemetry publication |
 | 2 | Cross-unit disagreements could invalidate samples. Account for this when interpreting recorded invalid states |
-| 4 | Records identify enabled live publication. Schema version alone does not establish integrated simulator or mobile acceptance |
+| 4 | Records identify enabled live publication, but do not journal every publication |
+| 5 | Publication records identify the actual snapshot and sequence. Missing or interrupted records leave correlation incomplete |
 
 ## Testing
 
@@ -384,6 +390,25 @@ Select the shared testing procedure by purpose:
 | Native data | ABI layout, payload decoding, normalization, rejected packets |
 | Telemetry | New and equal acquisitions, original receive time, stale data, invalid input, lifecycle invalidation |
 | Diagnostics and resources | Append sessions, writer exclusion, protected destinations, diagnostic failures, retry bounds, cancellation, cleanup |
+
+### Bounded development observation
+
+Use this procedure to inspect a new application process against a human-started flight. It does not control the simulator. Windows x64 MSVC, Node.js, Rust, the official x64 DLL, and the [desktop Playwright setup](../testing/pfd.md#responsive-efi-layout-and-desktop-checks) are required. Start an active flight before running:
+
+```powershell
+$simconnectDll = Read-Host 'Absolute path to the official x64 SimConnect.dll'
+node tools/live/run.mjs --source simconnect --dll "$simconnectDll"
+```
+
+The command builds the release application, starts its own process, verifies the loopback port owner, observes telemetry and the embedded browser, and requests shutdown. It writes a unique ignored `.local/live/<run-id>/` directory and prints its path. Use `--source demo` for a separate simulator-independent run. Explicit source selection is required; Demo is not live evidence.
+
+Inspect `result.json` for individual checks and cleanup, `manifest.json` for build and process identity, observation duration, and observed, retained, and discarded counts, and `observations.jsonl` for retained observations. Retention samples observations when its count or file-size bound is reached; stream checks validate every received event, but correlations cover only retained evidence. The directory also contains captured output, diagnostics for SimConnect, and applicable screenshots. Exit code 0 means all applicable checks passed; 1 indicates a failed check or cleanup; 2 indicates unavailable or inconclusive evidence; 130 indicates cancellation. Inspect the check details even when a run is incomplete. A successful health response or a simulator process alone does not establish live availability: require a bounded SimConnect observation with fresh live telemetry.
+
+The manifest records the executable hash and local build provenance. To use an existing executable instead, pass its absolute path with `--exe`; its provenance is external and unverified. Each invocation starts a fresh process. Rebuild and run again after application changes. `--duration-ms` and `--ready-timeout-ms` accept 1 through 300000 and default to 30000; `--port` selects a loopback port from 1 through 65535. `--dll` is available only for SimConnect and must be absolute.
+
+The harness closes subscriptions and requests coordinated shutdown through an initially absent file. If the child does not exit within ten seconds, it terminates only that child and records forced cleanup. A blocked native call has no guaranteed graceful deadline. Check cleanup before starting another run; do not stop unrelated processes.
+
+Diagnostic publication and SSE correlation uses session and sequence identity. Raw acquisition correlation remains time-bounded. Browser receipt and rendered state are separate observations; receipt does not identify the exact rendered sample. Missing fields, sampling, truncated diagnostics, unavailable browser checks, and unobserved pause or recovery scenarios remain explicit limits. The diagnostic cap can end correlation before observation ends. Desktop observations do not establish phone acceptance.
 
 ### Official-DLL smoke check
 

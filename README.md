@@ -48,6 +48,9 @@ Check the display and stop the server when finished:
    The right altitude tape must show the pressure setting.
 3. Press `Ctrl+C` in PowerShell to stop the server gracefully.
 
+For automated shutdown, pass `--shutdown-file` with an absolute path that does not exist at startup.
+Creating that file requests the same coordinated shutdown as `Ctrl+C`.
+
 ## Use your phone
 
 Connect the phone to the server through the trusted private network:
