@@ -29,3 +29,10 @@ test('late launch cleanup failure is reported to the caller', async () => {
  const result=openBrowserSession({signal:controller.signal,chromium:{launch:()=>new Promise(r=>finish=r)}}); controller.abort(); finish({close:async()=>{throw new Error('late close failed');}});
  await assert.rejects(result,error=>{assert.match(error.cleanupError ?? '',/late close failed/);return true;});
 });
+test('process cleanup runs when browser close fails and preserves primary failure', async () => {
+ const {cleanupBrowserAndProcess}=await import('./session.mjs'); let stopped=false; const messages=[];
+ const primary=new Error('assertion failed');
+ await cleanupBrowserAndProcess({session:{close:async()=>{throw new Error('close failed');}},stop:async()=>{stopped=true;},primaryError:primary,reportError:e=>messages.push(e.message)});
+ assert.equal(stopped,true); assert.deepEqual(messages,['close failed']);
+ await assert.rejects(cleanupBrowserAndProcess({session:{close:async()=>{throw new Error('close failed');}},stop:async()=>{}}),/cleanup/i);
+});

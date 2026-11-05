@@ -41,3 +41,10 @@ export async function openBrowserSession({signal,viewport,hasTouch,chromium}={})
 export async function saveScreenshot(page,{path,timeoutMs=5000}) {
  await mkdir(dirname(path),{recursive:true}); await page.screenshot({path,timeout:timeoutMs});
 }
+export async function cleanupBrowserAndProcess({session,stop,primaryError,reportError=console.error}) {
+ const errors=[];
+ try { if(session) await session.close(); } catch(error) { errors.push(error); }
+ try { await stop(); } catch(error) { errors.push(error); }
+ if(primaryError) { for(const error of errors) reportError(error); }
+ else if(errors.length) throw new AggregateError(errors,'Browser or process cleanup failed');
+}

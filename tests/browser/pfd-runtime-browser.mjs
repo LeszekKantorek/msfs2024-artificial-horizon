@@ -1,6 +1,6 @@
 // Optional smoke test against the compiled Windows application, including a real restart.
 import assert from 'node:assert/strict';
-import { openBrowserSession, saveScreenshot } from '../../tools/browser/session.mjs';
+import { openBrowserSession, saveScreenshot, cleanupBrowserAndProcess } from '../../tools/browser/session.mjs';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
 import { once } from 'node:events';
@@ -18,6 +18,7 @@ const executable = resolve(process.argv[2] ?? 'target/x86_64-pc-windows-msvc/deb
 let server;
 let browser;
 let session;
+let primaryError;
 async function start(sourceArguments = ['--source', 'demo']) {
   server = spawn(executable, [...sourceArguments, '--port', String(port)], { stdio: ['ignore', 'pipe', 'pipe'] });
   let failure;
@@ -291,7 +292,9 @@ try {
   }
   assert.deepEqual(errors, []);
   console.log(`Rust-to-browser PFD checks passed on ${await browser.version()}: embedded assets, heading/north capture, selected-altitude and VSI SSE/SVG, standard-rate turn, source loss, restart without page reload and failed SimConnect with connected HTTP/unavailable EFI.`);
+} catch (error) {
+  primaryError = error;
+  throw error;
 } finally {
-  if (session) await session.close();
-  await stop();
+  await cleanupBrowserAndProcess({ session, primaryError, stop });
 }

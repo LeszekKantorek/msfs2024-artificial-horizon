@@ -1,6 +1,6 @@
 // Optional browser acceptance checks. Requires Playwright and an installed browser.
 import assert from 'node:assert/strict';
-import { openBrowserSession, saveScreenshot } from '../../tools/browser/session.mjs';
+import { openBrowserSession, saveScreenshot, cleanupBrowserAndProcess } from '../../tools/browser/session.mjs';
 import { spawn } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
 import { once } from 'node:events';
@@ -31,6 +31,7 @@ const url = await new Promise((resolve, reject) => {
 const errors = [];
 let browser;
 let session;
+let primaryError;
 const setFixture = value => server.stdin.write(`${JSON.stringify(value)}\n`);
 // Executed in the page: hit testing includes every ancestor clip.
 function backgroundCovered() {
@@ -522,9 +523,13 @@ try {
   await touchContext.close();
   assert.deepEqual(errors, []);
   console.log(`PFD browser checks passed on ${await browser.version()}. Viewports, fixtures, poses, optional failures, stale, resize and lifecycle checked.`);
+} catch (error) {
+  primaryError = error;
+  throw error;
 } finally {
-  if (session) await session.close();
-  server.stdin.end();
-  server.kill();
-  if (server.exitCode === null) await once(server, 'exit');
+  await cleanupBrowserAndProcess({ session, primaryError, stop: async () => {
+    server.stdin.end();
+    server.kill();
+    if (server.exitCode === null) await once(server, 'exit');
+  }});
 }
