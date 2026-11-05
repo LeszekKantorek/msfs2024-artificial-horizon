@@ -75,16 +75,40 @@ fn occupied_port_exits_with_address_and_actionable_error() {
     assert!(error.contains("choose an available"));
 }
 
+struct ChildGuard(std::process::Child);
+
+impl std::ops::Deref for ChildGuard {
+    type Target = std::process::Child;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for ChildGuard {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl Drop for ChildGuard {
+    fn drop(&mut self) {
+        let _ = self.0.kill();
+        let _ = self.0.wait();
+    }
+}
+
 fn stop_process(input: &[u8]) {
     use std::io::Write;
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
     drop(listener);
-    let mut child = Command::new(env!("CARGO_BIN_EXE_msfs2024-artificial-horizon"))
-        .args(["--port", &port.to_string()])
-        .stdin(Stdio::piped())
-        .spawn()
-        .unwrap();
+    let mut child = ChildGuard(
+        Command::new(env!("CARGO_BIN_EXE_msfs2024-artificial-horizon"))
+            .args(["--port", &port.to_string()])
+            .stdin(Stdio::piped())
+            .spawn()
+            .unwrap(),
+    );
     let deadline = Instant::now() + Duration::from_secs(5);
     while TcpListener::bind(("127.0.0.1", port)).is_ok() {
         assert!(Instant::now() < deadline);
@@ -101,7 +125,6 @@ fn stop_process(input: &[u8]) {
     child.stdin.as_mut().unwrap().write_all(input).unwrap();
     while child.try_wait().unwrap().is_none() {
         if Instant::now() >= deadline {
-            child.kill().unwrap();
             panic!("stop did not exit");
         }
         thread::sleep(Duration::from_millis(10));
@@ -109,11 +132,13 @@ fn stop_process(input: &[u8]) {
     assert!(child.wait().unwrap().success());
     let listener = TcpListener::bind(("127.0.0.1", port)).unwrap();
     drop(listener);
-    let mut restarted = Command::new(env!("CARGO_BIN_EXE_msfs2024-artificial-horizon"))
-        .args(["--port", &port.to_string()])
-        .stdin(Stdio::piped())
-        .spawn()
-        .unwrap();
+    let mut restarted = ChildGuard(
+        Command::new(env!("CARGO_BIN_EXE_msfs2024-artificial-horizon"))
+            .args(["--port", &port.to_string()])
+            .stdin(Stdio::piped())
+            .spawn()
+            .unwrap(),
+    );
     let deadline = Instant::now() + Duration::from_secs(5);
     while TcpListener::bind(("127.0.0.1", port)).is_ok() {
         assert!(Instant::now() < deadline);
@@ -127,7 +152,6 @@ fn stop_process(input: &[u8]) {
         .unwrap();
     while restarted.try_wait().unwrap().is_none() {
         if Instant::now() >= deadline {
-            restarted.kill().unwrap();
             panic!("restart did not exit");
         }
         thread::sleep(Duration::from_millis(10));
@@ -148,11 +172,13 @@ fn stdin_eof_does_not_stop_server() {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
     drop(listener);
-    let mut child = Command::new(env!("CARGO_BIN_EXE_msfs2024-artificial-horizon"))
-        .args(["--port", &port.to_string()])
-        .stdin(Stdio::piped())
-        .spawn()
-        .unwrap();
+    let mut child = ChildGuard(
+        Command::new(env!("CARGO_BIN_EXE_msfs2024-artificial-horizon"))
+            .args(["--port", &port.to_string()])
+            .stdin(Stdio::piped())
+            .spawn()
+            .unwrap(),
+    );
     drop(child.stdin.take());
     thread::sleep(Duration::from_millis(500));
     assert!(child.try_wait().unwrap().is_none());
