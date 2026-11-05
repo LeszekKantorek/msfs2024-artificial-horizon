@@ -35,19 +35,18 @@ The release build compiles optimized artifacts separately.
 The [PR acceptance control](../pr-acceptance.md#validate-changes-to-the-control) has a separate Node suite that also runs locally.
 Its tooling dependencies do not affect browser controller checks or the application build.
 
-The shared browser utility and live harness have a separate Node suite. Configure the [Playwright setup](pfd.md#responsive-efi-layout-and-desktop-checks) first. After the release build, compile its fixtures and set their paths:
+The recorder tests use a Node fixture and do not require Playwright or the simulator. After the release build, set the executable for the rebuilt Demo integration test:
 
 ```powershell
-New-Item -ItemType Directory -Force .local/live-test-fixtures | Out-Null
-rustc --crate-name ignore_shutdown_fixture tools/live/ignore-shutdown.fixture.rs -o .local/live-test-fixtures/ignore.exe
-rustc --crate-name output_fixture tools/live/output.fixture.rs -o .local/live-test-fixtures/output.exe
-$env:S1_EXE = Join-Path $PWD 'target/x86_64-pc-windows-msvc/release/msfs2024-artificial-horizon.exe'
-$env:S1_IGNORE_EXE = Join-Path $PWD '.local/live-test-fixtures/ignore.exe'
-$env:S1_OUTPUT_EXE = Join-Path $PWD '.local/live-test-fixtures/output.exe'
-node --test tools/browser/*.test.mjs tools/live/*.test.mjs
+$env:LIVE_TEST_EXE = Join-Path $PWD 'target/x86_64-pc-windows-msvc/release/msfs2024-artificial-horizon.exe'
+node --test tools/live/*.test.mjs
 ```
 
-The process checks require Windows access to inspect socket ownership. The [development observation procedure](../sources/simconnect.md#bounded-development-observation) describes runtime checks.
+Configure the [Playwright setup](pfd.md#responsive-efi-layout-and-desktop-checks) before running the shared browser utility tests:
+
+```powershell
+node --test tests/*.test.mjs tools/browser/*.test.mjs
+```
 
 ### Coverage boundaries
 

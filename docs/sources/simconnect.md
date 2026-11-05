@@ -303,7 +303,7 @@ Trend freshness and history follow these rules:
 | Flush | Significant events, at least once per second while recording, and shutdown |
 | No logging | No journal, diagnostic environment collection, or raw-record formatting |
 
-The application places no size limit on the journal; it can grow throughout a requested logging session. The live observation harness separately limits its diagnostic reader to 32 MiB. Reaching that reader limit leaves observation evidence incomplete; it does not limit the journal on disk.
+The application places no size limit on the journal; it can grow throughout a requested logging session.
 
 Diagnostic failures remain independent of acquisition:
 
@@ -392,42 +392,27 @@ Select the shared testing procedure by purpose:
 
 ### Bounded development observation
 
-Use this procedure to inspect a new application process against a human-started flight. It does not control the simulator. Windows x64 MSVC, Node.js, Rust, the official x64 DLL, and the [desktop Playwright setup](../testing/pfd.md#responsive-efi-layout-and-desktop-checks) are required. Start an active flight before running:
+Build the complete application and prepare an output directory before recording. Start an active flight for SimConnect observations. The recorder requires Node.js and starts the supplied application; it does not control the simulator.
+
+```powershell
+cargo build --locked --release --target x86_64-pc-windows-msvc
+New-Item -ItemType Directory -Force .local/live | Out-Null
+$appExe = Join-Path $PWD 'target/x86_64-pc-windows-msvc/release/msfs2024-artificial-horizon.exe'
+node tools/live/run.mjs --exe "$appExe" --url http://127.0.0.1:8080/api/v1/events --output .local/live/demo.sse --duration-seconds 30 --max-messages 1000 -- --source demo --listen-address 127.0.0.1 --port 8080
+```
+
+For SimConnect, provide the official x64 DLL path and choose a new output filename:
 
 ```powershell
 $simconnectDll = Read-Host 'Absolute path to the official x64 SimConnect.dll'
-node tools/live/run.mjs --source simconnect --dll "$simconnectDll"
+node tools/live/run.mjs --exe "$appExe" --url http://127.0.0.1:8080/api/v1/events --output .local/live/flight.sse --duration-seconds 30 --max-messages 1000 -- --source simconnect --dll "$simconnectDll" --listen-address 127.0.0.1 --port 8080
 ```
 
-The command builds the release application, starts its own process, verifies the loopback port owner, observes telemetry and the embedded browser, and requests shutdown. It writes a unique ignored `.local/live/<run-id>/` directory and prints its path. Use `--source demo` for a separate simulator-independent run. Explicit source selection is required; Demo is not live evidence.
+The output file is created exclusively and contains unchanged HTTP response-body bytes, including incomplete frames. Inspect the data separately; recording does not validate telemetry, readiness, or field availability. Demo data is not live evidence. Use the [desktop procedure](../testing/pfd.md#responsive-efi-layout-and-desktop-checks) separately for visual checks.
 
-Inspect the run evidence:
+At least one limit is required. The duration begins when response headers arrive; the message limit counts completed SSE blocks containing data lines. When both are supplied, the first limit stops capture. The final received chunk is preserved in full, so it may contain more messages than the limit. Ctrl+C cancels a capture.
 
-* `result.json` contains individual checks and cleanup. Inspect the check details even when a run is incomplete.
-* `manifest.json` records build and process identity, observation duration, and observed, retained, and discarded counts.
-* `observations.jsonl` contains retained observations. Retention samples observations when its count or file-size bound is reached. Stream checks validate every received event, but correlations cover only retained evidence.
-* The directory also contains captured output and diagnostics for SimConnect. Normal observation checks browser receipts and produces no screenshots or rendered-display checks.
-
-| Exit code | Meaning |
-| --- | --- |
-| 0 | All applicable checks passed |
-| 1 | A check or cleanup failed |
-| 2 | Evidence is unavailable or inconclusive |
-| 130 | The run was cancelled |
-
-A successful health response or a simulator process alone does not establish live availability. Require a bounded SimConnect observation with fresh live telemetry.
-
-The manifest records the executable hash and local build provenance. To use an existing executable instead, pass its absolute path with `--exe`; its provenance is external and unverified. Each invocation starts a fresh process. Rebuild and run again after application changes. `--duration-ms` and `--ready-timeout-ms` accept 1 through 300000 and default to 30000; `--port` selects a loopback port from 1 through 65535. `--dll` is available only for SimConnect and must be absolute.
-
-The harness closes subscriptions and requests coordinated shutdown by sending `stop` on standard input. If the child does not exit within ten seconds, it terminates only that child and records forced cleanup. A blocked native call has no guaranteed graceful deadline. Check cleanup before starting another run; do not stop unrelated processes.
-
-Interpret correlations and evidence limits:
-
-* Diagnostic publication and SSE correlation uses session and sequence identity. Raw acquisition correlation remains time-bounded.
-* Browser receipt does not establish rendered state or identify the exact rendered sample. For controlled visual checks or a separate diagnostic screenshot, use the [desktop procedure](../testing/pfd.md#responsive-efi-layout-and-desktop-checks). Desktop observations do not establish phone acceptance.
-* Missing fields, sampling, truncated diagnostics, unavailable browser checks, and unobserved pause or recovery scenarios remain explicit limits.
-* Optional application logging has no writer cap; the journal can grow throughout the session. The harness reader has a separate 32 MiB evidence budget. Exceeding it or missing diagnostics makes correlation incomplete.
-* Retention samples observations, so correlation covers retained samples only. Earlier capped-run results are historical evidence and do not validate the current uncapped writer.
+The recorder waits up to ten seconds for the owned application's listening line and response headers, then sends `stop` on standard input during cleanup. If the application does not exit in ten seconds, the recorder terminates that child and reports cleanup failure. Exit codes are `0` for a completed capture, `130` for cancellation with successful cleanup, and `1` for an operational or cleanup failure. A blocked native call has no guaranteed graceful deadline.
 
 ### Official-DLL smoke check
 

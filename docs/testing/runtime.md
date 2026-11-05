@@ -2,7 +2,7 @@
 
 Startup, shutdown, subscriptions, controlled time, and deterministic demo fixtures.
 
-For a bounded new-process Demo or live SimConnect observation, follow the [development observation procedure](../sources/simconnect.md#bounded-development-observation).
+For raw SSE capture from a new Demo or SimConnect process, follow the [development observation procedure](../sources/simconnect.md#bounded-development-observation).
 
 ## HTTP startup checks
 

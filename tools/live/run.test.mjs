@@ -1,56 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import net from 'node:net';
+import {mkdtemp,writeFile,readFile,rm} from 'node:fs/promises';
 import path from 'node:path';
-import { parseArgs } from './run.mjs';
-test('requires explicit source and validates limits', () => {
- assert.throws(()=>parseArgs([]),/source/); assert.throws(()=>parseArgs(['--source','demo','--dll',path.resolve('x')]),/dll/i);
- assert.throws(()=>parseArgs(['--source','demo','--duration-ms','0']),/duration/);
- assert.throws(()=>parseArgs(['--source','demo','--exe','relative']),/absolute/);
- assert.equal(parseArgs(['--source','demo']).durationMs,30000);
-});
-test('protocol errors are classified as application failures', async () => {
- const {observationErrorStatus}=await import('./run.mjs');
- assert.equal(observationErrorStatus(new Error('Malformed telemetry JSON')),'failed');
- assert.equal(observationErrorStatus(new Error('Partial SSE frame')),'failed');
- assert.equal(observationErrorStatus(new Error('SSE text limit reached')),'inconclusive');
- assert.equal(observationErrorStatus(new Error('Playwright unavailable')),'inconclusive');
-});
-test('build output is retained only to the configured bound', async () => {
- const {boundedText}=await import('./run.mjs'); const output=boundedText(4); output.add(Buffer.from('abc')); output.add(Buffer.from('def')); assert.equal(output.text(),'abcd'); assert.equal(output.truncated(),true);
-});
-test('retention samples beyond the cap and reports counts', async () => {
- const {boundedObservations}=await import('./run.mjs'); let stopped=0; const bounded=boundedObservations(10,()=>stopped++);
- for(let n=0;n<10001;n++) bounded.add({kind:'sse',n});
- assert.ok(bounded.observations.length<=10); assert.equal(stopped,0);
- assert.deepEqual(bounded.counts(),{observed:10001,retained:bounded.observations.length,discarded:10001-bounded.observations.length});
-});
-test('observation byte limit samples without exceeding the output bound', async () => {
- const {boundedObservations}=await import('./run.mjs'); let stopped=0; const bounded=boundedObservations(100,()=>stopped++,100);
- for(let n=0;n<100;n++) bounded.add({kind:'sse',n,text:'some text'});
- assert.ok(Buffer.byteLength(bounded.observations.map(x=>JSON.stringify(x)+'\n').join(''))<=100);
- assert.equal(stopped,0); assert.equal(bounded.counts().observed,100); assert.ok(bounded.counts().discarded>0);
-});
-test('readiness protocol violations are failures, while observation limits are inconclusive', async () => {
- const {observationErrorStatus,runFailureCheck}=await import('./run.mjs');
- for(const message of ['Source mismatch','Sequence regression','Stale live sample','Malformed telemetry envelope']) assert.equal(observationErrorStatus(new Error(message)),'failed',message);
- assert.equal(runFailureCheck(new Error('Observation stopped during readiness'),true).status,'inconclusive');
- assert.equal(runFailureCheck(new Error('Observation stopped during readiness'),true).id,'observation');
- assert.equal(runFailureCheck(new Error('Application exited'),false).status,'failed');
-});
-test('Demo command reports changing browser receipts without display artifacts', async () => {
- const {execFile}=await import('node:child_process'); const {promisify}=await import('node:util'); const {readFile,readdir,rm}=await import('node:fs/promises');
- assert.ok(process.env.S1_EXE,'Set S1_EXE to the rebuilt application');
- const {stdout}=await promisify(execFile)(process.execPath,['tools/live/run.mjs','--source','demo','--exe',process.env.S1_EXE,'--duration-ms','3000'],{timeout:30000,env:process.env});
- const directory=stdout.match(/Results: (.+)/)?.[1]?.trim(); assert.ok(directory,'command must report its result directory');
- try {
-  const report=JSON.parse(await readFile(path.join(directory,'result.json'),'utf8'));
-  const observations=(await readFile(path.join(directory,'observations.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);
-  const receipts=observations.filter(o=>o.kind==='browser-receipt');
-  assert.equal(report.checks.find(c=>c.id==='browser receipt')?.status,'passed');
-  assert.equal(report.checks.some(c=>/display/i.test(c.id)),false);
-  assert.equal(observations.some(o=>o.kind==='browser-display'),false);
-  assert.ok(receipts.length>2); assert.ok(new Set(receipts.map(o=>JSON.stringify([o.snapshot.attitude,o.snapshot.ias_kt,o.snapshot.altitude_ft]))).size>1);
-  assert.equal((await readdir(directory)).some(name=>/\.png$/i.test(name)),false);
-  assert.equal(report.cleanup.graceful,true); assert.equal(report.cleanup.forced,false); assert.equal(report.cleanup.error,null);
- } finally {await rm(directory,{recursive:true,force:true});}
-});
+import os from 'node:os';
+import {run,parseArgs} from './run.mjs';
+const fixture=path.resolve('tools/live/process-run.fixture.mjs');
+async function port() {const s=net.createServer();await new Promise(r=>s.listen(0,'127.0.0.1',r));const p=s.address().port;await new Promise(r=>s.close(r));return p;}
+test('records owned child bytes and stops on message limit',async()=>{const dir=await mkdtemp(path.join(os.tmpdir(),'live-'));const body=Buffer.from('data: one\n\ndata: two\n\n');const input=path.join(dir,'body'),output=path.join(dir,'out');await writeFile(input,body);const p=await port();try {const status=await run({exe:process.execPath,url:`http://127.0.0.1:${p}/`,output,maxMessages:1,appArgs:[fixture,'--mode','normal','--port',String(p),'--body-file',input]});assert.equal(status,0);assert.deepEqual(await readFile(output),body);} finally {await rm(dir,{recursive:true,force:true});}});
+test('rejects duplicates, old options, and missing limits',()=>{const base=['--exe','a','--url','http://127.0.0.1:3/','--output','b'];for(const extra of [[],['--source','demo'],['--max-messages','1','--max-messages','2']])assert.throws(()=>parseArgs([...base,...extra]));});
+
+test('rejects a mismatched listening address',async()=>{const dir=await mkdtemp(path.join(os.tmpdir(),'live-'));const input=path.join(dir,'body'),output=path.join(dir,'out');await writeFile(input,'data: error\n\n');const p=await port();try {const status=await run({exe:process.execPath,url:`http://127.0.0.1:${p}/`,output,maxMessages:1,appArgs:[fixture,'--mode','wrong-address','--port',String(p),'--body-file',input]});assert.equal(status,1);} finally {await rm(dir,{recursive:true,force:true});}});
+test('preserves an existing output without starting a child',async()=>{const dir=await mkdtemp(path.join(os.tmpdir(),'live-'));const output=path.join(dir,'out');await writeFile(output,'original');try {assert.equal(await run({exe:'missing',url:'http://127.0.0.1:2/',output,maxMessages:1,appArgs:[]}),1);assert.equal(await readFile(output,'utf8'),'original');}finally{await rm(dir,{recursive:true,force:true});}});
+
+test('records rebuilt Demo application', {skip:!process.env.LIVE_TEST_EXE}, async()=>{const dir=await mkdtemp(path.join(os.tmpdir(),'live-demo-'));const output=path.join(dir,'demo.sse');const p=await port();try{assert.equal(await run({exe:process.env.LIVE_TEST_EXE,url:`http://127.0.0.1:${p}/api/v1/events`,output,durationSeconds:1,appArgs:['--source','demo','--listen-address','127.0.0.1','--port',String(p)]}),0);assert.ok((await readFile(output)).length>0);}finally{await rm(dir,{recursive:true,force:true});}});
+
+test('reports early child exit',async()=>{const dir=await mkdtemp(path.join(os.tmpdir(),'live-'));const input=path.join(dir,'body'),output=path.join(dir,'out');await writeFile(input,'x');const p=await port();try{assert.equal(await run({exe:process.execPath,url:`http://127.0.0.1:${p}/`,output,maxMessages:1,appArgs:[fixture,'--mode','early-exit','--port',String(p),'--body-file',input]}),1);}finally{await rm(dir,{recursive:true,force:true});}});
+test('reports a busy port without affecting its owner',async()=>{const server=net.createServer();await new Promise(r=>server.listen(0,'127.0.0.1',r));const p=server.address().port;const dir=await mkdtemp(path.join(os.tmpdir(),'live-'));const input=path.join(dir,'body'),output=path.join(dir,'out');await writeFile(input,'x');try{assert.equal(await run({exe:process.execPath,url:`http://127.0.0.1:${p}/`,output,maxMessages:1,appArgs:[fixture,'--mode','normal','--port',String(p),'--body-file',input]}),1);assert.equal(server.listening,true);}finally{await new Promise(r=>server.close(r));await rm(dir,{recursive:true,force:true});}});
+
+test('reports forced termination when the child ignores stop',async()=>{const dir=await mkdtemp(path.join(os.tmpdir(),'live-'));const input=path.join(dir,'body'),output=path.join(dir,'out');await writeFile(input,'data: x\n\n');const p=await port();try{assert.equal(await run({exe:process.execPath,url:`http://127.0.0.1:${p}/`,output,maxMessages:1,appArgs:[fixture,'--mode','ignore-stop','--port',String(p),'--body-file',input]}),1);}finally{await rm(dir,{recursive:true,force:true});}});
+test('reports a missing output parent',async()=>{const dir=await mkdtemp(path.join(os.tmpdir(),'live-'));try{assert.equal(await run({exe:'missing',url:'http://127.0.0.1:1/',output:path.join(dir,'missing','out'),maxMessages:1,appArgs:[]}),1);}finally{await rm(dir,{recursive:true,force:true});}});
