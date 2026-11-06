@@ -1,6 +1,6 @@
 // Optional smoke test against the compiled Windows application, including a real restart.
 import assert from 'node:assert/strict';
-import { createRequire } from 'node:module';
+import { openBrowserSession, saveScreenshot, cleanupBrowserAndProcess } from '../../tools/browser/session.mjs';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
 import { once } from 'node:events';
@@ -8,7 +8,6 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { resolve } from 'node:path';
 import { mkdir } from 'node:fs/promises';
 
-const { chromium } = createRequire(import.meta.url)(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
 const reservation = createServer();
 reservation.listen(0, '127.0.0.1');
 await once(reservation, 'listening');
@@ -18,6 +17,8 @@ const address = `http://127.0.0.1:${port}`;
 const executable = resolve(process.argv[2] ?? 'target/x86_64-pc-windows-msvc/debug/msfs2024-artificial-horizon.exe');
 let server;
 let browser;
+let session;
+let primaryError;
 async function start(sourceArguments = ['--source', 'demo']) {
   server = spawn(executable, [...sourceArguments, '--port', String(port)], { stdio: ['ignore', 'pipe', 'pipe'] });
   let failure;
@@ -98,7 +99,7 @@ async function checkInitialTelemetry(page) {
   // The first synthetic-jump sample intentionally omits VSI for one tick.
   await page.locator('#vertical-speed[data-state="available"]').waitFor();
   const snapshot = await currentSnapshot();
-  assert.equal(snapshot.schema_version, 1);
+  assert.equal(Object.hasOwn(snapshot, 'schema_version'), false);
   assert.equal(snapshot.source, 'demo');
   assert.equal(snapshot.state, 'live');
   assert.ok(Number.isFinite(snapshot.slip_skid));
@@ -143,7 +144,7 @@ async function checkRightTurnAndSpeeds(page) {
   assert.deepEqual(speeds, { ias: 'Indicated airspeed 150 knots', digits: '150', gs: '170', tas: '160', tasLabel: 'True airspeed 160 knots' });
   assert.equal(await page.locator('#airspeed').getAttribute('data-overspeed'), 'true');
   assert.equal(await page.locator('#airspeed-trend').evaluate(n => getComputedStyle(n).display), 'none');
-  await page.screenshot({ path: '.local/pfd-runtime-landscape.png' });
+  await saveScreenshot(page, { path: '.local/pfd-runtime-landscape.png' });
 }
 
 async function checkNorthCrossing(page) {
@@ -156,7 +157,7 @@ async function checkNorthCrossing(page) {
     bug: document.querySelector('#selected-heading-bug').transform.baseVal.consolidate().matrix.e,
   }));
   assert.equal(north.value, '360'); assert.ok(Math.abs(north.center - north.bug) < 1e-4);
-  await page.screenshot({ path: '.local/pfd-runtime-heading-north.png' });
+  await saveScreenshot(page, { path: '.local/pfd-runtime-heading-north.png' });
 }
 
 async function checkSelectedAltitude(page) {
@@ -168,7 +169,7 @@ async function checkSelectedAltitude(page) {
   assert.equal(await page.locator('#selected-altitude').getAttribute('aria-label'), 'Selected altitude 10000 feet');
   assert.equal(await page.locator('#selected-altitude').getAttribute('data-alert'), 'none');
   assert.equal(await page.locator('#selected-altitude-bug').evaluate(n => n.transform.baseVal.consolidate().matrix.f), 14.5);
-  await page.screenshot({ path: '.local/pfd-runtime-selected-altitude.png' });
+  await saveScreenshot(page, { path: '.local/pfd-runtime-selected-altitude.png' });
 }
 
 async function checkAltitudeHold(page) {
@@ -192,7 +193,7 @@ async function checkClimbAndTrend(page) {
       painted: document.elementFromPoint(point.x, point.y) === node };
   });
   assert.deepEqual(altitudeTrend, { x: 2, dy: -60, predictionChange: 150, painted: true });
-  await page.screenshot({ path: '.local/pfd-runtime-vertical-speed.png' });
+  await saveScreenshot(page, { path: '.local/pfd-runtime-vertical-speed.png' });
 }
 
 async function checkSourceLoss(page) {
@@ -231,8 +232,8 @@ async function checkRecovery(page) {
 try {
   await mkdir('.local', { recursive: true });
   await start();
-  browser = await chromium.launch({ headless: true, channel: process.env.BROWSER_CHANNEL || undefined });
-  const page = await browser.newPage({ viewport: { width: 568, height: 240 } });
+  session = await openBrowserSession({ viewport: { width: 568, height: 240 } });
+  const { browser: ownedBrowser, page } = session; browser = ownedBrowser;
   const errors = [];
   const loadedModules = new Set();
   page.on('pageerror', error => errors.push(String(error)));
@@ -280,7 +281,7 @@ try {
   assert.equal(unavailable.source, 'simconnect');
   assert.equal(unavailable.state, 'disconnected');
   assert.equal(unavailable.attitude, null);
-  await page.screenshot({ path: '.local/pfd-runtime-simconnect-unavailable.png' });
+  await saveScreenshot(page, { path: '.local/pfd-runtime-simconnect-unavailable.png' });
   assert.deepEqual(await (await fetch(`${address}/health`)).json(), { status: 'ok' });
   assert.equal(server.exitCode, null);
   // A new client starts unavailable without inheriting the previous Demo frame.
@@ -291,7 +292,9 @@ try {
   }
   assert.deepEqual(errors, []);
   console.log(`Rust-to-browser PFD checks passed on ${await browser.version()}: embedded assets, heading/north capture, selected-altitude and VSI SSE/SVG, standard-rate turn, source loss, restart without page reload and failed SimConnect with connected HTTP/unavailable EFI.`);
+} catch (error) {
+  primaryError = error;
+  throw error;
 } finally {
-  if (browser) await browser.close();
-  await stop();
+  await cleanupBrowserAndProcess({ session, primaryError, stop });
 }

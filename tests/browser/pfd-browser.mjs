@@ -1,6 +1,6 @@
 // Optional browser acceptance checks. Requires Playwright and an installed browser.
 import assert from 'node:assert/strict';
-import { createRequire } from 'node:module';
+import { openBrowserSession, saveScreenshot, cleanupBrowserAndProcess } from '../../tools/browser/session.mjs';
 import { spawn } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
 import { once } from 'node:events';
@@ -14,8 +14,6 @@ import { checkHeading } from './checks/heading-browser-checks.mjs';
 import { checkTapeFooters } from './checks/tape-footer-browser-checks.mjs';
 import { checkTrueAirspeed } from './checks/true-airspeed-browser-checks.mjs';
 
-const require = createRequire(import.meta.url);
-const { chromium } = require(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
 const server = spawn(process.execPath, ['tests/browser/helpers/browser-fixture-server.mjs'], {
   env: { ...process.env, PFD_FIXTURE_HOST: '127.0.0.1', PFD_FIXTURE_PORT: '0' }, stdio: ['pipe', 'pipe', 'inherit'],
 });
@@ -32,6 +30,8 @@ const url = await new Promise((resolve, reject) => {
 });
 const errors = [];
 let browser;
+let session;
+let primaryError;
 const setFixture = value => server.stdin.write(`${JSON.stringify(value)}\n`);
 // Executed in the page: hit testing includes every ancestor clip.
 function backgroundCovered() {
@@ -69,8 +69,8 @@ try {
   for (const path of ['/math.js', '/svg.js', '/telemetry-client.js', '/airspeed.js', '/horizon.js', '/fixed-symbols.js', '/airspeed/calculations.js', '/horizon/calculations.js', '/vertical-speed.js']) {
     assert.equal((await fetch(url + path)).status, 404);
   }
-  browser = await chromium.launch({ headless: true, channel: process.env.BROWSER_CHANNEL || undefined });
-  const page = await browser.newPage();
+  session = await openBrowserSession();
+  const { browser: ownedBrowser, page } = session; browser = ownedBrowser;
   await page.addInitScript(() => {
     const Original = window.ResizeObserver;
     window.ResizeObserver = class extends Original {
@@ -146,7 +146,7 @@ try {
         });
         assert.deepEqual(collisions, [], `${width}x${height} painted content`);
       }
-      await page.screenshot({ path: `.local/pfd-browser/${path === '/' ? 'g1' : 'layout'}-${width}x${height}.png` });
+      await saveScreenshot(page, { path: `.local/pfd-browser/${path === '/' ? 'g1' : 'layout'}-${width}x${height}.png` });
     }
     await checkAirspeedAvailabilityTransitions(page, setFixture,
       JSON.parse(readFileSync(new URL('../fixtures/airspeed-profile.json', import.meta.url))));
@@ -163,7 +163,7 @@ try {
         assert.equal(await page.locator('#airspeed .instrument-background').evaluate(n => Number(getComputedStyle(n).fillOpacity)), opacity);
         assert.equal(await page.locator('#airspeed').evaluate(n => getComputedStyle(n).opacity), '1');
         assert.equal(await page.locator('#airspeed text').first().evaluate(n => getComputedStyle(n).fillOpacity), '1');
-        await page.screenshot({ path: `.local/pfd-browser/opacity-${opacity}-${width}x${height}-${pitch}.png` });
+        await saveScreenshot(page, { path: `.local/pfd-browser/opacity-${opacity}-${width}x${height}-${pitch}.png` });
       }
     }
   }
@@ -333,7 +333,7 @@ try {
   }
   setFixture({ ias_kt: 99.5, gs_kt: 137.6 });
   await page.waitForFunction(() => document.querySelector('#airspeed').getAttribute('aria-label') === 'Indicated airspeed 99.5 knots');
-  await page.screenshot({ path: '.local/pfd-browser/airspeed-rollover.png' });
+  await saveScreenshot(page, { path: '.local/pfd-browser/airspeed-rollover.png' });
   setFixture({ ias_kt: 123, gs_kt: 137 });
   // Independent pitch offsets for two actual usable panel sizes; no layout formula copy.
   setFixture({ pitch_deg: 10, roll_deg: 0 });
@@ -394,7 +394,7 @@ try {
         document.querySelector('.aircraft').getAttribute('d') === document.querySelector('.aircraft-outline').getAttribute('d');
     }), true, `Shared attitude transforms and aircraft outline for pose ${index}`);
     assert.equal(await page.evaluate(instrumentNodesUnchanged), true);
-    await page.screenshot({ path: `.local/pfd-browser/pose-${index}.png` });
+    await saveScreenshot(page, { path: `.local/pfd-browser/pose-${index}.png` });
   }
   // Prove that the coverage check rejects the regression it is intended to catch.
   const clip = page.locator('#background-clip rect');
@@ -437,7 +437,7 @@ try {
       return Math.abs(document.querySelector('#world-pitch').transform.baseVal.consolidate().matrix.f - value * scale) < 1e-4;
     }, value);
     assert.equal(await page.evaluate(backgroundCovered), true, `Full background coverage at pitch ${value}`);
-    await page.screenshot({ path: `.local/pfd-browser/extreme-${value}.png` });
+    await saveScreenshot(page, { path: `.local/pfd-browser/extreme-${value}.png` });
   }
   setFixture({ hold: true });
   await page.locator('.instrument[data-available="false"]').waitFor();
@@ -523,9 +523,13 @@ try {
   await touchContext.close();
   assert.deepEqual(errors, []);
   console.log(`PFD browser checks passed on ${await browser.version()}. Viewports, fixtures, poses, optional failures, stale, resize and lifecycle checked.`);
+} catch (error) {
+  primaryError = error;
+  throw error;
 } finally {
-  if (browser) await browser.close();
-  server.stdin.end();
-  server.kill();
-  if (server.exitCode === null) await once(server, 'exit');
+  await cleanupBrowserAndProcess({ session, primaryError, stop: async () => {
+    server.stdin.end();
+    server.kill();
+    if (server.exitCode === null) await once(server, 'exit');
+  }});
 }

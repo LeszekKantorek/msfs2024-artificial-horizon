@@ -35,6 +35,19 @@ The release build compiles optimized artifacts separately.
 The [PR acceptance control](../pr-acceptance.md#validate-changes-to-the-control) has a separate Node suite that also runs locally.
 Its tooling dependencies do not affect browser controller checks or the application build.
 
+The recorder tests use a Node fixture and do not require Playwright or the simulator. After the release build, set the executable for the rebuilt Demo integration test:
+
+```powershell
+$env:LIVE_TEST_EXE = Join-Path $PWD 'target/x86_64-pc-windows-msvc/release/msfs2024-artificial-horizon.exe'
+node --test tools/live/*.test.mjs
+```
+
+Configure the [Playwright setup](pfd.md#responsive-efi-layout-and-desktop-checks) before running the shared browser utility tests:
+
+```powershell
+node --test tests/*.test.mjs tools/browser/*.test.mjs
+```
+
 ### Coverage boundaries
 
 | Boundary | Required coverage |

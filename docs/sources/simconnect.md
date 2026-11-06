@@ -49,6 +49,7 @@ cargo run --locked --release --bin msfs2024-artificial-horizon -- --source simco
 | `--dll <file>` | Optional absolute override. Default: `SimConnect.dll` beside the running EXE |
 | `--log <file>` | Optional exact JSONL destination, absolute or relative to the working directory |
 | `--help`, `--version` | Information without opening a DLL or log |
+| `stop` on standard input | A line containing `stop` requests coordinated shutdown |
 | `Ctrl+C` | Controlled shutdown that waits for the native worker |
 
 The CLI applies these restrictions:
@@ -117,7 +118,7 @@ HTTP does not wait for DLL loading or simulator readiness.
 | Simulator absent or disconnected | HTTP serves unavailable data while the existing provider retries |
 | Producer exits or panics | Existing SSE streams stay open. New clients receive `disconnected` |
 | DLL load or export failure | HTTP stays available. Console diagnostics identify the failure without Demo fallback |
-| Ctrl+C or HTTP failure | Signal both components and wait for their results. HTTP failure returns an application error |
+| Caller-selected shutdown or HTTP failure | Signal both components and wait for their results. HTTP failure returns an application error |
 
 | Output | Contract |
 | --- | --- |
@@ -302,6 +303,8 @@ Trend freshness and history follow these rules:
 | Flush | Significant events, at least once per second while recording, and shutdown |
 | No logging | No journal, diagnostic environment collection, or raw-record formatting |
 
+The application places no size limit on the journal; it can grow throughout a requested logging session.
+
 Diagnostic failures remain independent of acquisition:
 
 | Condition | Result |
@@ -339,6 +342,7 @@ Reference: [SimConnect request API](https://docs.flightsimulator.com/msfs2024/re
 | `connection_attempt`, `api_result`, `native_error` | Connection generation, API results, sent-packet IDs, exception correlation |
 | `attitude_definition` | Selected profile with two or six fields |
 | `attitude_raw`, `attitude_sample` | Raw values, bits, and intervals before normalization and publication, then normalized attitude or validation error |
+| `instrument_sample` | Optional raw input |
 | `attitude_unit_check` | Diagnostic unit disagreement, changed bits in repeated radians, nonfinite probes |
 | `state_transition`, `connection_lost`, `reconnect_wait` | Lifecycle decision, published snapshot, reason, reconnect timing |
 | `dispatch_summary` | Packet and empty-dispatch counts, notification and timeout wakes, last HRESULT, silence |
@@ -352,7 +356,7 @@ Reference: [SimConnect request API](https://docs.flightsimulator.com/msfs2024/re
 | Diagnostic validity | `affects_sample_validity: false` separates diagnostic observations from primary-radian validation. |
 | Rejected attitudes | Rejected attitudes retain `message: "Unknown"` and `rejected_simobject_data`. The latter contains received headers, expected request and definition IDs, and match results. Rejected payloads are not interpreted. |
 | Unsupported messages | Other unsupported message IDs remain `Unknown`. |
-| Current schema | Schema 4 records `live_publication_enabled: true`. Evidence limits belong to this guide, not diagnostic records. |
+| Current schema | Schema 4 records native observations and lifecycle transitions without journaling each publication. |
 | Retained candidate names | Retained `candidate_state` and `candidate_attitude` names use `candidate_is_hypothesis: false`. |
 
 ### Diagnostic schema interpretation
@@ -363,7 +367,8 @@ Interpret recorded evidence according to its diagnostic schema:
 | --- | --- |
 | 1–3 | Candidate live states do not establish live telemetry publication |
 | 2 | Cross-unit disagreements could invalidate samples. Account for this when interpreting recorded invalid states |
-| 4 | Records identify enabled live publication. Schema version alone does not establish integrated simulator or mobile acceptance |
+| 4 | Records identify enabled live publication, but do not journal every publication |
+| 5 | Publication records identify the actual snapshot and sequence. Missing or interrupted records leave correlation incomplete |
 
 ## Testing
 
@@ -384,6 +389,32 @@ Select the shared testing procedure by purpose:
 | Native data | ABI layout, payload decoding, normalization, rejected packets |
 | Telemetry | New and equal acquisitions, original receive time, stale data, invalid input, lifecycle invalidation |
 | Diagnostics and resources | Append sessions, writer exclusion, protected destinations, diagnostic failures, retry bounds, cancellation, cleanup |
+
+### Bounded development observation
+
+Build the complete application and prepare an output directory before recording. Start an active flight for SimConnect observations. The recorder requires Node.js and starts the supplied application; it does not control the simulator.
+
+```powershell
+cargo build --locked --release --target x86_64-pc-windows-msvc
+New-Item -ItemType Directory -Force .local/live | Out-Null
+$appExe = Join-Path $PWD 'target/x86_64-pc-windows-msvc/release/msfs2024-artificial-horizon.exe'
+node tools/live/run.mjs --exe "$appExe" --url http://127.0.0.1:8080/api/v1/events --output .local/live/demo.jsonl --duration-seconds 30 --max-messages 1000 -- --source demo --listen-address 127.0.0.1 --port 8080
+```
+
+For SimConnect, provide the official x64 DLL path and choose a new telemetry output filename. Add `--log` after `--` to record application diagnostics in a separate file:
+
+```powershell
+$simconnectDll = Read-Host 'Absolute path to the official x64 SimConnect.dll'
+node tools/live/run.mjs --exe "$appExe" --url http://127.0.0.1:8080/api/v1/events --output .local/live/flight.jsonl --duration-seconds 30 --max-messages 1000 -- --source simconnect --dll "$simconnectDll" --log .local/live/simconnect.jsonl --listen-address 127.0.0.1 --port 8080
+```
+
+Options before `--` configure the recorder. Arguments after `--`, including `--log`, go to the application. The recorder writes the telemetry JSONL file, and the application appends diagnostic records to the JSONL file. Use a new telemetry filename for each run and distinct log filenames to distinguish sessions. Inspect and compare the files separately.
+
+The output file is created exclusively. Each completed SSE data message is written as one line, without validating or changing its JSON. Multiple data lines in one event are joined with spaces; incomplete events are not written. A malformed payload remains in the file and may not be valid JSONL. Inspect the data separately; recording does not validate telemetry, readiness, or field availability. Demo data is not live evidence. Use the [desktop procedure](../testing/pfd.md#responsive-efi-layout-and-desktop-checks) separately for visual checks.
+
+At least one limit is required. The duration begins when response headers arrive; the message limit counts completed SSE blocks containing data lines. When both are supplied, the first limit stops capture. All complete messages in the final received chunk are recorded, so the output may contain more messages than the limit. Ctrl+C cancels a capture.
+
+The recorder retries the SSE connection for up to ten seconds while the application starts, then sends `stop` on standard input during cleanup. Choose an unused port: the recorder does not verify which process owns the endpoint. If the application does not exit in ten seconds, the recorder terminates that child and reports cleanup failure. Exit codes are `0` for a completed capture, `130` for cancellation with successful cleanup, and `1` for an operational or cleanup failure. A blocked native call has no guaranteed graceful deadline.
 
 ### Official-DLL smoke check
 

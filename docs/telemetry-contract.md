@@ -48,7 +48,7 @@ There are no write/control endpoints.
 ```text
 retry: 2000
 event: telemetry
-data: {"schema_version":1,"sequence":42,"source":"demo","state":"live","sample_age_ms":0,"attitude":{"pitch_deg":5.0,"roll_deg":15.0}}
+data: {"sequence":42,"source":"demo","state":"live","sample_age_ms":0,"attitude":{"pitch_deg":5.0,"roll_deg":15.0}}
 
 ```
 
@@ -84,7 +84,6 @@ Preserve these connection and delivery requirements:
 
 | Field | Contract |
 | --- | --- |
-| `schema_version` | Integer `1`. Visibly reject unsupported major versions |
 | `sequence` | Nonnegative, increasing publication number within one server run. JSON safe integer |
 | `source` | `demo` or `simconnect`. Never silently change on failure |
 | `state` | `waiting`, `live`, `paused`, `stale`, `disconnected`, or `invalid` |
@@ -132,7 +131,6 @@ Extended live example:
 
 ```json
 {
-  "schema_version": 1,
   "sequence": 42,
   "source": "demo",
   "state": "live",
@@ -285,7 +283,6 @@ Unavailable state example:
 
 ```json
 {
-  "schema_version": 1,
   "sequence": 43,
   "source": "simconnect",
   "state": "disconnected",
@@ -306,7 +303,7 @@ Unavailable state example:
 Apply these application and pressure-field compatibility constraints:
 
 * Deliver the server, contract, and embedded Web together under the [application delivery contract](architecture.md#application-delivery-contract).
-* Treat the endpoint and schema identifier as the current application contract, without a promise of backward compatibility.
+* Treat the endpoint and telemetry fields as the current application contract, without a promise of backward compatibility.
 * Changes do not require parallel endpoints or retained legacy schemas solely to support earlier application versions.
 * `baro_inhg` is unsupported and has no adapter.
 * The current `baro_setting.pressure_hpa` field is distinct from `baro_inhg`.

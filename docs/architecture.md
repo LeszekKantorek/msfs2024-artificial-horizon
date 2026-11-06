@@ -211,6 +211,8 @@ Delivery and presentation have separate owners:
 
 ## Application lifecycle
 
+The executable supplies a shutdown trigger to application composition. It accepts Ctrl+C or a `stop` line on standard input. End of input disables the standard input trigger; read errors are reported and also disable that trigger.
+
 [ADR 0007](adr/0007-application-composition.md) defines application composition, producer ownership, and source-failure behavior.
 
 ### Startup
@@ -244,7 +246,7 @@ Delivery and presentation have separate owners:
 
 ### Coordinated shutdown
 
-* Ctrl+C or HTTP failure signals a shared shutdown. Collect HTTP and provider results independently.
+* The caller-selected shutdown trigger or HTTP failure signals a shared shutdown. Collect HTTP and provider results independently.
 * Wait for the native worker. Do not abort it. A permanently blocked native call has no guaranteed completion deadline.
 * The server owns only HTTP shutdown and connection closure. Repeated shutdown signals preserve the first connection deadline.
 * An application infrastructure failure also initiates coordinated shutdown. Signal both components before waiting for their results.

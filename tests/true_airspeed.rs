@@ -48,7 +48,7 @@ async fn true_airspeed_is_independent_and_shares_the_sample_deadline() {
         assert_eq!(wire.get("gs_kt").is_some(), gs);
         assert_eq!(wire.get("tas_kt").is_some(), tas);
         assert_eq!(wire["attitude"]["pitch_deg"], 5.0);
-        assert_eq!(wire["schema_version"], 1);
+        assert!(wire.get("schema_version").is_none());
     }
     publisher.publish_sample(full.clone()).unwrap();
     advance(Duration::from_millis(999)).await;

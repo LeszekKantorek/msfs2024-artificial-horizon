@@ -32,6 +32,7 @@ struct ActiveJournal {
     last_flush: Instant,
     records: u64,
     session_id: String,
+    separator: bool,
 }
 
 impl Journal {
@@ -74,18 +75,20 @@ impl Journal {
             }
         }
         // Preserve an interrupted record byte for byte, then start on a new line.
-        if file.metadata()?.len() != 0 {
+        let bytes = file.metadata()?.len();
+        let mut separator = false;
+        if bytes != 0 {
             file.seek(SeekFrom::End(-1))?;
             let mut last = [0];
             file.read_exact(&mut last)?;
             if last[0] != b'\n' {
-                file.write_all(b"\n")?;
+                separator = true;
             }
         }
-        Self::start(file, path.to_owned())
+        Self::start(file, path.to_owned(), separator)
     }
 
-    fn start(file: File, path: PathBuf) -> io::Result<Self> {
+    fn start(file: File, path: PathBuf, separator: bool) -> io::Result<Self> {
         static NEXT_SESSION: AtomicU64 = AtomicU64::new(0);
         let started_unix_ns = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -102,6 +105,7 @@ impl Journal {
             last_flush: Instant::now(),
             records: 0,
             session_id,
+            separator,
         };
         if let Err(error) = active.record("session_start", json!({
             "schema_version": 4, "started_unix_ms": (started_unix_ns / 1_000_000).to_string(),
@@ -188,6 +192,7 @@ impl Journal {
                 last_flush: Instant::now(),
                 records: 0,
                 session_id: "injected-failure".into(),
+                separator: false,
             }),
             status: DiagnosticStatus::Completed {
                 path: PathBuf::from("injected-failure.jsonl"),
@@ -200,6 +205,10 @@ impl ActiveJournal {
     fn record(&mut self, kind: &str, data: Value, flush: bool) -> io::Result<()> {
         let record = json!({ "session_id": self.session_id, "record": self.records,
             "elapsed_us": self.started.elapsed().as_micros().to_string(), "kind": kind, "data": data });
+        if self.separator {
+            self.writer.write_all(b"\n")?;
+            self.separator = false;
+        }
         serde_json::to_writer(&mut self.writer, &record)?;
         self.writer.write_all(b"\n")?;
         self.records += 1;
@@ -447,7 +456,8 @@ mod tests {
         assert!(
             Journal::start(
                 File::open("Cargo.toml").unwrap(),
-                directory.path("injected.jsonl")
+                directory.path("injected.jsonl"),
+                false
             )
             .is_err()
         );

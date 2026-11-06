@@ -4,7 +4,7 @@ use msfs2024_artificial_horizon::{
     application::{self, SourceSelection},
     providers::simconnect::SimConnectConfig,
 };
-use std::{net::IpAddr, path::PathBuf, process::ExitCode};
+use std::{io, net::IpAddr, path::PathBuf, process::ExitCode};
 
 #[derive(Parser, Debug)]
 #[command(version, about)]
@@ -60,10 +60,11 @@ impl Cli {
 
 #[tokio::main]
 async fn main() -> ExitCode {
-    let (config, source) = Cli::parse()
+    let cli = Cli::parse();
+    let (config, source) = cli
         .into_configuration()
         .unwrap_or_else(|error| error.exit());
-    match application::run(config, source, tokio::signal::ctrl_c()).await {
+    match application::run(config, source, shutdown()).await {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
             eprintln!("Error: {error}");
@@ -72,9 +73,42 @@ async fn main() -> ExitCode {
     }
 }
 
+fn read_stop_command(mut reader: impl io::BufRead) -> io::Result<bool> {
+    let mut line = String::new();
+    loop {
+        line.clear();
+        if reader.read_line(&mut line)? == 0 {
+            return Ok(false);
+        }
+        if line.trim_end_matches(['\r', '\n']) == "stop" {
+            return Ok(true);
+        }
+    }
+}
+
+async fn shutdown() -> io::Result<()> {
+    let (sender, receiver) = tokio::sync::oneshot::channel();
+    std::thread::spawn(move || match read_stop_command(io::stdin().lock()) {
+        Ok(true) => {
+            let _ = sender.send(());
+        }
+        Ok(false) => {}
+        Err(error) => eprintln!("Error reading stdin: {error}"),
+    });
+    tokio::select! {
+        result = tokio::signal::ctrl_c() => result,
+        _ = async { if receiver.await.is_err() { std::future::pending::<()>().await; } } => Ok(()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn reads_stop_command_and_eof() {
+        assert!(read_stop_command(std::io::Cursor::new(b"ignored\r\nstop\r\n")).unwrap());
+        assert!(!read_stop_command(std::io::Cursor::new(b"ignored\n")).unwrap());
+    }
     #[test]
     fn default_demo_and_explicit_simconnect_share_http_configuration() {
         let (config, source) = Cli::try_parse_from(["main"])

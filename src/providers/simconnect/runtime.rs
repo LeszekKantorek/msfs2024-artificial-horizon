@@ -938,6 +938,103 @@ mod tests {
     }
 
     #[test]
+    fn subscription_skips_ticks() {
+        let mut journal = Journal::open(None, &[]).unwrap();
+        let (publisher, subscription) = telemetry::channel(Source::SimConnect);
+        let mut output = Output {
+            publisher,
+            transition: None,
+            instruments: Default::default(),
+        };
+        let mut lifecycle = Lifecycle::default();
+        lifecycle.connect();
+        lifecycle.sim(true);
+        lifecycle.pause(0);
+        lifecycle.flight("test.flt", true);
+        let now = Instant::now();
+        lifecycle.sample(Ok(telemetry::Attitude::new(5.0, 2.0).unwrap()), now);
+        output
+            .update(&lifecycle, &mut journal, now, Some(now))
+            .unwrap();
+        let actual = serde_json::to_value(subscription.snapshot()).unwrap();
+        output.update(&lifecycle, &mut journal, now, None).unwrap();
+        journal.finish();
+        assert_eq!(actual["state"], "live");
+        assert_eq!(
+            serde_json::to_value(subscription.snapshot()).unwrap()["sequence"],
+            actual["sequence"]
+        );
+    }
+
+    #[test]
+    fn reconnect_and_optional_changes_reach_subscription() {
+        let path = missing_dll().with_extension("jsonl");
+        let mut journal = Journal::open(Some(&path), &[]).unwrap();
+        let (publisher, subscription) = telemetry::channel(Source::SimConnect);
+        let mut output = Output {
+            publisher,
+            transition: None,
+            instruments: Default::default(),
+        };
+        let mut lifecycle = Lifecycle::default();
+        let now = Instant::now();
+        let attitude = telemetry::Attitude::new(5.0, 2.0).unwrap();
+        lifecycle.connect();
+        lifecycle.sim(true);
+        lifecycle.pause(0);
+        lifecycle.flight("first.flt", true);
+        lifecycle.sample(Ok(attitude), now);
+        output
+            .update(&lifecycle, &mut journal, now, Some(now))
+            .unwrap();
+        let first = serde_json::to_value(subscription.snapshot()).unwrap();
+        lifecycle.sample(Ok(attitude), now);
+        output
+            .update(&lifecycle, &mut journal, now, Some(now))
+            .unwrap();
+        let equal = serde_json::to_value(subscription.snapshot()).unwrap();
+        assert_eq!(equal["sequence"], first["sequence"].as_u64().unwrap() + 1);
+        output
+            .instruments
+            .receive(0, f64::NAN, now - Duration::from_millis(900));
+        output
+            .instruments
+            .receive(3, 1234.0, now - Duration::from_millis(900));
+        output.update(&lifecycle, &mut journal, now, None).unwrap();
+        let optional = serde_json::to_value(subscription.snapshot()).unwrap();
+        assert_eq!(optional["state"], "live");
+        assert!(optional.get("ias_kt").is_none());
+        assert_eq!(optional["altitude_ft"], 1234.0);
+        output
+            .update(
+                &lifecycle,
+                &mut journal,
+                now + Duration::from_millis(200),
+                None,
+            )
+            .unwrap();
+        let expired = serde_json::to_value(subscription.snapshot()).unwrap();
+        assert_eq!(expired["state"], "live");
+        assert!(expired.get("altitude_ft").is_none());
+        lifecycle.disconnect();
+        output.update(&lifecycle, &mut journal, now, None).unwrap();
+        let disconnected = serde_json::to_value(subscription.snapshot()).unwrap();
+        lifecycle.connect();
+        lifecycle.sim(true);
+        lifecycle.pause(0);
+        lifecycle.flight("second.flt", true);
+        lifecycle.sample(Ok(attitude), now);
+        output
+            .update(&lifecycle, &mut journal, now, Some(now))
+            .unwrap();
+        let reconnected = serde_json::to_value(subscription.snapshot()).unwrap();
+        journal.finish();
+        assert_eq!(disconnected["state"], "disconnected");
+        assert_eq!(reconnected["state"], "live");
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
     fn logging_failure_does_not_stop_publication_to_the_callers_channel() {
         let (publisher, subscription) = telemetry::channel(Source::SimConnect);
         let mut output = Output {

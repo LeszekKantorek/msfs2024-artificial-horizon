@@ -448,7 +448,6 @@ pub enum State {
 /// Immutable wire snapshot. Obtain a new one immediately before serialization.
 #[derive(Clone, Debug, Serialize)]
 pub struct Snapshot {
-    schema_version: u8,
     sequence: u64,
     source: Source,
     state: &'static str,
@@ -524,7 +523,6 @@ impl Current {
             State::Invalid => ("invalid", None),
         };
         Snapshot {
-            schema_version: 1,
             sequence: self.sequence,
             source: self.source,
             state,

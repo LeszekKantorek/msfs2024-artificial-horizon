@@ -118,7 +118,7 @@ Run the [automated checks](../testing/automated.md#automated-checks) and both [d
 
 | Check | Expected behavior |
 | --- | --- |
-| Rust and SSE | Independently optional finite nonnegative TAS, the v1 envelope, atomic publication, shared age, two matching clients, and clearing on omission or source loss |
+| Rust and SSE | Independently optional finite nonnegative TAS, the current telemetry envelope, atomic publication, shared age, two matching clients, and clearing on omission or source loss |
 | Demo | Independent speed checkpoints repeat, including simultaneous IAS 150, TAS 160, and GS 170 |
 | Runtime | Embedded TAS module supports HTTP/MIME and HEAD checks. Real demo readouts recover after server restart without reload |
 
