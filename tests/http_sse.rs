@@ -75,7 +75,7 @@ async fn tas_reaches_two_clients_and_clears_independently() {
         assert_eq!(a["ias_kt"], 150.0);
         assert_eq!(a["gs_kt"], 170.0);
         assert_eq!(a["sample_age_ms"], 50);
-        assert_eq!(a["schema_version"], 1);
+        assert!(a.get("schema_version").is_none());
     }
     publisher.publish(State::Live(attitude)).unwrap();
     for body in [&mut first, &mut second] {

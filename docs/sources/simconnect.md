@@ -398,21 +398,21 @@ Build the complete application and prepare an output directory before recording.
 cargo build --locked --release --target x86_64-pc-windows-msvc
 New-Item -ItemType Directory -Force .local/live | Out-Null
 $appExe = Join-Path $PWD 'target/x86_64-pc-windows-msvc/release/msfs2024-artificial-horizon.exe'
-node tools/live/run.mjs --exe "$appExe" --url http://127.0.0.1:8080/api/v1/events --output .local/live/demo.sse --duration-seconds 30 --max-messages 1000 -- --source demo --listen-address 127.0.0.1 --port 8080
+node tools/live/run.mjs --exe "$appExe" --url http://127.0.0.1:8080/api/v1/events --output .local/live/demo.jsonl --duration-seconds 30 --max-messages 1000 -- --source demo --listen-address 127.0.0.1 --port 8080
 ```
 
-For SimConnect, provide the official x64 DLL path and choose a new SSE output filename. Add `--log` after `--` to record application diagnostics in a separate file:
+For SimConnect, provide the official x64 DLL path and choose a new telemetry output filename. Add `--log` after `--` to record application diagnostics in a separate file:
 
 ```powershell
 $simconnectDll = Read-Host 'Absolute path to the official x64 SimConnect.dll'
-node tools/live/run.mjs --exe "$appExe" --url http://127.0.0.1:8080/api/v1/events --output .local/live/flight.sse --duration-seconds 30 --max-messages 1000 -- --source simconnect --dll "$simconnectDll" --log .local/live/simconnect.jsonl --listen-address 127.0.0.1 --port 8080
+node tools/live/run.mjs --exe "$appExe" --url http://127.0.0.1:8080/api/v1/events --output .local/live/flight.jsonl --duration-seconds 30 --max-messages 1000 -- --source simconnect --dll "$simconnectDll" --log .local/live/simconnect.jsonl --listen-address 127.0.0.1 --port 8080
 ```
 
-Options before `--` configure the recorder. Arguments after `--`, including `--log`, go to the application. The recorder writes the SSE file, and the application appends diagnostic records to the JSONL file. Use a new SSE filename for each run and distinct log filenames to distinguish sessions. Inspect and compare the files separately.
+Options before `--` configure the recorder. Arguments after `--`, including `--log`, go to the application. The recorder writes the telemetry JSONL file, and the application appends diagnostic records to the JSONL file. Use a new telemetry filename for each run and distinct log filenames to distinguish sessions. Inspect and compare the files separately.
 
-The output file is created exclusively and contains unchanged HTTP response-body bytes, including incomplete frames. Inspect the data separately; recording does not validate telemetry, readiness, or field availability. Demo data is not live evidence. Use the [desktop procedure](../testing/pfd.md#responsive-efi-layout-and-desktop-checks) separately for visual checks.
+The output file is created exclusively. Each completed SSE data message is written as one line, without validating or changing its JSON. Multiple data lines in one event are joined with spaces; incomplete events are not written. A malformed payload remains in the file and may not be valid JSONL. Inspect the data separately; recording does not validate telemetry, readiness, or field availability. Demo data is not live evidence. Use the [desktop procedure](../testing/pfd.md#responsive-efi-layout-and-desktop-checks) separately for visual checks.
 
-At least one limit is required. The duration begins when response headers arrive; the message limit counts completed SSE blocks containing data lines. When both are supplied, the first limit stops capture. The final received chunk is preserved in full, so it may contain more messages than the limit. Ctrl+C cancels a capture.
+At least one limit is required. The duration begins when response headers arrive; the message limit counts completed SSE blocks containing data lines. When both are supplied, the first limit stops capture. All complete messages in the final received chunk are recorded, so the output may contain more messages than the limit. Ctrl+C cancels a capture.
 
 The recorder retries the SSE connection for up to ten seconds while the application starts, then sends `stop` on standard input during cleanup. Choose an unused port: the recorder does not verify which process owns the endpoint. If the application does not exit in ten seconds, the recorder terminates that child and reports cleanup failure. Exit codes are `0` for a completed capture, `130` for cancellation with successful cleanup, and `1` for an operational or cleanup failure. A blocked native call has no guaranteed graceful deadline.
 

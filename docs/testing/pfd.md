@@ -66,7 +66,7 @@ Select the procedure for the evidence needed:
 
 | Need | Procedure and evidence |
 | --- | --- |
-| Live field availability or SSE contract | Use [bounded development observation](../sources/simconnect.md#bounded-development-observation). Inspect the captured raw data separately; recording does not assert data or display behavior. |
+| Live field availability or SSE contract | Use [bounded development observation](../sources/simconnect.md#bounded-development-observation). Inspect the captured telemetry records separately; recording does not assert data or display behavior. |
 | Geometry or visual regression | Run the controlled scripts below with matched scenes and inspect their screenshots under the [comparison rules](evidence.md#screenshot-comparisons). |
 | Live diagnostic image | Capture separately using the shared browser session and screenshot utility. A snapshot shows the current display and does not prove which received `sequence` it rendered. |
 

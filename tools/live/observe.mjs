@@ -2,21 +2,22 @@ import { once } from 'node:events';
 import http from 'node:http';
 import {setTimeout as delay} from 'node:timers/promises';
 
-export class SseMessageCounter {
-  constructor() { this.prefix = ''; this.lineLength = 0; this.hasData = false; this.afterCR = false; }
+export class SseDataParser {
+  constructor() { this.decoder = new TextDecoder(); this.line = ''; this.data = []; this.afterCR = false; }
   push(bytes) {
-    let count = 0;
+    const records = [];
     const finishLine = () => {
-      if (this.lineLength === 0) { if (this.hasData) count++; this.hasData = false; }
-      else if (this.prefix === 'data' || this.prefix.startsWith('data:')) this.hasData = true;
-      this.prefix = ''; this.lineLength = 0;
+      if (!this.line) { if (this.data.length) records.push(this.data.join(' ')); this.data = []; }
+      else if (this.line === 'data') this.data.push('');
+      else if (this.line.startsWith('data:')) { let value = this.line.slice(5); if (value.startsWith(' ')) value = value.slice(1); this.data.push(value); }
+      this.line = '';
     };
-    for (const b of bytes) {
-      if (this.afterCR) { this.afterCR = false; if (b === 10) continue; }
-      if (b === 13 || b === 10) { finishLine(); this.afterCR = b === 13; }
-      else { this.lineLength++; if (this.prefix.length < 5) this.prefix += String.fromCharCode(b); }
+    for (const char of this.decoder.decode(bytes, {stream:true})) {
+      if (this.afterCR) { this.afterCR = false; if (char === '\n') continue; }
+      if (char === '\r' || char === '\n') { finishLine(); this.afterCR = char === '\r'; }
+      else this.line += char;
     }
-    return count;
+    return records;
   }
 }
 
@@ -45,17 +46,21 @@ export async function capture({url, output, durationSeconds, maxMessages, signal
       }
     }
     startupSignal?.removeEventListener('abort', startupAbort);
+    if (response.statusCode >= 400) {
+      response.destroy();
+      return {bytes, messages, reason:'eof', httpStatus:response.statusCode};
+    }
     if (durationSeconds) timer = setTimeout(() => { reason = 'duration'; controller.abort(); }, durationSeconds * 1000);
-    const counter = maxMessages ? new SseMessageCounter() : null;
+    const parser = new SseDataParser();
     try {
       for await (const chunk of response) {
-        if (!output.write(chunk)) await once(output, 'drain');
-        bytes += chunk.length;
-        if (counter) { messages += counter.push(chunk); if (messages >= maxMessages) { reason = 'max-messages'; controller.abort(); break; } }
+        const records = parser.push(chunk);
+        for (const record of records) { const line = `${record}\n`; if (!output.write(line)) await once(output, 'drain'); bytes += Buffer.byteLength(line); messages++; }
+        if (maxMessages && messages >= maxMessages) { reason = 'max-messages'; controller.abort(); break; }
       }
     } catch (error) { if (outputError) throw outputError; if (!reason) throw error; }
     if (outputError) throw outputError;
-    return {bytes, ...(counter ? {messages} : {}), reason:reason ?? 'eof', httpStatus:response.statusCode};
+    return {bytes, messages, reason:reason ?? 'eof', httpStatus:response.statusCode};
   } finally {
     clearTimeout(timer);
     output.removeListener('error', onOutputError);

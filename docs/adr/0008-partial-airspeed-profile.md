@@ -13,7 +13,7 @@ Dynamic redline also differs from a fixed VNE.
 * Validate each number independently and validate ordering only for each rendered interval.
 * Add optional redline separately from VNE.
 * Each warning and marker requires only its own inputs.
-* Preserve the existing endpoint, schema version, source lifecycle, and application composition.
+* At the time of this decision, preserve the existing endpoint, schema version, source lifecycle, and application composition. The telemetry schema version field was later removed.
 
 ## Alternatives
 

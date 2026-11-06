@@ -4,7 +4,7 @@ import { createTelemetryClient } from '../web/telemetry/client.js';
 import { isValidSnapshot, normalizeOptionalIndications } from '../web/telemetry/validation.js';
 import { readFileSync } from 'node:fs';
 
-const live = (sequence = 1, age = 0) => ({ schema_version: 1, sequence,
+const live = (sequence = 1, age = 0) => ({ sequence,
   source: 'demo', state: 'live', sample_age_ms: age,
   attitude: { pitch_deg: 5, roll_deg: 15 } });
 const profile = JSON.parse(readFileSync(new URL('./fixtures/airspeed-profile.json', import.meta.url)));
@@ -131,9 +131,10 @@ test('headings retain shared freshness and clear on old snapshots, reconnect and
 });
 
 test('validator accepts independent fixtures and rejects malformed/unsupported telemetry', () => {
+  assert.ok(isValidSnapshot(live()));
   const fixtures = JSON.parse(readFileSync(new URL('./fixtures/snapshots.json', import.meta.url)));
   for (const fixture of fixtures) assert.ok(isValidSnapshot(fixture));
-  for (const invalid of [null, {}, { ...live(), schema_version: 2 },
+  for (const invalid of [null, {},
     { ...live(), state: 'unknown' }, { ...live(), source: 'other' },
     { ...live(), sequence: 1.5 }, { ...live(), sequence: Number.MAX_SAFE_INTEGER + 1 },
     { ...live(), sample_age_ms: -1 }, { ...live(), sample_age_ms: null },
@@ -169,7 +170,7 @@ test('new sample callback supports old snapshots and clears previously valid opt
   assert.equal(h.samples.at(-1).turn_rate_dps, -3);
   connection.send(live(3));
   assert.deepEqual(h.samples.at(-1), { attitude: live().attitude, slip_skid: null, turn_rate_dps: null, ias_kt: null, gs_kt: null, tas_kt: null, altitude_ft: null, selected_altitude_ft: null, vertical_speed_fpm: null, heading_deg: null, selected_heading_deg: null, baro_text: null, airspeed_profile: null, ias_acceleration_ktps: null, expiresAt: 1000 });
-  connection.send({ ...live(4), schema_version: 2, turn_rate_dps: 3 });
+  connection.send({ ...live(4), state: 'unknown', turn_rate_dps: 3 });
   assert.equal(h.status.state, 'invalid');
   assert.equal(h.samples.length, 3);
 });

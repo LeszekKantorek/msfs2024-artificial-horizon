@@ -99,7 +99,7 @@ async function checkInitialTelemetry(page) {
   // The first synthetic-jump sample intentionally omits VSI for one tick.
   await page.locator('#vertical-speed[data-state="available"]').waitFor();
   const snapshot = await currentSnapshot();
-  assert.equal(snapshot.schema_version, 1);
+  assert.equal(Object.hasOwn(snapshot, 'schema_version'), false);
   assert.equal(snapshot.source, 'demo');
   assert.equal(snapshot.state, 'live');
   assert.ok(Number.isFinite(snapshot.slip_skid));
