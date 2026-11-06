@@ -414,7 +414,7 @@ The output file is created exclusively and contains unchanged HTTP response-body
 
 At least one limit is required. The duration begins when response headers arrive; the message limit counts completed SSE blocks containing data lines. When both are supplied, the first limit stops capture. The final received chunk is preserved in full, so it may contain more messages than the limit. Ctrl+C cancels a capture.
 
-The recorder waits up to ten seconds for the owned application's listening line and response headers, then sends `stop` on standard input during cleanup. If the application does not exit in ten seconds, the recorder terminates that child and reports cleanup failure. Exit codes are `0` for a completed capture, `130` for cancellation with successful cleanup, and `1` for an operational or cleanup failure. A blocked native call has no guaranteed graceful deadline.
+The recorder retries the SSE connection for up to ten seconds while the application starts, then sends `stop` on standard input during cleanup. Choose an unused port: the recorder does not verify which process owns the endpoint. If the application does not exit in ten seconds, the recorder terminates that child and reports cleanup failure. Exit codes are `0` for a completed capture, `130` for cancellation with successful cleanup, and `1` for an operational or cleanup failure. A blocked native call has no guaranteed graceful deadline.
 
 ### Official-DLL smoke check
 

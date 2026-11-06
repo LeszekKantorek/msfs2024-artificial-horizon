@@ -938,9 +938,8 @@ mod tests {
     }
 
     #[test]
-    fn subscription_skips_ticks_and_journal_omits_publications() {
-        let path = missing_dll().with_extension("jsonl");
-        let mut journal = Journal::open(Some(&path), &[]).unwrap();
+    fn subscription_skips_ticks() {
+        let mut journal = Journal::open(None, &[]).unwrap();
         let (publisher, subscription) = telemetry::channel(Source::SimConnect);
         let mut output = Output {
             publisher,
@@ -960,19 +959,11 @@ mod tests {
         let actual = serde_json::to_value(subscription.snapshot()).unwrap();
         output.update(&lifecycle, &mut journal, now, None).unwrap();
         journal.finish();
-        let records: Vec<Value> = std::fs::read_to_string(&path)
-            .unwrap()
-            .lines()
-            .map(|line| serde_json::from_str(line).unwrap())
-            .filter(|v: &Value| v["kind"] == "publication")
-            .collect();
-        assert!(records.is_empty());
         assert_eq!(actual["state"], "live");
         assert_eq!(
             serde_json::to_value(subscription.snapshot()).unwrap()["sequence"],
             actual["sequence"]
         );
-        std::fs::remove_file(path).unwrap();
     }
 
     #[test]

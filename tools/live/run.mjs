@@ -30,10 +30,10 @@ export async function run(options) {
   try {
     file = await open(options.output, 'wx'); stream = file.createWriteStream();
     timeout = setTimeout(() => startup.abort(), 10000);
-    app = await launchOwned({...options,exe:path.resolve(options.exe)}, AbortSignal.any([controller.signal,startup.signal]));
-    result = await capture({...options,output:stream,signal:controller.signal,startupSignal:startup.signal});
+    app = await launchOwned({...options,exe:path.resolve(options.exe)});
+    result = await capture({...options,output:stream,signal:AbortSignal.any([controller.signal,app.signal]),startupSignal:startup.signal});
     if (result.httpStatus >= 400) throw new Error(`HTTP ${result.httpStatus}`);
-  } catch (error) { failure = error; if (error.cleanup && (error.cleanup.forced || error.cleanup.error || error.cleanup.exitCode !== 0)) failure = new Error(`Cleanup failed: ${error.cleanup.error ?? (error.cleanup.forced ? 'forced termination' : error.cleanup.exitCode)}`); }
+  } catch (error) { failure = error; }
   finally {
     clearTimeout(timeout);
     if (stream) { stream.end(); try { await finished(stream); } catch (error) { failure = error; } }

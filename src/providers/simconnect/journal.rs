@@ -205,13 +205,12 @@ impl ActiveJournal {
     fn record(&mut self, kind: &str, data: Value, flush: bool) -> io::Result<()> {
         let record = json!({ "session_id": self.session_id, "record": self.records,
             "elapsed_us": self.started.elapsed().as_micros().to_string(), "kind": kind, "data": data });
-        let mut encoded = serde_json::to_vec(&record)?;
-        encoded.push(b'\n');
         if self.separator {
             self.writer.write_all(b"\n")?;
             self.separator = false;
         }
-        self.writer.write_all(&encoded)?;
+        serde_json::to_writer(&mut self.writer, &record)?;
+        self.writer.write_all(b"\n")?;
         self.records += 1;
         if flush || self.last_flush.elapsed() >= Duration::from_secs(1) {
             self.flush()?;

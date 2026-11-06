@@ -1,5 +1,6 @@
 import { once } from 'node:events';
 import http from 'node:http';
+import {setTimeout as delay} from 'node:timers/promises';
 
 export class SseMessageCounter {
   constructor() { this.prefix = ''; this.lineLength = 0; this.hasData = false; this.afterCR = false; }
@@ -31,10 +32,18 @@ export async function capture({url, output, durationSeconds, maxMessages, signal
   if (signal?.aborted) cancel();
   if (startupSignal?.aborted) startupAbort();
   try {
-    const response = await new Promise((resolve, reject) => {
-      const request = http.get(url, {signal:controller.signal}, resolve);
-      request.once('error', reject);
-    });
+    let response;
+    while (!response) {
+      try {
+        response = await new Promise((resolve, reject) => {
+          const request = http.get(url, {signal:controller.signal}, resolve);
+          request.once('error', reject);
+        });
+      } catch (error) {
+        if (error.code !== 'ECONNREFUSED' || controller.signal.aborted) throw error;
+        await delay(100, undefined, {signal:controller.signal});
+      }
+    }
     startupSignal?.removeEventListener('abort', startupAbort);
     if (durationSeconds) timer = setTimeout(() => { reason = 'duration'; controller.abort(); }, durationSeconds * 1000);
     const counter = maxMessages ? new SseMessageCounter() : null;

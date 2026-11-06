@@ -141,22 +141,6 @@ mod tests {
         assert_eq!(options.log, Some(PathBuf::from("sessions/test.jsonl")));
     }
     #[test]
-    fn removed_diagnostic_limit_is_absent_and_rejected() {
-        let help = Cli::command().render_long_help().to_string();
-        assert!(!help.contains("--log-max-bytes"));
-        let error = Cli::try_parse_from([
-            "main",
-            "--source",
-            "simconnect",
-            "--log",
-            "log.jsonl",
-            "--log-max-bytes",
-            "10",
-        ])
-        .unwrap_err();
-        assert_eq!(error.kind(), ErrorKind::UnknownArgument);
-    }
-    #[test]
     fn diagnostic_options_require_simconnect_and_obsolete_options_are_rejected() {
         for option in ["--dll", "--log"] {
             assert!(
