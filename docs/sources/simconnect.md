@@ -401,12 +401,14 @@ $appExe = Join-Path $PWD 'target/x86_64-pc-windows-msvc/release/msfs2024-artific
 node tools/live/run.mjs --exe "$appExe" --url http://127.0.0.1:8080/api/v1/events --output .local/live/demo.sse --duration-seconds 30 --max-messages 1000 -- --source demo --listen-address 127.0.0.1 --port 8080
 ```
 
-For SimConnect, provide the official x64 DLL path and choose a new output filename:
+For SimConnect, provide the official x64 DLL path and choose a new SSE output filename. Add `--log` after `--` to record application diagnostics in a separate file:
 
 ```powershell
 $simconnectDll = Read-Host 'Absolute path to the official x64 SimConnect.dll'
-node tools/live/run.mjs --exe "$appExe" --url http://127.0.0.1:8080/api/v1/events --output .local/live/flight.sse --duration-seconds 30 --max-messages 1000 -- --source simconnect --dll "$simconnectDll" --listen-address 127.0.0.1 --port 8080
+node tools/live/run.mjs --exe "$appExe" --url http://127.0.0.1:8080/api/v1/events --output .local/live/flight.sse --duration-seconds 30 --max-messages 1000 -- --source simconnect --dll "$simconnectDll" --log .local/live/simconnect.jsonl --listen-address 127.0.0.1 --port 8080
 ```
+
+Options before `--` configure the recorder. Arguments after `--`, including `--log`, go to the application. The recorder writes the SSE file, and the application appends diagnostic records to the JSONL file. Use a new SSE filename for each run and distinct log filenames to distinguish sessions. Inspect and compare the files separately.
 
 The output file is created exclusively and contains unchanged HTTP response-body bytes, including incomplete frames. Inspect the data separately; recording does not validate telemetry, readiness, or field availability. Demo data is not live evidence. Use the [desktop procedure](../testing/pfd.md#responsive-efi-layout-and-desktop-checks) separately for visual checks.
 
