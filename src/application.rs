@@ -251,11 +251,7 @@ mod tests {
                         assert!(count > 0, "SSE ended before expected source state");
                         received.push_str(&String::from_utf8_lossy(&bytes[..count]));
                         if received.contains("event: telemetry")
-                            && received.contains(if simconnect {
-                                "\"state\":\"disconnected\""
-                            } else {
-                                "\"state\":\"live\""
-                            })
+                            && received.contains("\"state\":\"disconnected\"")
                         {
                             break;
                         }

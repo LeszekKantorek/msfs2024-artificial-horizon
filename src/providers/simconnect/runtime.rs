@@ -235,14 +235,7 @@ fn worker_entry(
     if let Some(path) = &log {
         println!("Session log: {}", path.display());
     }
-    let result = worker(
-        &dll,
-        scenario.as_deref(),
-        source,
-        publisher,
-        &mut journal,
-        stop,
-    );
+    let result = worker(&dll, source, publisher, &mut journal, stop);
     journal.record(
         "session_end",
         || {
@@ -278,7 +271,6 @@ fn command_record(program: &str, arguments: &[&str]) -> Value {
 
 fn worker(
     dll: &Path,
-    scenario: Option<&Path>,
     source: Source,
     publisher: Publisher,
     journal: &mut Journal,
@@ -310,12 +302,7 @@ fn worker(
         ))
     })?;
     journal.record("library_loaded", || json!({}), true);
-    if source == Source::Demo {
-        library.configure_demo(scenario.ok_or_else(|| {
-            SimConnectError::Configuration("demo.dll requires --scenario <file>".into())
-        })?)?;
-    }
-    let result = connections(&library, publisher, journal, stop);
+    let result = connections(&library, source, publisher, journal, stop);
     journal.record(
         "library_release",
         || {
@@ -345,6 +332,7 @@ fn retry_seconds(attempt: u32) -> u32 {
 
 fn connections(
     library: &Library,
+    source: Source,
     publisher: Publisher,
     journal: &mut Journal,
     stop: &Event,
@@ -377,6 +365,11 @@ fn connections(
             Err(error) => {
                 eprintln!("SimConnect connection unavailable: {error}");
                 journal.record("native_error", || json!(&error), true);
+                if source == Source::Demo && error.hresult == Some(0xA004_0001u32 as i32) {
+                    return Err(SimConnectError::Configuration(format!(
+                        "Demo scenario configuration failed: {error}"
+                    )));
+                }
                 let seconds = retry_seconds(failures);
                 failures = failures.saturating_add(1);
                 journal.record(
@@ -1357,7 +1350,6 @@ mod tests {
         let stop = Event::new(true).unwrap();
         let error = worker(
             &missing_dll(),
-            None,
             Source::SimConnect,
             publisher,
             &mut journal,

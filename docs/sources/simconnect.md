@@ -281,13 +281,14 @@ Do not remove display capability because the Demo source becomes narrower.
 
 The [dispatch API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/general/simconnect_getnextdispatch/) describes library-owned buffers and an empty-queue `SIMCONNECT_RECV_ID_NULL` message. It does not establish the complete empty-queue HRESULT, pointer, and length tuple. The current receiver treats `E_FAIL` as no packet; this is a consumer policy, not proof that every such failure means an empty queue. Compare both DLLs with a small independent client and verify notification, draining, returned-memory lifetime, and Close. Generate packets independently of dispatch; queued contents do not change when consumed late. Verify missed-frame and queue-overflow behavior before claiming parity; bound resources and do not silently discard lifecycle transitions.
 
-Immediate HRESULT failures and asynchronous exception packets are distinct. Optional definition or request failures isolate the affected field. Transient connection loss follows the existing retry policy; terminal configuration, malformed required packets, or cleanup failure can terminate the producer while HTTP remains available. HTTP bind or application infrastructure failure instead ends the application. Exact behavior follows the current receiver and its diagnostics; injected failures do not establish that the official DLL emits the same error. Setup failure occurs before Open, leaves HTTP available, and is never sent through dispatch.
+Immediate HRESULT failures and asynchronous exception packets are distinct. Optional definition or request failures isolate the affected field. Transient connection loss follows the existing retry policy; terminal configuration, malformed required packets, or cleanup failure can terminate the producer while HTTP remains available. HTTP bind or application infrastructure failure instead ends the application. Exact behavior follows the current receiver and its diagnostics; injected failures do not establish that the official DLL emits the same error. Demo scenario validation failure occurs during Open, leaves HTTP available, and is never sent through dispatch.
 
 The following outcomes describe the current consumer and supervisor, based on static source analysis. They are not observed SDK error guarantees.
 
 | Trigger | Current outcome |
 | --- | --- |
-| Open failure or QUIT | Retry with bounded backoff after applicable cleanup; HTTP remains available |
+| Demo Open returns `0xA0040001` | Terminate the producer; HTTP remains available |
+| Other Open failure or QUIT | Retry with bounded backoff after applicable cleanup; HTTP remains available |
 | Optional definition or request failure, or correlated optional exception | Remove the affected optional field; acquisition and HTTP continue |
 | Required initial definition, subscription, query, or request failure | Terminate the producer; HTTP remains available |
 | Later system-state query native failure or non-`E_FAIL` dispatch failure | Reconnect after successful cleanup; HTTP remains available |

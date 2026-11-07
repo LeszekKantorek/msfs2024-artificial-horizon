@@ -88,7 +88,7 @@ The Demo parser limits files to 4 MiB, lines to 65,536 bytes, and files to 100,0
 
 The receive queue holds at most 8,192 packets. On overflow, dispatch reports a failure rather than silently discarding a lifecycle transition. The scheduler skips missed frame observations and evaluates current values on the next frame. These policies are Demo behavior; SDK overflow and missed-frame behavior remain unverified.
 
-Configure validates without starting time. The first successful Open starts the monotonic clock; registration overlaps scenario time. The origin persists across reconnects. The DLL owns the emitter, connection state, and receive buffers. Open borrows the notification handle; successful Close stops and joins the emitter before releasing its use. Do not rewrite queued packets on dispatch. The [native consumer contract](simconnect.md#dispatch-and-error-limits) records the unresolved scheduler, empty-queue, and overflow evidence.
+Open validates the scenario before starting time. The first successful Open starts the monotonic clock; registration overlaps scenario time. The origin persists across reconnects. The DLL owns the emitter, connection state, and receive buffers. Open borrows the notification handle; successful Close stops and joins the emitter before releasing its use. Do not rewrite queued packets on dispatch. The [native consumer contract](simconnect.md#dispatch-and-error-limits) records the unresolved scheduler, empty-queue, and overflow evidence.
 
 ### Scripted signal tracks
 
@@ -199,23 +199,17 @@ Fault records are opt-in and absent from the healthy default. The table distingu
 | `flight_loaded` | `at_us`; `flight`: string or null. Update queried state and subscribed transition | Implemented lifecycle record |
 | `transport_silence` | `at_us`; `duration_ms`: positive integer. Suppress all dispatch packets, including state replies, without emitting QUIT | Deferred |
 
-An `api_fault` occurrence counts matching calls since Configure, including failed Open calls and reconnects. Selectors match the AddToDataDefinition name and unit, not a request ID. When several rules match one call, each matching counter advances and the first triggered rule supplies the result. The HRESULT must be negative and occurrence positive. Unknown operations and selectors fail setup. Raw packet bytes are retained in DLL-owned storage, and the advertised length cannot exceed the decoded allocation.
+An `api_fault` occurrence counts matching calls since the scenario was loaded, including failed Open calls and reconnects. Selectors match the AddToDataDefinition name and unit, not a request ID. When several rules match one call, each matching counter advances and the first triggered rule supplies the result. The HRESULT must be negative and occurrence positive. Unknown operations and selectors fail scenario validation. Raw packet bytes are retained in DLL-owned storage, and the advertised length cannot exceed the decoded allocation.
 
-Malformed JSON is a setup error; a valid raw-packet instruction deliberately emits the authored native bytes. Terminal fault scenarios are separate files. Close failure, transport silence, asynchronous exceptions, null dispatch, and host failure injection are not implemented. Host failures require launch or harness fixtures, not invented native records.
+Malformed JSON is a configuration error; a valid raw-packet instruction deliberately emits the authored native bytes. Terminal fault scenarios are separate files. Close failure, transport silence, asynchronous exceptions, null dispatch, and host failure injection are not implemented. Host failures require launch or harness fixtures, not invented native records.
 
 ### Selection and setup
 
 The CLI selects `demo.dll` by default or a supported absolute DLL path. Basename matching is case insensitive, including `DEMO.dll`; export spelling remains exact. Bare supported names resolve beside the executable. Relative paths containing directories and unsupported basenames are rejected. A scenario path is required for Demo, accepted only for Demo, and resolved against the caller's working directory.
 
-The private setup ABI is:
+HTTP binds before Demo opens. On its first Open, the DLL reads `--scenario <path>` or `--scenario=<path>` from the process arguments and validates the complete file. Relative paths use the process working directory. The DLL caches the scenario and fault counters across retries and reconnects. The first successful Open starts the clock. Invalid or unreadable input produces a path and diagnostic on standard error and returns the Demo-specific customer HRESULT `0xA0040001`. The producer stops without retrying; HTTP and SSE remain available. There is no fallback scenario or worker thread on configuration failure. Rust panics must not cross the DLL ABI.
 
-```c
-int32_t EfiDemo_ConfigureV1(const uint16_t *scenario_path,
-                            uint8_t *error_utf8,
-                            uint32_t error_capacity);
-```
-
-HTTP binds before Demo setup. The private `EfiDemo_ConfigureV1` call validates the complete file before Open; invalid or unreadable input returns `E_FAIL` and an actionable bounded explanation while HTTP remains available. It never falls back to another scenario. Setup does not publish, start the clock, or report parser errors through GetNextDispatch. The official DLL is never called with this export. Configure requires an absolute NUL-terminated UTF-16 path and rejects null, plus a nonempty writable UTF-8 error buffer and capacity. It synchronously copies arguments, writes a bounded NUL-terminated explanation on failure, and is called only without an open connection. Rust panics must not cross the DLL ABI.
+The customer HRESULT has this terminal meaning for any Demo Open result, including an injected fault with the same value. Other injected Open failures remain retryable. The official SimConnect DLL is unaffected. The Demo DLL depends on the host process passing the scenario argument; another executable can use the DLL by passing the same argument.
 
 ### Forward scenario evidence
 

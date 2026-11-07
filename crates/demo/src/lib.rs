@@ -4,8 +4,8 @@ use scenario::{Event, Scenario};
 use std::{
     collections::{HashMap, VecDeque},
     ffi::{CStr, OsString, c_char, c_void},
-    io::Read,
-    os::windows::ffi::OsStringExt,
+    io::{Read, Write},
+    os::windows::ffi::{OsStrExt, OsStringExt},
     panic::{AssertUnwindSafe, catch_unwind},
     path::PathBuf,
     ptr,
@@ -18,6 +18,7 @@ use std::{
 };
 use windows_sys::Win32::System::Threading::SetEvent;
 const FAIL: i32 = 0x80004005u32 as i32;
+const DEMO_CONFIGURATION_ERROR: i32 = 0xA004_0001u32 as i32;
 const MAX_QUEUE: usize = 8192;
 static GLOBAL: OnceLock<Mutex<Global>> = OnceLock::new();
 struct Global {
@@ -299,74 +300,36 @@ fn thread_main(
         thread::sleep(Duration::from_millis(2));
     }
 }
-/// # Safety
-/// The path must be null or point to terminated UTF-16; null is rejected. The error buffer must be writable for capacity bytes. No connection may be open.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn EfiDemo_ConfigureV1(
-    path: *const u16,
-    error: *mut u8,
-    capacity: u32,
-) -> i32 {
-    guard(|| {
-        if error.is_null() || capacity == 0 {
-            return FAIL;
+fn load_scenario() -> Result<Scenario, String> {
+    let mut args = std::env::args_os().skip(1);
+    let mut path = None;
+    while let Some(arg) = args.next() {
+        if arg == "--" {
+            break;
         }
-        unsafe { *error = 0 };
-        let result = (|| -> Result<Scenario, String> {
-            if path.is_null() {
-                return Err("scenario path is required".into());
-            }
-            let mut len = 0usize;
-            while len < 32768 && unsafe { *path.add(len) } != 0 {
-                len += 1;
-            }
-            if len == 32768 {
-                return Err("scenario path exceeds limit".into());
-            }
-            let p = PathBuf::from(OsString::from_wide(unsafe {
-                std::slice::from_raw_parts(path, len)
-            }));
-            if !p.is_absolute() {
-                return Err(format!("{}: path must be absolute", p.display()));
-            }
-            let file = std::fs::File::open(&p).map_err(|e| format!("{}: {e}", p.display()))?;
-            let mut bytes = Vec::new();
-            file.take(4 * 1024 * 1024 + 1)
-                .read_to_end(&mut bytes)
-                .map_err(|e| format!("{}: {e}", p.display()))?;
-            let text = String::from_utf8(bytes)
-                .map_err(|e| format!("{}: invalid UTF-8: {e}", p.display()))?;
-            let source = p.display().to_string();
-            Scenario::parse(&text, &source)
-        })();
-        let mut g = global().lock().unwrap_or_else(|p| p.into_inner());
-        if g.active {
-            return FAIL;
+        let wide: Vec<u16> = arg.encode_wide().collect();
+        let prefix: Vec<u16> = "--scenario=".encode_utf16().collect();
+        let value = if arg == "--scenario" {
+            Some(args.next().ok_or("--scenario requires a path")?)
+        } else {
+            wide.strip_prefix(prefix.as_slice())
+                .map(OsString::from_wide)
+        };
+        if let Some(value) = value
+            && path.replace(PathBuf::from(value)).is_some()
+        {
+            return Err("--scenario specified more than once".into());
         }
-        match result {
-            Ok(s) => {
-                g.fault_counts = vec![0; s.faults.len()];
-                g.scenario = Some(s);
-                g.origin = None;
-                g.lifecycle = None;
-                0
-            }
-            Err(e) => {
-                g.scenario = None;
-                g.fault_counts.clear();
-                let bytes = e.as_bytes();
-                let mut n = bytes.len().min(capacity as usize - 1);
-                while !e.is_char_boundary(n) {
-                    n -= 1;
-                }
-                unsafe {
-                    ptr::copy_nonoverlapping(bytes.as_ptr(), error, n);
-                    *error.add(n) = 0;
-                }
-                FAIL
-            }
-        }
-    })
+    }
+    let p = path.ok_or("--scenario is required")?;
+    let file = std::fs::File::open(&p).map_err(|e| format!("{}: {e}", p.display()))?;
+    let mut bytes = Vec::new();
+    file.take(4 * 1024 * 1024 + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|e| format!("{}: {e}", p.display()))?;
+    let text =
+        String::from_utf8(bytes).map_err(|e| format!("{}: invalid UTF-8: {e}", p.display()))?;
+    Scenario::parse(&text, &p.display().to_string())
 }
 /// # Safety
 /// The output must be writable, and the notification handle must remain valid until Close returns.
@@ -388,14 +351,25 @@ pub unsafe extern "C" fn SimConnect_Open(
         if g.active {
             return FAIL;
         }
-        let Some(scenario) = g.scenario.clone() else {
-            return FAIL;
-        };
+        if g.scenario.is_none() {
+            match load_scenario() {
+                Ok(scenario) => {
+                    g.fault_counts = vec![0; scenario.faults.len()];
+                    g.scenario = Some(scenario);
+                }
+                Err(error) => {
+                    let _ = writeln!(std::io::stderr().lock(), "Demo scenario: {error}");
+                    return DEMO_CONFIGURATION_ERROR;
+                }
+            }
+        }
+        let scenario = g.scenario.clone().expect("scenario was loaded");
         if let Some(hr) = g.fault("SimConnect_Open", None, None) {
             return hr;
         }
-        let origin = *g.origin.get_or_insert_with(Instant::now);
-        let now = origin.elapsed().as_micros().min(u64::MAX as u128) as u64;
+        let now = g.origin.map_or(0, |origin| {
+            origin.elapsed().as_micros().min(u64::MAX as u128) as u64
+        });
         let life = g.lifecycle.clone().unwrap_or(Life {
             sim: scenario.initial.sim_running,
             pause: scenario.initial.pause.flags(),
@@ -437,6 +411,7 @@ pub unsafe extern "C" fn SimConnect_Open(
         }
         let state = Arc::new(Mutex::new(state));
         let stop = Arc::new(AtomicBool::new(false));
+        let origin = g.origin.unwrap_or_else(Instant::now);
         let st = state.clone();
         let flag = stop.clone();
         let handle = notification as usize;
@@ -447,6 +422,7 @@ pub unsafe extern "C" fn SimConnect_Open(
             thread: Some(worker),
             notification: handle,
         });
+        g.origin = Some(origin);
         g.active = true;
         unsafe { *out = Box::into_raw(c).cast() };
         0

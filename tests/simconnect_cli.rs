@@ -752,7 +752,7 @@ fn invalid_demo_scenario_keeps_http_and_reports_setup_error() {
     app.assert_health();
     let messages = app.messages();
     assert!(
-        messages.contains("EfiDemo_ConfigureV1") && messages.contains("line 1"),
+        messages.contains("Demo scenario") && messages.contains("line 1"),
         "{messages}"
     );
 }
@@ -1036,6 +1036,40 @@ fn fault_open_retries_once_then_publishes_live_and_keeps_http() {
             .any(|r| r["kind"] == "native_error" && r["data"]["operation"] == "SimConnect_Open")
     );
     report_fault_evidence(&fixture, "startup-retry.jsonl", &records);
+    app.shutdown();
+}
+#[test]
+fn demo_configuration_hresult_in_injected_open_fault_is_terminal() {
+    let fixture = Fixture::new();
+    let binary = fixture.binary();
+    let scenario = fixture.0.join("terminal.jsonl");
+    fs::write(&scenario, concat!(
+        "{\"type\":\"scenario\",\"format\":\"msfs-efi-simconnect-demo\",\"version\":1,\"mode\":\"scripted\",\"frame_period_ms\":50,\"duration_us\":5000000,\"initial\":{\"sim_running\":true,\"pause\":\"off\",\"flight\":\"test\"}}\n",
+        "{\"type\":\"api_fault\",\"operation\":\"SimConnect_Open\",\"occurrence\":1,\"hresult\":-1610350591}\n"
+    )).unwrap();
+    let log = fixture.0.join("terminal-log.jsonl");
+    let mut app = Application::start(
+        &binary,
+        &fixture.0,
+        &[
+            "--scenario",
+            scenario.to_str().unwrap(),
+            "--log",
+            log.to_str().unwrap(),
+        ],
+    );
+    let records = wait_fault_log(&log, |records| {
+        records.iter().any(|r| r["kind"] == "session_end")
+    });
+    assert_eq!(
+        records
+            .iter()
+            .filter(|r| r["kind"] == "connection_attempt")
+            .count(),
+        1
+    );
+    assert!(!records.iter().any(|r| r["kind"] == "reconnect_wait"));
+    app.assert_health();
     app.shutdown();
 }
 #[test]

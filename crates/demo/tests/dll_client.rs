@@ -11,7 +11,6 @@ use windows_sys::Win32::{
         Threading::{CreateEventW, WaitForSingleObject},
     },
 };
-type Configure = unsafe extern "C" fn(*const u16, *mut u8, u32) -> i32;
 type Open = unsafe extern "C" fn(
     *mut *mut c_void,
     *const c_char,
@@ -28,7 +27,90 @@ type Subscribe = unsafe extern "C" fn(*mut c_void, u32, *const c_char) -> i32;
 type Query = unsafe extern "C" fn(*mut c_void, u32, *const c_char) -> i32;
 type LastSent = unsafe extern "C" fn(*mut c_void, *mut u32) -> i32;
 type Request = unsafe extern "C" fn(*mut c_void, u32, u32, u32, i32, u32, u32, u32, u32) -> i32;
-#[test]
+fn main() {
+    if std::env::args_os().any(|arg| arg == "--probe") {
+        unsafe {
+            let dll_path = std::env::current_exe()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .join("demo.dll");
+            let wide: Vec<u16> = dll_path.as_os_str().encode_wide().chain([0]).collect();
+            let dll = LoadLibraryW(wide.as_ptr());
+            assert!(!dll.is_null());
+            let open: Open = std::mem::transmute(
+                GetProcAddress(dll, c"SimConnect_Open".as_ptr().cast()).unwrap(),
+            );
+            let close: Close = std::mem::transmute(
+                GetProcAddress(dll, c"SimConnect_Close".as_ptr().cast()).unwrap(),
+            );
+            let mut handle = ptr::null_mut();
+            let result = open(
+                &mut handle,
+                c"test".as_ptr(),
+                ptr::null_mut(),
+                0,
+                ptr::null_mut(),
+                u32::MAX,
+            );
+            if std::env::args_os().any(|arg| arg == "--invalid") {
+                assert_eq!(result, 0xA004_0001u32 as i32);
+                assert!(handle.is_null());
+            } else {
+                assert_eq!(result, 0);
+                assert_eq!(close(handle), 0);
+            }
+            FreeLibrary(dll);
+        }
+        return;
+    }
+    if std::env::args_os().any(|arg| arg == "--child") {
+        actual_dll_notifies_and_retains_packets();
+        return;
+    }
+    let scenario = std::env::temp_dir().join(format!("demo-dll-test-{}.jsonl", std::process::id()));
+    let status = std::process::Command::new(std::env::current_exe().unwrap())
+        .arg("--child")
+        .arg("--scenario")
+        .arg(&scenario)
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let unicode = scenario.with_file_name(format!(
+        "demo-\u{15b}cie\u{17c}ka-{}.jsonl",
+        std::process::id()
+    ));
+    std::fs::copy(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../demo-scenarios/demo_scenario.jsonl"),
+        &unicode,
+    )
+    .unwrap();
+    let mut equals = std::ffi::OsString::from("--scenario=");
+    equals.push(&unicode);
+    assert!(
+        std::process::Command::new(std::env::current_exe().unwrap())
+            .arg("--probe")
+            .arg(equals)
+            .status()
+            .unwrap()
+            .success()
+    );
+    std::fs::write(&unicode, "invalid json").unwrap();
+    assert!(
+        std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--probe", "--invalid", "--scenario"])
+            .arg(&unicode)
+            .status()
+            .unwrap()
+            .success()
+    );
+    let _ = std::fs::remove_file(unicode);
+    let _ = std::fs::remove_file(scenario);
+}
+#[allow(unused_assignments)]
 fn actual_dll_notifies_and_retains_packets() {
     unsafe {
         let path = std::env::current_exe()
@@ -39,7 +121,7 @@ fn actual_dll_notifies_and_retains_packets() {
             .unwrap()
             .join("demo.dll");
         let wide: Vec<u16> = path.as_os_str().encode_wide().chain([0]).collect();
-        let dll = LoadLibraryW(wide.as_ptr());
+        let mut dll = LoadLibraryW(wide.as_ptr());
         assert!(!dll.is_null(), "build the debug DLL first");
         macro_rules! sym {
             ($n:literal,$ty:ty) => {
@@ -48,33 +130,40 @@ fn actual_dll_notifies_and_retains_packets() {
                 )
             };
         }
-        let setup: Configure = sym!("EfiDemo_ConfigureV1", Configure);
-        let open: Open = sym!("SimConnect_Open", Open);
-        let close: Close = sym!("SimConnect_Close", Close);
-        let next: Next = sym!("SimConnect_GetNextDispatch", Next);
-        let add: Add = sym!("SimConnect_AddToDataDefinition", Add);
-        let request: Request = sym!("SimConnect_RequestDataOnSimObject", Request);
-        let subscribe: Subscribe = sym!("SimConnect_SubscribeToSystemEvent", Subscribe);
-        let query: Query = sym!("SimConnect_RequestSystemState", Query);
-        let last_sent: LastSent = sym!("SimConnect_GetLastSentPacketID", LastSent);
-        let mut error = [0u8; 512];
-        assert!(setup(ptr::null(), error.as_mut_ptr(), error.len() as u32) < 0);
-        assert!(
-            std::ffi::CStr::from_ptr(error.as_ptr().cast())
-                .to_string_lossy()
-                .contains("scenario path is required")
-        );
-        let scenario = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../demo-scenarios/demo_scenario.jsonl");
-        let scenario_wide: Vec<u16> = scenario.as_os_str().encode_wide().chain([0]).collect();
-        assert_eq!(
-            setup(
-                scenario_wide.as_ptr(),
-                error.as_mut_ptr(),
-                error.len() as u32
-            ),
-            0
-        );
+        let mut open: Open = sym!("SimConnect_Open", Open);
+        let mut close: Close = sym!("SimConnect_Close", Close);
+        let mut next: Next = sym!("SimConnect_GetNextDispatch", Next);
+        let mut add: Add = sym!("SimConnect_AddToDataDefinition", Add);
+        let mut request: Request = sym!("SimConnect_RequestDataOnSimObject", Request);
+        let mut subscribe: Subscribe = sym!("SimConnect_SubscribeToSystemEvent", Subscribe);
+        let mut query: Query = sym!("SimConnect_RequestSystemState", Query);
+        let mut last_sent: LastSent = sym!("SimConnect_GetLastSentPacketID", LastSent);
+        macro_rules! reload {
+            () => {{
+                assert_ne!(FreeLibrary(dll), 0);
+                dll = LoadLibraryW(wide.as_ptr());
+                assert!(!dll.is_null());
+                open = sym!("SimConnect_Open", Open);
+                close = sym!("SimConnect_Close", Close);
+                next = sym!("SimConnect_GetNextDispatch", Next);
+                add = sym!("SimConnect_AddToDataDefinition", Add);
+                request = sym!("SimConnect_RequestDataOnSimObject", Request);
+                subscribe = sym!("SimConnect_SubscribeToSystemEvent", Subscribe);
+                query = sym!("SimConnect_RequestSystemState", Query);
+                last_sent = sym!("SimConnect_GetLastSentPacketID", LastSent);
+            }};
+        }
+        let scenario = std::env::args_os()
+            .skip_while(|arg| arg != "--scenario")
+            .nth(1)
+            .unwrap();
+        let scenario = std::path::PathBuf::from(scenario);
+        std::fs::copy(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../demo-scenarios/demo_scenario.jsonl"),
+            &scenario,
+        )
+        .unwrap();
         let event = CreateEventW(ptr::null(), 0, 0, ptr::null());
         assert!(!event.is_null());
         let mut h = ptr::null_mut();
@@ -160,8 +249,6 @@ fn actual_dll_notifies_and_retains_packets() {
             8
         );
         assert_eq!(close(h), 0);
-        let scenario =
-            std::env::temp_dir().join(format!("demo-dll-test-{}.jsonl", std::process::id()));
         std::fs::write(&scenario, concat!(
             "{\"type\":\"scenario\",\"format\":\"msfs-efi-simconnect-demo\",\"version\":1,\"mode\":\"scripted\",\"frame_period_ms\":50,\"duration_us\":5000000,\"initial\":{\"sim_running\":true,\"pause\":\"off\",\"flight\":\"test\"}}\n",
             "{\"type\":\"signal\",\"id\":\"p\",\"simvar\":\"PLANE PITCH DEGREES\",\"unit\":\"radians\",\"repeat\":true}\n",
@@ -169,15 +256,7 @@ fn actual_dll_notifies_and_retains_packets() {
             "{\"type\":\"signal\",\"id\":\"b\",\"simvar\":\"PLANE BANK DEGREES\",\"unit\":\"radians\",\"repeat\":true}\n",
             "{\"type\":\"hold\",\"signal\":\"b\",\"value\":1.0,\"duration_ms\":5000}\n"
         )).unwrap();
-        let scenario_wide: Vec<u16> = scenario.as_os_str().encode_wide().chain([0]).collect();
-        assert_eq!(
-            setup(
-                scenario_wide.as_ptr(),
-                error.as_mut_ptr(),
-                error.len() as u32
-            ),
-            0
-        );
+        reload!();
         assert_eq!(
             open(
                 &mut h,
@@ -270,14 +349,7 @@ fn actual_dll_notifies_and_retains_packets() {
             text.push_str(&format!("{{\"type\":\"signal\",\"id\":\"f{i}\",\"simvar\":\"{name}\",\"unit\":\"{unit}\",\"repeat\":true}}\n{{\"type\":\"hold\",\"signal\":\"f{i}\",\"value\":{},\"duration_ms\":5000}}\n", i + 1));
         }
         std::fs::write(&scenario, text).unwrap();
-        assert_eq!(
-            setup(
-                scenario_wide.as_ptr(),
-                error.as_mut_ptr(),
-                error.len() as u32
-            ),
-            0
-        );
+        reload!();
         assert_eq!(
             open(
                 &mut h,
@@ -325,14 +397,7 @@ fn actual_dll_notifies_and_retains_packets() {
             "{\"type\":\"signal\",\"id\":\"ias\",\"simvar\":\"AIRSPEED INDICATED\",\"unit\":\"knots\",\"repeat\":false}\n",
             "{\"type\":\"hold\",\"signal\":\"ias\",\"value\":70,\"duration_ms\":3000}\n"
         )).unwrap();
-        assert_eq!(
-            setup(
-                scenario_wide.as_ptr(),
-                error.as_mut_ptr(),
-                error.len() as u32
-            ),
-            0
-        );
+        reload!();
         assert_eq!(
             open(
                 &mut h,
@@ -464,14 +529,7 @@ fn actual_dll_notifies_and_retains_packets() {
             "{\"type\":\"signal\",\"id\":\"ias\",\"simvar\":\"AIRSPEED INDICATED\",\"unit\":\"knots\",\"repeat\":false}\n",
             "{\"type\":\"hold\",\"signal\":\"ias\",\"value\":123,\"duration_ms\":2000}\n"
         )).unwrap();
-        assert_eq!(
-            setup(
-                scenario_wide.as_ptr(),
-                error.as_mut_ptr(),
-                error.len() as u32
-            ),
-            0
-        );
+        reload!();
         assert_eq!(
             open(
                 &mut h,
@@ -568,14 +626,7 @@ fn actual_dll_notifies_and_retains_packets() {
             "{\"type\":\"signal\",\"id\":\"tas\",\"simvar\":\"AIRSPEED TRUE\",\"unit\":\"knots\",\"repeat\":false}\n",
             "{\"type\":\"hold\",\"signal\":\"tas\",\"value\":50,\"duration_ms\":10000}\n"
         )).unwrap();
-        assert_eq!(
-            setup(
-                scenario_wide.as_ptr(),
-                error.as_mut_ptr(),
-                error.len() as u32
-            ),
-            0
-        );
+        reload!();
         let hold_open_started = std::time::Instant::now();
         assert_eq!(
             open(
@@ -677,14 +728,7 @@ fn actual_dll_notifies_and_retains_packets() {
             "{\"type\":\"api_fault\",\"operation\":\"SimConnect_SubscribeToSystemEvent\",\"occurrence\":1,\"hresult\":-2147467259}\n",
             "{\"type\":\"raw_packet\",\"at_us\":50000,\"bytes_hex\":\"01020304\",\"returned_length\":2}\n"
         )).unwrap();
-        assert_eq!(
-            setup(
-                scenario_wide.as_ptr(),
-                error.as_mut_ptr(),
-                error.len() as u32
-            ),
-            0
-        );
+        reload!();
         assert!(
             open(
                 &mut h,
@@ -781,15 +825,7 @@ fn actual_dll_notifies_and_retains_packets() {
         assert_eq!(subscribe(h, 81, c"Sim".as_ptr()), 0);
         assert_eq!(close(h), 0);
         std::fs::write(&scenario, "not json").unwrap();
-        assert!(
-            setup(
-                scenario_wide.as_ptr(),
-                error.as_mut_ptr(),
-                error.len() as u32
-            ) < 0
-        );
-        let explanation = std::ffi::CStr::from_ptr(error.as_ptr().cast()).to_string_lossy();
-        assert!(explanation.contains("line 1"));
+        reload!();
         assert!(
             open(
                 &mut h,
@@ -800,7 +836,6 @@ fn actual_dll_notifies_and_retains_packets() {
                 u32::MAX
             ) < 0
         );
-        std::fs::remove_file(scenario).unwrap();
         CloseHandle(event);
         FreeLibrary(dll);
     }
