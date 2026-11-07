@@ -1192,11 +1192,72 @@ fn focused_sparse_scenarios_never_fabricate_live_attitude() {
     let binary = fixture.binary();
     for name in ["ias-only.jsonl", "event-only.jsonl", "no-signal.jsonl"] {
         let path = suite_path(name);
-        let mut app =
-            Application::start(&binary, &fixture.0, &["--scenario", path.to_str().unwrap()]);
-        let snapshot = fault_snapshot(&app, |s| s["state"] == "waiting");
-        assert!(snapshot["attitude"].is_null());
-        assert!(snapshot.get("ias_kt").is_none());
+        let log = fixture.0.join(format!("{name}.log"));
+        let mut app = Application::start(
+            &binary,
+            &fixture.0,
+            &[
+                "--scenario",
+                path.to_str().unwrap(),
+                "--log",
+                log.to_str().unwrap(),
+            ],
+        );
+        let mut stream = app.request("/api/v1/events");
+        stream
+            .set_read_timeout(Some(Duration::from_millis(200)))
+            .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(6);
+        let mut pending = String::new();
+        let mut saw_waiting = false;
+        let mut saw_paused = false;
+        let mut saw_resume = false;
+        while Instant::now() < deadline {
+            let mut bytes = [0; 8192];
+            match stream.read(&mut bytes) {
+                Ok(0) => panic!("SSE closed: {}", app.messages()),
+                Ok(n) => pending.push_str(&String::from_utf8_lossy(&bytes[..n])),
+                Err(e)
+                    if matches!(
+                        e.kind(),
+                        std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock
+                    ) =>
+                {
+                    continue;
+                }
+                Err(e) => panic!("{e}"),
+            }
+            while let Some(end) = pending.find('\n') {
+                let line = pending[..end].trim_end_matches('\r').to_owned();
+                pending.drain(..=end);
+                if let Some(data) = line.strip_prefix("data: ")
+                    && let Ok(s) = serde_json::from_str::<serde_json::Value>(data)
+                {
+                    assert_ne!(s["state"], "live", "{name}: {s}");
+                    assert!(s["attitude"].is_null(), "{name}: {s}");
+                    assert!(s.get("ias_kt").is_none(), "{name}: {s}");
+                    saw_waiting |= s["state"] == "waiting";
+                    saw_resume |= saw_paused && s["state"] == "waiting";
+                    saw_paused |= s["state"] == "paused";
+                }
+            }
+        }
+        assert!(saw_waiting, "{name}");
+        if name == "event-only.jsonl" {
+            assert!(saw_paused && saw_resume, "{name}");
+        }
+        if name == "ias-only.jsonl" {
+            let records = wait_fault_log(&log, |r| {
+                r.iter().any(|v| {
+                    v["kind"] == "instrument_sample"
+                        && v["data"]["name"] == "AIRSPEED INDICATED"
+                        && v["data"]["value"]["value"] == 100.0
+                })
+            });
+            assert!(records.iter().any(|v| v["kind"] == "instrument_sample"
+                && v["data"]["name"] == "AIRSPEED INDICATED"
+                && v["data"]["value"]["value"] == 100.0));
+        }
         app.assert_health();
         app.shutdown();
     }
