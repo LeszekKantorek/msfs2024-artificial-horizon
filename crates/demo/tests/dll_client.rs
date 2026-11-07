@@ -26,6 +26,7 @@ type Add =
     unsafe extern "C" fn(*mut c_void, u32, *const c_char, *const c_char, i32, f32, u32) -> i32;
 type Subscribe = unsafe extern "C" fn(*mut c_void, u32, *const c_char) -> i32;
 type Query = unsafe extern "C" fn(*mut c_void, u32, *const c_char) -> i32;
+type LastSent = unsafe extern "C" fn(*mut c_void, *mut u32) -> i32;
 type Request = unsafe extern "C" fn(*mut c_void, u32, u32, u32, i32, u32, u32, u32, u32) -> i32;
 #[test]
 fn actual_dll_notifies_and_retains_packets() {
@@ -55,6 +56,7 @@ fn actual_dll_notifies_and_retains_packets() {
         let request: Request = sym!("SimConnect_RequestDataOnSimObject", Request);
         let subscribe: Subscribe = sym!("SimConnect_SubscribeToSystemEvent", Subscribe);
         let query: Query = sym!("SimConnect_RequestSystemState", Query);
+        let last_sent: LastSent = sym!("SimConnect_GetLastSentPacketID", LastSent);
         let mut error = [0u8; 512];
         assert_eq!(
             setup(ptr::null(), error.as_mut_ptr(), error.len() as u32),
@@ -86,6 +88,9 @@ fn actual_dll_notifies_and_retains_packets() {
             ),
             0
         );
+        let mut definition_packet = 0;
+        assert_eq!(last_sent(h, &mut definition_packet), 0);
+        assert_ne!(definition_packet, 0);
         assert!(
             add(
                 h,
@@ -97,7 +102,16 @@ fn actual_dll_notifies_and_retains_packets() {
                 u32::MAX
             ) < 0
         );
+        let mut after_rejection = 0;
+        assert_eq!(last_sent(h, &mut after_rejection), 0);
+        assert_eq!(after_rejection, definition_packet);
         assert_eq!(request(h, 991, 77, 0, 3, 0, 0, 0, 0), 0);
+        let mut request_packet = 0;
+        assert_eq!(last_sent(h, &mut request_packet), 0);
+        assert_ne!(request_packet, definition_packet);
+        let mut unchanged = 0;
+        assert_eq!(last_sent(h, &mut unchanged), 0);
+        assert_eq!(unchanged, request_packet);
         let mut p = ptr::null_mut();
         let mut n = 0;
         assert_eq!(WaitForSingleObject(event, 1000), WAIT_OBJECT_0);

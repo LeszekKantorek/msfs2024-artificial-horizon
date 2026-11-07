@@ -125,6 +125,7 @@ struct Segment {
 #[derive(Clone)]
 struct Track {
     id: String,
+    declaration_line: usize,
     name: String,
     unit: String,
     repeat: bool,
@@ -213,6 +214,7 @@ impl Scenario {
                             }
                             s.tracks.push(Track {
                                 id,
+                                declaration_line: i + 1,
                                 name: simvar,
                                 unit,
                                 repeat,
@@ -271,8 +273,11 @@ impl Scenario {
             }
         }
         let mut s = scenario.ok_or_else(|| format!("{source}: missing scenario header"))?;
-        if s.tracks.iter().any(|t| t.segments.is_empty()) {
-            return Err(format!("{source}: signal has no segments"));
+        if let Some(track) = s.tracks.iter().find(|t| t.segments.is_empty()) {
+            return Err(format!(
+                "{source}: line {}: signal id {:?} has no segments",
+                track.declaration_line, track.id
+            ));
         }
         s.events.sort_by_key(|e| e.at);
         Ok(s)
@@ -292,6 +297,19 @@ impl Scenario {
             .ok_or_else(|| format!("{loc}: unknown signal {id}"))?;
         if ms == 0 {
             return Err(format!("{loc}: duration_ms must be positive"));
+        }
+        if t.unit == "radians" {
+            let convertible = |number: f64| number.to_degrees().is_finite();
+            let invalid = match &value {
+                SegmentValue::Hold(v) => !convertible(*v),
+                SegmentValue::Ramp(from, to) => !convertible(*from) || !convertible(*to),
+                SegmentValue::Gap => false,
+            };
+            if invalid {
+                return Err(format!(
+                    "{loc}: signal {id:?} value cannot be represented in degrees"
+                ));
+            }
         }
         let n = ms
             .checked_mul(1000)
@@ -347,7 +365,13 @@ impl Scenario {
                 let value = match segment.value {
                     SegmentValue::Hold(v) => v,
                     SegmentValue::Ramp(a, b) => {
-                        a + (b - a) * (time - start) as f64 / (segment.end - start) as f64
+                        let fraction = (time - start) as f64 / (segment.end - start) as f64;
+                        let interpolated = if a.is_sign_negative() != b.is_sign_negative() {
+                            a * (1.0 - fraction) + b * fraction
+                        } else {
+                            a + (b - a) * fraction
+                        };
+                        interpolated.clamp(a.min(b), a.max(b))
                     }
                     SegmentValue::Gap => return None,
                 };
@@ -430,6 +454,64 @@ mod tests {
                 "bad"
             )
             .is_err()
+        );
+    }
+
+    #[test]
+    fn extreme_ramps_remain_finite_and_radians_must_convert() {
+        let input = format!(
+            "{}\n{}",
+            header(),
+            r#"{"type":"signal","id":"ias","simvar":"AIRSPEED INDICATED","unit":"knots","repeat":false}
+{"type":"ramp","signal":"ias","from":-1e308,"to":1e308,"duration_ms":5000}"#
+        );
+        let scenario = Scenario::parse(&input, "extreme.jsonl").unwrap();
+        for (time, expected_sign) in [
+            (0, -1),
+            (1_250_000, -1),
+            (2_500_000, 0),
+            (3_750_000, 1),
+            (4_999_999, 1),
+        ] {
+            let value = scenario.value("AIRSPEED INDICATED", "knots", time).unwrap();
+            assert!(value.is_finite());
+            assert_eq!(
+                if value < 0.0 {
+                    -1
+                } else if value > 0.0 {
+                    1
+                } else {
+                    0
+                },
+                expected_sign
+            );
+        }
+        let angular = format!(
+            "{}\n{}",
+            header(),
+            r#"{"type":"signal","id":"pitch","simvar":"PLANE PITCH DEGREES","unit":"radians","repeat":false}
+{"type":"hold","signal":"pitch","value":1e308,"duration_ms":1000}"#
+        );
+        let error = Scenario::parse(&angular, "angular.jsonl").err().unwrap();
+        assert!(
+            error.contains("angular.jsonl: line 3")
+                && error.contains("pitch")
+                && error.contains("degrees")
+        );
+    }
+
+    #[test]
+    fn missing_segment_identifies_declaration_line_and_signal_id() {
+        let input = format!(
+            "{}\n{}",
+            header(),
+            r#"{"type":"signal","id":"missing","simvar":"AIRSPEED INDICATED","unit":"knots","repeat":false}"#
+        );
+        let error = Scenario::parse(&input, "missing.jsonl").err().unwrap();
+        assert!(
+            error.contains("missing.jsonl: line 2")
+                && error.contains("signal id")
+                && error.contains("missing")
         );
     }
     #[test]
