@@ -26,11 +26,11 @@ cargo build --workspace --locked --release
 
 Local validation is mandatory for changes selected by the [validation scope matrix](index.md#validation-by-change-scope).
 Cargo commands reuse artifacts in `target` during local development.
-The debug workspace build prepares `target/x86_64-pc-windows-msvc/debug/demo.dll` for later loader integration tests.
+The debug workspace build prepares `target/x86_64-pc-windows-msvc/debug/demo.dll` for loader integration tests.
 Pass its absolute path to those tests; hashed test executables under `debug/deps/` do not identify the application executable directory.
 The final step builds the release executable and `demo.dll` together in `target/x86_64-pc-windows-msvc/release/`.
 The executable is named `msfs2024-artificial-horizon.exe`.
-The DLL provides native Demo playback; application integration remains planned.
+The DLL provides native Demo playback through the shared receiver.
 Tests use the debug profile; the release build compiles optimized artifacts separately.
 The root application is the default workspace member, so `cargo run` does not build the Demo DLL.
 

@@ -10,7 +10,7 @@ status: active
 | Feature order and technical prerequisites | Relevant Tasks and Subtasks under [MVP issue #9](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9); follow [adoption boundaries](../docs/work-organization.md#adoption-boundaries) until hierarchy migration |
 | Modules, layers, and instrument scope | [Panel presentation](../docs/efi/index.md), [ADR 0004](../docs/adr/0004-modular-pfd-presentation.md) |
 | Optional fields and current attitude-only publication | [ADR 0003](../docs/adr/0003-responsive-pfd-demo.md), [contract](../docs/telemetry-contract.md) |
-| Planned YAML playback and recorded-session conversion | [Demo playback requirements](../docs/sources/demo.md#planned-scenario-playback) |
+| Native JSONL scenario playback | [Demo playback requirements](../docs/sources/demo.md#native-demo-playback) |
 | Performance measurements and evidence limits | [Measurements](../docs/testing/evidence.md#measurements-and-evidence), [device acceptance](../docs/testing/devices.md#real-phone-acceptance-procedure) |
 | SDK distribution requirements | [SimConnect requirements](../docs/sources/simconnect.md#requirements) |
 

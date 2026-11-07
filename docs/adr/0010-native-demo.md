@@ -12,7 +12,7 @@ The workspace contains a Windows x64 Rust cdylib package producing `demo.dll`. S
 
 The official DLL uses manual bindings without SDK build dependencies. [ADR 0006](0006-simconnect-manual-ffi.md) defines native integration and [ADR 0007](0007-application-composition.md) defines application composition.
 
-Native-input playback exercises the receiver. Recorded-session conversion and schema 4/5 import are excluded; forward input-to-output evidence is required. The default scenario does not supply fictional native values for VFE/VNO/VNE or VX/VY/VG. Presentation requirements and full-profile fixtures remain valid. [ADR 0008](0008-partial-airspeed-profile.md) governs independently optional airspeed data.
+Native-input playback exercises the receiver. Recorded-session conversion and schema 4/5 import are excluded; forward input-to-output evidence is required. The baseline scenario does not supply fictional native values for VFE/VNO/VNE or VX/VY/VG. Presentation requirements and full-profile fixtures remain valid. [ADR 0008](0008-partial-airspeed-profile.md) governs independently optional airspeed data.
 
 ## Consequences and limits
 
