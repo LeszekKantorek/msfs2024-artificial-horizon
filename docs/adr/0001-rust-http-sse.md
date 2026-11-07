@@ -45,7 +45,7 @@ EventSource supports reconnecting streams. The [MDN SSE guide](https://developer
 
 ## Consequences
 
-* Other binaries can reuse the library without process-argument coupling.
+* Other binaries can reuse the library. Demo playback requires the host to pass the scenario in process arguments.
 * Demo development and HTTP tests require neither MSFS nor its SDK.
 * Handle freshness, reconnects, mobile suspension, and slow clients explicitly.
 * Use one SSE connection per page. Browsers may limit concurrent HTTP/1.x SSE connections.

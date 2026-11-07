@@ -29,7 +29,7 @@ The integration preserves these boundaries:
 | Execution | One long-running worker owns one active connection and all SimConnect calls |
 | Memory | Validate message types and lengths, respect packed layouts, copy owned values, retain no native buffer across dispatch |
 | Telemetry | Adapter normalization and publication through the caller's existing typed `Publisher` and watch channel |
-| Entry point | Main executable with DLL-path source selection as amended by [ADR 0010](0010-native-demo.md). Application composition owns HTTP/SSE |
+| Entry point | Main executable with DLL-path source selection. Application composition owns HTTP/SSE |
 
 The binding surface remains limited:
 
@@ -44,10 +44,10 @@ The binding surface remains limited:
 Integration constraints preserve the existing architecture:
 
 * Add declarations only for demonstrated requirements.
-* Add no third-party SimConnect wrapper, binding generator, separate package, C++ helper, general SDK framework, or extra adapter layer.
+* Add no third-party SimConnect wrapper, binding generator, separate receiver package, C++ helper, general SDK framework, or extra adapter layer. The project-owned Demo DLL is a separate workspace package.
 * Expose no Cargo features or SDK build dependencies.
 * Accept the existing publisher and shutdown signal from the caller. Create no hidden channel or sample queue.
-* Keep demo independent of the SDK. Never load SimConnect for demo or select demo after simulator loss.
+* Keep Demo independent of the SDK. Load the project-owned Demo DLL through the shared receiver; never load the official SimConnect DLL for Demo or select Demo after simulator loss.
 * Connect this module to the server through application composition without another receiver.
 * Resolve the full DLL path before opening diagnostics or loading native code.
 * Apply explicit override precedence without fallback. Do not search `PATH`, the working directory, or SDK installations.
@@ -86,7 +86,7 @@ Live publication follows these rules within the [documented evidence limits](../
 | Minimal manual FFI | Select for direct ownership and focused declarations. Accept SDK maintenance and verification costs |
 | Generated or full SDK bindings | Reject generation tooling and unused API surface |
 | Import-library linking | Reject the native library requirement during linking |
-| Separate crate or C++ ABI helper | Reject extra package or language boundaries. Use header inspection, focused Rust tests, and live evidence |
+| Separate receiver crate or C++ ABI helper | Reject extra receiver package or language boundaries. Use header inspection, focused Rust tests, and live evidence |
 | Native callbacks | Defer unless receive and wait observations contradict the selected dispatch strategy |
 
 Ownership has these consequences:

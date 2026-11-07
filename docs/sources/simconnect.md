@@ -210,7 +210,7 @@ An empty queue ends the current batch early. Cancellation exits reception and st
 * Treat the silence watchdog as a reconnect trigger, not proof of native connection loss.
 * Do not promise a shutdown deadline when a native call is permanently blocked.
 
-## Planned common native consumer
+## Common native consumer
 
 The accepted [native Demo decision](../adr/0010-native-demo.md) is implemented. The Demo DLL and official DLL use the same receiver, decoder, lifecycle gates, Publisher, and HTTP/SSE path. Source identity is selected before channel creation and stays Demo or SimConnect; a basename identifies selection, not authenticity. The Demo DLL reads its scenario from the host process arguments during Open.
 

@@ -30,7 +30,7 @@ Use this sequence when the requested outcome requires a material architecture ch
    * Keep a recommendation proposed until acceptance is established.
    * Sol's explicit technical decision within authorized scope can establish acceptance.
    * Obtain a human decision for changes to approved requirements or project direction.
-10. Update affected contracts and Task guidance after the decision enters the accepted scope. Preserve the decision, rationale, and any superseded requirements explicitly.
+10. Update affected contracts and Task guidance after the decision enters the accepted scope. Keep each ADR aligned with the current accepted decision and its rationale.
 11. Identify the validation needed for later implementation under these authorization and evidence constraints:
     * If implementation is authorized and performed, validate its outcome separately from the architectural rationale.
     * Perform implementation only within its authorized scope. This decision procedure does not grant implementation permission.
@@ -57,7 +57,7 @@ Follow the existing ADR examples and [documentation ownership](../../../AGENTS.m
 * Write the status as a plain line. Do not require a date or use a metadata table.
 * Retain evidence limits, deferred options, and conditions for reconsidering the decision.
 * Link the originating issue and canonical contracts rather than duplicating their full contents.
-* Explain which earlier decision changes and preserve unaffected requirements when a later decision replaces part of it.
+* Update affected ADRs to describe their current accepted decisions. Preserve applicable requirements and rationale; keep decision history in Git rather than in ADRs.
 * Distinguish proposed choices, accepted decisions, implemented behavior, and verified acceptance.
 * Keep delivery status and execution results in the issue or PR.
 * Preserve accepted decisions, supplied plans, and amendments under the [Subtask handoff rules](../../../.context/iterative-development.md#accepted-plans-and-handoffs).
@@ -68,7 +68,7 @@ Follow the existing ADR examples and [documentation ownership](../../../AGENTS.m
 Check the decision record against these requirements:
 
 * Confirm that the ADR states the problem, viable options including the current design, constraints, comparison, rationale, consequences, and actual status.
-* Retain uncertainties, unavailable experiments, superseded portions of earlier decisions, and conditions for reconsideration.
+* Retain uncertainties, unavailable experiments, and conditions for reconsideration. Check that each affected ADR describes its current accepted decision.
 * Use the [change map](../../../.context/component-changes.md) to identify affected contracts and validation without duplicating their contents in the ADR.
 * Report implementation, simulator compatibility, and real-device acceptance separately from the ADR's acceptance status.
 * Apply the boundaries and evidence limits in the [decision guidance](../../../.context/architecture-decisions.md#sources-and-limits).

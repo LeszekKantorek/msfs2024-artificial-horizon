@@ -25,7 +25,7 @@ Prepare and preserve handoffs under these requirements:
 * Use a self-contained Subtask as the primary execution handoff. Read its complete instructions, decisions, invariants, and applicable amendments before edits or delegation.
 * Preserve supplied accepted plans verbatim and locally, including their original language. Retain existing plans and their amendments without requiring future handoffs to use `.local/plans/`.
 * If a supplied plan governs the Subtask, preserve its requirements in the handoff and identify the governing source and amendments.
-* Record subsequent corrections explicitly, with the date and the requirements they supersede. Do not silently rewrite accepted decisions or discard earlier evidence.
+* Record subsequent handoff corrections explicitly, with the date and the requirements they supersede. Preserve earlier evidence. ADRs describe current accepted decisions; their history remains in Git.
 * Keep optional local indexes and notes as supplements. Another session must not depend on their continued availability to understand a Subtask.
 * Publish Subtask instructions and delivery evidence only within authorized GitHub work. Do not commit supplied plan originals or use Issues as a running progress notebook.
 
