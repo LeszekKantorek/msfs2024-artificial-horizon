@@ -93,6 +93,19 @@ pub fn source_kind(path: &Path) -> Source {
     }
 }
 
+/// Validate the scenario selection for the chosen source.
+pub fn validate_scenario(source: Source, scenario: Option<&Path>) -> Result<(), SimConnectError> {
+    match (source, scenario) {
+        (Source::Demo, None) => Err(SimConnectError::Configuration(
+            "demo.dll requires --scenario <file>".into(),
+        )),
+        (Source::SimConnect, Some(_)) => Err(SimConnectError::Configuration(
+            "--scenario requires demo.dll".into(),
+        )),
+        _ => Ok(()),
+    }
+}
+
 /// Acquire on one native worker into the caller's SimConnect channel; never start HTTP.
 /// Caller owns signals. Cancellation signals the worker even if this future is dropped.
 pub async fn run(
@@ -114,10 +127,8 @@ pub async fn run(
             "publisher source must match selected DLL".into(),
         ));
     }
-    if source != Source::Demo && config.scenario.is_some() {
-        return early_error(SimConnectError::Configuration(
-            "--scenario requires demo.dll".into(),
-        ));
+    if let Err(error) = validate_scenario(source, config.scenario.as_deref()) {
+        return early_error(error);
     }
     println!("Selected DLL: {}", dll.display());
     println!(
@@ -300,7 +311,9 @@ fn worker(
     })?;
     journal.record("library_loaded", || json!({}), true);
     if source == Source::Demo {
-        library.configure_demo(scenario)?;
+        library.configure_demo(scenario.ok_or_else(|| {
+            SimConnectError::Configuration("demo.dll requires --scenario <file>".into())
+        })?)?;
     }
     let result = connections(&library, publisher, journal, stop);
     journal.record(

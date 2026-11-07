@@ -46,7 +46,7 @@ cargo run --locked --release --bin msfs2024-artificial-horizon -- --source "$sim
 | No source option or `--source demo.dll` | Project-owned Demo DLL with HTTP/SSE |
 | `--source SimConnect.dll` | Native acquisition with HTTP/SSE and available flight instruments |
 | `--listen-address`, `--port` | HTTP settings for either source. Defaults are `127.0.0.1` and `8080` |
-| `--scenario <file>` | Demo-only JSONL file, absolute or relative to the working directory |
+| `--scenario <file>` | Required Demo-only JSONL file, absolute or relative to the working directory |
 | `--log <file>` | Optional exact JSONL destination, absolute or relative to the working directory |
 | `--help`, `--version` | Information without opening a DLL or log |
 | `stop` on standard input | A line containing `stop` requests coordinated shutdown |
@@ -54,7 +54,7 @@ cargo run --locked --release --bin msfs2024-artificial-horizon -- --source "$sim
 
 The CLI applies these restrictions:
 
-* `--log` is available for either source. `--scenario` requires Demo.
+* `--log` is available for either source. `--scenario` is required for Demo and rejected for SimConnect.
 * Invalid HTTP settings and relative DLL paths containing directories are rejected before starting components.
 * Legacy `--simconnect`, `--dll`, and source aliases are unsupported.
 * Log filenames distinguish scenarios. The application does not interpret them as metadata.
@@ -76,7 +76,7 @@ The `providers::simconnect` module exports the acquisition interface independent
 
 | Interface | Contract |
 | --- | --- |
-| `SimConnectConfig` | Optional `dll`, `log`, and Demo `scenario` paths. Defaults select adjacent `demo.dll` |
+| `SimConnectConfig` | Optional `dll` and `log` paths; Demo requires a `scenario` path. The default DLL is adjacent `demo.dll` |
 | `resolve_dll(override_path)` | Return the selected path or `SimConnectError`. Validate path syntax without loading the DLL |
 | `run(config, publisher, shutdown)` | Consume a caller-supplied `Publisher` whose source matches the selected DLL. Await caller-owned shutdown with output `io::Result<()>` and return `RunReport` |
 | `RunReport::result` | Acquisition outcome as `Result<(), SimConnectError>` |
@@ -504,7 +504,7 @@ Build the complete application and prepare an output directory before recording.
 cargo build --locked --release --target x86_64-pc-windows-msvc
 New-Item -ItemType Directory -Force .local/live | Out-Null
 $appExe = Join-Path $PWD 'target/x86_64-pc-windows-msvc/release/msfs2024-artificial-horizon.exe'
-node tools/live/run.mjs --exe "$appExe" --url http://127.0.0.1:8080/api/v1/events --output .local/live/demo.jsonl --duration-seconds 30 --max-messages 1000 -- --source demo.dll --listen-address 127.0.0.1 --port 8080
+node tools/live/run.mjs --exe "$appExe" --url http://127.0.0.1:8080/api/v1/events --output .local/live/demo.jsonl --duration-seconds 30 --max-messages 1000 -- --source demo.dll --scenario demo-scenarios/demo_scenario.jsonl --listen-address 127.0.0.1 --port 8080
 ```
 
 For SimConnect, provide the official x64 DLL path and choose a new telemetry output filename. Add `--log` after `--` to record application diagnostics in a separate file:

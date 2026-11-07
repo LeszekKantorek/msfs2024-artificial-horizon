@@ -300,7 +300,7 @@ fn thread_main(
     }
 }
 /// # Safety
-/// The path, when non-null, must point to terminated UTF-16. The error buffer must be writable for capacity bytes. No connection may be open.
+/// The path must be null or point to terminated UTF-16; null is rejected. The error buffer must be writable for capacity bytes. No connection may be open.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn EfiDemo_ConfigureV1(
     path: *const u16,
@@ -313,34 +313,30 @@ pub unsafe extern "C" fn EfiDemo_ConfigureV1(
         }
         unsafe { *error = 0 };
         let result = (|| -> Result<Scenario, String> {
-            let (source, text) = if path.is_null() {
-                (
-                    "embedded default".to_owned(),
-                    include_str!("../../../demo_scenario.jsonl").to_owned(),
-                )
-            } else {
-                let mut len = 0usize;
-                while len < 32768 && unsafe { *path.add(len) } != 0 {
-                    len += 1;
-                }
-                if len == 32768 {
-                    return Err("scenario path exceeds limit".into());
-                }
-                let p = PathBuf::from(OsString::from_wide(unsafe {
-                    std::slice::from_raw_parts(path, len)
-                }));
-                if !p.is_absolute() {
-                    return Err(format!("{}: path must be absolute", p.display()));
-                }
-                let file = std::fs::File::open(&p).map_err(|e| format!("{}: {e}", p.display()))?;
-                let mut bytes = Vec::new();
-                file.take(4 * 1024 * 1024 + 1)
-                    .read_to_end(&mut bytes)
-                    .map_err(|e| format!("{}: {e}", p.display()))?;
-                let text = String::from_utf8(bytes)
-                    .map_err(|e| format!("{}: invalid UTF-8: {e}", p.display()))?;
-                (p.display().to_string(), text)
-            };
+            if path.is_null() {
+                return Err("scenario path is required".into());
+            }
+            let mut len = 0usize;
+            while len < 32768 && unsafe { *path.add(len) } != 0 {
+                len += 1;
+            }
+            if len == 32768 {
+                return Err("scenario path exceeds limit".into());
+            }
+            let p = PathBuf::from(OsString::from_wide(unsafe {
+                std::slice::from_raw_parts(path, len)
+            }));
+            if !p.is_absolute() {
+                return Err(format!("{}: path must be absolute", p.display()));
+            }
+            let file = std::fs::File::open(&p).map_err(|e| format!("{}: {e}", p.display()))?;
+            let mut bytes = Vec::new();
+            file.take(4 * 1024 * 1024 + 1)
+                .read_to_end(&mut bytes)
+                .map_err(|e| format!("{}: {e}", p.display()))?;
+            let text = String::from_utf8(bytes)
+                .map_err(|e| format!("{}: invalid UTF-8: {e}", p.display()))?;
+            let source = p.display().to_string();
             Scenario::parse(&text, &source)
         })();
         let mut g = global().lock().unwrap_or_else(|p| p.into_inner());

@@ -19,7 +19,7 @@ let server;
 let browser;
 let session;
 let primaryError;
-async function start(sourceArguments = ['--source', 'demo.dll']) {
+async function start(sourceArguments = ['--source', 'demo.dll', '--scenario', resolve('demo-scenarios/demo_scenario.jsonl')]) {
   server = spawn(executable, [...sourceArguments, '--port', String(port)], { stdio: ['ignore', 'pipe', 'pipe'] });
   let failure;
   server.once('error', error => { failure = error; });

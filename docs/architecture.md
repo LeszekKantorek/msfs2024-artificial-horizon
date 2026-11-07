@@ -50,7 +50,7 @@ The application follows these composition constraints:
 
 | Interface | Contract |
 | --- | --- |
-| CLI | Parse DLL source, optional Demo scenario and log, HTTP address/port, help, and version. Own process signals and exit status |
+| CLI | Parse DLL source, required Demo scenario and optional log, HTTP address/port, help, and version. Own process signals and exit status |
 | `Config` | Contain only `listen_address` and `port`. Never read process arguments |
 | `application::SourceSelection` | Hold the native source configuration; derive source identity from the selected DLL basename |
 | `application::run(config, source, shutdown)` | Validate configuration, create the channel, bind HTTP, start components, and collect results. Return `Result<(), ApplicationError>` |

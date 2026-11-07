@@ -7,6 +7,33 @@ use msfs2024_artificial_horizon::{
 use std::{path::PathBuf, time::Duration};
 
 #[tokio::test]
+async fn source_scenario_selection_is_validated_without_starting_a_worker() {
+    for (source, dll, scenario, expected) in [
+        (Source::Demo, None, None, "requires --scenario"),
+        (
+            Source::SimConnect,
+            Some(PathBuf::from("SimConnect.dll")),
+            Some(PathBuf::from("unused.jsonl")),
+            "--scenario requires demo.dll",
+        ),
+    ] {
+        let (publisher, _) = telemetry::channel(source);
+        let report = run(
+            SimConnectConfig {
+                dll,
+                log: None,
+                scenario,
+            },
+            publisher,
+            std::future::pending(),
+        )
+        .await;
+        assert!(report.result.unwrap_err().to_string().contains(expected));
+        assert!(matches!(report.diagnostics, DiagnosticStatus::Disabled));
+    }
+}
+
+#[tokio::test]
 async fn missing_explicit_dll_returns_controlled_error_without_diagnostics() {
     let dll = std::env::temp_dir()
         .join(format!("simconnect-missing-{}", std::process::id()))

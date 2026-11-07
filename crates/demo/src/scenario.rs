@@ -728,12 +728,20 @@ mod tests {
     }
     #[test]
     fn embedded_default_is_valid() {
-        Scenario::parse(include_str!("../../../demo_scenario.jsonl"), "default").unwrap();
+        Scenario::parse(
+            include_str!("../../../demo-scenarios/demo_scenario.jsonl"),
+            "default",
+        )
+        .unwrap();
     }
 
     #[test]
     fn default_matches_independent_native_checkpoints() {
-        let s = Scenario::parse(include_str!("../../../demo_scenario.jsonl"), "default").unwrap();
+        let s = Scenario::parse(
+            include_str!("../../../demo-scenarios/demo_scenario.jsonl"),
+            "default",
+        )
+        .unwrap();
         for (name, unit, time, expected) in [
             ("AIRSPEED INDICATED", "knots", 5_000_000, 75.0),
             ("AIRSPEED TRUE", "knots", 8_000_000, 160.0),

@@ -12,7 +12,7 @@ struct Cli {
     /// DLL source: demo.dll or SimConnect.dll, beside the EXE or an absolute path.
     #[arg(long, default_value = "demo.dll")]
     source: PathBuf,
-    /// Demo only: JSONL scenario file.
+    /// Required for Demo: JSONL scenario file.
     #[arg(long)]
     scenario: Option<PathBuf>,
     /// HTTP interface (default: 127.0.0.1); use 0.0.0.0 for LAN access.
@@ -36,14 +36,11 @@ impl Cli {
         let dll =
             msfs2024_artificial_horizon::providers::simconnect::resolve_dll(Some(&self.source))
                 .map_err(|error| Self::command().error(ErrorKind::ValueValidation, error))?;
-        if self.scenario.is_some()
-            && msfs2024_artificial_horizon::providers::simconnect::source_kind(&dll)
-                != msfs2024_artificial_horizon::Source::Demo
-        {
-            return Err(
-                Self::command().error(ErrorKind::ArgumentConflict, "--scenario requires demo.dll")
-            );
-        }
+        msfs2024_artificial_horizon::providers::simconnect::validate_scenario(
+            msfs2024_artificial_horizon::providers::simconnect::source_kind(&dll),
+            self.scenario.as_deref(),
+        )
+        .map_err(|error| Self::command().error(ErrorKind::ValueValidation, error))?;
         let scenario = self
             .scenario
             .map(|path| {
@@ -117,7 +114,7 @@ mod tests {
     }
     #[test]
     fn source_validation_and_legacy_rejection() {
-        let (_, selected) = Cli::try_parse_from(["main"])
+        let (_, selected) = Cli::try_parse_from(["main", "--scenario", "x"])
             .unwrap()
             .into_configuration()
             .unwrap();

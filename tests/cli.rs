@@ -5,6 +5,13 @@ use std::{
     time::{Duration, Instant},
 };
 
+fn scenario() -> String {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("demo-scenarios/demo_scenario.jsonl")
+        .to_string_lossy()
+        .into_owned()
+}
+
 fn cli(args: &[&str]) -> std::process::Output {
     let mut child = Command::new(env!("CARGO_BIN_EXE_msfs2024-artificial-horizon"))
         .args(args)
@@ -52,10 +59,15 @@ fn help_and_version_work_without_starting_the_server() {
 #[test]
 fn invalid_arguments_are_actionable() {
     for (args, expected) in [
+        (vec![], "--scenario"),
+        (vec!["--source", "demo.dll"], "--scenario"),
         (vec!["--port", "0"], "--port"),
         (vec!["--port", "65536"], "--port"),
         (vec!["--listen-address", "not-an-ip"], "--listen-address"),
-        (vec!["--listen-address", "224.0.0.1"], "multicast"),
+        (
+            vec!["--scenario", "x", "--listen-address", "224.0.0.1"],
+            "multicast",
+        ),
         (vec!["--source", "unknown"], "--source"),
     ] {
         let result = cli(&args);
@@ -68,7 +80,12 @@ fn invalid_arguments_are_actionable() {
 fn occupied_port_exits_with_address_and_actionable_error() {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let address = listener.local_addr().unwrap();
-    let result = cli(&["--port", &address.port().to_string()]);
+    let result = cli(&[
+        "--scenario",
+        &scenario(),
+        "--port",
+        &address.port().to_string(),
+    ]);
     assert!(!result.status.success());
     let error = String::from_utf8(result.stderr).unwrap();
     assert!(error.contains(&address.to_string()));
@@ -104,7 +121,7 @@ fn stop_process(input: &[u8]) {
     drop(listener);
     let mut child = ChildGuard(
         Command::new(env!("CARGO_BIN_EXE_msfs2024-artificial-horizon"))
-            .args(["--port", &port.to_string()])
+            .args(["--scenario", &scenario(), "--port", &port.to_string()])
             .stdin(Stdio::piped())
             .spawn()
             .unwrap(),
@@ -134,7 +151,7 @@ fn stop_process(input: &[u8]) {
     drop(listener);
     let mut restarted = ChildGuard(
         Command::new(env!("CARGO_BIN_EXE_msfs2024-artificial-horizon"))
-            .args(["--port", &port.to_string()])
+            .args(["--scenario", &scenario(), "--port", &port.to_string()])
             .stdin(Stdio::piped())
             .spawn()
             .unwrap(),
@@ -174,7 +191,7 @@ fn stdin_eof_does_not_stop_server() {
     drop(listener);
     let mut child = ChildGuard(
         Command::new(env!("CARGO_BIN_EXE_msfs2024-artificial-horizon"))
-            .args(["--port", &port.to_string()])
+            .args(["--scenario", &scenario(), "--port", &port.to_string()])
             .stdin(Stdio::piped())
             .spawn()
             .unwrap(),

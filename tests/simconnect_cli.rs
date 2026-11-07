@@ -449,6 +449,8 @@ fn invalid_source_specific_arguments_have_no_startup_side_effects() {
     let fixture = Fixture::new();
     let binary = fixture.binary();
     for arguments in [
+        vec![],
+        vec!["--source", "demo.dll"],
         vec!["--source", "relative/SimConnect.dll"],
         vec!["--source", "demo"],
         vec![
@@ -470,8 +472,17 @@ fn demo_serves_http_with_an_invalid_sibling_dll() {
     let fixture = Fixture::new();
     let binary = fixture.binary();
     fs::write(fixture.0.join("SimConnect.dll"), "not a native library").unwrap();
-    for arguments in [&[][..], &["--source", "demo.dll"][..]] {
-        let mut app = Application::start(&binary, &fixture.0, arguments);
+    let scenario = Path::new(env!("CARGO_MANIFEST_DIR")).join("demo-scenarios/demo_scenario.jsonl");
+    for arguments in [
+        vec!["--scenario", scenario.to_str().unwrap()],
+        vec![
+            "--source",
+            "demo.dll",
+            "--scenario",
+            scenario.to_str().unwrap(),
+        ],
+    ] {
+        let mut app = Application::start(&binary, &fixture.0, &arguments);
         app.assert_health();
         let (snapshot, _stream) = wait_live_ias(&app);
         assert_eq!(snapshot["source"], "demo");

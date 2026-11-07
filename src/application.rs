@@ -50,12 +50,7 @@ pub async fn run(
     config.validate()?;
     let dll = simconnect::resolve_dll(selection.0.dll.as_deref())?;
     let source = simconnect::source_kind(&dll);
-    if source != Source::Demo && selection.0.scenario.is_some() {
-        return Err(simconnect::SimConnectError::Configuration(
-            "--scenario requires demo.dll".into(),
-        )
-        .into());
-    }
+    simconnect::validate_scenario(source, selection.0.scenario.as_deref())?;
     let (publisher, subscription) = telemetry::channel(source);
     let lifetime = publisher.retain_channel();
     let server = Server::bind(config, subscription).await?;
@@ -218,7 +213,10 @@ mod tests {
             let selection = SourceSelection(SimConnectConfig {
                 dll: Some(dll),
                 log: None,
-                scenario: None,
+                scenario: (!simconnect).then(|| {
+                    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                        .join("demo-scenarios/demo_scenario.jsonl")
+                }),
             });
             let (stop, stopping) = tokio::sync::oneshot::channel();
             let app = tokio::spawn(run(

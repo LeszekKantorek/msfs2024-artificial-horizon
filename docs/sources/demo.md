@@ -6,17 +6,17 @@ Demo uses the project-owned `demo.dll` through the same native receiver and HTTP
 
 * Build the workspace to place `demo.dll` beside the executable. The DLL requires no simulator or official SDK.
 * Omit `--source`, select `--source demo.dll`, or provide an absolute path whose basename is `demo.dll`.
-* Select an authored JSONL file with `--scenario <path>`. Relative scenario paths resolve against the working directory. Restart to load changes.
+* Select an authored JSONL file for every Demo run with `--scenario <path>`. Relative scenario paths resolve against the working directory. Restart to load changes.
 * Use `--log <path>` for optional synthetic native diagnostics. The browser remains read-only.
 * Demo never replaces a failed SimConnect selection.
 
 ## Scenario timing
 
-The embedded default uses a 50 ms synthetic frame and a 198-second continuously looping pass. Independent tracks use their own periods and restart at each pass boundary. Scheduler delays can skip frames. Source receipt and freshness follow the shared [SimConnect receiver](simconnect.md#delivery-frequency-and-loop-timing).
+The `demo-scenarios/demo_scenario.jsonl` scenario uses a 50 ms synthetic frame and a 198-second continuously looping pass. Independent tracks use their own periods and restart at each pass boundary. Scheduler delays can skip frames. Source receipt and freshness follow the shared [SimConnect receiver](simconnect.md#delivery-frequency-and-loop-timing).
 
 ### Attitude and coordinated turn
 
-Nine two-second attitude and turn phases use native pitch and bank radians, ball position, and turn rate. The default input is in `demo_scenario.jsonl`. The [attitude feature](../efi/attitude.md#demo-behavior) owns presentation checks.
+Nine two-second attitude and turn phases use native pitch and bank radians, ball position, and turn rate. The input is in `demo-scenarios/demo_scenario.jsonl`. The [attitude feature](../efi/attitude.md#demo-behavior) owns presentation checks.
 
 ### Speed cycle and profile
 
@@ -28,7 +28,7 @@ The 198-second altitude pass starts with six three-second sweeps and then two 90
 
 ### Selected-altitude phases
 
-After the initial sweeps, the default approaches and departs 10000 ft, then 1000 ft. Selected altitude is absent during the initial sweeps. Independent checkpoints remain in the existing fixtures.
+After the initial sweeps, the baseline approaches and departs 10000 ft, then 1000 ft. Selected altitude is absent during the initial sweeps. Independent checkpoints remain in the existing fixtures.
 
 ### Vertical speed
 
@@ -42,7 +42,7 @@ The magnetic heading and selected-heading tracks repeat every 18 seconds. The se
 
 The application uses the native Demo DLL through the shared receiver. [ADR 0009](../adr/0009-native-demo.md) records the change and its relationship to earlier decisions. The [scenario catalog](demo-scenarios.md) identifies planned scenarios; the [SimConnect guide](simconnect.md#planned-common-native-consumer) owns the native catalog and error outcomes.
 
-The DLL embeds repository-root `demo_scenario.jsonl`; explicit files use the same parser. It preserves applicable native-input phases and independent boundary checks, but does not supply fictional VFE/VNO/VNE or VX/VY/VG. IAS acceleration remains the receiver estimator. Existing full-profile presentation fixtures and requirements remain valid. Recorded-session conversion, diagnostic schema 4/5 import, and observations mode are excluded. Forward scenario-to-output verification relates the selected input, revision and timing to normalized log/SSE observations; it does not reconstruct the scenario from a recording.
+The `demo-scenarios/demo_scenario.jsonl` file uses the same parser as other scenarios. It preserves applicable native-input phases and independent boundary checks, but does not supply fictional VFE/VNO/VNE or VX/VY/VG. IAS acceleration remains the receiver estimator. Existing full-profile presentation fixtures and requirements remain valid. Recorded-session conversion, diagnostic schema 4/5 import, and observations mode are excluded. Forward scenario-to-output verification relates the selected input, revision and timing to normalized log/SSE observations; it does not reconstruct the scenario from a recording.
 
 ### JSONL meaning
 
@@ -77,7 +77,7 @@ The first record is a header:
 | Field | Contract |
 | --- | --- |
 | `mode` | `scripted`; recorded-session playback is excluded |
-| `frame_period_ms` | Positive integer duration of a synthetic simulation frame; default scenario uses 50 ms. Apply the client's request semantics to those frames |
+| `frame_period_ms` | Positive integer duration of a synthetic simulation frame; baseline scenario uses 50 ms. Apply the client's request semantics to those frames |
 | `duration_us` | Positive integer duration of one pass through the scenario steps |
 | `initial` | Scenario-authored Sim-running flag, pause mode, and loaded-flight identity or null; applied once at playback initialization |
 | Time arithmetic | Checked integer arithmetic; segment durations in ms convert exactly to internal microseconds |
@@ -205,7 +205,7 @@ Malformed JSON is a setup error; a valid raw-packet instruction deliberately emi
 
 ### Selection and setup
 
-The CLI selects `demo.dll` by default or a supported absolute DLL path. Basename matching is case insensitive, including `DEMO.dll`; export spelling remains exact. Bare supported names resolve beside the executable. Relative paths containing directories and unsupported basenames are rejected. A scenario path is accepted only for Demo and is resolved against the caller's working directory.
+The CLI selects `demo.dll` by default or a supported absolute DLL path. Basename matching is case insensitive, including `DEMO.dll`; export spelling remains exact. Bare supported names resolve beside the executable. Relative paths containing directories and unsupported basenames are rejected. A scenario path is required for Demo, accepted only for Demo, and resolved against the caller's working directory.
 
 The private setup ABI is:
 
@@ -215,7 +215,7 @@ int32_t EfiDemo_ConfigureV1(const uint16_t *scenario_path,
                             uint32_t error_capacity);
 ```
 
-HTTP binds before Demo setup. The private `EfiDemo_ConfigureV1` call validates the complete file before Open; invalid or unreadable input returns `E_FAIL` and an actionable bounded explanation while HTTP remains available. It never falls back to another scenario. Setup does not publish, start the clock, or report parser errors through GetNextDispatch. The official DLL is never called with this export. Configure accepts a null path for the embedded default or an absolute NUL-terminated UTF-16 path, plus a nonempty writable UTF-8 error buffer and capacity. It synchronously copies arguments, writes a bounded NUL-terminated explanation on failure, and is called only without an open connection. Rust panics must not cross the DLL ABI.
+HTTP binds before Demo setup. The private `EfiDemo_ConfigureV1` call validates the complete file before Open; invalid or unreadable input returns `E_FAIL` and an actionable bounded explanation while HTTP remains available. It never falls back to another scenario. Setup does not publish, start the clock, or report parser errors through GetNextDispatch. The official DLL is never called with this export. Configure requires an absolute NUL-terminated UTF-16 path and rejects null, plus a nonempty writable UTF-8 error buffer and capacity. It synchronously copies arguments, writes a bounded NUL-terminated explanation on failure, and is called only without an open connection. Rust panics must not cross the DLL ABI.
 
 ### Forward scenario evidence
 

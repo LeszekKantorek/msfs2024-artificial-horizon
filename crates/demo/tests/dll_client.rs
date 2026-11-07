@@ -58,8 +58,21 @@ fn actual_dll_notifies_and_retains_packets() {
         let query: Query = sym!("SimConnect_RequestSystemState", Query);
         let last_sent: LastSent = sym!("SimConnect_GetLastSentPacketID", LastSent);
         let mut error = [0u8; 512];
+        assert!(setup(ptr::null(), error.as_mut_ptr(), error.len() as u32) < 0);
+        assert!(
+            std::ffi::CStr::from_ptr(error.as_ptr().cast())
+                .to_string_lossy()
+                .contains("scenario path is required")
+        );
+        let scenario = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../demo-scenarios/demo_scenario.jsonl");
+        let scenario_wide: Vec<u16> = scenario.as_os_str().encode_wide().chain([0]).collect();
         assert_eq!(
-            setup(ptr::null(), error.as_mut_ptr(), error.len() as u32),
+            setup(
+                scenario_wide.as_ptr(),
+                error.as_mut_ptr(),
+                error.len() as u32
+            ),
             0
         );
         let event = CreateEventW(ptr::null(), 0, 0, ptr::null());

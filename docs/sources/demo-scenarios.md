@@ -4,7 +4,7 @@ The suite contains a narrated flight, focused availability and lifecycle inputs,
 
 | Scenario | Purpose and assumptions | Expected completion | File |
 | --- | --- | --- | --- |
-| Default boundaries | Preserve applicable current native-input cycles and independent boundary checks | Repeats until shutdown | [Default scenario](../../demo_scenario.jsonl) |
+| Baseline boundaries | Preserve applicable current native-input cycles and independent boundary checks | Repeats until shutdown | [Baseline scenario](../../demo-scenarios/demo_scenario.jsonl) |
 | Flight tour | Fictional flight progression, both pause modes, and recoverable connection changes; no flight dynamics or ground-contact model | Repeats until shutdown | [Flight tour](../../demo-scenarios/flight-tour.jsonl) |
 | Simulator lifecycle | Connection availability, inactive flight, pause, flight change, and reconnect | Recovers where scheduled and repeats | [Simulator lifecycle](../../demo-scenarios/simulator-lifecycle.jsonl) |
 | Independent availability | Equal fresh samples, signal gaps, target gating, and recovery | Independent signals remain usable | [Availability gaps](../../demo-scenarios/availability-gaps.jsonl) |
