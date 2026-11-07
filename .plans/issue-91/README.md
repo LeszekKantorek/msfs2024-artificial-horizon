@@ -51,6 +51,7 @@ These decisions govern the amended execution handoff, subject to the explicit ev
 | [Current evidence](evidence.md) | Revision, inspected sources, remote records, and evidence limits |
 | [Delivery plan](plan.md) | Repository work first, then documentation and code outcomes |
 | [Tasks, tests, and review](tasks-tests-review.md) | Per-task evidence and reviewer checks that connect each result to the prerequisites of the next stage |
+| Assignment prompts: [implementation](prompts/implementation.md), [independent review](prompts/implementation-review.md), [Task acceptance](prompts/task-acceptance.md) | Copyable assignments with explicit validation and publication scope; each role checks its own outcome without repeating every earlier check |
 | [Review](review.md) | Independent findings and added ideas distinguished from requested scope |
 | [Astra review assessment](reviews/astra-01/assessment.md) | Current dispositions and links to the preserved independent review and frozen input |
 | [Task amendment draft](task-91-amendment.md) | Local replacement direction and explicit changes to existing #123–#126 |
