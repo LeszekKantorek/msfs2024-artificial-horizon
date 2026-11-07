@@ -1,0 +1,16 @@
+{"type":"scenario","format":"msfs-efi-simconnect-demo","version":1,"mode":"scripted","frame_period_ms":50,"duration_us":20000000,"initial":{"sim_running":true,"pause":"off","flight":"evidence.flt"}}
+{"type":"signal","id":"pitch","simvar":"PLANE PITCH DEGREES","unit":"radians","repeat":false}
+{"type":"hold","signal":"pitch","value":-0.2617993877991494,"duration_ms":20000}
+{"type":"signal","id":"bank","simvar":"PLANE BANK DEGREES","unit":"radians","repeat":false}
+{"type":"hold","signal":"bank","value":0.5235987755982988,"duration_ms":20000}
+{"type":"signal","id":"ias","simvar":"AIRSPEED INDICATED","unit":"knots","repeat":false}
+{"type":"hold","signal":"ias","value":100,"duration_ms":5000}
+{"type":"ramp","signal":"ias","from":100,"to":150,"duration_ms":5000}
+{"type":"gap","signal":"ias","duration_ms":4000}
+{"type":"hold","signal":"ias","value":150,"duration_ms":6000}
+{"type":"signal","id":"alt","simvar":"INDICATED ALTITUDE:1","unit":"feet","repeat":false}
+{"type":"hold","signal":"alt","value":1000,"duration_ms":20000}
+{"type":"pause","at_us":2000000,"mode":"off"}
+{"type":"pause","at_us":15000000,"mode":"normal"}
+{"type":"pause","at_us":17000000,"mode":"off"}
+{"type":"pause","at_us":19000000,"mode":"active"}

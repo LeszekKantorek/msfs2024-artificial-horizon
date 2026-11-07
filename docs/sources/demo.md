@@ -381,6 +381,25 @@ int32_t EfiDemo_ConfigureV1(const uint16_t *scenario_path,
 
 HTTP binds before Demo setup. The private `EfiDemo_ConfigureV1` call validates the complete file before Open; invalid or unreadable input returns `E_FAIL` and an actionable bounded explanation while HTTP remains available. It never falls back to another scenario. Setup does not publish, start the clock, or report parser errors through GetNextDispatch. The official DLL is never called with this export. Configure accepts a null path for the embedded default or an absolute NUL-terminated UTF-16 path, plus a nonempty writable UTF-8 error buffer and capacity. It synchronously copies arguments, writes a bounded NUL-terminated explanation on failure, and is called only without an open connection. Rust panics must not cross the DLL ABI.
 
+### Forward scenario evidence
+
+The [independent checkpoint fixture](../../tests/fixtures/demo-evidence.md) supplies a focused scenario and expected hold, ramp, gap, pause, resume, and later-pass observations. It is an acceptance input for the planned common receiver, not a claim that the integrated application has run it. Record the scenario hash, application and DLL identities, run reference, and bounded window with each result.
+
+| Authored native input | Receipt diagnostic | Eligible final SSE value or rule |
+| --- | --- | --- |
+| Pitch and bank, radians | `attitude_raw` records primary radians; `attitude_sample` records the candidate | Negate both, convert to degrees, and wrap roll to `[-180, 180)`. Reject invalid pitch or nonfinite attitude. A grouped packet requires both components. |
+| IAS, TAS, GS in knots; altitude in feet; VSI in feet per minute; turn rate in degrees per second | `instrument_sample` identifies the native name, index, value, and active gate | `ias_kt`, `tas_kt`, `gs_kt`, `altitude_ft`, `vertical_speed_fpm`, and `turn_rate_dps` retain valid native values. Speeds must be nonnegative. |
+| Magnetic heading and selected heading, degrees | `instrument_sample` | Wrap to `[0, 360)`. Selected heading also requires `AUTOPILOT AVAILABLE` equal to 1. |
+| Ball position | `instrument_sample` | Divide by 127 for `slip_skid`; reject values outside `[-1, 1]`. |
+| KOHLSMAN setting, inHg | `instrument_sample` | Multiply by `33.8638866667` for `baro_setting.pressure_hpa`; the receiver also formats `baro_text` in inHg. Invalid pressure is omitted. |
+| VS0, VS1, minimum rotation, and barber pole, knots | `instrument_sample` | Positive valid values populate the corresponding partial `airspeed_profile`; unsupported profile fields remain absent. |
+| Autopilot availability, selected altitude, and radio mode | `instrument_sample` for each | `selected_altitude_ft` requires availability equal to 1 and radio mode equal to 0. Each gate and target must remain fresh. |
+| IAS history | Individual IAS `instrument_sample` records | `ias_acceleration_ktps` derives from valid IAS acquisitions and their receiver times over a 500 ms window; it is not an authored native field. |
+
+A receipt is not proof of a final value: the worker logs raw observations even when lifecycle blocks publication. The `state_transition` record includes a published snapshot only on a transition, not for every instrument update. Capture SSE for other final checkpoints. SSE delivers latest snapshots and can coalesce publications, so do not assume a one-to-one packet count or exact wall-clock equality.
+
+Each optional observation expires independently after 1000 ms without receipt. Equal hold samples refresh their own field; unrelated samples do not. A gap sends no replacement values. Live output requires active, unpaused lifecycle and a fresh valid attitude. Pause, flight changes, and disconnect clear cached optional values; a new eligible attitude is required for recovery. Missing optional fields are omitted, while unavailable attitude is null. The [SimConnect guide](simconnect.md#telemetry-acquisition-and-availability) defines the current gates and normalization.
+
 ## Validation
 
 Select validation by scope:
