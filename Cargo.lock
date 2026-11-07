@@ -545,6 +545,11 @@ dependencies = [
 [[package]]
 name = "msfs2024-demo"
 version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "windows-sys",
+]
 
 [[package]]
 name = "neli"

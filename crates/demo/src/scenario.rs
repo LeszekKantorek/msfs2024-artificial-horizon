@@ -1,0 +1,484 @@
+use serde::Deserialize;
+use std::collections::HashSet;
+
+pub const CATALOG: &[(&str, &str)] = &[
+    ("PLANE PITCH DEGREES", "radians"),
+    ("PLANE PITCH DEGREES", "degrees"),
+    ("PLANE BANK DEGREES", "radians"),
+    ("PLANE BANK DEGREES", "degrees"),
+    ("AIRSPEED INDICATED", "knots"),
+    ("AIRSPEED TRUE", "knots"),
+    ("GROUND VELOCITY", "knots"),
+    ("INDICATED ALTITUDE:1", "feet"),
+    ("KOHLSMAN SETTING HG:1", "inHg"),
+    ("VERTICAL SPEED", "feet per minute"),
+    ("PLANE HEADING DEGREES MAGNETIC", "degrees"),
+    ("TURN COORDINATOR BALL", "position 128"),
+    ("TURN INDICATOR RATE", "degrees per second"),
+    ("DESIGN SPEED VS0", "knots"),
+    ("DESIGN SPEED VS1", "knots"),
+    ("DESIGN SPEED MIN ROTATION", "knots"),
+    ("AIRSPEED BARBER POLE", "knots"),
+    ("AUTOPILOT AVAILABLE", "bool"),
+    ("AUTOPILOT HEADING LOCK DIR:0", "degrees"),
+    ("AUTOPILOT ALTITUDE LOCK VAR:0", "feet"),
+    ("AUTOPILOT ALT RADIO MODE", "bool"),
+];
+
+#[derive(Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Initial {
+    pub sim_running: bool,
+    pub pause: Pause,
+    pub flight: Option<String>,
+}
+#[derive(Clone, Copy, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Pause {
+    Off,
+    Normal,
+    Active,
+}
+impl Pause {
+    pub fn flags(self) -> u32 {
+        match self {
+            Self::Off => 0,
+            Self::Normal => 1,
+            Self::Active => 4,
+        }
+    }
+}
+#[derive(Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
+enum Record {
+    Scenario {
+        format: String,
+        version: u32,
+        mode: String,
+        frame_period_ms: u64,
+        duration_us: u64,
+        initial: Initial,
+    },
+    Signal {
+        id: String,
+        simvar: String,
+        unit: String,
+        repeat: bool,
+    },
+    Hold {
+        signal: String,
+        value: f64,
+        duration_ms: u64,
+    },
+    Ramp {
+        signal: String,
+        from: f64,
+        to: f64,
+        duration_ms: u64,
+    },
+    Gap {
+        signal: String,
+        duration_ms: u64,
+    },
+    Pause {
+        at_us: u64,
+        mode: Pause,
+    },
+    Flight {
+        at_us: u64,
+        active: bool,
+    },
+    FlightLoaded {
+        at_us: u64,
+        flight: Option<String>,
+    },
+    Disconnect {
+        at_us: u64,
+        unavailable_ms: u64,
+    },
+}
+#[derive(Clone)]
+pub enum Event {
+    Pause(Pause),
+    Flight(bool),
+    FlightLoaded(Option<String>),
+    Disconnect(u64),
+}
+#[derive(Clone)]
+pub struct TimedEvent {
+    pub at: u64,
+    pub order: usize,
+    pub event: Event,
+}
+#[derive(Clone)]
+enum SegmentValue {
+    Hold(f64),
+    Ramp(f64, f64),
+    Gap,
+}
+#[derive(Clone)]
+struct Segment {
+    order: usize,
+    end: u64,
+    value: SegmentValue,
+}
+#[derive(Clone)]
+struct Track {
+    id: String,
+    name: String,
+    unit: String,
+    repeat: bool,
+    segments: Vec<Segment>,
+    duration: u64,
+}
+#[derive(Clone)]
+pub struct Scenario {
+    pub frame_us: u64,
+    pub duration: u64,
+    pub initial: Initial,
+    pub events: Vec<TimedEvent>,
+    tracks: Vec<Track>,
+}
+impl Scenario {
+    pub fn parse(text: &str, source: &str) -> Result<Self, String> {
+        if text.len() > 4 * 1024 * 1024 {
+            return Err(format!("{source}: file exceeds 4 MiB"));
+        }
+        let mut scenario: Option<Self> = None;
+        let mut ids = HashSet::new();
+        let mut pairs = HashSet::new();
+        for (i, line) in text.lines().enumerate() {
+            let loc = format!("{source}: line {}", i + 1);
+            if i >= 100_000 || line.len() > 65536 {
+                return Err(format!("{loc}: record or line limit exceeded"));
+            }
+            let record: Record = serde_json::from_str(line).map_err(|e| format!("{loc}: {e}"))?;
+            match record {
+                Record::Scenario {
+                    format,
+                    version,
+                    mode,
+                    frame_period_ms,
+                    duration_us,
+                    initial,
+                } if i == 0 => {
+                    if format != "msfs-efi-simconnect-demo"
+                        || version != 1
+                        || mode != "scripted"
+                        || frame_period_ms == 0
+                        || duration_us == 0
+                    {
+                        return Err(format!("{loc}: invalid scenario header"));
+                    }
+                    let frame_us = frame_period_ms
+                        .checked_mul(1000)
+                        .ok_or_else(|| format!("{loc}: frame_period_ms overflow"))?;
+                    if initial
+                        .flight
+                        .as_ref()
+                        .is_some_and(|s| s.len() >= 260 || s.contains('\0'))
+                    {
+                        return Err(format!("{loc}: initial.flight is invalid"));
+                    }
+                    scenario = Some(Self {
+                        frame_us,
+                        duration: duration_us,
+                        initial,
+                        events: vec![],
+                        tracks: vec![],
+                    });
+                }
+                Record::Scenario { .. } => {
+                    return Err(format!("{loc}: scenario header must be first and unique"));
+                }
+                record => {
+                    let s = scenario
+                        .as_mut()
+                        .ok_or_else(|| format!("{loc}: missing scenario header"))?;
+                    match record {
+                        Record::Signal {
+                            id,
+                            simvar,
+                            unit,
+                            repeat,
+                        } => {
+                            if id.is_empty()
+                                || !ids.insert(id.clone())
+                                || !pairs.insert((simvar.clone(), unit.clone()))
+                                || !CATALOG.contains(&(simvar.as_str(), unit.as_str()))
+                            {
+                                return Err(format!(
+                                    "{loc}: invalid or duplicate signal id or simvar/unit"
+                                ));
+                            }
+                            s.tracks.push(Track {
+                                id,
+                                name: simvar,
+                                unit,
+                                repeat,
+                                segments: vec![],
+                                duration: 0,
+                            });
+                        }
+                        Record::Hold {
+                            signal,
+                            value,
+                            duration_ms,
+                        } => s.segment(&loc, &signal, duration_ms, SegmentValue::Hold(value), i)?,
+                        Record::Ramp {
+                            signal,
+                            from,
+                            to,
+                            duration_ms,
+                        } => {
+                            s.segment(&loc, &signal, duration_ms, SegmentValue::Ramp(from, to), i)?
+                        }
+                        Record::Gap {
+                            signal,
+                            duration_ms,
+                        } => s.segment(&loc, &signal, duration_ms, SegmentValue::Gap, i)?,
+                        Record::Pause { at_us, mode } => {
+                            s.event(&loc, at_us, Event::Pause(mode), i)?
+                        }
+                        Record::Flight { at_us, active } => {
+                            s.event(&loc, at_us, Event::Flight(active), i)?
+                        }
+                        Record::FlightLoaded { at_us, flight } => {
+                            if flight
+                                .as_ref()
+                                .is_some_and(|v| v.len() >= 260 || v.contains('\0'))
+                            {
+                                return Err(format!("{loc}: invalid flight"));
+                            }
+                            s.event(&loc, at_us, Event::FlightLoaded(flight), i)?;
+                        }
+                        Record::Disconnect {
+                            at_us,
+                            unavailable_ms,
+                        } => {
+                            let duration = unavailable_ms
+                                .checked_mul(1000)
+                                .filter(|v| *v > 0)
+                                .ok_or_else(|| format!("{loc}: invalid unavailable_ms"))?;
+                            at_us
+                                .checked_add(duration)
+                                .ok_or_else(|| format!("{loc}: disconnect deadline overflow"))?;
+                            s.event(&loc, at_us, Event::Disconnect(duration), i)?;
+                        }
+                        Record::Scenario { .. } => unreachable!(),
+                    }
+                }
+            }
+        }
+        let mut s = scenario.ok_or_else(|| format!("{source}: missing scenario header"))?;
+        if s.tracks.iter().any(|t| t.segments.is_empty()) {
+            return Err(format!("{source}: signal has no segments"));
+        }
+        s.events.sort_by_key(|e| e.at);
+        Ok(s)
+    }
+    fn segment(
+        &mut self,
+        loc: &str,
+        id: &str,
+        ms: u64,
+        value: SegmentValue,
+        order: usize,
+    ) -> Result<(), String> {
+        let t = self
+            .tracks
+            .iter_mut()
+            .find(|t| t.id == id)
+            .ok_or_else(|| format!("{loc}: unknown signal {id}"))?;
+        if ms == 0 {
+            return Err(format!("{loc}: duration_ms must be positive"));
+        }
+        let n = ms
+            .checked_mul(1000)
+            .and_then(|n| t.duration.checked_add(n))
+            .ok_or_else(|| format!("{loc}: duration_ms overflow"))?;
+        t.duration = n;
+        t.segments.push(Segment {
+            end: n,
+            value,
+            order,
+        });
+        Ok(())
+    }
+    fn event(&mut self, loc: &str, at: u64, event: Event, order: usize) -> Result<(), String> {
+        if at >= self.duration {
+            return Err(format!("{loc}: at_us outside pass"));
+        }
+        self.events.push(TimedEvent { at, event, order });
+        Ok(())
+    }
+    #[cfg(test)]
+    pub fn value(&self, name: &str, unit: &str, elapsed: u64) -> Option<f64> {
+        self.ordered_value(name, unit, elapsed)
+            .map(|(value, _)| value)
+    }
+    pub fn ordered_value(&self, name: &str, unit: &str, elapsed: u64) -> Option<(f64, usize)> {
+        let (track, convert) = self
+            .tracks
+            .iter()
+            .find(|t| t.name == name && t.unit == unit)
+            .map(|t| (t, false))
+            .or_else(|| {
+                if (name == "PLANE PITCH DEGREES" || name == "PLANE BANK DEGREES")
+                    && (unit == "degrees" || unit == "radians")
+                {
+                    self.tracks
+                        .iter()
+                        .find(|t| t.name == name && (t.unit == "degrees" || t.unit == "radians"))
+                        .map(|t| (t, true))
+                } else {
+                    None
+                }
+            })?;
+        let mut time = elapsed % self.duration;
+        if track.repeat {
+            time %= track.duration;
+        } else if time >= track.duration {
+            return None;
+        }
+        let mut start = 0;
+        for segment in &track.segments {
+            if time < segment.end {
+                let value = match segment.value {
+                    SegmentValue::Hold(v) => v,
+                    SegmentValue::Ramp(a, b) => {
+                        a + (b - a) * (time - start) as f64 / (segment.end - start) as f64
+                    }
+                    SegmentValue::Gap => return None,
+                };
+                return Some((
+                    if convert {
+                        if unit == "degrees" {
+                            value.to_degrees()
+                        } else {
+                            value.to_radians()
+                        }
+                    } else {
+                        value
+                    },
+                    segment.order,
+                ));
+            }
+            start = segment.end;
+        }
+        None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn header() -> &'static str {
+        r#"{"type":"scenario","format":"msfs-efi-simconnect-demo","version":1,"mode":"scripted","frame_period_ms":50,"duration_us":15000000,"initial":{"sim_running":true,"pause":"off","flight":"demo.flt"}}"#
+    }
+    #[test]
+    fn holds_ramps_gaps_and_passes_follow_absolute_time() {
+        let input = format!(
+            "{}\n{}",
+            header(),
+            r#"{"type":"signal","id":"ias","simvar":"AIRSPEED INDICATED","unit":"knots","repeat":false}
+{"type":"hold","signal":"ias","value":100,"duration_ms":5000}
+{"type":"ramp","signal":"ias","from":100,"to":150,"duration_ms":5000}
+{"type":"hold","signal":"ias","value":150,"duration_ms":1000}
+{"type":"gap","signal":"ias","duration_ms":4000}"#
+        );
+        let s = Scenario::parse(&input, "fixture").unwrap();
+        for t in [0, 50_000, 4_999_999] {
+            assert_eq!(s.value("AIRSPEED INDICATED", "knots", t), Some(100.0));
+        }
+        assert_eq!(
+            s.value("AIRSPEED INDICATED", "knots", 7_500_000),
+            Some(125.0)
+        );
+        assert_eq!(
+            s.value("AIRSPEED INDICATED", "knots", 10_000_000),
+            Some(150.0)
+        );
+        assert_eq!(s.value("AIRSPEED INDICATED", "knots", 11_000_000), None);
+        assert_eq!(
+            s.value("AIRSPEED INDICATED", "knots", 15_000_000),
+            Some(100.0)
+        );
+    }
+    #[test]
+    fn sparse_empty_and_invalid_inputs() {
+        assert!(Scenario::parse(header(), "empty").is_ok());
+        assert!(
+            Scenario::parse(
+                &format!(
+                    "{}\n{}",
+                    header(),
+                    r#"{"type":"pause","at_us":1,"mode":"normal"}"#
+                ),
+                "events"
+            )
+            .is_ok()
+        );
+        assert!(Scenario::parse(&format!("{}\n{}",header(),r#"{"type":"signal","id":"bad","simvar":"AIRSPEED INDICATED","unit":"knot","repeat":true}"#),"bad").err().unwrap().contains("line 2"));
+        assert!(
+            Scenario::parse(
+                &format!(
+                    "{}\n{}",
+                    header(),
+                    r#"{"type":"flight","at_us":1,"active":true,"active":false}"#
+                ),
+                "bad"
+            )
+            .is_err()
+        );
+    }
+    #[test]
+    fn embedded_default_is_valid() {
+        Scenario::parse(include_str!("../../../demo_scenario.jsonl"), "default").unwrap();
+    }
+
+    #[test]
+    fn default_matches_independent_native_checkpoints() {
+        let s = Scenario::parse(include_str!("../../../demo_scenario.jsonl"), "default").unwrap();
+        for (name, unit, time, expected) in [
+            ("AIRSPEED INDICATED", "knots", 5_000_000, 75.0),
+            ("AIRSPEED TRUE", "knots", 8_000_000, 160.0),
+            ("GROUND VELOCITY", "knots", 10_000_000, 170.0),
+            ("INDICATED ALTITUDE:1", "feet", 2_950_000, 120.0),
+            ("INDICATED ALTITUDE:1", "feet", 3_000_000, 980.0),
+            ("INDICATED ALTITUDE:1", "feet", 18_000_000, 8500.0),
+            ("AUTOPILOT ALTITUDE LOCK VAR:0", "feet", 18_000_000, 10000.0),
+            ("AUTOPILOT ALTITUDE LOCK VAR:0", "feet", 108_000_000, 1000.0),
+            (
+                "PLANE HEADING DEGREES MAGNETIC",
+                "degrees",
+                7_000_000,
+                351.0,
+            ),
+            ("KOHLSMAN SETTING HG:1", "inHg", 6_000_000, 30.12),
+            ("TURN COORDINATOR BALL", "position 128", 10_000_000, 127.0),
+        ] {
+            let actual = s.value(name, unit, time).unwrap();
+            assert!(
+                (actual - expected).abs() < 1e-8,
+                "{name} at {time}: {actual}"
+            );
+        }
+        assert_eq!(
+            s.value("AUTOPILOT ALTITUDE LOCK VAR:0", "feet", 17_000_000),
+            None
+        );
+        assert_eq!(s.value("VERTICAL SPEED", "feet per minute", 0), None);
+        assert_eq!(
+            s.value("AIRSPEED INDICATED", "knots", 198_000_000),
+            Some(0.0)
+        );
+        assert!(
+            (s.value("PLANE PITCH DEGREES", "radians", 2_000_000)
+                .unwrap()
+                + std::f64::consts::PI / 12.0)
+                .abs()
+                < 1e-8
+        );
+    }
+}

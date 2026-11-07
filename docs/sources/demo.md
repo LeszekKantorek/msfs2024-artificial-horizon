@@ -204,9 +204,9 @@ Heading boundaries and validation follow these rules:
 
 ## Planned native Demo playback
 
-The accepted native Demo design is not implemented yet. The preceding sections describe the current direct provider. [ADR 0009](../adr/0009-native-demo.md) records the change and its relationship to earlier decisions. The [scenario catalog](demo-scenarios.md) identifies planned scenarios; the [SimConnect guide](simconnect.md#planned-common-native-consumer) owns the native catalog and error outcomes.
+The workspace contains a native Demo DLL, but the application still uses the direct provider described in the preceding sections. [ADR 0009](../adr/0009-native-demo.md) records the change and its relationship to earlier decisions. The [scenario catalog](demo-scenarios.md) identifies planned scenarios; the [SimConnect guide](simconnect.md#planned-common-native-consumer) owns the native catalog and error outcomes.
 
-The future default is embedded from repository-root `demo_scenario.jsonl`; explicit files use the same parser. It preserves applicable native-input phases and independent boundary checks, but does not supply fictional VFE/VNO/VNE or VX/VY/VG. IAS acceleration remains the receiver estimator. Existing full-profile presentation fixtures and requirements remain valid. Recorded-session conversion, diagnostic schema 4/5 import, and observations mode are excluded. Forward scenario-to-output verification relates the selected input, revision and timing to normalized log/SSE observations; it does not reconstruct the scenario from a recording.
+The DLL embeds repository-root `demo_scenario.jsonl`; explicit files use the same parser. It preserves applicable native-input phases and independent boundary checks, but does not supply fictional VFE/VNO/VNE or VX/VY/VG. IAS acceleration remains the receiver estimator. Existing full-profile presentation fixtures and requirements remain valid. Recorded-session conversion, diagnostic schema 4/5 import, and observations mode are excluded. Forward scenario-to-output verification relates the selected input, revision and timing to normalized log/SSE observations; it does not reconstruct the scenario from a recording.
 
 ### JSONL meaning
 
@@ -248,8 +248,9 @@ The first record is a header:
 | Ordering | Per-track segments follow file order. Equal-time events and observations preserve record order |
 | Validation | Positive segment durations; all timestamped records fall within one pass; track periods must be explicit and coherent |
 
-The exact resource caps belong to implementation, but must be finite and documented.
-Reject oversized lines/files, excessive records, invalid numeric values, and overflowing schedules before acquisition.
+The Demo parser limits files to 4 MiB, lines to 65,536 bytes, and files to 100,000 records. It rejects larger inputs, invalid numeric values, and overflowing schedules before acquisition.
+
+The receive queue holds at most 8,192 packets. On overflow, dispatch reports a failure rather than silently discarding a lifecycle transition. The scheduler skips missed frame observations and evaluates current values on the next frame. These policies are Demo behavior; SDK overflow and missed-frame behavior remain unverified.
 
 Configure validates without starting time. The first successful Open starts the monotonic clock; registration overlaps scenario time. The origin persists across reconnects. The DLL owns the emitter, connection state, and receive buffers. Open borrows the notification handle; successful Close stops and joins the emitter before releasing its use. Do not rewrite queued packets on dispatch. The [native consumer contract](simconnect.md#dispatch-and-error-limits) records the unresolved scheduler, empty-queue, and overflow evidence.
 

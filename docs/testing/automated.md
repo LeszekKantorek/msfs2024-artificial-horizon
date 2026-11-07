@@ -30,7 +30,7 @@ The debug workspace build prepares `target/x86_64-pc-windows-msvc/debug/demo.dll
 Pass its absolute path to those tests; hashed test executables under `debug/deps/` do not identify the application executable directory.
 The final step builds the release executable and `demo.dll` together in `target/x86_64-pc-windows-msvc/release/`.
 The executable is named `msfs2024-artificial-horizon.exe`.
-The DLL is a placeholder and does not yet provide a working source.
+The DLL provides native Demo playback; application integration remains planned.
 Tests use the debug profile; the release build compiles optimized artifacts separately.
 The root application is the default workspace member, so `cargo run` does not build the Demo DLL.
 
