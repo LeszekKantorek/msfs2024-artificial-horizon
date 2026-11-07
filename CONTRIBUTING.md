@@ -151,11 +151,29 @@ Follow the [work organization model](docs/work-organization.md) for issue levels
 
 1. Read the Subtask, its Task, and the relevant Epic. For work without an issue, establish the requested outcome and validation expectations directly.
 2. Check prerequisites and current context against the relevant source sections and code. Use accepted decisions and report consequential gaps before dependent work.
-3. Create a branch from current `main` named `change/<topic>`.
+3. Create a branch from current `main` named `change/<topic>` in an additional working tree under `.worktrees/` in the main checkout. Follow [working tree setup](#additional-working-trees).
 4. Deliver one reviewable outcome under the [change requirements](#change-requirements). A diagnostic, research, or documentation Subtask does not require application code changes.
 5. Update affected documentation, contracts, and fixtures.
 6. Select and run checks through the [validation scope matrix](docs/testing/index.md#validation-by-change-scope).
 7. Follow [PR preparation](#prepare-a-pull-request) to prepare the description or publish the requested PR.
+
+### Additional working trees
+
+From the main checkout, replace `<topic>` with a name for the change and create the working tree:
+
+```powershell
+git worktree add -b change/<topic> .worktrees/<topic> main
+```
+
+Run development commands from the new working tree. Git ignores `.worktrees/` in the main checkout, but `git clean -fdx` can delete ignored working trees and their local changes.
+
+After completing the work, remove the working tree from the main checkout:
+
+```powershell
+git worktree remove .worktrees/<topic>
+```
+
+Removing the working tree does not remove its branch.
 
 ### Prepare a pull request
 

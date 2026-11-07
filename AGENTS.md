@@ -10,6 +10,7 @@ Apply these scope, authorization, and communication requirements:
 * Present options and trade-offs for material project decisions. Sol may resolve technical choices within accepted scope; changes to approved requirements or direction require a human decision.
 * Distinguish facts, hypotheses, proposals, and accepted decisions. Question assumptions when evidence warrants it, and surface unresolved conflicts between sources.
 * Check the current repository and relevant remote state when they may have changed; do not rely on conversation memory as the current state.
+* Create additional working trees under `.worktrees/` in the main checkout, following the [contribution workflow](CONTRIBUTING.md#workflow).
 * Do not automatically edit historical or completed GitHub issues. Change those records only at the user's explicit request.
 * Maintain Epics, Tasks, and Subtasks only within authorized work. Planning alone does not authorize publication or reorganization, and an open issue does not authorize editorial changes.
 * Preserve useful issue requirements in their documentation owner without rewriting the source issue. Follow the [issue-record rules](.context/repository-instructions.md#github-issue-records).
