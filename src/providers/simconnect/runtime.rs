@@ -21,7 +21,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-/// Acquisition options; omission selects SimConnect.dll beside the running executable.
+/// Acquisition options; omission selects demo.dll beside the running executable.
 #[derive(Debug, Default)]
 pub struct SimConnectConfig {
     pub dll: Option<PathBuf>,

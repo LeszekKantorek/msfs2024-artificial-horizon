@@ -461,8 +461,21 @@ fn demo_serves_http_with_an_invalid_sibling_dll() {
 fn explicit_scenario_reaches_sse_and_independent_gap_expiry() {
     let fixture = Fixture::new();
     let binary = fixture.binary();
-    let scenario = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/demo-evidence.jsonl");
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/demo-evidence.jsonl");
+    let scenario = fixture.0.join("bounded-evidence.jsonl");
+    let mut input = fs::read_to_string(source).unwrap();
+    // This no-op event marks the midpoint without changing the S6 signal tracks.
+    input.push_str("{\"type\":\"pause\",\"at_us\":7500000,\"mode\":\"off\"}\n");
+    let scenario_sha = {
+        use sha2::{Digest, Sha256};
+        format!("{:x}", Sha256::digest(input.as_bytes()))
+    };
+    fs::write(&scenario, input).unwrap();
     let log = fixture.0.join("demo-log.jsonl");
+    let started_unix_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis();
     let started = Instant::now();
     let mut app = Application::start(
         &binary,
@@ -483,6 +496,7 @@ fn explicit_scenario_reaches_sse_and_independent_gap_expiry() {
     let mut pending = String::new();
     let mut hold_first = None;
     let mut hold_late = false;
+    let mut ramp_snapshot = None;
     let mut gap = false;
     let mut normal_pause = false;
     let mut normal_resume = false;
@@ -539,6 +553,11 @@ fn explicit_scenario_reaches_sse_and_independent_gap_expiry() {
                 assert!((snapshot["attitude"]["pitch_deg"].as_f64().unwrap() - 15.0).abs() < 1e-9);
                 assert!((snapshot["attitude"]["roll_deg"].as_f64().unwrap() + 30.0).abs() < 1e-9);
             }
+            if let Some(value) = snapshot["ias_kt"].as_f64()
+                && (124.0..=126.0).contains(&value)
+            {
+                ramp_snapshot = Some(value);
+            }
             if hold_late
                 && started.elapsed() > Duration::from_secs(11)
                 && snapshot.get("ias_kt").is_none()
@@ -563,11 +582,18 @@ fn explicit_scenario_reaches_sse_and_independent_gap_expiry() {
         "pause/resume across the next pass was not observed: {}",
         app.messages()
     );
+    assert!(
+        ramp_snapshot.is_some(),
+        "no SSE snapshot near the independent 125-kt midpoint"
+    );
     app.assert_health();
     let records = fs::read_to_string(log).unwrap();
-    let observed = records
+    let records: Vec<serde_json::Value> = records
         .lines()
         .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+        .collect();
+    let observed = records
+        .iter()
         .filter(|r| {
             r["kind"] == "instrument_sample"
                 && r["data"]["name"] == "AIRSPEED INDICATED"
@@ -575,6 +601,38 @@ fn explicit_scenario_reaches_sse_and_independent_gap_expiry() {
         })
         .count();
     assert!(observed > 2, "raw diagnostic IAS receipts: {observed}");
+    let marker = records
+        .iter()
+        .enumerate()
+        .filter(|(_, r)| {
+            r["kind"] == "dispatch"
+                && r["data"]["message"]["Event"]["event_id"] == 11
+                && r["data"]["message"]["Event"]["data"] == 0
+        })
+        .nth(2)
+        .map(|(i, _)| i)
+        .expect("initial, 2-second, and 7.5-second pause-off events");
+    let ias = |r: &serde_json::Value| {
+        (r["kind"] == "instrument_sample" && r["data"]["name"] == "AIRSPEED INDICATED")
+            .then(|| r["data"]["value"]["value"].as_f64())
+            .flatten()
+    };
+    let before = records[..marker].iter().rev().find_map(ias).unwrap();
+    let after = records[marker + 1..].iter().find_map(ias).unwrap();
+    assert!(
+        (124.0..=125.0).contains(&before),
+        "last IAS before 7.5s marker: {before}"
+    );
+    assert!(
+        (125.0..=126.0).contains(&after),
+        "first IAS after 7.5s marker: {after}"
+    );
+    eprintln!(
+        "S6 run start_unix_ms={started_unix_ms}, scenario_sha256={scenario_sha}, session_id={}, marker_elapsed_us={}, IAS before={before}, after={after}, SSE near midpoint={}",
+        records[marker]["session_id"],
+        records[marker]["elapsed_us"],
+        ramp_snapshot.unwrap()
+    );
 }
 
 fn wait_live_ias(app: &Application) -> (serde_json::Value, TcpStream) {
@@ -715,4 +773,114 @@ fn sparse_ias_scenario_does_not_fabricate_attitude_or_publish_optional_values() 
         }
     }
     assert!(saw);
+}
+
+#[test]
+fn inactive_flight_waits_for_new_attitude_after_resume() {
+    let fixture = Fixture::new();
+    let binary = fixture.binary();
+    let scenario = fixture.0.join("inactive.jsonl");
+    let log = fixture.0.join("inactive-log.jsonl");
+    fs::write(&scenario,concat!(
+        "{\"type\":\"scenario\",\"format\":\"msfs-efi-simconnect-demo\",\"version\":1,\"mode\":\"scripted\",\"frame_period_ms\":50,\"duration_us\":10000000,\"initial\":{\"sim_running\":true,\"pause\":\"off\",\"flight\":\"test\"}}\n",
+        "{\"type\":\"flight\",\"at_us\":500000,\"active\":false}\n",
+        "{\"type\":\"flight\",\"at_us\":1500000,\"active\":true}\n",
+        "{\"type\":\"signal\",\"id\":\"pitch\",\"simvar\":\"PLANE PITCH DEGREES\",\"unit\":\"radians\",\"repeat\":false}\n",
+        "{\"type\":\"hold\",\"signal\":\"pitch\",\"value\":0,\"duration_ms\":1200}\n",
+        "{\"type\":\"gap\",\"signal\":\"pitch\",\"duration_ms\":1500}\n",
+        "{\"type\":\"hold\",\"signal\":\"pitch\",\"value\":0.1,\"duration_ms\":7300}\n",
+        "{\"type\":\"signal\",\"id\":\"bank\",\"simvar\":\"PLANE BANK DEGREES\",\"unit\":\"radians\",\"repeat\":false}\n",
+        "{\"type\":\"hold\",\"signal\":\"bank\",\"value\":0,\"duration_ms\":10000}\n"
+    )).unwrap();
+    let app = Application::start(
+        &binary,
+        &fixture.0,
+        &[
+            "--scenario",
+            scenario.to_str().unwrap(),
+            "--log",
+            log.to_str().unwrap(),
+        ],
+    );
+    let mut stream = app.request("/api/v1/events");
+    stream
+        .set_read_timeout(Some(Duration::from_millis(100)))
+        .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(7);
+    let mut pending = String::new();
+    let mut saw_live = false;
+    let mut saw_waiting = false;
+    let mut resumed_at = None;
+    let mut held_waiting = false;
+    let mut recovered = false;
+    while Instant::now() < deadline && !recovered {
+        if saw_waiting && resumed_at.is_none() {
+            let content = fs::read_to_string(&log).unwrap_or_default();
+            let active = content
+                .lines()
+                .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+                .any(|r| {
+                    r["kind"] == "dispatch"
+                        && r["data"]["message"]["Event"]["event_id"] == 10
+                        && r["data"]["message"]["Event"]["data"] == 1
+                });
+            if active {
+                resumed_at = Some(Instant::now());
+            }
+        }
+        if let Some(t) = resumed_at
+            && t.elapsed() > Duration::from_millis(400)
+        {
+            held_waiting = true;
+        }
+        let mut bytes = [0; 8192];
+        match stream.read(&mut bytes) {
+            Ok(0) => panic!("SSE closed"),
+            Ok(n) => pending.push_str(&String::from_utf8_lossy(&bytes[..n])),
+            Err(e)
+                if matches!(
+                    e.kind(),
+                    std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
+                ) =>
+            {
+                continue;
+            }
+            Err(e) => panic!("{e}"),
+        }
+        while let Some(pos) = pending.find('\n') {
+            let line = pending[..pos].trim_end_matches('\r').to_owned();
+            pending.drain(..=pos);
+            let Some(data) = line.strip_prefix("data: ") else {
+                continue;
+            };
+            let Ok(snapshot) = serde_json::from_str::<serde_json::Value>(data) else {
+                continue;
+            };
+            if snapshot["state"] == "live" {
+                if !saw_waiting {
+                    saw_live = true;
+                } else if resumed_at.is_some() {
+                    assert!(
+                        held_waiting,
+                        "live resumed before a fresh attitude was eligible"
+                    );
+                    assert!(
+                        (snapshot["attitude"]["pitch_deg"].as_f64().unwrap()
+                            + 0.1_f64.to_degrees())
+                        .abs()
+                            < 1e-9
+                    );
+                    recovered = true;
+                }
+            } else if saw_live && snapshot["state"] == "waiting" {
+                assert!(snapshot["attitude"].is_null());
+                saw_waiting = true;
+            }
+        }
+    }
+    assert!(
+        saw_live && saw_waiting && resumed_at.is_some() && held_waiting && recovered,
+        "incomplete inactive/resume sequence: {}",
+        app.messages()
+    );
 }

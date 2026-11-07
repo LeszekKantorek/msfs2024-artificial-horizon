@@ -38,7 +38,7 @@ The native VSI track follows the scripted altitude phases and omits values at au
 
 The magnetic heading and selected-heading tracks repeat every 18 seconds. The selected heading is absent during the authored gap. The receiver normalizes heading values.
 
-## Planned native Demo playback
+## Native Demo playback
 
 The application uses the native Demo DLL through the shared receiver. [ADR 0009](../adr/0009-native-demo.md) records the change and its relationship to earlier decisions. The [scenario catalog](demo-scenarios.md) identifies planned scenarios; the [SimConnect guide](simconnect.md#planned-common-native-consumer) owns the native catalog and error outcomes.
 

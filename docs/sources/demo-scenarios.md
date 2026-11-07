@@ -1,10 +1,10 @@
 # Planned Demo scenario catalog
 
-These scenarios are planned and are not yet delivered. The [Demo contract](demo.md#planned-native-demo-playback) defines playback; scenario files will own values, durations, event order, and fault parameters. Each scenario can supply a subset of signals or only events. The [native error contract](simconnect.md#dispatch-and-error-limits) owns error outcomes.
+These scenarios are planned and are not yet delivered. The [Demo contract](demo.md#native-demo-playback) defines playback; scenario files will own values, durations, event order, and fault parameters. Each scenario can supply a subset of signals or only events. The [native error contract](simconnect.md#dispatch-and-error-limits) owns error outcomes.
 
 | Scenario | Purpose and assumptions | Expected completion | Planned owner |
 | --- | --- | --- | --- |
-| Default boundaries | Preserve applicable current native-input cycles and independent boundary checks | Repeats until shutdown | [Demo contract](demo.md#planned-native-demo-playback) |
+| Default boundaries | Preserve applicable current native-input cycles and independent boundary checks | Repeats until shutdown | [Demo contract](demo.md#native-demo-playback) |
 | Flight tour | Fictional flight progression, both pause modes, and recoverable connection changes; no flight dynamics or ground-contact model | Repeats until shutdown | [Demo lifecycle](demo.md#lifecycle-and-faults) |
 | Simulator lifecycle | Connection availability, inactive flight, pause, flight change, and reconnect | Recovers where scheduled and repeats | [Demo lifecycle](demo.md#lifecycle-and-faults) |
 | Independent availability | Equal fresh samples, signal gaps, target gating, and recovery | Independent signals remain usable | [Demo tracks](demo.md#scripted-signal-tracks) |
