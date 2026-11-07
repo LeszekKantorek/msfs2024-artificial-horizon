@@ -525,7 +525,7 @@ fn actual_dll_notifies_and_retains_packets() {
         assert_eq!(close(h), 0);
         std::fs::write(&scenario, concat!(
             "{\"type\":\"scenario\",\"format\":\"msfs-efi-simconnect-demo\",\"version\":1,\"mode\":\"scripted\",\"frame_period_ms\":50,\"duration_us\":2000000,\"initial\":{\"sim_running\":true,\"pause\":\"off\",\"flight\":\"test\"}}\n",
-            "{\"type\":\"disconnect\",\"at_us\":50000,\"unavailable_ms\":300}\n",
+            "{\"type\":\"disconnect\",\"at_us\":0,\"unavailable_ms\":700}\n",
             "{\"type\":\"signal\",\"id\":\"ias\",\"simvar\":\"AIRSPEED INDICATED\",\"unit\":\"knots\",\"repeat\":false}\n",
             "{\"type\":\"hold\",\"signal\":\"ias\",\"value\":123,\"duration_ms\":2000}\n"
         )).unwrap();
@@ -541,15 +541,26 @@ fn actual_dll_notifies_and_retains_packets() {
             ),
             0
         );
-        thread::sleep(Duration::from_millis(120));
-        let mut quit = false;
-        while next(h, &mut p, &mut n) == 0 {
-            let b = std::slice::from_raw_parts(p as *const u8, n as usize);
-            if u32::from_le_bytes(b[8..12].try_into().unwrap()) == 3 {
-                quit = true;
-            }
-        }
-        assert!(quit);
+        assert_eq!(next(h, &mut p, &mut n), 0);
+        assert_eq!(
+            u32::from_le_bytes(
+                std::slice::from_raw_parts(p as *const u8, n as usize)[8..12]
+                    .try_into()
+                    .unwrap()
+            ),
+            2
+        );
+        assert_eq!(next(h, &mut p, &mut n), 0);
+        assert_eq!(
+            u32::from_le_bytes(
+                std::slice::from_raw_parts(p as *const u8, n as usize)[8..12]
+                    .try_into()
+                    .unwrap()
+            ),
+            3
+        );
+        // A changed file must not replace the cached scenario during retries or reconnects.
+        std::fs::write(&scenario, "invalid replacement").unwrap();
         assert_eq!(close(h), 0);
         assert!(
             open(
@@ -561,7 +572,7 @@ fn actual_dll_notifies_and_retains_packets() {
                 u32::MAX
             ) < 0
         );
-        thread::sleep(Duration::from_millis(300));
+        thread::sleep(Duration::from_millis(800));
         assert_eq!(
             open(
                 &mut h,
@@ -740,6 +751,7 @@ fn actual_dll_notifies_and_retains_packets() {
             ) < 0
         );
         assert!(h.is_null());
+        std::fs::write(&scenario, "invalid replacement after failed Open").unwrap();
         assert_eq!(
             open(
                 &mut h,

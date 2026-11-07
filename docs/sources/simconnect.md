@@ -72,7 +72,7 @@ The CLI applies these restrictions:
 
 ## Public API
 
-The `providers::simconnect` module exports the acquisition interface independently of HTTP and process arguments.
+The `providers::simconnect` module exports the acquisition interface independently of HTTP. Demo playback also requires the host executable to pass `--scenario` in its process arguments.
 
 | Interface | Contract |
 | --- | --- |
@@ -86,7 +86,7 @@ The `providers::simconnect` module exports the acquisition interface independent
 The provider API preserves these boundaries:
 
 * The provider creates no hidden telemetry channel and never starts HTTP.
-* Configuration carries an optional Demo scenario path, but no process arguments or HTTP settings.
+* Configuration carries an optional Demo scenario path for source validation and log protection, but no HTTP settings. The Demo DLL reads the scenario path from the process arguments; callers using Demo must pass the same path in `--scenario`.
 * DLL resolution uses the same executable-relative default for library and CLI calls, before opening diagnostics or loading native code.
 * Dropping the running future signals worker cancellation. Normal shutdown also waits for the worker and reports cleanup results.
 * A permanently blocked native call has no guaranteed completion deadline.
@@ -212,7 +212,7 @@ An empty queue ends the current batch early. Cancellation exits reception and st
 
 ## Planned common native consumer
 
-The accepted [native Demo decision](../adr/0009-native-demo.md) is implemented. The Demo DLL and official DLL use the same receiver, decoder, lifecycle gates, Publisher, and HTTP/SSE path. Source identity is selected before channel creation and stays Demo or SimConnect; a basename identifies selection, not authenticity. The Demo setup export is private to Demo and does not add an acquisition path.
+The accepted [native Demo decision](../adr/0009-native-demo.md) is implemented. The Demo DLL and official DLL use the same receiver, decoder, lifecycle gates, Publisher, and HTTP/SSE path. Source identity is selected before channel creation and stays Demo or SimConnect; a basename identifies selection, not authenticity. The Demo DLL reads its scenario from the host process arguments during Open.
 
 ### Used API and evidence
 

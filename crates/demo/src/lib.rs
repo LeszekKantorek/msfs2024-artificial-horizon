@@ -399,7 +399,7 @@ pub unsafe extern "C" fn SimConnect_Open(
             state.queue.clear();
             VecDeque::new()
         };
-        if now < state.life.unavailable_until {
+        if g.origin.is_some() && now < state.life.unavailable_until {
             g.lifecycle = Some(state.life);
             return FAIL;
         }
