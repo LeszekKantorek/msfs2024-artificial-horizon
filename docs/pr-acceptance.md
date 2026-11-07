@@ -6,7 +6,7 @@ The acceptance control uses this workflow configuration:
 | --- | --- |
 | Workflow | `PR acceptance` |
 | Runner | `ubuntu-latest` |
-| PR scope | Open PRs targeting `main` |
+| Scope | Open PRs targeting `main`; planning-file check on pushes to `main` |
 | Published commit status | `Acceptance criteria` |
 
 > The main ruleset must require `Acceptance criteria` to block merge. The `Build & Test` status must not be required.
@@ -51,14 +51,24 @@ Checklist parsing and wording follow these rules:
 
 > A checked box records a verification claim. The workflow cannot establish whether a physical-device test occurred.
 
+### Planning files
+
+Files under repository-root `.plans/` may be committed on working branches. They must be absent from the final tree proposed for `main`, including `.gitkeep` or other placeholders.
+
+* For each PR targeting `main`, the validator reads the immutable head commit and its root Git tree through the API. Any root `.plans` entry fails the existing `Acceptance criteria` status, including a directory, file, symlink, or submodule.
+* The check reads the complete root tree rather than only changed files. Plans retained from an earlier commit still block; plans removed from the final tree do not block because they remain in history.
+* Ordinary branch commits do not trigger this rule unless proposed for `main`. Plan links can point to a preserved planning commit.
+* A push to `main` checks the pushed commit even when no PR is open. This detects a violation after the push; preventing bypass pushes still depends on the repository's existing branch protections.
+* Unreadable, invalid, or truncated tree responses prevent a successful check. The workflow never executes or checks out PR code.
+
 ## Understand the result
 
 | Status | Meaning | Action |
 | --- | --- | --- |
 | `pending` | A PR event started fresh validation | Wait for the result |
-| `failure` | Supplied closing references are invalid, supplied issue criteria or PR tasks are unchecked, or metadata changed during validation | Read the workflow log and correct the listed items |
+| `failure` | Supplied closing references are invalid, supplied issue criteria or PR tasks are unchecked, `.plans` is present in the proposed main tree, or metadata changed during validation | Read the workflow log and correct the listed items |
 | `error` | Current GitHub data could not be read or validation failed | Resolve the API failure and rerun the workflow |
-| `success` | All supplied closing references and selected task items pass validation | Mandatory local validation and other repository protections still apply |
+| `success` | PR acceptance checks pass, including absence of `.plans`; a push-only result confirms the planning-file rule for that main commit | Mandatory local validation and other repository protections still apply |
 
 ### Validation triggers
 
@@ -67,6 +77,7 @@ These events refresh acceptance status:
 | Trigger | Events or purpose |
 | --- | --- |
 | PR events | Creation, description edits, new commits, reopening, closure, and marking ready |
+| Push to `main` | Check the pushed tree for planning files and refresh open-PR acceptance |
 | Issue events | Edits, reopening, and closure trigger validation of open PRs |
 | Manual dispatch | Recovery after missed events or token-generated edits |
 | Twice-hourly schedule | Recovery after missed events or token-generated edits |
@@ -130,9 +141,10 @@ The suite covers these boundaries:
 | API access | Failures and pagination |
 | Concurrent changes | Metadata edits, new heads, and shared commits |
 | Repeated execution | Repeated runs |
+| Planning files | Main-bound PRs, root entry types, removal from the final tree, API failures, and main versus working-branch pushes |
 
 Run this suite locally when changing the validator or its workflow.
-The `PR acceptance` workflow validates supplied closing references, issue criteria, and PR tasks. It does not run this suite, application tests, or builds.
+The `PR acceptance` workflow validates supplied closing references, issue criteria, PR tasks, and the planning-file rule. It does not run this suite, application tests, or builds.
 
 ### Verify deployment
 
@@ -148,7 +160,7 @@ Preserve these workflow permissions and execution limits:
 
 | Property | Required boundary |
 | --- | --- |
-| Event | `pull_request_target` |
+| Events | `pull_request_target`, main pushes, issue updates, scheduled runs, and manual dispatch |
 | Checkout | Only `main` |
 | Read permissions | Repository contents, issues, and PRs |
 | Write permissions | Commit statuses |

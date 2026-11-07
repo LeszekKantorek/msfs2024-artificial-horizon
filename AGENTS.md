@@ -17,6 +17,16 @@ Apply these scope, authorization, and communication requirements:
 
 ## Context selection
 
+Use [context-retrieve](.agents/skills/context-retrieve/SKILL.md) to locate project sources before reasoning or planning that depends on project knowledge. An implementation agent must also use it when preparing execution context, including work without an issue.
+State the concrete information needed, with known identifiers and constraints. Use the skill's verified source references and explicit gaps to select the passages to read; retrieval does not replace reading the governing requirements or the complete Subtask instructions.
+
+Delegate context-retrieve to one Luna High subagent (`gpt-6-luna`, reasoning effort `high`) for a bounded source-location question:
+
+* Give the subagent the question, known references, scope, and reading constraints. It performs read-only retrieval and returns verified paths, line ranges, brief source descriptions, and missing or inaccessible information.
+* The retrieval subagent executes the skill directly without further delegation. It does not edit files, run tests, implement changes, or select the project's technical direction.
+* The requesting agent reads the relevant returned passages and retains responsibility for interpretation, planning, and implementation. Reuse applicable verified results rather than repeating unchanged retrieval.
+* Check model availability before delegation. Report an unavailable Luna High configuration instead of silently substituting another model.
+
 Select a map by the requested outcome, affected behavior, or unresolved question:
 
 | Need | Map |
@@ -25,7 +35,7 @@ Select a map by the requested outcome, affected behavior, or unresolved question
 | Understand or reconsider an accepted architecture choice | [Governing decisions](.context/architecture-decisions.md#find-the-governing-decision) |
 | Find instrument sources or additional guidance for implementation, diagnosis, validation, review, documentation, or delivery | [Task guidance](.context/task-guidance.md#practical-selection) |
 
-Retrieve project context in this order:
+Apply these project navigation rules while using context-retrieve:
 
 1. Follow the applicable map rows and their conditions to the relevant sources.
 2. Read only the source sections needed for the task.
@@ -38,6 +48,7 @@ Apply these reading and validation constraints:
 * Before planning or executing issue-based work, read the [GitHub issue context, including artifacts](.context/repository-instructions.md#read-github-issue-context).
 * A link is a reference, not an instruction to read every linked document recursively.
 * Reuse relevant content already read in this conversation while it remains applicable and unchanged.
+* Exclude `.context/sessions.log` and `.context/.sessions.lock` from knowledge retrieval.
 * Read README for startup or user-facing behavior, architecture for changed boundaries, and CONTRIBUTING for the applicable contribution stage.
 * Apply every relevant route when a change crosses boundaries, including required validation, acceptance, and accepted-plan invariants.
 * When validating a change, select required checks from the [validation scope matrix](docs/testing/index.md#validation-by-change-scope).

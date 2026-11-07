@@ -25,6 +25,7 @@ __pycache__/
 *.pyc
 
 # Local work and additional skills
+# .plans/ is intentionally versioned on working branches; acceptance excludes it from main.
 /.local/
 /.worktrees/
 # Microsoft SDK artifacts are obtained separately, never versioned.
@@ -35,6 +36,7 @@ Microsoft.FlightSimulator.SimConnect.dll
 /.agents/skills/*/
 !/.agents/skills/context-preserve/
 !/.agents/skills/context-review-sessions/
+!/.agents/skills/context-retrieve/
 !/.agents/skills/context-map/
 !/.agents/skills/context-maintain/
 !/.agents/skills/context-diagnose/

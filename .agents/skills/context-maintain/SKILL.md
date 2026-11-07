@@ -1,6 +1,8 @@
 ---
 name: context-maintain
 description: Use to review and improve the coherence and organization of existing project knowledge.
+metadata:
+  version: "1.1.0"
 ---
 
 # Maintain Project Context
@@ -80,7 +82,7 @@ Improve the coherence and organization of existing project knowledge while prese
 | Local qualifications | Keep conditions and exceptions beside the content they qualify, or link them with explicit applicability. |
 | Rationale and evidence | Keep supporting sources and limitations attached to the claims they support. |
 | Moved or replaced content | Update incoming links, section references, and existing replacement records. |
-| Navigation | Repair affected routes. Use context-map when the change requires redesigning how situations lead to sources. |
+| Navigation | Repair affected routes. Use `context-map` skill when the change requires redesigning how situations lead to sources. |
 | Dependent tools | Preserve required formats or update affected readers and writers. |
 | Unresolved matters | Preserve conflicting claims, uncertainty, and the evidence or decisions needed for resolution. |
 

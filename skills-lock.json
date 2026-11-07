@@ -3,57 +3,57 @@
   "skills": {
     "context-compile": {
       "source": "LeszekKantorek/context-skills",
-      "ref": "2598a6246b8649f7eaea68720201d9dbff1ddd84",
       "sourceType": "github",
       "skillPath": "skills/context-compile/SKILL.md",
-      "computedHash": "61591ae51ec74796357af984339c0a7aa15593811a975dddaf332f8863dfb75f"
+      "computedHash": "a7110e80a6643afc77532ff1b1ea5124e8dd2c43a5bab5f141d3d8fc2cdf08ba"
     },
     "context-diagnose": {
       "source": "LeszekKantorek/context-skills",
-      "ref": "2598a6246b8649f7eaea68720201d9dbff1ddd84",
       "sourceType": "github",
       "skillPath": "skills/context-diagnose/SKILL.md",
-      "computedHash": "fa87622c6575cd5a9c55db227290d3f90d3101fce17b6a74c17371c366ca5086"
+      "computedHash": "a219adb643cae60b452dae8cf5414927406ce9b6e6890f8a5dc4444654837071"
     },
     "context-maintain": {
       "source": "LeszekKantorek/context-skills",
-      "ref": "2598a6246b8649f7eaea68720201d9dbff1ddd84",
       "sourceType": "github",
       "skillPath": "skills/context-maintain/SKILL.md",
-      "computedHash": "2776605df583669cb563bc154b94f564627e770f54f527f4e6193a8f1a547111"
+      "computedHash": "6c23f48460ae1ddb65ae5d323c3c46701cb3b58b98fe4c4a0592312e1cdd206d"
     },
     "context-map": {
       "source": "LeszekKantorek/context-skills",
-      "ref": "2598a6246b8649f7eaea68720201d9dbff1ddd84",
       "sourceType": "github",
       "skillPath": "skills/context-map/SKILL.md",
-      "computedHash": "f0af64e4210148f5988066cd4addf1b3a10e21dcabdeab5e635ba09f56d00426"
+      "computedHash": "aba446a50de470e2a5738093030f09baf053e1a1b3502a6ebc0a5cba677061d8"
     },
     "context-preserve": {
       "source": "LeszekKantorek/context-skills",
-      "ref": "2598a6246b8649f7eaea68720201d9dbff1ddd84",
       "sourceType": "github",
       "skillPath": "skills/context-preserve/SKILL.md",
-      "computedHash": "d25b8856d53c979fdee97fbb77dd1909607fc930352023d145b6ed11cb2bf98a"
+      "computedHash": "e86213439758d65a9acc9558a614ca4b21c462028d3de61524d617e72d0150e9"
+    },
+    "context-retrieve": {
+      "source": "LeszekKantorek/context-skills",
+      "sourceType": "github",
+      "skillPath": "skills/context-retrieve/SKILL.md",
+      "computedHash": "4656878c7f121b3165775bf025b12b3872aa1e881b1065b53ce78434c8b8265d"
     },
     "context-review-sessions": {
       "source": "LeszekKantorek/context-skills",
-      "ref": "2598a6246b8649f7eaea68720201d9dbff1ddd84",
       "sourceType": "github",
       "skillPath": "skills/context-review-sessions/SKILL.md",
-      "computedHash": "92d8a547d8151cc15a24f09ca57d1c7a2e89928691acc9483c8c7bc8477d8eea"
+      "computedHash": "ab8010c965a4ad7efd98d72d312a5c656608a49a786c0364e08517611eaded88"
     },
     "procedural-skill-creator": {
       "source": "LeszekKantorek/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/procedural-skill-creator/SKILL.md",
-      "computedHash": "2c552756848d42d4ef5b6c705af24220cc4b748974197443adce86a1354c2935"
+      "computedHash": "cad7c692425bdc8a5f12264db009814d0e8b1ee424f899e1d45ea8da105dfb98"
     },
     "technical-writing-rules": {
       "source": "LeszekKantorek/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/technical-writing-rules/SKILL.md",
-      "computedHash": "d6aea91ec7dc1bb17e68171cabc7660efa33c60fedb8b6d2a683a685c60f0e12"
+      "computedHash": "22c32169c1626fed6169423f7f11b8fb6c91044c06e474788bd8da2556e97961"
     }
   }
 }

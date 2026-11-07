@@ -31,10 +31,11 @@ Prepare and preserve handoffs under these requirements:
 
 ### Prepare Subtask context
 
-Prepare the context before executing the Subtask:
+Delegate [context-retrieve](../.agents/skills/context-retrieve/SKILL.md) to a Luna High subagent under the [retrieval delegation rules](../AGENTS.md#context-selection) when preparing implementation context. Describe the requirements, decisions, code boundaries, or validation information needed, with the known issue identifiers and constraints. Use its verified references and missing-information report before dependent implementation; the implementing agent remains responsible for reading and interpreting the governing sources.
+For work without an issue, derive the retrieval question from the requested outcome. For a Subtask, prepare the context in this order:
 
 1. Read the Subtask and its Task through [issue and artifact retrieval](repository-instructions.md#read-github-issue-context).
-   Then read the source sections required for its scope. Establish the intended result, constraints, dependencies, and validation.
+   Use context-retrieve to locate the source sections required for its scope, then read those passages. Establish the intended result, constraints, dependencies, and validation. A source-location report does not replace complete Subtask instructions.
 2. Check the current revision and relevant changes. Verify cited files, sections, line ranges, and consequential assumptions against current code and contracts.
 3. If lines have moved, locate the intended passage by meaning and record a consequential mismatch. Line references remain valid handoff tools when checked.
 4. Resolve routine implementation details within scope. Use accepted decisions without redesigning them merely because the Subtask entered a new session.

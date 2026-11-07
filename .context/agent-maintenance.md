@@ -7,7 +7,7 @@ status: active
 
 Maintain project knowledge under these requirements:
 
-* Select the context skill matching preservation, maintenance, mapping, diagnosis, compilation, or session review. Reuse established findings and decisions rather than repeating completed analysis.
+* Select the context skill matching retrieval, preservation, maintenance, mapping, diagnosis, compilation, or session review. Use [context-retrieve](../.agents/skills/context-retrieve/SKILL.md) to locate sources and [context-map](../.agents/skills/context-map/SKILL.md) to maintain situation-to-source routes. Reuse established findings and decisions rather than repeating completed analysis.
 * Retain decisions, explanations, findings, and rules useful to future work, with their rationale and conditions of use.
 * Follow [documentation maintenance](../CONTRIBUTING.md#documentation-maintenance) for migration completeness, current status, and historical requirements.
 * Keep independent topics separate so agents can read only relevant entries. Link canonical sources instead of repeating their commands or rules.
@@ -34,24 +34,25 @@ These formats apply to `.context/` entries, their index, and navigation. They ar
 Maintain navigation and retrieval under these requirements:
 
 * Put direct routes in the [index](index.md) and conditional routes in [task guidance](task-guidance.md).
+* Keep retrieval procedure steps in context-retrieve. [AGENTS](../AGENTS.md#context-selection) owns project selection constraints; [implementation context preparation](iterative-development.md#prepare-subtask-context) applies them to execution. Maps supply destinations and use conditions rather than duplicate the procedure.
 * When moving knowledge, update incoming links, index rows, and replacement paths.
 * Exclude session records from knowledge retrieval under [hook maintenance](#hook-maintenance).
 
 ## Reinstall context skills
 
-Use [setup and skill sources](../CONTRIBUTING.md#3-prepare-agent-skills-and-hooks) to identify the tested revision and installation commands before reinstalling:
+Use [setup and skill sources](../CONTRIBUTING.md#3-prepare-agent-skills-and-hooks) to identify the installed revision and installation commands before reinstalling:
 
 1. Inspect the repository diff and preserve intentional local changes before replacing installed files.
-2. Install the six context skills from the pinned revision in setup.
+2. Install the context skills, including context-retrieve, from the selected upstream revision. Reconcile setup references with that revision when updating the installation.
 3. Update `skills-lock.json` and `.agents/skills/` together.
-4. Compare the installed files and hooks with the selected upstream revision.
+4. Compare installed skill files with the selected upstream revision. Check hooks against their separately documented integration revision.
 
 Preserve these constraints during reinstallation:
 
 * Keep installer-generated `computedHash` values as source provenance. Do not substitute local hash calculations.
-* Keep the six context skills byte-identical to the tested upstream revision while evaluating their behavior.
+* Keep installed context skills byte-identical to the selected upstream revision while evaluating their behavior.
 * Keep `procedural-skill-creator` installed from `LeszekKantorek/agent-skills`.
-* Preserve the [exclusions](../.gitignore) that include the six context skills and `procedural-skill-creator` while excluding unrelated local skills.
+* Preserve the [exclusions](../.gitignore) that include the context skills, including context-retrieve, and `procedural-skill-creator` while excluding unrelated local skills.
 * Preserve the [local entry and index convention](#local-entry-and-index-convention).
 
 ## Project procedure skills
@@ -96,7 +97,7 @@ Maintain the hook integration under these requirements:
 * Read [hook setup](../CONTRIBUTING.md#session-hooks) for sources, events, dependencies, and trust steps.
 * Preserve unrelated hooks when updating the integration.
 * The startup reminder describes the six context skills without prescribing a sequence.
-* Use `context-review-sessions` with `context-preserve` for pending-session review and completion bookkeeping.
+* Use `context-review-sessions` with `context-preserve` for session review. The installed skill reports review outcomes without updating the CSV registry; do not claim automatic completion bookkeeping.
 * Subtask execution must leave a [complete main-conversation summary](iterative-development.md#final-subtask-summary) for later JSON session analysis, including resolved gaps and consultation results.
 * Do not assume that local journals, detailed test reports, or separate subagent transcripts remain available after execution. No session-analysis tooling changes are required by this reporting rule.
 * Exclude the CSV registry, its lock, and session metadata under `.context/sessions/` from knowledge retrieval and commits.

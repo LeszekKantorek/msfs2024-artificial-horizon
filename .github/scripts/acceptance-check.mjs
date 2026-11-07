@@ -96,6 +96,19 @@ export function githubApi(token, fetcher = fetch) {
   };
 }
 
+// Inspect immutable Git metadata only; never check out or execute the proposed tree.
+export async function validatePlans(api, prefix, sha) {
+  const commit = await api(`${prefix}/git/commits/${sha}`);
+  if (!/^[a-f0-9]{40}$/.test(commit.tree?.sha ?? '')) throw new Error('Invalid commit tree response.');
+  const tree = await api(`${prefix}/git/trees/${commit.tree.sha}`);
+  if (tree.truncated || !Array.isArray(tree.tree) || tree.tree.some(entry => typeof entry.path !== 'string')) {
+    throw new Error('Incomplete or invalid repository tree response.');
+  }
+  return tree.tree.some(entry => entry.path === '.plans')
+    ? ['Remove .plans from the proposed main tree. Planning files may remain on working branches.']
+    : [];
+}
+
 export async function runAcceptance({ api, repository, baseBranch = 'main', targetUrl, event = {} }) {
   if (!/^[\w.-]+\/[\w.-]+$/.test(repository)) throw new Error('Invalid repository name.');
   const prefix = `/repos/${repository}`;
@@ -124,6 +137,17 @@ export async function runAcceptance({ api, repository, baseBranch = 'main', targ
   }
   try {
     const prs = await listPrs();
+    if (event.ref === `refs/heads/${baseBranch}` && !event.deleted) {
+      if (!/^[a-f0-9]{40}$/.test(event.after ?? '')) throw new Error('Invalid pushed commit response.');
+      knownHeads.add(event.after);
+      const errors = await validatePlans(api, prefix, event.after);
+      const state = errors.length ? 'failure' : 'success';
+      // Shared PR heads receive their aggregate result below, never a push-only success.
+      if (!prs.some(pr => pr.head.sha === event.after)) {
+        await publish(event.after, state, errors.length ? '.plans must be empty on main.' : 'Main tree contains no planning files.');
+      }
+      report.push({ sha: event.after, prs: [], ref: baseBranch, state, errors });
+    }
     // Commit statuses belong to a SHA, not a PR. Aggregate all PRs sharing a head.
     const groups = new Map();
     for (const pr of prs) {
@@ -134,6 +158,7 @@ export async function runAcceptance({ api, repository, baseBranch = 'main', targ
       const errors = [];
       const evidence = [];
       try {
+        errors.push(...await validatePlans(api, prefix, sha));
         for (const listed of group) {
           const pr = await api(`${prefix}/pulls/${listed.number}`);
           if (pr.head.sha !== sha || pr.state !== 'open' || pr.base.ref !== baseBranch) {
@@ -189,11 +214,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       repository: process.env.GITHUB_REPOSITORY, event,
       targetUrl: `https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}` });
     for (const result of report) {
-      console.log(`PR ${result.prs.map(number => `#${number}`).join(', ')}: ${result.state}`);
+      console.log(`${result.prs.length ? `PR ${result.prs.map(number => `#${number}`).join(', ')}` : `${result.ref} ${result.sha}`}: ${result.state}`);
       for (const error of result.errors) console.log(`  - ${error}`);
     }
     if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY,
-      `## Acceptance validation\n\n${report.map(r => `* PR ${r.prs.join(', ')}: **${r.state}**\n${r.errors.map(e => `  * ${e}`).join('\n')}`).join('\n')}\n`);
+      `## Acceptance validation\n\n${report.map(r => `* ${r.prs.length ? `PR ${r.prs.join(', ')}` : `${r.ref} ${r.sha}`}: **${r.state}**\n${r.errors.map(e => `  * ${e}`).join('\n')}`).join('\n')}\n`);
     if (report.some(result => result.state !== 'success')) process.exitCode = 1;
   } catch (error) { console.error(error.message); process.exitCode = 1; }
 }
