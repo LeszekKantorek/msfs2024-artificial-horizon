@@ -220,31 +220,49 @@ The current receiver uses Windows x64 C ABI and packed receive layouts derived f
 
 Normal attitude registration orders pitch radians, bank radians. Diagnostic registration orders pitch radians, pitch degrees, bank radians, bank degrees, repeated pitch radians, repeated bank radians. These shapes are current-consumer requirements, not evidence of simultaneous acquisition. The caller owns definition, request, event, and query IDs and field order; the DLL must route and encode those supplied values, not hard-code the current IDs. Current requests use user-aircraft proxy, `SIM_FRAME`, flags 0, origin 0, interval 0, and limit 0. The [request API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_requestdataonsimobject/) distinguishes these options from change-only requests. Other request modes are outside this used subset until implemented and verified.
 
+The following evidence classifications apply separately to each part of the used API. Header-derived declarations are current-consumer evidence until an independent comparison with the target SDK header and runtime.
+
+| Item | Independent evidence and remaining verification |
+| --- | --- |
+| `SimConnect_Open` | [Open reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/general/simconnect_open/) documents the interface and notification handle. Compare the x64 declaration and notification behavior against the target header and runtime |
+| `SimConnect_Close` | [Close reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/general/simconnect_close/) documents the interface. Compare the x64 declaration and cleanup behavior against the target header and runtime |
+| `SimConnect_GetNextDispatch` | [Dispatch reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/general/simconnect_getnextdispatch/) documents the interface and library-owned buffer. Compare declaration, empty result tuple, and memory lifetime against target header and runtime |
+| `SimConnect_AddToDataDefinition` | [Definition reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_addtodatadefinition/) documents definition arguments and FLOAT64. Compare declaration and exact pair acceptance against target header and runtime |
+| `SimConnect_RequestDataOnSimObject` | [Request reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_requestdataonsimobject/) documents request IDs, periods, flags, origin, interval, and limit. Verify current `SIM_FRAME`, flags 0, origin 0, interval 0, limit 0, and user-aircraft proxy against the target runtime |
+| `SimConnect_SubscribeToSystemEvent` | [Event reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/general/simconnect_subscribetosystemevent/) documents subscriptions. Verify `Sim`, `Pause_EX1`, and `FlightLoaded` delivery against the target runtime |
+| `SimConnect_RequestSystemState` | [State reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/general/simconnect_requestsystemstate/) documents queries. Verify `Sim` and `FlightLoaded` response shapes and IDs against the target runtime |
+| `SimConnect_GetLastSentPacketID` | [Packet ID reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/debug/simconnect_getlastsentpacketid/) documents correlation. Verify declaration and association against target header and runtime |
+| Packed receive layouts | Current consumer assumes packed `RECV`, exception, open, event, filename, system-state, and simobject-data layouts. Independently compare size, offsets, packing, and variable payload bounds with target SDK headers; exercise each used shape with an independent client |
+| Two- and six-field attitude definitions | Current consumer defines these field orders; they are not SDK guarantees. Verify each field/unit using the catalog and independently inspect returned order and lengths |
+
 ### Native field catalog
 
-| Native SimVar | Requested unit | Consumer meaning |
-| --- | --- | --- |
-| PLANE PITCH DEGREES | radians; degrees for diagnostics | Primary native pitch, with existing sign conversion |
-| PLANE BANK DEGREES | radians; degrees for diagnostics | Primary native bank, with existing sign/wrap conversion |
-| AIRSPEED INDICATED | knots | IAS and existing derived acceleration |
-| AIRSPEED TRUE | knots | TAS |
-| GROUND VELOCITY | knots | GS |
-| INDICATED ALTITUDE:1 | feet | Barometric altitude |
-| KOHLSMAN SETTING HG:1 | inHg | Numeric BARO after current conversion |
-| VERTICAL SPEED | feet per minute | VSI |
-| PLANE HEADING DEGREES MAGNETIC | degrees | Heading |
-| TURN COORDINATOR BALL | position 128 | Ball, divided by 127 in the current consumer |
-| TURN INDICATOR RATE | degrees per second | Turn rate |
-| DESIGN SPEED VS0 | knots | Optional VS0 |
-| DESIGN SPEED VS1 | knots | Optional VS1 |
-| DESIGN SPEED MIN ROTATION | knots | Optional VR reference |
-| AIRSPEED BARBER POLE | knots | Independent dynamic redline |
-| AUTOPILOT AVAILABLE | bool, FLOAT64 representation | Target availability gate |
-| AUTOPILOT HEADING LOCK DIR:0 | degrees | Selected heading |
-| AUTOPILOT ALTITUDE LOCK VAR:0 | feet | Selected altitude |
-| AUTOPILOT ALT RADIO MODE | bool, FLOAT64 representation | Barometric/radio target gate |
+`C` means a current-consumer compatibility assumption for the exact name, index, unit, and FLOAT64 request in that row. The consumer uses it, but this classification does not establish the exact combination independently. Before claiming SDK compatibility, check each `C` pair against its per-variable SDK entry, unit conversion rules, and the target runtime with an independent client. Record unsupported or ambiguous pairs individually. The SDK's [variable index](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simvars/simulation-variables/) locates the relevant variable pages. Aircraft availability remains a separate runtime question.
 
-The table records current consumer spellings and requested units. The SDK variable references document the base variables; the following qualifications apply to exact indexed names:
+| Native SimVar | Requested unit | Consumer meaning | Evidence classification |
+| --- | --- | --- | --- |
+| PLANE PITCH DEGREES | radians; degrees for diagnostics | Primary native pitch, with existing sign conversion | C |
+| PLANE BANK DEGREES | radians; degrees for diagnostics | Primary native bank, with existing sign/wrap conversion | C |
+| AIRSPEED INDICATED | knots | IAS and existing derived acceleration | C |
+| AIRSPEED TRUE | knots | TAS | C |
+| GROUND VELOCITY | knots | GS | C |
+| INDICATED ALTITUDE:1 | feet | Barometric altitude | C; indexed spelling unverified |
+| KOHLSMAN SETTING HG:1 | inHg | Numeric BARO after current conversion | C; index independently documented |
+| VERTICAL SPEED | feet per minute | VSI | C |
+| PLANE HEADING DEGREES MAGNETIC | degrees | Heading | C |
+| TURN COORDINATOR BALL | position 128 | Ball, divided by 127 in the current consumer | C |
+| TURN INDICATOR RATE | degrees per second | Turn rate | C |
+| DESIGN SPEED VS0 | knots | Optional VS0 | C |
+| DESIGN SPEED VS1 | knots | Optional VS1 | C |
+| DESIGN SPEED MIN ROTATION | knots | Optional VR reference | C |
+| AIRSPEED BARBER POLE | knots | Independent dynamic redline | C |
+| AUTOPILOT AVAILABLE | bool, FLOAT64 representation | Target availability gate | C |
+| AUTOPILOT HEADING LOCK DIR:0 | degrees | Selected heading | C; indexed spelling unverified |
+| AUTOPILOT ALTITUDE LOCK VAR:0 | feet | Selected altitude | C; indexed spelling unverified |
+| AUTOPILOT ALT RADIO MODE | bool, FLOAT64 representation | Barometric/radio target gate | C |
+
+
+The following independent references qualify individual indexed names:
 
 * `KOHLSMAN SETTING HG:1` is documented as the first altimeter.
 * `INDICATED ALTITUDE:1` is a current-consumer compatibility assumption: the inspected SDK example uses the unindexed name.
@@ -252,7 +270,7 @@ The table records current consumer spellings and requested units. The SDK variab
 
 The [autopilot variable reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simvars/aircraft-simvars/aircraft-autopilot-and-assistant-variables/), [aircraft system variables](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simvars/aircraft-simvars/aircraft-system-variables/), and [native units](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simvars/simulation-variable-units/) are independent references for the relevant catalog entries. Exact field/unit pairs beyond the stated indexed gaps still require per-variable verification; the current table is consumer evidence rather than a blanket SDK certification.
 
-The independently documented base names and units are not proof that each aircraft supplies them. Test the assumptions against the target SDK and simulator before claiming compatibility. An emulator that accepts the same assumptions is not an independent oracle.
+Documentation of a base name or unit is not proof that each aircraft supplies it. Test the assumptions against the target SDK and simulator before claiming compatibility. An emulator that accepts the same assumptions is not an independent oracle.
 
 The fictional full VFE/VNO/VNE and VX/VY/VG profile is not generated through private SimVars.
 Keep independent browser/presentation fixtures for those existing supported display fields.
@@ -434,7 +452,7 @@ Interpret recorded evidence according to its diagnostic schema:
 
 | Diagnostic schema | Evidence interpretation |
 | --- | --- |
-| 1–3 | Candidate live states do not establish live telemetry publication |
+| 1â€“3 | Candidate live states do not establish live telemetry publication |
 | 2 | Cross-unit disagreements could invalidate samples. Account for this when interpreting recorded invalid states |
 | 4 | Records identify enabled live publication, but do not journal every publication |
 | 5 | Publication records identify the actual snapshot and sequence. Missing or interrupted records leave correlation incomplete |

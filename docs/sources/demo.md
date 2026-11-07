@@ -58,15 +58,15 @@ Each row covers 40 samples, or two nominal seconds:
 
 | Time | Pitch (degrees) | Roll (degrees) | Slip/skid | Turn rate (deg/s) |
 | --- | --- | --- | --- | --- |
-| 0–2 s | 0 | 0 | 0 | 0 |
-| 2–4 s | 15 | 0 | -0.5 | 0 |
-| 4–6 s | -15 | 0 | 0.5 | 0 |
-| 6–8 s | 0 | -30 | 0 | -3 |
-| 8–10 s | 0 | 30 | 0 | 3 |
-| 10–12 s | 10 | 25 | 1 | 3 |
-| 12–14 s | -10 | -25 | -1 | -3 |
-| 14–16 s | 70 | 0 | 0 | 0 |
-| 16–18 s | -50 | 0 | 0 | 0 |
+| 0â€“2 s | 0 | 0 | 0 | 0 |
+| 2â€“4 s | 15 | 0 | -0.5 | 0 |
+| 4â€“6 s | -15 | 0 | 0.5 | 0 |
+| 6â€“8 s | 0 | -30 | 0 | -3 |
+| 8â€“10 s | 0 | 30 | 0 | 3 |
+| 10â€“12 s | 10 | 25 | 1 | 3 |
+| 12â€“14 s | -10 | -25 | -1 | -3 |
+| 14â€“16 s | 70 | 0 | 0 | 0 |
+| 16â€“18 s | -50 | 0 | 0 | 0 |
 
 The [attitude feature](../efi/attitude.md#demo-behavior) owns expected visual behavior and regression checks.
 
@@ -76,11 +76,11 @@ IAS, TAS, and GS share one fraction while retaining independent values:
 
 | Time | Fraction | IAS acceleration |
 | --- | --- | --- |
-| 0–2 s | Zero | 0 kt/s |
-| 2–8 s | Linear increase from zero to one | +25 kt/s |
-| 8–10 s | One | 0 kt/s |
-| 10–16 s | Linear decrease to zero | -25 kt/s |
-| 16–18 s | Zero | 0 kt/s |
+| 0â€“2 s | Zero | 0 kt/s |
+| 2â€“8 s | Linear increase from zero to one | +25 kt/s |
+| 8â€“10 s | One | 0 kt/s |
+| 10â€“16 s | Linear decrease to zero | -25 kt/s |
+| 16â€“18 s | Zero | 0 kt/s |
 
 Speed calculations use these values:
 
@@ -116,12 +116,12 @@ Each sweep includes both endpoints over 60 samples:
 
 | Time | Start altitude (ft) | End altitude (ft) |
 | --- | --- | --- |
-| 0–3 s | -120 | 120 |
-| 3–6 s | 980 | 1020 |
-| 6–9 s | 9980 | 10020 |
-| 9–12 s | 10020 | 9980 |
-| 12–15 s | 1020 | 980 |
-| 15–18 s | 120 | -120 |
+| 0â€“3 s | -120 | 120 |
+| 3â€“6 s | 980 | 1020 |
+| 6â€“9 s | 9980 | 10020 |
+| 9â€“12 s | 10020 | 9980 |
+| 12â€“15 s | 1020 | 980 |
+| 15â€“18 s | 120 | -120 |
 
 Pressure, display references, and validation follow these rules:
 
@@ -283,7 +283,7 @@ This supports independent speed, attitude, heading, and altitude cycles without 
 Demo DLL is a playback mechanism. It executes scenario instructions without inventing lifecycle transitions.
 Playback always loops while the source remains running. There is no selectable `end` policy or implicit wait at the file boundary.
 The monotonic clock never resets, rewinds, or pauses at a pass boundary, during a simulated pause, or across reconnects.
-Only the playback cursor returns to the first step.
+Only the playback cursor returns to the first step. Each pass restarts every track at its first segment. If a repeating track is partway through a segment at the pass boundary, that segment is cut short and the next pass starts its first segment. The track period need not divide `duration_us`. For example, a three-second repeating track in an eight-second pass starts at offsets 0, 3, and 6 seconds, then restarts at the next pass boundary at 8 seconds. This restarts track position only; it does not reset the clock, lifecycle state, or queued packets.
 Record `at_us` values are offsets within a pass, not replacements for the clock value.
 For pass number n starting at zero, a record is due at origin + n * duration_us + at_us.
 
@@ -350,7 +350,21 @@ Timestamped records use `at_us` as a pass-relative offset. `pause` carries `mode
 
 Native pause delivery is an implementation verification requirement. The working assumption is continued messages with frozen values in both pause modes; it is not established SDK behavior. Verify each mode separately, including SIM_FRAME, events, state queries, and resume. The application's paused publication gate is separate. The scenario clock continues; baseline scenarios author holds across pause intervals rather than silently freezing ramps.
 
-Fault records are opt-in and absent from the healthy default. `api_fault` selects an export, positive call occurrence, signed HRESULT, and optional field selector. `exception` identifies a sent call occurrence and operation, code, and index. `raw_packet` supplies owned bytes and a bounded returned length; `null_dispatch` explicitly tests a null pointer. `transport_silence` suppresses all dispatch packets for a positive duration, including state replies. Malformed JSON is a setup error; malformed native packets are deliberate runtime fixtures. Never return an unreadable non-null pointer or advertise more bytes than the allocation. Keep call counters across passes and reconnects. Stop the emitter before an injected Close failure. Fatal cases are isolated; coverage may be staged and deferred cases identified.
+Fault injection is accepted scope. The record vocabulary below is a proposed technical contract; implementation may stage coverage and must identify deferred cases. Fault records are opt-in and absent from the healthy default. Each is a JSON object with the shown `type` and fields. Timestamped records use nonnegative integer `at_us` within the pass.
+
+| `type` | Proposed fields and meaning |
+| --- | --- |
+| `api_fault` | `operation`: exact export name string; `occurrence`: positive integer; `hresult`: signed 32-bit integer. Optional `selector` is an object with string `simvar` and/or `unit` for definition/request association |
+| `exception` | `at_us`; `sent_call_occurrence`: positive integer; `sent_operation`: exact export name string; `code` and `index`: unsigned integers. Correlate with the packet ID captured from that actual call |
+| `raw_packet` | `at_us`; `bytes_hex`: even-length hexadecimal string; `returned_length`: unsigned integer no larger than the decoded owned allocation |
+| `null_dispatch` | `at_us`; `returned_length`: unsigned integer. Return a null pointer without dereferencing it |
+| `disconnect` | `at_us`; `unavailable_ms`: positive integer. Emit QUIT, then fail Open until the interval expires |
+| `flight_loaded` | `at_us`; `flight`: string or null. Update queried state and subscribed transition |
+| `transport_silence` | `at_us`; `duration_ms`: positive integer. Suppress all dispatch packets, including state replies, without emitting QUIT |
+
+Resolve field selectors through registered definitions rather than hard-coded request IDs. An occurrence is the one-based matching call since Configure, counted before applying the fault. An exception referencing a failed or unavailable sent call is a scenario error; do not fabricate a packet ID. Counters persist across passes and reconnects. Connection-scoped counters require an explicit rule selection.
+
+Malformed JSON is a setup error; malformed native bytes are deliberate runtime fixtures. Never return an unreadable non-null pointer or advertise more bytes than the allocation. Stop the emitter before an injected Close failure. Isolate terminal cases and test retained-resource cleanup in a child process. Transport silence preserves synchronous API results and the continuously advancing clock; it survives reconnects and ends with current state and new observations. Host failures require launch or harness fixtures, not invented native records.
 
 ### Selection and setup
 
