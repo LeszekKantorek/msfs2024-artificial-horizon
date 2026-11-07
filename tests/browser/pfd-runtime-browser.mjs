@@ -133,6 +133,8 @@ async function checkRightTurnAndSpeeds(page) {
   }));
   assert.deepEqual(speeds, { ias: 'Indicated airspeed 150 knots', digits: '150', gs: '170', tas: '160', tasLabel: 'True airspeed 160 knots' });
   assert.equal(await page.locator('#airspeed').getAttribute('data-overspeed'), 'false');
+  // The receiver's 500 ms history can still include the preceding acceleration.
+  await page.waitForFunction(() => getComputedStyle(document.querySelector('#airspeed-trend')).display === 'none', null, { timeout: 1500 });
   assert.equal(await page.locator('#airspeed-trend').evaluate(n => getComputedStyle(n).display), 'none');
   await saveScreenshot(page, { path: '.local/pfd-runtime-landscape.png' });
 }

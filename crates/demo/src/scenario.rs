@@ -504,6 +504,86 @@ mod tests {
         r#"{"type":"scenario","format":"msfs-efi-simconnect-demo","version":1,"mode":"scripted","frame_period_ms":50,"duration_us":15000000,"initial":{"sim_running":true,"pause":"off","flight":"demo.flt"}}"#
     }
     #[test]
+    fn scenario_suite_parses_and_tour_matches_independent_checkpoints() {
+        let tour = include_str!("../../../demo-scenarios/flight-tour.jsonl");
+        for (name, input) in [
+            ("tour", tour),
+            (
+                "lifecycle",
+                include_str!("../../../demo-scenarios/simulator-lifecycle.jsonl"),
+            ),
+            (
+                "availability",
+                include_str!("../../../demo-scenarios/availability-gaps.jsonl"),
+            ),
+            (
+                "ias-only",
+                include_str!("../../../demo-scenarios/ias-only.jsonl"),
+            ),
+            (
+                "event-only",
+                include_str!("../../../demo-scenarios/event-only.jsonl"),
+            ),
+            (
+                "no-signal",
+                include_str!("../../../demo-scenarios/no-signal.jsonl"),
+            ),
+            (
+                "startup",
+                include_str!("../../../demo-scenarios/errors/startup-retry.jsonl"),
+            ),
+            (
+                "optional",
+                include_str!("../../../demo-scenarios/errors/optional-definition.jsonl"),
+            ),
+            (
+                "subscribe",
+                include_str!("../../../demo-scenarios/errors/primary-subscribe.jsonl"),
+            ),
+            (
+                "truncated",
+                include_str!("../../../demo-scenarios/errors/truncated-packet.jsonl"),
+            ),
+        ] {
+            Scenario::parse(input, name).unwrap_or_else(|error| panic!("{name}: {error}"));
+        }
+        let scenario = Scenario::parse(tour, "tour").unwrap();
+        let checkpoints: Vec<serde_json::Value> = serde_json::from_str(include_str!(
+            "../../../tests/fixtures/flight-tour-checkpoints.json"
+        ))
+        .unwrap();
+        for row in checkpoints {
+            let time = row["time_us"].as_u64().unwrap();
+            for (key, native, unit) in [
+                ("ias", "AIRSPEED INDICATED", "knots"),
+                ("altitude", "INDICATED ALTITUDE:1", "feet"),
+                ("vsi", "VERTICAL SPEED", "feet per minute"),
+                ("heading", "PLANE HEADING DEGREES MAGNETIC", "degrees"),
+            ] {
+                let actual = scenario.value(native, unit, time).unwrap();
+                let expected = row[key].as_f64().unwrap();
+                assert!(
+                    (actual - expected).abs() < 1e-9,
+                    "{key} at {time}: expected {expected}, got {actual}"
+                );
+            }
+        }
+        // All tracks hold their values for both authored pause windows.
+        for track in &scenario.tracks {
+            for (start, end) in [(12_000_000, 14_000_000), (16_000_000, 18_000_000)] {
+                let first = scenario.value(&track.name, &track.unit, start);
+                for t in (start..end).step_by(50_000) {
+                    assert_eq!(
+                        scenario.value(&track.name, &track.unit, t),
+                        first,
+                        "{} at {t}",
+                        track.id
+                    );
+                }
+            }
+        }
+    }
+    #[test]
     fn fault_records_validate_operations_selectors_and_readable_lengths() {
         for invalid in [
             r#"{"type":"api_fault","operation":"SimConnect_Close","occurrence":1,"hresult":-1}"#,

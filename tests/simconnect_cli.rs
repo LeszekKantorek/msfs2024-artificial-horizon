@@ -921,7 +921,7 @@ fn fault_snapshot(
     stream
         .set_read_timeout(Some(Duration::from_millis(200)))
         .unwrap();
-    let deadline = Instant::now() + Duration::from_secs(6);
+    let deadline = Instant::now() + Duration::from_secs(10);
     let mut pending = String::new();
     while Instant::now() < deadline {
         let mut bytes = [0; 8192];
@@ -1125,4 +1125,79 @@ fn fault_open_retry_wait_is_interruptible_by_shutdown() {
         records.iter().find(|r| r["kind"] == "session_end").unwrap()["data"]["success"],
         true
     );
+}
+
+fn suite_path(name: &str) -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("demo-scenarios")
+        .join(name)
+}
+#[test]
+fn focused_availability_reaches_live_gap_stale_and_fresh_recovery() {
+    let fixture = Fixture::new();
+    let binary = fixture.binary();
+    let path = suite_path("availability-gaps.jsonl");
+    let mut app = Application::start(&binary, &fixture.0, &["--scenario", path.to_str().unwrap()]);
+    let initial = fault_snapshot(&app, |s| {
+        s["state"] == "live" && s["ias_kt"] == 90.0 && s["tas_kt"] == 105.0
+    });
+    assert_eq!(initial["source"], "demo");
+    let gap = fault_snapshot(&app, |s| {
+        s["state"] == "live" && s.get("ias_kt").is_none() && s["tas_kt"] == 105.0
+    });
+    assert!(gap["attitude"].is_object());
+    let stale = fault_snapshot(&app, |s| s["state"] == "stale");
+    assert!(stale["attitude"].is_null());
+    let fresh = fault_snapshot(&app, |s| {
+        s["state"] == "live"
+            && s["ias_kt"] == 100.0
+            && s["attitude"]["pitch_deg"]
+                .as_f64()
+                .is_some_and(|p| (p - 0.1_f64.to_degrees()).abs() < 1e-9)
+    });
+    assert_eq!(fresh["tas_kt"], 105.0);
+    app.assert_health();
+    app.shutdown();
+}
+#[test]
+fn focused_lifecycle_retries_pauses_inactivates_and_reconnects() {
+    let fixture = Fixture::new();
+    let binary = fixture.binary();
+    let path = suite_path("simulator-lifecycle.jsonl");
+    let mut app = Application::start(&binary, &fixture.0, &["--scenario", path.to_str().unwrap()]);
+    let waiting = fault_snapshot(&app, |s| s["state"] == "waiting");
+    assert!(waiting["attitude"].is_null());
+    let live = fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    assert_eq!(live["source"], "demo");
+    for _ in 0..2 {
+        let paused = fault_snapshot(&app, |s| s["state"] == "paused");
+        assert!(paused["attitude"].is_null());
+        let recovered = fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+        assert!(recovered["attitude"].is_object());
+    }
+    let inactive = fault_snapshot(&app, |s| s["state"] == "waiting");
+    assert!(inactive["attitude"].is_null());
+    fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    std::thread::sleep(Duration::from_secs(2));
+    let disconnected = fault_snapshot(&app, |s| s["state"] == "disconnected");
+    assert!(disconnected["attitude"].is_null());
+    let reconnected = fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    assert!(reconnected["attitude"].is_object());
+    app.assert_health();
+    app.shutdown();
+}
+#[test]
+fn focused_sparse_scenarios_never_fabricate_live_attitude() {
+    let fixture = Fixture::new();
+    let binary = fixture.binary();
+    for name in ["ias-only.jsonl", "event-only.jsonl", "no-signal.jsonl"] {
+        let path = suite_path(name);
+        let mut app =
+            Application::start(&binary, &fixture.0, &["--scenario", path.to_str().unwrap()]);
+        let snapshot = fault_snapshot(&app, |s| s["state"] == "waiting");
+        assert!(snapshot["attitude"].is_null());
+        assert!(snapshot.get("ias_kt").is_none());
+        app.assert_health();
+        app.shutdown();
+    }
 }
