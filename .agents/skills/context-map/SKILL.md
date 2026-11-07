@@ -1,6 +1,8 @@
 ---
 name: context-map
 description: Use to create or improve project knowledge maps. Connect situations to relevant documents or sections through tables that support selective reading.
+metadata:
+  version: "1.1.0"
 ---
 
 # Map Project Context

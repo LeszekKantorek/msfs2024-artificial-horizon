@@ -84,12 +84,14 @@ test('inline code comments, nested fenced examples and task continuation lines o
 });
 
 function fakeApi(initial = [pr()]) {
-  const state = { prs: initial, issues: new Map([[21, issue()]]), statuses: [], writes: [], reads: [] };
+  const state = { prs: initial, issues: new Map([[21, issue()]]), tree: [], statuses: [], writes: [], reads: [] };
   state.api = async (path, method = 'GET', body) => {
     state.reads.push(path);
     if (method === 'POST') { state.writes.push({ path, body }); state.statuses.unshift({ ...body, sha: path.split('/').at(-1) }); return body; }
     if (path.includes('/pulls?')) return state.prs;
     if (path.includes('/pulls/')) return state.prs.find(p => p.number === Number(path.split('/').at(-1)));
+    if (path.includes('/git/commits/')) return { tree: { sha: 'c'.repeat(40) } };
+    if (path.includes('/git/trees/')) return { tree: state.tree, truncated: false };
     if (path.includes('/issues/')) {
       const value = state.issues.get(Number(path.split('/').at(-1)));
       if (!value) throw new Error('GitHub API GET issue failed (404).');
@@ -101,6 +103,58 @@ function fakeApi(initial = [pr()]) {
   return state;
 }
 const run = state => runAcceptance({ api: state.api, repository: repo, targetUrl: 'https://github.com/example/pfd/actions/runs/1' });
+
+test('planning files block main-bound PRs even without closing references or changed-file matches', async () => {
+  for (const type of ['tree', 'blob', 'commit']) {
+    const state = fakeApi([pr('No checklist.')]);
+    state.tree = [{ path: '.plans', type }];
+    const [result] = await run(state);
+    assert.equal(result.state, 'failure');
+    assert.match(result.errors.join(), /Remove \.plans/);
+    assert.ok(state.reads.includes(`/repos/${repo}/git/commits/${sha}`));
+  }
+});
+
+test('removing planning files from the final tree permits merge; similarly named paths remain allowed', async () => {
+  const state = fakeApi([pr('No checklist.')]);
+  state.tree = [{ path: '.plans', type: 'tree' }];
+  assert.equal((await run(state))[0].state, 'failure');
+  state.prs[0].head.sha = 'b'.repeat(40);
+  state.tree = [{ path: '.plans-old', type: 'tree' }, { path: 'docs', type: 'tree' }];
+  assert.equal((await run(state))[0].state, 'success');
+});
+
+test('unreadable or truncated trees cannot grant acceptance', async () => {
+  for (const failure of ['truncated', 'malformed', 'unavailable']) {
+    const state = fakeApi();
+    const api = state.api;
+    state.api = async (path, method, body) => {
+      if (path.includes('/git/trees/')) {
+        if (failure === 'unavailable') throw new Error('Tree unavailable');
+        return failure === 'truncated' ? { tree: [], truncated: true } : {};
+      }
+      return api(path, method, body);
+    };
+    assert.equal((await run(state))[0].state, 'error');
+  }
+});
+
+test('main pushes check the pushed tree even without open PRs; branch pushes are allowed', async () => {
+  const state = fakeApi([]);
+  state.tree = [{ path: '.plans', type: 'tree' }];
+  const push = ref => runAcceptance({ api: state.api, repository: repo, event: { ref, after: sha } });
+  assert.deepEqual(await push('refs/heads/codex/issue-91-planning'), []);
+  assert.equal(state.writes.length, 0);
+  assert.equal((await push('refs/heads/main'))[0].state, 'failure');
+  state.tree = [];
+  assert.equal((await push('refs/heads/main'))[0].state, 'success');
+});
+
+test('a main push cannot publish success over a failing PR sharing the commit', async () => {
+  const state = fakeApi([pr('- [ ] Required verification')]);
+  await runAcceptance({ api: state.api, repository: repo, event: { ref: 'refs/heads/main', after: sha } });
+  assert.deepEqual(state.writes.map(write => write.body.state), ['failure']);
+});
 
 test('PRs without closing references or checklists publish success without issue API requests', async () => {
   for (const body of ['', 'Describe the change.', 'Refs #21', 'Example: `Closes #21`']) {

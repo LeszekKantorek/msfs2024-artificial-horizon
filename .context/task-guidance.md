@@ -7,6 +7,7 @@ status: active
 
 This table selects sources for tasks that cross knowledge areas or require a condition-dependent route.
 [AGENTS](../AGENTS.md#context-selection) owns context selection and the fallback to the index.
+Use [context-retrieve](../.agents/skills/context-retrieve/SKILL.md) to locate sources for a concrete question. The routes below narrow that retrieval by outcome; they do not require reading every linked source.
 
 Use these direct routes when their conditions apply:
 
@@ -16,10 +17,11 @@ Use these direct routes when their conditions apply:
 
 | Task | Read first | Extend only when relevant |
 | --- | --- | --- |
+| Locate requirements, decisions, code, or validation guidance for a concrete project question | [context-retrieve](../.agents/skills/context-retrieve/SKILL.md) | Use the affected component or decision map to narrow the search; retain verified references and unresolved source gaps |
 | Read or refresh GitHub issue context | [Issue and artifact retrieval](repository-instructions.md#read-github-issue-context) | Before issue-based planning or execution, and when another project procedure uses issue context |
 | Preserve findings or review knowledge | The context skill matching the task and [knowledge conventions](agent-maintenance.md#knowledge-maintenance) | [Markdown structure](../.agents/skills/project-write-content/SKILL.md) when writing entries; [tool maintenance](agent-maintenance.md#project-procedure-skills) when changing skills |
 | Plan a Task | [project-plan-change](../.agents/skills/project-plan-change/SKILL.md) | [Planning rationale](implementation-planning.md#why-these-details-matter) when choosing detail; [work organization](../docs/work-organization.md) for hierarchy and publication boundaries |
-| Execute a Subtask or verify its context | [Subtask context preparation](iterative-development.md#prepare-subtask-context) | [Accepted plans and handoffs](iterative-development.md#accepted-plans-and-handoffs) when supplied plans or amendments govern execution; select contracts and checks by the affected behavior |
+| Prepare implementation context, with or without a Subtask | [context-retrieve](../.agents/skills/context-retrieve/SKILL.md), [Subtask context preparation](iterative-development.md#prepare-subtask-context) | For issue-based work, read the complete Subtask and [accepted plans and handoffs](iterative-development.md#accepted-plans-and-handoffs); select contracts and checks by the affected behavior |
 | Consult Sol during Subtask execution | [Sol consultation](iterative-development.md#consult-sol) | Applicable contracts for the specific question; retain unavailable-model and authorization limits |
 | Report Subtask results, gaps, and consultations | [Final Subtask summary](iterative-development.md#final-subtask-summary) | [Execution findings](iterative-development.md#record-execution-findings) for long Subtasks or an optional local journal |
 | Change behavior across component boundaries, such as providers, telemetry, HTTP, or the browser | [Change map](component-changes.md) | [Governing decisions](architecture-decisions.md#find-the-governing-decision) when reconsidering accepted boundaries or behavior |

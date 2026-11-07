@@ -40,10 +40,11 @@ The project does not pin a compiler version.
 
 ### 3. Prepare agent skills and hooks
 
-The repository tests the skills from [context-skills PR #7](https://github.com/LeszekKantorek/context-skills/pull/7), branch `codex/context-skills-refresh`, pinned to commit `2598a6246b8649f7eaea68720201d9dbff1ddd84`:
+The installed context skills match [context-skills commit `73e282d`](https://github.com/LeszekKantorek/context-skills/tree/73e282d8dc244337462c7f649db56f097f749fe6), version `1.1.0`. This identifies their source; it does not establish runtime validation of the skills.
 
 | Skill | Purpose |
 | --- | --- |
+| `context-retrieve` | Locate verified source passages for a concrete project question |
 | `context-preserve` | Preserve decisions and findings with rationale and evidence |
 | `context-review-sessions` | Review pending sessions through `context-preserve` |
 | `context-map` | Connect tasks and questions to relevant sources |
@@ -54,7 +55,7 @@ The repository tests the skills from [context-skills PR #7](https://github.com/L
 If the installed copies are missing, install them with:
 
 ```powershell
-npx --yes skills add https://github.com/LeszekKantorek/context-skills/tree/2598a6246b8649f7eaea68720201d9dbff1ddd84 --agent codex --skill context-preserve context-review-sessions context-map context-maintain context-diagnose context-compile --copy -y
+npx --yes skills add https://github.com/LeszekKantorek/context-skills/tree/73e282d8dc244337462c7f649db56f097f749fe6 --agent codex --skill context-retrieve context-preserve context-review-sessions context-map context-maintain context-diagnose context-compile --copy -y
 ```
 
 The project also includes [procedural-skill-creator](https://github.com/LeszekKantorek/agent-skills/blob/main/skills/procedural-skill-creator/SKILL.md) for creating or revising executable skill procedures:
@@ -70,7 +71,7 @@ Select agent guidance under these requirements:
 
 #### Session hooks
 
-The checkout also includes the [Codex integration from the tested revision](https://github.com/LeszekKantorek/context-skills/tree/2598a6246b8649f7eaea68720201d9dbff1ddd84/integrations/codex).
+The checkout retains the [Codex integration from commit `2598a62`](https://github.com/LeszekKantorek/context-skills/tree/2598a6246b8649f7eaea68720201d9dbff1ddd84/integrations/codex), independently of the installed skill revision.
 These files are separate from the skill installation command above:
 
 | File | Purpose |
@@ -99,14 +100,14 @@ To prepare the hooks:
 Apply these hook and session-review constraints:
 
 * Treat hook output as session metadata. Hooks do not read transcripts or run reviews automatically.
-* Use `context-review-sessions` with `context-preserve` to process pending records later.
+* Use `context-review-sessions` with `context-preserve` to review session history. The installed skill no longer includes the registry-reading and review-marking helper; it does not update the registry's `reviewed_date` field.
 
 Maintain the session registry and installed integration under these requirements:
 
 * Preserve the UTF-8 CSV columns `session_date`, `session_id`, `path`, and `reviewed_date` in the registry.
 * Exclude `.context/sessions.log` and `.context/.sessions.lock` from commits and knowledge retrieval.
 * Retain `.context/sessions/` metadata separately without treating it as reviewed. The session tools do not migrate or read that directory.
-* For reinstalls, preserve intentional local changes and use the pinned revision in [agent setup](#3-prepare-agent-skills-and-hooks).
+* For reinstalls, preserve intentional local changes. Use the skill revision in [agent setup](#3-prepare-agent-skills-and-hooks) and the separate integration revision in [session hooks](#session-hooks).
 * Update installed skills and `skills-lock.json` together. Preserve installer-generated hashes as source provenance and keep unrelated hooks.
 
 ### 4. Check the environment
@@ -158,6 +159,9 @@ Follow the [work organization model](docs/work-organization.md) for issue levels
 7. Follow [PR preparation](#prepare-a-pull-request) to prepare the description or publish the requested PR.
 
 ### Additional working trees
+
+Planning files may be committed under `.plans/` on working branches. Before merging into `main`, remove every tracked entry from `.plans/` in the proposed final tree, including placeholder files. Keep durable requirements in their documentation owners and use commit-pinned links when retaining a branch plan as issue context.
+The [acceptance control](docs/pr-acceptance.md#planning-files) checks this rule for PRs targeting `main` and for pushes to `main`. Git does not normally track empty directories; an absent `.plans/` directory satisfies the rule.
 
 From the main checkout, replace `<topic>` with a name for the change and create the working tree:
 

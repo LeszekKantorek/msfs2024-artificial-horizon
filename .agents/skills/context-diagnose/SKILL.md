@@ -1,6 +1,8 @@
 ---
 name: context-diagnose
 description: Use to diagnose agent mistakes or behavior flagged by user corrections and check targeted improvements.
+metadata:
+  version: "1.1.0"
 ---
 
 # Diagnose Agent Behavior

@@ -1,6 +1,8 @@
 ---
 name: context-preserve
 description: Use to preserve project decisions and findings from available sessions or supplied sources. Record established knowledge with its scope, rationale, and evidence.
+metadata:
+  version: "1.1.0"
 ---
 
 # Preserve Project Context

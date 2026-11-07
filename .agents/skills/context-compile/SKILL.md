@@ -1,6 +1,8 @@
 ---
 name: context-compile
 description: Use to turn established project procedures into directly selectable skills.
+metadata:
+  version: "1.1.0"
 ---
 
 # Compile Project Procedures
