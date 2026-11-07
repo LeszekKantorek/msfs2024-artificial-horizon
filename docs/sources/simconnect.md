@@ -24,29 +24,29 @@ User-aircraft flight instrument reception with optional diagnostics.
 2. From the repository root, start the application:
 
    ```powershell
-   cargo run --locked --release --bin msfs2024-artificial-horizon -- --source simconnect --log ".local\simconnect-sessions\flight.jsonl"
+   cargo run --locked --release --bin msfs2024-artificial-horizon -- --source SimConnect.dll --log ".local\simconnect-sessions\flight.jsonl"
    ```
 
 3. Check the console for the selected DLL and connection status.
    An active, unpaused flight produces `State: live` after a new sample passes availability checks.
-4. Open the printed HTTP URL. For phone access, use the [private LAN setup](../../README.md#use-your-phone) with `--source simconnect`.
+4. Open the printed HTTP URL. For phone access, use the [private LAN setup](../../README.md#use-your-phone) with `--source SimConnect.dll`.
 5. Press `Ctrl+C` to close HTTP clients and wait for native reception to stop.
 
 For a DLL in another directory, provide its absolute path:
 
 ```powershell
 $simconnectDll = Read-Host 'Absolute path to the official x64 SimConnect.dll'
-cargo run --locked --release --bin msfs2024-artificial-horizon -- --source simconnect --dll "$simconnectDll" --log ".local\simconnect-sessions\flight.jsonl"
+cargo run --locked --release --bin msfs2024-artificial-horizon -- --source "$simconnectDll" --log ".local\simconnect-sessions\flight.jsonl"
 ```
 
 ### Command-line options
 
 | Option | Behavior |
 | --- | --- |
-| No source option or `--source demo` | Demo with HTTP/SSE, without loading SimConnect |
-| `--source simconnect` | Native acquisition with HTTP/SSE and available flight instruments |
+| No source option or `--source demo.dll` | Project-owned Demo DLL with HTTP/SSE |
+| `--source SimConnect.dll` | Native acquisition with HTTP/SSE and available flight instruments |
 | `--listen-address`, `--port` | HTTP settings for either source. Defaults are `127.0.0.1` and `8080` |
-| `--dll <file>` | Optional absolute override. Default: `SimConnect.dll` beside the running EXE |
+| `--scenario <file>` | Demo-only JSONL file, absolute or relative to the working directory |
 | `--log <file>` | Optional exact JSONL destination, absolute or relative to the working directory |
 | `--help`, `--version` | Information without opening a DLL or log |
 | `stop` on standard input | A line containing `stop` requests coordinated shutdown |
@@ -54,9 +54,9 @@ cargo run --locked --release --bin msfs2024-artificial-horizon -- --source simco
 
 The CLI applies these restrictions:
 
-* `--dll` and `--log` require SimConnect.
-* Invalid HTTP settings and a relative DLL override are rejected before starting components.
-* `--simconnect` and `--scenario` are unsupported.
+* `--log` is available for either source. `--scenario` requires Demo.
+* Invalid HTTP settings and relative DLL paths containing directories are rejected before starting components.
+* Legacy `--simconnect`, `--dll`, and source aliases are unsupported.
 * Log filenames distinguish scenarios. The application does not interpret them as metadata.
 
 ### DLL selection and errors
@@ -67,7 +67,7 @@ The CLI applies these restrictions:
 | Search | No `PATH`, working-directory, or SDK search. No fallback after explicit selection |
 | Dependencies | Selected DLL directory and Windows system directory only |
 | Errors | Missing DLL, incompatible architecture, or missing exports stop the producer. HTTP remains available |
-| Missing default DLL | Place it beside the EXE or select an absolute `--dll` path |
+| Missing default DLL | Place it beside the EXE or select an absolute `--source` path |
 | Console | DLL selection, connections, state changes, errors, and shutdown, including without logging |
 
 ## Public API
@@ -76,9 +76,9 @@ The `providers::simconnect` module exports the acquisition interface independent
 
 | Interface | Contract |
 | --- | --- |
-| `SimConnectConfig` | Optional `dll: Option<PathBuf>` and `log: Option<PathBuf>`. Both default to `None` |
+| `SimConnectConfig` | Optional `dll`, `log`, and Demo `scenario` paths. Defaults select adjacent `demo.dll` |
 | `resolve_dll(override_path)` | Return the selected path or `SimConnectError`. Validate path syntax without loading the DLL |
-| `run(config, publisher, shutdown)` | Consume a caller-supplied `Publisher` with `Source::SimConnect`. Await caller-owned shutdown with output `io::Result<()>` and return `RunReport` |
+| `run(config, publisher, shutdown)` | Consume a caller-supplied `Publisher` whose source matches the selected DLL. Await caller-owned shutdown with output `io::Result<()>` and return `RunReport` |
 | `RunReport::result` | Acquisition outcome as `Result<(), SimConnectError>` |
 | `RunReport::diagnostics` | Independent `DiagnosticStatus`: disabled, completed, or failed |
 | `SimConnectError` | Configuration, I/O, native, telemetry, or worker-panic failure |
@@ -86,7 +86,7 @@ The `providers::simconnect` module exports the acquisition interface independent
 The provider API preserves these boundaries:
 
 * The provider creates no hidden telemetry channel and never starts HTTP.
-* Configuration contains no scenario, process arguments, or HTTP settings.
+* Configuration carries an optional Demo scenario path, but no process arguments or HTTP settings.
 * DLL resolution uses the same executable-relative default for library and CLI calls, before opening diagnostics or loading native code.
 * Dropping the running future signals worker cancellation. Normal shutdown also waits for the worker and reports cleanup results.
 * A permanently blocked native call has no guaranteed completion deadline.
@@ -212,7 +212,7 @@ An empty queue ends the current batch early. Cancellation exits reception and st
 
 ## Planned common native consumer
 
-The accepted [native Demo decision](../adr/0009-native-demo.md) is planned; the existing direct Demo provider remains in use until integration. The future Demo DLL and official DLL use the same receiver, decoder, lifecycle gates, Publisher, and HTTP/SSE path. Source identity is selected before channel creation and stays Demo or SimConnect; a basename identifies selection, not authenticity. The Demo setup export is private to Demo and does not add an acquisition path.
+The accepted [native Demo decision](../adr/0009-native-demo.md) is implemented. The Demo DLL and official DLL use the same receiver, decoder, lifecycle gates, Publisher, and HTTP/SSE path. Source identity is selected before channel creation and stays Demo or SimConnect; a basename identifies selection, not authenticity. The Demo setup export is private to Demo and does not add an acquisition path.
 
 ### Used API and evidence
 
@@ -485,14 +485,14 @@ Build the complete application and prepare an output directory before recording.
 cargo build --locked --release --target x86_64-pc-windows-msvc
 New-Item -ItemType Directory -Force .local/live | Out-Null
 $appExe = Join-Path $PWD 'target/x86_64-pc-windows-msvc/release/msfs2024-artificial-horizon.exe'
-node tools/live/run.mjs --exe "$appExe" --url http://127.0.0.1:8080/api/v1/events --output .local/live/demo.jsonl --duration-seconds 30 --max-messages 1000 -- --source demo --listen-address 127.0.0.1 --port 8080
+node tools/live/run.mjs --exe "$appExe" --url http://127.0.0.1:8080/api/v1/events --output .local/live/demo.jsonl --duration-seconds 30 --max-messages 1000 -- --source demo.dll --listen-address 127.0.0.1 --port 8080
 ```
 
 For SimConnect, provide the official x64 DLL path and choose a new telemetry output filename. Add `--log` after `--` to record application diagnostics in a separate file:
 
 ```powershell
 $simconnectDll = Read-Host 'Absolute path to the official x64 SimConnect.dll'
-node tools/live/run.mjs --exe "$appExe" --url http://127.0.0.1:8080/api/v1/events --output .local/live/flight.jsonl --duration-seconds 30 --max-messages 1000 -- --source simconnect --dll "$simconnectDll" --log .local/live/simconnect.jsonl --listen-address 127.0.0.1 --port 8080
+node tools/live/run.mjs --exe "$appExe" --url http://127.0.0.1:8080/api/v1/events --output .local/live/flight.jsonl --duration-seconds 30 --max-messages 1000 -- --source "$simconnectDll" --log .local/live/simconnect.jsonl --listen-address 127.0.0.1 --port 8080
 ```
 
 Options before `--` configure the recorder. Arguments after `--`, including `--log`, go to the application. The recorder writes the telemetry JSONL file, and the application appends diagnostic records to the JSONL file. Use a new telemetry filename for each run and distinct log filenames to distinguish sessions. Inspect and compare the files separately.

@@ -33,7 +33,7 @@ fn help_and_version_work_without_starting_the_server() {
         "--source",
         "--listen-address",
         "--port",
-        "--dll",
+        "--scenario",
         "--log",
         "--help",
         "--version",

@@ -1,6 +1,6 @@
 # ADR 0009: Native Demo playback
 
-Decision status: Accepted; implementation is planned.
+Decision status: Accepted.
 
 ## Context
 
@@ -8,7 +8,7 @@ The current Demo provider publishes normalized samples directly. It does not exe
 
 ## Decision
 
-The workspace contains a Windows x64 Rust cdylib package producing `demo.dll`. Scenario instructions use JSONL and drive native observations through the existing SimConnect receiver, decoder, lifecycle gates, Publisher, HTTP/SSE, and EFI. The DLL owns its clock, request tables, notifications, receive buffers, and injected faults. A private versioned setup export selects and validates the scenario before Open; it does not publish. The official DLL is never called with that export. The [Demo guide](../sources/demo.md#planned-native-demo-playback) and [native consumer contract](../sources/simconnect.md#planned-common-native-consumer) define the planned behavior and evidence limits.
+The workspace contains a Windows x64 Rust cdylib package producing `demo.dll`. Scenario instructions use JSONL and drive native observations through the existing SimConnect receiver, decoder, lifecycle gates, Publisher, HTTP/SSE, and EFI. The DLL owns its clock, request tables, notifications, receive buffers, and injected faults. A private versioned setup export selects and validates the scenario before Open; it does not publish. The official DLL is never called with that export. The [Demo guide](../sources/demo.md#planned-native-demo-playback) and [native consumer contract](../sources/simconnect.md#planned-common-native-consumer) define behavior and evidence limits.
 
 This amends [ADR 0006's bindings and runtime](0006-simconnect-manual-ffi.md#bindings-and-runtime): Demo uses a project-owned DLL and a separate workspace package, while the official DLL still uses the existing manual bindings without SDK build dependencies. It amends [ADR 0007's component boundaries](0007-application-composition.md#component-boundaries): both source identities use the same native receiver. HTTP-first startup, one active publisher, source-failure isolation, and coordinated shutdown remain valid. No fallback to Demo is introduced.
 
@@ -19,4 +19,4 @@ The earlier planned YAML and full normalized-snapshot playback are replaced by n
 * Native registration is independent of scenario coverage. Missing values remain unavailable, not zero.
 * An increasing DLL clock loops scenario steps without resetting lifecycle state. Request semantics govern observations.
 * The Demo is an independently implemented test source, not proof of simulator compatibility. Empty-queue, pause delivery, overflow, indexed spellings, and native layouts require the bounded checks in the source guides.
-* A separate DLL must be built and delivered with the application. The current direct provider and CLI remain in effect until integration.
+* A separate DLL must be built and delivered with the application. The shared receiver and DLL-path CLI implement this decision.

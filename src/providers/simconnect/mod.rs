@@ -10,4 +10,4 @@ mod runtime;
 mod unit_check;
 
 pub use journal::DiagnosticStatus;
-pub use runtime::{RunReport, SimConnectConfig, SimConnectError, resolve_dll, run};
+pub use runtime::{RunReport, SimConnectConfig, SimConnectError, resolve_dll, run, source_kind};

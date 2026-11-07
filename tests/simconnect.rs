@@ -8,19 +8,15 @@ use std::{path::PathBuf, time::Duration};
 
 #[tokio::test]
 async fn missing_explicit_dll_returns_controlled_error_without_diagnostics() {
-    let dll = std::env::temp_dir().join(format!(
-        "simconnect-missing-{}-{}.dll",
-        std::process::id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos()
-    ));
+    let dll = std::env::temp_dir()
+        .join(format!("simconnect-missing-{}", std::process::id()))
+        .join("SimConnect.dll");
     let (publisher, mut subscription) = telemetry::channel(Source::SimConnect);
     let report = run(
         SimConnectConfig {
             dll: Some(dll),
             log: None,
+            scenario: None,
         },
         publisher,
         std::future::pending(),
@@ -50,6 +46,7 @@ async fn official_dll_stops_on_requested_shutdown_and_uses_caller_channel() {
         SimConnectConfig {
             dll: Some(dll),
             log: Some(log.clone()),
+            scenario: None,
         },
         publisher,
         async {

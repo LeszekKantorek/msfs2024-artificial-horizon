@@ -209,6 +209,49 @@ pub(super) struct Library {
 }
 
 impl Library {
+    pub fn configure_demo(&self, scenario: Option<&Path>) -> Result<(), NativeError> {
+        type Configure = unsafe extern "C" fn(*const u16, *mut u8, u32) -> i32;
+        let address =
+            unsafe { GetProcAddress(self.module, c"EfiDemo_ConfigureV1".as_ptr().cast()) }
+                .ok_or_else(|| {
+                    NativeError::last_win32("GetProcAddress", "missing export EfiDemo_ConfigureV1")
+                })?;
+        let configure = unsafe {
+            std::mem::transmute::<unsafe extern "system" fn() -> isize, Configure>(address)
+        };
+        let wide = scenario.map(|path| {
+            let mut value: Vec<u16> = path.as_os_str().encode_wide().collect();
+            value.push(0);
+            value
+        });
+        if wide
+            .as_ref()
+            .is_some_and(|path| path[..path.len() - 1].contains(&0))
+        {
+            return Err(NativeError::detail(
+                "EfiDemo_ConfigureV1",
+                "scenario path contains NUL",
+            ));
+        }
+        let mut error = [0u8; 2048];
+        let hr = unsafe {
+            configure(
+                wide.as_ref().map_or(ptr::null(), |p| p.as_ptr()),
+                error.as_mut_ptr(),
+                error.len() as u32,
+            )
+        };
+        if hr < 0 {
+            let end = error.iter().position(|b| *b == 0).unwrap_or(error.len());
+            return Err(NativeError {
+                operation: "EfiDemo_ConfigureV1",
+                hresult: Some(hr),
+                win32: None,
+                detail: String::from_utf8_lossy(&error[..end]).into_owned(),
+            });
+        }
+        Ok(())
+    }
     pub(super) fn has_unconfirmed_close(&self) -> bool {
         self.retain_mapping.get()
     }

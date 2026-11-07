@@ -19,7 +19,7 @@ let server;
 let browser;
 let session;
 let primaryError;
-async function start(sourceArguments = ['--source', 'demo']) {
+async function start(sourceArguments = ['--source', 'demo.dll']) {
   server = spawn(executable, [...sourceArguments, '--port', String(port)], { stdio: ['ignore', 'pipe', 'pipe'] });
   let failure;
   server.once('error', error => { failure = error; });
@@ -108,24 +108,14 @@ async function checkInitialTelemetry(page) {
   assert.ok(Number.isFinite(snapshot.gs_kt));
   assert.ok(Number.isFinite(snapshot.tas_kt));
   assert.ok(Number.isFinite(snapshot.altitude_ft));
-  assert.match(snapshot.baro_text, /^\d+\.\d{2} inHg$/);
+  assert.ok(Number.isFinite(snapshot.baro_setting.pressure_hpa));
   assert.ok(Number.isFinite(snapshot.vertical_speed_fpm));
   assert.equal(snapshot.heading_deg, 354);
   assert.ok(Number.isFinite(snapshot.selected_heading_deg));
   assert.equal(await page.locator('#heading-value').textContent(), '354');
   await page.waitForFunction(() => document.querySelector('#vertical-speed-value').textContent === '+4880');
   assert.equal(await page.locator('#vertical-speed-value').textContent(), '+4880');
-  assert.ok(Number.isFinite(snapshot.ias_acceleration_ktps));
-  assert.equal(snapshot.airspeed_profile.vne_kt, 140);
-}
-
-async function checkApproachingOverspeed(page) {
-  // Observe source-supplied acceleration and the corresponding six-second warning.
-  await page.waitForFunction(() => document.querySelector('#airspeed').dataset.approaching === 'true' &&
-    Number(document.querySelector('#airspeed-trend').dataset.predictionKt) >= 140,
-    null, { timeout: 25000 });
-  assert.equal(await page.locator('#airspeed').getAttribute('data-state'), 'available');
-  assert.equal(await page.locator('#ground-speed').getAttribute('data-state'), 'available');
+  assert.equal(Object.hasOwn(snapshot.airspeed_profile, 'vne_kt'), false);
 }
 
 async function checkRightTurnAndSpeeds(page) {
@@ -142,7 +132,7 @@ async function checkRightTurnAndSpeeds(page) {
     tasLabel: document.querySelector('#true-airspeed').getAttribute('aria-label'),
   }));
   assert.deepEqual(speeds, { ias: 'Indicated airspeed 150 knots', digits: '150', gs: '170', tas: '160', tasLabel: 'True airspeed 160 knots' });
-  assert.equal(await page.locator('#airspeed').getAttribute('data-overspeed'), 'true');
+  assert.equal(await page.locator('#airspeed').getAttribute('data-overspeed'), 'false');
   assert.equal(await page.locator('#airspeed-trend').evaluate(n => getComputedStyle(n).display), 'none');
   await saveScreenshot(page, { path: '.local/pfd-runtime-landscape.png' });
 }
@@ -250,7 +240,6 @@ try {
   await checkInitialDisplay(page);
   await checkEmbeddedAssets(loadedModules);
   await checkInitialTelemetry(page);
-  await checkApproachingOverspeed(page);
   await checkRightTurnAndSpeeds(page);
   await checkNorthCrossing(page);
   await checkSelectedAltitude(page);
@@ -262,7 +251,7 @@ try {
   await checkRecovery(page);
   // A failed real provider keeps HTTP connected and invalidates prior demo values.
   await stop();
-  await start(['--source', 'simconnect', '--dll', resolve('.local/missing-browser-test/SimConnect.dll')]);
+  await start(['--source', resolve('.local/missing-browser-test/SimConnect.dll')]);
   await page.waitForFunction(() => {
     const instrument = document.querySelector('.instrument');
     return instrument.dataset.source === 'simconnect' && instrument.dataset.state === 'disconnected' &&

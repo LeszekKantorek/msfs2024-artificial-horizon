@@ -1,6 +1,6 @@
 # Demo scenario evidence checkpoints
 
-These are independent expectations for [demo-evidence.jsonl](demo-evidence.jsonl), not a record of an executed test. They apply to the planned common native receiver. The current application still selects the direct Demo provider until integration. Values are fictional.
+These are independent expectations for [demo-evidence.jsonl](demo-evidence.jsonl), not a record of an executed test. They apply to the common native receiver. Values are fictional.
 
 ## Observation conditions
 

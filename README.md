@@ -34,10 +34,11 @@ cd msfs2024-artificial-horizon
 
 ```powershell
 rustup default stable
+cargo build --workspace --locked
 cargo run --locked --bin msfs2024-artificial-horizon
 ```
 
-Cargo builds the application before starting it.
+The workspace build places `demo.dll` beside the executable before startup.
 
 ### 3. Open the display
 
@@ -60,7 +61,7 @@ Connect the phone to the server through the trusted private network:
 3. Start the server with LAN access:
 
    ```powershell
-   cargo run --locked --bin msfs2024-artificial-horizon -- --source demo --listen-address 0.0.0.0 --port 8080
+   cargo run --locked --bin msfs2024-artificial-horizon -- --source demo.dll --listen-address 0.0.0.0 --port 8080
    ```
 
 4. Allow inbound TCP port `8080` in Windows Defender Firewall for the Private profile and local subnet.
@@ -90,7 +91,7 @@ Apply these LAN access constraints:
 ```powershell
 cargo run --locked --bin msfs2024-artificial-horizon -- --help
 cargo run --locked --bin msfs2024-artificial-horizon -- --version
-cargo run --locked --bin msfs2024-artificial-horizon -- --source demo --listen-address 127.0.0.1 --port 9000
+cargo run --locked --bin msfs2024-artificial-horizon -- --source demo.dll --listen-address 127.0.0.1 --port 9000
 ```
 
 | Situation | Action / constraint |
@@ -98,17 +99,17 @@ cargo run --locked --bin msfs2024-artificial-horizon -- --source demo --listen-a
 | Port occupied | Select another `--port` from `1` to `65535` |
 | Invalid address | Use an IPv4/IPv6 address, not a hostname, multicast address, or IPv4 broadcast address |
 | Phone cannot connect | Check the private network, PC address, port, VPN interface, and firewall scope |
-| SimConnect DLL cannot load | Place the official x64 DLL beside the executable or supply an absolute `--dll` path. Demo never replaces SimConnect automatically |
+| SimConnect DLL cannot load | Place the official x64 DLL beside the executable or supply an absolute `--source` path. Demo never replaces SimConnect automatically |
 
-Select native reception with `--source simconnect`:
+Select native reception with `--source SimConnect.dll`:
 
 ```powershell
-cargo run --locked --release --bin msfs2024-artificial-horizon -- --source simconnect --log ".local\simconnect-sessions\active-pause.jsonl"
+cargo run --locked --release --bin msfs2024-artificial-horizon -- --source SimConnect.dll --log ".local\simconnect-sessions\active-pause.jsonl"
 ```
 
 Configure native reception under these requirements:
 
-* Place `SimConnect.dll` beside the running executable, or add `--dll` with its absolute path.
+* Place `SimConnect.dll` beside the running executable, or pass its absolute path to `--source`.
   The default DLL location is independent of the working directory.
 * If using `--log`, supply the exact file to append. Use distinct filenames to distinguish scenarios.
 * Follow [SimConnect setup and scenarios](docs/sources/simconnect.md) for the applicable requirements and observation procedures.

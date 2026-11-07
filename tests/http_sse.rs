@@ -1,3 +1,5 @@
+#[path = "support/demo.rs"]
+mod demo;
 use axum::{
     body::Body,
     http::{Request, StatusCode},
@@ -130,9 +132,7 @@ async fn baro_display_text_reaches_two_clients_unchanged_and_clears_with_the_sou
 #[tokio::test(start_paused = true)]
 async fn extended_samples_reach_two_clients_with_shared_values_and_delivery_time_age() {
     let (mut publisher, subscription) = telemetry::channel(Source::Demo);
-    publisher
-        .publish_sample(msfs2024_artificial_horizon::providers::demo::sample(240))
-        .unwrap();
+    publisher.publish_sample(demo::sample(240)).unwrap();
     let mut first = subscribe(subscription.clone(), None).await.into_body();
     let mut second = subscribe(subscription.clone(), None).await.into_body();
     advance(Duration::from_millis(50)).await;
@@ -154,9 +154,7 @@ async fn extended_samples_reach_two_clients_with_shared_values_and_delivery_time
     assert!((a["gs_kt"].as_f64().unwrap() - 113.33333333333333).abs() < 1e-10);
     assert_eq!(a["sample_age_ms"], 50);
     assert!(a.get("vertical_speed_fpm").is_none());
-    publisher
-        .publish_sample(msfs2024_artificial_horizon::providers::demo::sample(880))
-        .unwrap();
+    publisher.publish_sample(demo::sample(880)).unwrap();
     let selected_a = snapshot(&frame(&mut first).await);
     let selected_b = snapshot(&frame(&mut second).await);
     assert_eq!(selected_a, selected_b);
@@ -311,9 +309,7 @@ async fn unavailable_states_age_stale_and_heartbeat_are_independent() {
 #[tokio::test(start_paused = true)]
 async fn age_is_computed_when_body_is_read_and_pending_final_state_precedes_eof() {
     let (mut publisher, subscription) = telemetry::channel(Source::Demo);
-    publisher
-        .publish_sample(msfs2024_artificial_horizon::providers::demo::sample(240))
-        .unwrap();
+    publisher.publish_sample(demo::sample(240)).unwrap();
     let mut body = subscribe(subscription, None).await.into_body();
     advance(STALE_AFTER).await;
     let initial = snapshot(&frame(&mut body).await);

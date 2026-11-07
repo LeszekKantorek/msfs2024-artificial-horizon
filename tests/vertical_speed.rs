@@ -1,6 +1,7 @@
+#[path = "support/demo.rs"]
+mod demo;
 use msfs2024_artificial_horizon::{
     Source,
-    providers::demo,
     telemetry::{self, Attitude, FlightSample, State, VerticalSpeed},
 };
 use serde_json::Value;
