@@ -651,6 +651,62 @@ mod tests {
 mod ordering_tests {
     use super::*;
     #[test]
+    fn independent_tracks_emit_equal_holds_and_gaps_on_controlled_frames() {
+        let input = r#"{"type":"scenario","format":"msfs-efi-simconnect-demo","version":1,"mode":"scripted","frame_period_ms":50,"duration_us":8000000,"initial":{"sim_running":true,"pause":"off","flight":"one"}}
+{"type":"signal","id":"ias","simvar":"AIRSPEED INDICATED","unit":"knots","repeat":true}
+{"type":"hold","signal":"ias","value":100,"duration_ms":1500}
+{"type":"gap","signal":"ias","duration_ms":1500}
+{"type":"signal","id":"tas","simvar":"AIRSPEED TRUE","unit":"knots","repeat":true}
+{"type":"hold","signal":"tas","value":10,"duration_ms":1000}
+{"type":"hold","signal":"tas","value":20,"duration_ms":1000}"#;
+        let scenario = Scenario::parse(input, "controlled").unwrap();
+        let mut s = State {
+            queue: VecDeque::new(),
+            retained: vec![],
+            definitions: HashMap::from([
+                (1, vec![("AIRSPEED INDICATED".into(), "knots".into())]),
+                (2, vec![("AIRSPEED TRUE".into(), "knots".into())]),
+            ]),
+            requests: vec![(11, 1), (12, 2)],
+            subscriptions: HashMap::new(),
+            last_id: 0,
+            life: Life {
+                sim: true,
+                pause: 0,
+                flight: None,
+                through: 0,
+                unavailable_until: 0,
+            },
+            overflow: false,
+        };
+        for frame in 0..160_u64 {
+            emit(&mut s, &scenario, frame * 50_000, 0);
+            let mut values = HashMap::new();
+            while let Some(packet) = s.queue.pop_front() {
+                let id = u32::from_le_bytes(packet[12..16].try_into().unwrap());
+                let value = f64::from_le_bytes(packet[40..48].try_into().unwrap());
+                assert!(values.insert(id, value).is_none());
+            }
+            let ias_offset = frame % 60;
+            assert_eq!(
+                values.get(&11).copied(),
+                (ias_offset < 30).then_some(100.0),
+                "frame {frame}"
+            );
+            assert_eq!(
+                values.get(&12).copied(),
+                Some(if frame % 40 < 20 { 10.0 } else { 20.0 }),
+                "frame {frame}"
+            );
+        }
+        // The pass boundary restarts the three-second track at eight seconds.
+        emit(&mut s, &scenario, 8_000_000, 0);
+        assert_eq!(
+            u32::from_le_bytes(s.queue[0][12..16].try_into().unwrap()),
+            11
+        );
+    }
+    #[test]
     fn grouped_packets_follow_last_contributing_record_and_gaps_suppress_them() {
         let header = r#"{"type":"scenario","format":"msfs-efi-simconnect-demo","version":1,"mode":"scripted","frame_period_ms":50,"duration_us":1000000,"initial":{"sim_running":true,"pause":"off","flight":"one"}}"#;
         let pitch = r#"{"type":"signal","id":"p","simvar":"PLANE PITCH DEGREES","unit":"radians","repeat":true}
