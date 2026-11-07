@@ -549,9 +549,9 @@ fn actual_dll_notifies_and_retains_packets() {
         std::fs::write(&scenario, concat!(
             "{\"type\":\"scenario\",\"format\":\"msfs-efi-simconnect-demo\",\"version\":1,\"mode\":\"scripted\",\"frame_period_ms\":50,\"duration_us\":10000000,\"initial\":{\"sim_running\":true,\"pause\":\"off\",\"flight\":\"test\"}}\n",
             "{\"type\":\"signal\",\"id\":\"ias\",\"simvar\":\"AIRSPEED INDICATED\",\"unit\":\"knots\",\"repeat\":false}\n",
-            "{\"type\":\"hold\",\"signal\":\"ias\",\"value\":100,\"duration_ms\":1800}\n",
+            "{\"type\":\"hold\",\"signal\":\"ias\",\"value\":100,\"duration_ms\":2500}\n",
             "{\"type\":\"gap\",\"signal\":\"ias\",\"duration_ms\":1800}\n",
-            "{\"type\":\"hold\",\"signal\":\"ias\",\"value\":200,\"duration_ms\":6400}\n",
+            "{\"type\":\"hold\",\"signal\":\"ias\",\"value\":200,\"duration_ms\":5700}\n",
             "{\"type\":\"signal\",\"id\":\"tas\",\"simvar\":\"AIRSPEED TRUE\",\"unit\":\"knots\",\"repeat\":false}\n",
             "{\"type\":\"hold\",\"signal\":\"tas\",\"value\":50,\"duration_ms\":10000}\n"
         )).unwrap();
@@ -563,6 +563,7 @@ fn actual_dll_notifies_and_retains_packets() {
             ),
             0
         );
+        let hold_open_started = std::time::Instant::now();
         assert_eq!(
             open(
                 &mut h,
@@ -581,8 +582,9 @@ fn actual_dll_notifies_and_retains_packets() {
             );
             assert_eq!(request(h, id, id, 0, 3, 0, 0, 0, 0), 0);
         }
-        thread::sleep(Duration::from_millis(1300));
+        thread::sleep(Duration::from_millis(300));
         let mut hold_samples = 0;
+        let mut first_observed = None;
         while next(h, &mut p, &mut n) == 0 {
             let b = std::slice::from_raw_parts(p as *const u8, n as usize);
             if u32::from_le_bytes(b[8..12].try_into().unwrap()) == 8
@@ -590,13 +592,39 @@ fn actual_dll_notifies_and_retains_packets() {
             {
                 assert_eq!(f64::from_le_bytes(b[40..48].try_into().unwrap()), 100.0);
                 hold_samples += 1;
+                first_observed.get_or_insert_with(std::time::Instant::now);
             }
         }
         assert!(
-            hold_samples >= 15,
-            "only {hold_samples} equal observations in a 1.3-second hold"
+            hold_samples >= 3,
+            "only {hold_samples} equal observations in the initial hold"
         );
-        thread::sleep(Duration::from_millis(700));
+        let first_observed = first_observed.unwrap();
+        thread::sleep(Duration::from_millis(1050));
+        assert!(first_observed.elapsed() > Duration::from_millis(1000));
+        // Drain all observations already queued before looking for a new one.
+        while next(h, &mut p, &mut n) == 0 {}
+        let deadline = std::time::Instant::now() + Duration::from_millis(500);
+        let mut late_equal = false;
+        while std::time::Instant::now() < deadline && !late_equal {
+            while next(h, &mut p, &mut n) == 0 {
+                let b = std::slice::from_raw_parts(p as *const u8, n as usize);
+                if u32::from_le_bytes(b[8..12].try_into().unwrap()) == 8
+                    && u32::from_le_bytes(b[12..16].try_into().unwrap()) == 901
+                {
+                    assert_eq!(f64::from_le_bytes(b[40..48].try_into().unwrap()), 100.0);
+                    late_equal = true;
+                }
+            }
+            if !late_equal {
+                thread::sleep(Duration::from_millis(5));
+            }
+        }
+        assert!(
+            late_equal,
+            "a new equal observation must arrive after one second"
+        );
+        thread::sleep(Duration::from_millis(2750).saturating_sub(hold_open_started.elapsed()));
         while next(h, &mut p, &mut n) == 0 {}
         let gap_started = std::time::Instant::now();
         thread::sleep(Duration::from_millis(1200));
