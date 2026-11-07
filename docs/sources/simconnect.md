@@ -210,6 +210,75 @@ An empty queue ends the current batch early. Cancellation exits reception and st
 * Treat the silence watchdog as a reconnect trigger, not proof of native connection loss.
 * Do not promise a shutdown deadline when a native call is permanently blocked.
 
+## Planned common native consumer
+
+The accepted [native Demo decision](../adr/0009-native-demo.md) is planned; the existing direct Demo provider remains in use until integration. The future Demo DLL and official DLL use the same receiver, decoder, lifecycle gates, Publisher, and HTTP/SSE path. Source identity is selected before channel creation and stays Demo or SimConnect; a basename identifies selection, not authenticity. The Demo setup export is private to Demo and does not add an acquisition path.
+
+### Used API and evidence
+
+The current receiver uses Windows x64 C ABI and packed receive layouts derived from SDK 1.8.1 headers. The eight exact exports are `SimConnect_Open`, `SimConnect_Close`, `SimConnect_GetNextDispatch`, `SimConnect_AddToDataDefinition`, `SimConnect_RequestDataOnSimObject`, `SimConnect_SubscribeToSystemEvent`, `SimConnect_RequestSystemState`, and `SimConnect_GetLastSentPacketID`. Official API definitions document those interfaces; the manually declared layouts and their emulator implementation require independent header and runtime verification. The [definition API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_addtodatadefinition/) documents FLOAT64 and units. All current fields request FLOAT64, including Bool. The SDK permits nonzero Bool true, including -1; current `AUTOPILOT AVAILABLE` handling accepts exactly 1. This discrepancy must not become the emulator oracle.
+
+Normal attitude registration orders pitch radians, bank radians. Diagnostic registration orders pitch radians, pitch degrees, bank radians, bank degrees, repeated pitch radians, repeated bank radians. These shapes are current-consumer requirements, not evidence of simultaneous acquisition. The caller owns definition, request, event, and query IDs and field order; the DLL must route and encode those supplied values, not hard-code the current IDs. Current requests use user-aircraft proxy, `SIM_FRAME`, flags 0, origin 0, interval 0, and limit 0. The [request API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_requestdataonsimobject/) distinguishes these options from change-only requests. Other request modes are outside this used subset until implemented and verified.
+
+### Native field catalog
+
+| Native SimVar | Requested unit | Consumer meaning |
+| --- | --- | --- |
+| PLANE PITCH DEGREES | radians; degrees for diagnostics | Primary native pitch, with existing sign conversion |
+| PLANE BANK DEGREES | radians; degrees for diagnostics | Primary native bank, with existing sign/wrap conversion |
+| AIRSPEED INDICATED | knots | IAS and existing derived acceleration |
+| AIRSPEED TRUE | knots | TAS |
+| GROUND VELOCITY | knots | GS |
+| INDICATED ALTITUDE:1 | feet | Barometric altitude |
+| KOHLSMAN SETTING HG:1 | inHg | Numeric BARO after current conversion |
+| VERTICAL SPEED | feet per minute | VSI |
+| PLANE HEADING DEGREES MAGNETIC | degrees | Heading |
+| TURN COORDINATOR BALL | position 128 | Ball, divided by 127 in the current consumer |
+| TURN INDICATOR RATE | degrees per second | Turn rate |
+| DESIGN SPEED VS0 | knots | Optional VS0 |
+| DESIGN SPEED VS1 | knots | Optional VS1 |
+| DESIGN SPEED MIN ROTATION | knots | Optional VR reference |
+| AIRSPEED BARBER POLE | knots | Independent dynamic redline |
+| AUTOPILOT AVAILABLE | bool, FLOAT64 representation | Target availability gate |
+| AUTOPILOT HEADING LOCK DIR:0 | degrees | Selected heading |
+| AUTOPILOT ALTITUDE LOCK VAR:0 | feet | Selected altitude |
+| AUTOPILOT ALT RADIO MODE | bool, FLOAT64 representation | Barometric/radio target gate |
+
+The table records current consumer spellings and requested units. The SDK variable references document the base variables; the following qualifications apply to exact indexed names:
+
+* `KOHLSMAN SETTING HG:1` is documented as the first altimeter.
+* `INDICATED ALTITUDE:1` is a current-consumer compatibility assumption: the inspected SDK example uses the unindexed name.
+* Both `:0` autopilot target reads are compatibility assumptions: slot documentation describes slot 0, but the exact indexed reads are not established by the inspected variable tables.
+
+The [autopilot variable reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simvars/aircraft-simvars/aircraft-autopilot-and-assistant-variables/), [aircraft system variables](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simvars/aircraft-simvars/aircraft-system-variables/), and [native units](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simvars/simulation-variable-units/) are independent references for the relevant catalog entries. Exact field/unit pairs beyond the stated indexed gaps still require per-variable verification; the current table is consumer evidence rather than a blanket SDK certification.
+
+The independently documented base names and units are not proof that each aircraft supplies them. Test the assumptions against the target SDK and simulator before claiming compatibility. An emulator that accepts the same assumptions is not an independent oracle.
+
+The fictional full VFE/VNO/VNE and VX/VY/VG profile is not generated through private SimVars.
+Keep independent browser/presentation fixtures for those existing supported display fields.
+Do not remove display capability because the Demo source becomes narrower.
+
+
+### Dispatch and error limits
+
+The [dispatch API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/general/simconnect_getnextdispatch/) describes library-owned buffers and an empty-queue `SIMCONNECT_RECV_ID_NULL` message. It does not establish the complete empty-queue HRESULT, pointer, and length tuple. The current receiver treats `E_FAIL` as no packet; this is a consumer policy, not proof that every such failure means an empty queue. Compare both DLLs with a small independent client and verify notification, draining, returned-memory lifetime, and Close. Generate packets independently of dispatch; queued contents do not change when consumed late. Verify missed-frame and queue-overflow behavior before claiming parity; bound resources and do not silently discard lifecycle transitions.
+
+Immediate HRESULT failures and asynchronous exception packets are distinct. Optional definition or request failures isolate the affected field. Transient connection loss follows the existing retry policy; terminal configuration, malformed required packets, or cleanup failure can terminate the producer while HTTP remains available. HTTP bind or application infrastructure failure instead ends the application. Exact behavior follows the current receiver and its diagnostics; injected failures do not establish that the official DLL emits the same error. Setup failure occurs before Open, leaves HTTP available, and is never sent through dispatch.
+
+The following outcomes describe the current consumer and supervisor, based on static source analysis. They are not observed SDK error guarantees.
+
+| Trigger | Current outcome |
+| --- | --- |
+| Open failure or QUIT | Retry with bounded backoff after applicable cleanup; HTTP remains available |
+| Optional definition or request failure, or correlated optional exception | Remove the affected optional field; acquisition and HTTP continue |
+| Required initial definition, subscription, query, or request failure | Terminate the producer; HTTP remains available |
+| Later system-state query native failure or non-`E_FAIL` dispatch failure | Reconnect after successful cleanup; HTTP remains available |
+| Invalid native layout, uncorrelated exception, or Close failure | Terminate the producer; HTTP remains available. Close failure retains native mapping and notification ownership conservatively until process exit |
+| Unknown message or irrelevant routing | Ignore or reject according to the decoder; absence of replacement data permits expiry |
+| Total transport silence | The watchdog reconnects; primary data becomes stale first |
+| Invalid primary value | Publish invalid state; recovery requires a new eligible sample |
+| HTTP bind or application infrastructure failure | Coordinate shutdown and return an application error |
+
 ## Telemetry acquisition and availability
 
 ### Attitude and freshness

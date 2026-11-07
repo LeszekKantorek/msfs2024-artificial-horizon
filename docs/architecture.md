@@ -24,6 +24,10 @@ The diagram shows two source paths feeding the same browser display:
 * The Rust HTTP server delivers that state through SSE. It also serves the browser assets.
 * The mobile browser validates incoming telemetry and renders the flight instruments.
 
+The workspace already builds a `demo.dll` package skeleton; it does not yet provide native playback. The [workspace build procedure](testing/automated.md#automated-checks) builds the DLL alongside the executable. `cargo run` builds the default application member only.
+
+The diagram describes the current direct Demo provider. The accepted [native Demo decision](adr/0009-native-demo.md) will route both selected DLLs through the same native receiver. This remains planned until application integration; HTTP, publication ownership, and the browser boundary remain unchanged.
+
 ## Components and execution
 
 ### Component responsibilities

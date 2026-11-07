@@ -202,83 +202,169 @@ Heading boundaries and validation follow these rules:
 * `tests/fixtures/heading-samples.json` supplies independent checkpoints, including both north crossings.
 * See [heading presentation](../efi/heading.md#presentation) and [heading acceptance](../efi/heading.md#testing).
 
-## Planned scenario playback
+## Planned native Demo playback
 
-These requirements define planned YAML playback and recorded-session conversion.
-The public API and scenario timing sections describe the current Rust-defined provider.
+The accepted native Demo design is not implemented yet. The preceding sections describe the current direct provider. [ADR 0009](../adr/0009-native-demo.md) records the change and its relationship to earlier decisions. The [scenario catalog](demo-scenarios.md) identifies planned scenarios; the [SimConnect guide](simconnect.md#planned-common-native-consumer) owns the native catalog and error outcomes.
 
-### Scenario source and default content
+The future default is embedded from repository-root `demo_scenario.jsonl`; explicit files use the same parser. It preserves applicable native-input phases and independent boundary checks, but does not supply fictional VFE/VNO/VNE or VX/VY/VG. IAS acceleration remains the receiver estimator. Existing full-profile presentation fixtures and requirements remain valid. Recorded-session conversion, diagnostic schema 4/5 import, and observations mode are excluded. Forward scenario-to-output verification relates the selected input, revision and timing to normalized log/SSE observations; it does not reconstruct the scenario from a recording.
 
-The planned provider uses one scenario data source:
+### JSONL meaning
 
-* Store the default scenario in the repository as `demo_scenario.yaml`.
-* Define scenario values and timing in YAML without duplicating them in Rust.
-* Keep parsing, validation, and playback logic in Rust.
-* Allow external scenario data to change without recompiling the application. Changes to parsing, validation, or playback logic require a rebuild.
-* Preserve every default value, phase, cycle, transition, and unavailable-field case defined in this document.
-* Include attitude, coordinated turn, IAS, TAS, GS, speed profiles, references, and IAS acceleration.
-* Include altitude, BARO, vertical speed, selected altitude, current heading, and selected heading.
-* Use the [current telemetry contract](../telemetry-contract.md), including numeric BARO, without legacy-format fallbacks.
+Each nonempty physical line contains one complete JSON object.
+The file contains many records. JSON strings escape embedded line breaks.
+Reject blank lines, comments, trailing commas, duplicate keys, unknown fields, unsupported record types, and unsupported format/version identifiers.
+Accept LF and CRLF. Write UTF-8 without a BOM.
 
-Independent checkpoints verify default-scenario equivalence. They do not replace the scenario requirements and numeric definitions above.
+Read and validate the complete scenario before opening a simulated connection.
+JSONL does not require streaming playback or append-while-running behavior.
+External file changes take effect on the next launch.
 
-### Scenario selection
+### Scenario suite and documentation
 
-The planned CLI has these selection rules:
+Support multiple independently selectable JSONL files through an explicit scenario option.
+The main flight narrative includes only recoverable lifecycle/connection changes.
+Isolate fatal native configuration, malformed packet, and cleanup cases in separate files.
+Do not continue a narrative after a terminal producer failure merely to reach later phases.
 
-| Input or condition | Required behavior |
+The scenario catalog documents purpose, assumptions, expected completion, and file links only.
+Keep timing, native values, and fault parameters in JSONL.
+Keep independent acceptance checkpoints in tests/fixtures rather than deriving them from the reader under test.
+
+### Header and time
+
+The first record is a header:
+
+```jsonl
+{"type":"scenario","format":"msfs-efi-simconnect-demo","version":1,"mode":"scripted","frame_period_ms":50,"duration_us":15000000,"initial":{"sim_running":true,"pause":"off","flight":"demo-flight.flt"}}
+```
+
+| Field | Contract |
 | --- | --- |
-| `--source demo --scenario <path>` | Read the selected scenario |
-| Demo without `--scenario` | Use the repository-owned default scenario through a deployment-safe selection mechanism |
-| `--scenario` with SimConnect | Reject the combination. Do not add a SimConnect probe or scenario mode |
-| Missing, unreadable, or malformed selected file | Report an actionable error without silently selecting another scenario |
-| Unsupported scenario format or version | Reject the input without legacy adapters |
-| Library invocation | Receive typed source configuration from application composition. Do not read process arguments in the provider |
+| `mode` | `scripted`; recorded-session playback is excluded |
+| `frame_period_ms` | Positive integer duration of a synthetic simulation frame; default scenario uses 50 ms. Apply the client's request semantics to those frames |
+| `duration_us` | Positive integer duration of one pass through the scenario steps |
+| `initial` | Scenario-authored Sim-running flag, pause mode, and loaded-flight identity or null; applied once at playback initialization |
+| Time arithmetic | Checked integer arithmetic; segment durations in ms convert exactly to internal microseconds |
+| Ordering | Per-track segments follow file order. Equal-time events and observations preserve record order |
+| Validation | Positive segment durations; all timestamped records fall within one pass; track periods must be explicit and coherent |
 
-Preserve the usual Demo startup when no scenario path is supplied.
-Scenario delivery follows the [application delivery contract](../architecture.md#application-delivery-contract).
+The exact resource caps belong to implementation, but must be finite and documented.
+Reject oversized lines/files, excessive records, invalid numeric values, and overflowing schedules before acquisition.
 
-### Playback semantics
+Configure validates without starting time. The first successful Open starts the monotonic clock; registration overlaps scenario time. The origin persists across reconnects. The DLL owns the emitter, connection state, and receive buffers. Open borrows the notification handle; successful Close stops and joins the emitter before releasing its use. Do not rewrite queued packets on dispatch. The [native consumer contract](simconnect.md#dispatch-and-error-limits) records the unresolved scheduler, empty-queue, and overflow evidence.
 
-Playback preserves the shared runtime boundaries:
+### Scripted signal tracks
 
-* Publish scenario data through the existing `Publisher`, HTTP/SSE, and EFI path.
-* Use one producer shared by all clients and the existing latest-state distribution.
-* Make playback deterministic, with explicit repeat and end behavior.
-* Validate the timeline and numeric values before relying on them for publication.
-* Preserve pauses, data gaps, and missing or unavailable indications.
-* Apply the [freshness rules](../telemetry-contract.md#age-calculation). Replaying cached data must not make it appear newly live.
-* Preserve controlled shutdown and the [provider responsibilities](index.md#shared-responsibilities).
-* Identify replay as `Source::Demo`. Recorded data does not represent a current live flight.
-* Require no simulator, SDK, or SimConnect DLL for playback.
+The author-facing signal key is a scenario alias for one supported native SimVar.
+It is not the client's request ID or definition ID.
 
-### Recorded-session conversion
+```jsonl
+{"type":"signal","id":"IAS","simvar":"AIRSPEED INDICATED","unit":"knots","repeat":false}
+{"type":"hold","signal":"IAS","value":100,"duration_ms":5000}
+{"type":"ramp","signal":"IAS","from":100,"to":150,"duration_ms":5000}
+{"type":"hold","signal":"IAS","value":150,"duration_ms":5000}
+```
 
-Conversion must produce the same scenario format consumed by Demo:
+Each `signal` declares `id`, `simvar`, `unit`, and Boolean `repeat`. Each `hold` has `signal`, finite numeric `value`, and positive integer `duration_ms`. Each `ramp` has `signal`, finite numeric `from` and `to`, and positive integer `duration_ms`. Each `gap` has `signal` and positive integer `duration_ms`. The signal IDs must be unique and each segment must name a declared signal. Unsupported native pairs are rejected.
 
-* Provide a documented conversion procedure for recorded SimConnect logs.
-* Select one session explicitly when a log contains appended sessions.
-* Preserve event timing, data gaps, and missing or unavailable values.
-* Exclude diagnostic-only records and local environment metadata from scenario data.
-* Keep generated real-session logs and local SDK paths outside commits.
-* Interpret log records using the [diagnostic schema rules](simconnect.md#diagnostic-schema-interpretation).
+Signal tracks start together at the beginning of each pass.
+Each segment begins when the preceding segment on that track ends.
+This supports independent speed, attitude, heading, and altitude cycles without a global cross-product of phases.
 
-### Playback acceptance requirements
-
-Validate the planned provider against these criteria:
-
-| Boundary | Required evidence |
+| Record | Meaning |
 | --- | --- |
-| Default scenario | Independent checkpoints cover all values, cycles, boundary samples, optional fields, and unavailable cases |
-| Data ownership | YAML contains the scenario content without a second copy in Rust |
-| End-to-end delivery | Default and explicitly selected scenarios reach the real HTTP/SSE server and EFI browser |
-| Log conversion | One selected session produces replayable data with preserved timing and availability |
-| Invalid input | File, format, version, CLI, timeline, and numeric errors produce actionable failures without silent scenario substitution |
-| Runtime | Deterministic checks cover timing, repeat/end behavior, pause/gap handling, equal fresh samples, multiple clients, and shutdown |
-| Validation scope | Apply the [application checks](../testing/automated.md#automated-checks) and affected [desktop browser checks](../testing/pfd.md#responsive-efi-layout-and-desktop-checks) |
-| Usage documentation | Describe default selection, custom paths, conversion, and Demo source identity |
+| `hold` | Emit current value at every requested scripted frame during the duration |
+| `ramp` | Interpolate linearly from `from` at the segment start toward `to` at its end |
+| `gap` | Emit no observations for that signal during the duration |
+| Signal `repeat: true` | Repeat its complete segment sequence; its period equals the segment-duration sum |
+| Signal `repeat: false` | Emit nothing after its final segment until the next scenario pass |
+| Last scenario step | Return to the first step for the next pass on the same continuously increasing clock |
 
-These criteria define required checks, not completed validation or simulator and device acceptance.
+Demo DLL is a playback mechanism. It executes scenario instructions without inventing lifecycle transitions.
+Playback always loops while the source remains running. There is no selectable `end` policy or implicit wait at the file boundary.
+The monotonic clock never resets, rewinds, or pauses at a pass boundary, during a simulated pause, or across reconnects.
+Only the playback cursor returns to the first step.
+Record `at_us` values are offsets within a pass, not replacements for the clock value.
+For pass number n starting at zero, a record is due at origin + n * duration_us + at_us.
+
+Apply header `initial` once when playback is initialized. Do not reapply it on later passes or reconnects.
+After initialization, pause, Sim-running, and loaded-flight state change only through explicit scenario records.
+At a pass boundary, retain the state left by the preceding steps until another step changes it.
+Emit no synthetic resume, flight activation, flight load, disconnect, or reconnect merely because the cursor loops.
+If each pass needs a particular starting state, author the corresponding records at the beginning of the step sequence.
+Do not clear pending packets, recreate the connection, or reset call-occurrence counters at a pass boundary.
+
+A five-second 100-knot hold followed by a five-second ramp from 100 to 150 knots has value 125 knots at 2.5 seconds into the ramp. Values use the declared native unit.
+
+Segments use half-open intervals: start inclusive, end exclusive.
+The next segment supplies the boundary value.
+The terminal hold in this example makes 150 observable at 10 seconds.
+Without that hold, a repeated ten-second track jumps back to 100 at its boundary.
+Its last 50 ms sample would be 149.5; do not claim it emitted the endpoint.
+Inclusive legacy checkpoints must use an explicit endpoint hold or matching authored slope.
+Do not silently replace the current inclusive altitude sweeps with different interpolation.
+
+A hold is not a single received observation held inside the receiver.
+A five-second gap does not send repeated cached values.
+Missing optional observations expire according to the existing receiver's rules; they do not disappear instantly by implication.
+If a required component of a grouped native definition is in a gap, suppress that complete requested packet.
+For example, a missing pitch must not be paired with cached pitch and a current bank to create a fresh attitude.
+
+#### Request-driven emission and unchanged values
+
+Demo must match SimConnect delivery semantics for the requests used by the application.
+The current instrument requests use SIMCONNECT_PERIOD_SIM_FRAME, flags 0, origin 0, interval 0, and limit 0.
+They request observations on each simulation frame without a change-only filter or a transmission-count limit.
+The [SimConnect request contract](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_requestdataonsimobject/) distinguishes flags 0 from SIMCONNECT_DATA_REQUEST_FLAG_CHANGED.
+The application does not request the CHANGED flag. Do not enable equivalent filtering implicitly in Demo.
+
+* During `hold`, send the value on every due requested frame throughout the segment, even when it equals the previous value.
+* During `ramp`, evaluate the current value and send it on every due requested frame. Numeric equality does not suppress a sample with flags 0.
+* During `gap`, send no observations for that signal. Do not substitute zero or resend its previous value.
+* Preserve independent request routing. A signal gap does not suppress unrelated signals, lifecycle events, or ordinary state-query replies.
+* Generate packets independently of GetNextDispatch calls. Requested cadence controls production; dispatch retrieves already queued packets.
+
+These rules apply while the request and source state permit delivery and no explicit scenario fault suppresses it.
+Do not promise samples through a simulated disconnect or infer pause-time delivery from this rule; match the corresponding native state contract.
+Do not hard-code change-only emission or ignore the request arguments to make Demo appear to work.
+Support the used API subset; any later request-mode change requires matching Demo behavior before claiming compatibility.
+
+For a healthy five-second IAS hold at 100, repeated packets carrying 100 are distinct observations.
+Each received IAS observation refreshes IAS acquisition time in the server.
+The existing 1000 ms expiry concerns missing observations, not an unchanged numeric value; ALT updates do not refresh IAS.
+Keep these receive timestamps separate from the scenario clock, which continues increasing.
+
+Headings use explicit unwrapped ramp endpoints when crossing north.
+The existing receiver normalizes native headings. Add no general angular interpolation or expression language.
+
+
+### Sparse inputs and registration
+
+A scenario may provide any subset of signals, only lifecycle events, or no signal values. The DLL accepts supported registrations even when the scenario supplies no matching value. Unknown names and injected registration failures remain distinct from missing values. Missing values produce no samples and never become zero. A grouped definition emits no packet when any required component is missing; independent requests and events continue.
+
+Unreceived readings are internally unavailable (`None`). Existing SSE represents unavailable attitude and sample age as null and omits absent optional instrument fields. State, source, and sequence remain present. A received zero is a real observation subject to normal validation and freshness.
+
+### Lifecycle and faults
+
+Timestamped records use `at_us` as a pass-relative offset. `pause` carries `mode` (`off`, `normal`, or `active`); `flight` carries `active`; `flight_loaded` carries a string or null `flight`; and `disconnect` carries a positive `unavailable_ms`. Normal pause maps to `Pause_EX1=1`, active pause to `4`, and off to `0`. Sim-running, loaded-flight identity, pause, and connection state remain distinct. A newly eligible attitude is required after resume, flight change, or reconnect. State queries return current `Sim` and `FlightLoaded`; subscription supplies initial pause knowledge.
+
+Native pause delivery is an implementation verification requirement. The working assumption is continued messages with frozen values in both pause modes; it is not established SDK behavior. Verify each mode separately, including SIM_FRAME, events, state queries, and resume. The application's paused publication gate is separate. The scenario clock continues; baseline scenarios author holds across pause intervals rather than silently freezing ramps.
+
+Fault records are opt-in and absent from the healthy default. `api_fault` selects an export, positive call occurrence, signed HRESULT, and optional field selector. `exception` identifies a sent call occurrence and operation, code, and index. `raw_packet` supplies owned bytes and a bounded returned length; `null_dispatch` explicitly tests a null pointer. `transport_silence` suppresses all dispatch packets for a positive duration, including state replies. Malformed JSON is a setup error; malformed native packets are deliberate runtime fixtures. Never return an unreadable non-null pointer or advertise more bytes than the allocation. Keep call counters across passes and reconnects. Stop the emitter before an injected Close failure. Fatal cases are isolated; coverage may be staged and deferred cases identified.
+
+### Selection and setup
+
+The future CLI selects `demo.dll` by default or a supported absolute DLL path. Basename matching is case insensitive, including `DEMO.dll`; export spelling remains exact. Bare supported names resolve beside the executable. Relative paths containing directories and unsupported basenames are rejected. A scenario path is accepted only for Demo and is resolved against the caller's working directory. The current startup commands remain in the README until this CLI is implemented.
+
+The private setup ABI is:
+
+```c
+int32_t EfiDemo_ConfigureV1(const uint16_t *scenario_path,
+                            uint8_t *error_utf8,
+                            uint32_t error_capacity);
+```
+
+HTTP binds before Demo setup. The private `EfiDemo_ConfigureV1` call validates the complete file before Open; invalid or unreadable input returns `E_FAIL` and an actionable bounded explanation while HTTP remains available. It never falls back to another scenario. Setup does not publish, start the clock, or report parser errors through GetNextDispatch. The official DLL is never called with this export. Configure accepts a null path for the embedded default or an absolute NUL-terminated UTF-16 path, plus a nonempty writable UTF-8 error buffer and capacity. It synchronously copies arguments, writes a bounded NUL-terminated explanation on failure, and is called only without an open connection. Rust panics must not cross the DLL ABI.
 
 ## Validation
 
