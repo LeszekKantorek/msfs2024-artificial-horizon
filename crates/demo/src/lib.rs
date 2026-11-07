@@ -25,6 +25,7 @@ struct Global {
     origin: Option<Instant>,
     lifecycle: Option<Life>,
     active: bool,
+    fault_counts: Vec<u64>,
 }
 #[derive(Clone)]
 struct Life {
@@ -41,14 +42,35 @@ impl Global {
             origin: None,
             lifecycle: None,
             active: false,
+            fault_counts: Vec::new(),
         }
+    }
+    fn fault(&mut self, operation: &str, name: Option<&str>, unit: Option<&str>) -> Option<i32> {
+        let rules = &self.scenario.as_ref()?.faults;
+        let mut result = None;
+        for (rule, count) in rules.iter().zip(&mut self.fault_counts) {
+            if rule.operation != operation {
+                continue;
+            }
+            if let Some(selector) = &rule.selector
+                && (selector.simvar.as_deref().is_some_and(|s| Some(s) != name)
+                    || selector.unit.as_deref().is_some_and(|s| Some(s) != unit))
+            {
+                continue;
+            }
+            *count = count.saturating_add(1);
+            if *count == rule.occurrence && result.is_none() {
+                result = Some(rule.hresult);
+            }
+        }
+        result
     }
 }
 fn global() -> &'static Mutex<Global> {
     GLOBAL.get_or_init(|| Mutex::new(Global::new()))
 }
 struct State {
-    queue: VecDeque<Vec<u8>>,
+    queue: VecDeque<(Vec<u8>, u32)>,
     retained: Vec<u8>,
     definitions: HashMap<u32, Vec<(String, String)>>,
     requests: Vec<(u32, u32)>,
@@ -91,11 +113,19 @@ fn u32s(values: &[u32]) -> Vec<u8> {
     values.iter().flat_map(|x| x.to_le_bytes()).collect()
 }
 fn send(s: &mut State, event: usize, p: Vec<u8>) {
+    let len = p.len() as u32;
+    send_raw(s, event, p, len);
+}
+fn send_raw(s: &mut State, event: usize, mut p: Vec<u8>, len: u32) {
     if s.queue.len() >= MAX_QUEUE {
         s.overflow = true;
         return;
     }
-    s.queue.push_back(p);
+    // Keep even a zero-length result backed by a readable allocation.
+    if p.is_empty() {
+        p.push(0);
+    }
+    s.queue.push_back((p, len));
     if event != 0 {
         unsafe {
             SetEvent(event as *mut c_void);
@@ -185,6 +215,14 @@ fn apply_event(s: &mut State, event: &Event, at: u64, notification: usize) {
         Event::Disconnect(duration) => {
             s.life.unavailable_until = at.saturating_add(*duration);
             send(s, notification, packet(3, &[]));
+        }
+        Event::RawPacket {
+            bytes,
+            returned_length,
+        } => {
+            if at >= s.life.unavailable_until {
+                send_raw(s, notification, bytes.clone(), *returned_length);
+            }
         }
     }
 }
@@ -311,6 +349,7 @@ pub unsafe extern "C" fn EfiDemo_ConfigureV1(
         }
         match result {
             Ok(s) => {
+                g.fault_counts = vec![0; s.faults.len()];
                 g.scenario = Some(s);
                 g.origin = None;
                 g.lifecycle = None;
@@ -318,6 +357,7 @@ pub unsafe extern "C" fn EfiDemo_ConfigureV1(
             }
             Err(e) => {
                 g.scenario = None;
+                g.fault_counts.clear();
                 let bytes = e.as_bytes();
                 let mut n = bytes.len().min(capacity as usize - 1);
                 while !e.is_char_boundary(n) {
@@ -355,6 +395,9 @@ pub unsafe extern "C" fn SimConnect_Open(
         let Some(scenario) = g.scenario.clone() else {
             return FAIL;
         };
+        if let Some(hr) = g.fault("SimConnect_Open", None, None) {
+            return hr;
+        }
         let origin = *g.origin.get_or_insert_with(Instant::now);
         let now = origin.elapsed().as_micros().min(u64::MAX as u128) as u64;
         let life = g.lifecycle.clone().unwrap_or(Life {
@@ -380,7 +423,12 @@ pub unsafe extern "C" fn SimConnect_Open(
             0
         };
         advance(&mut state, &scenario, from, now, 0);
-        state.queue.clear();
+        let initial_packets = if g.lifecycle.is_none() {
+            std::mem::take(&mut state.queue)
+        } else {
+            state.queue.clear();
+            VecDeque::new()
+        };
         if now < state.life.unavailable_until {
             g.lifecycle = Some(state.life);
             return FAIL;
@@ -388,6 +436,9 @@ pub unsafe extern "C" fn SimConnect_Open(
         let mut open = vec![0u8; 296];
         open[..8].copy_from_slice(b"Demo DLL");
         send(&mut state, notification as usize, packet(2, &open));
+        for (bytes, len) in initial_packets {
+            send_raw(&mut state, notification as usize, bytes, len);
+        }
         let state = Arc::new(Mutex::new(state));
         let stop = Arc::new(AtomicBool::new(false));
         let st = state.clone();
@@ -449,7 +500,7 @@ pub unsafe extern "C" fn SimConnect_GetNextDispatch(
         if s.overflow {
             return 0x8000ffff_u32 as i32;
         }
-        let Some(p) = s.queue.pop_front() else {
+        let Some((p, reported_len)) = s.queue.pop_front() else {
             unsafe {
                 *out = ptr::null_mut();
                 *len = 0
@@ -459,7 +510,7 @@ pub unsafe extern "C" fn SimConnect_GetNextDispatch(
         s.retained = p;
         unsafe {
             *out = s.retained.as_mut_ptr().cast();
-            *len = s.retained.len() as u32
+            *len = reported_len
         };
         if !s.queue.is_empty() && c.notification != 0 {
             unsafe {
@@ -494,6 +545,13 @@ pub unsafe extern "C" fn SimConnect_AddToDataDefinition(
             || datum != u32::MAX
         {
             return FAIL;
+        }
+        if let Some(hr) = global().lock().unwrap_or_else(|p| p.into_inner()).fault(
+            "SimConnect_AddToDataDefinition",
+            Some(&n),
+            Some(&u),
+        ) {
+            return hr;
         }
         let mut s = c.state.lock().unwrap_or_else(|p| p.into_inner());
         s.definitions.entry(id).or_default().push((n, u));
@@ -553,6 +611,13 @@ pub unsafe extern "C" fn SimConnect_SubscribeToSystemEvent(
         if !["Sim", "Pause_EX1", "FlightLoaded"].contains(&n.as_str()) {
             return FAIL;
         }
+        if let Some(hr) = global().lock().unwrap_or_else(|p| p.into_inner()).fault(
+            "SimConnect_SubscribeToSystemEvent",
+            None,
+            None,
+        ) {
+            return hr;
+        }
         let mut s = c.state.lock().unwrap_or_else(|p| p.into_inner());
         s.subscriptions.insert(n.clone(), id);
         s.last_id = s.last_id.wrapping_add(1);
@@ -608,6 +673,49 @@ pub unsafe extern "C" fn SimConnect_GetLastSentPacketID(h: *mut c_void, out: *mu
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn fault_occurrences_count_only_matching_calls_and_do_not_rearm() {
+        let text = concat!(
+            "{\"type\":\"scenario\",\"format\":\"msfs-efi-simconnect-demo\",\"version\":1,\"mode\":\"scripted\",\"frame_period_ms\":50,\"duration_us\":1000000,\"initial\":{\"sim_running\":true,\"pause\":\"off\",\"flight\":null}}\n",
+            "{\"type\":\"api_fault\",\"operation\":\"SimConnect_AddToDataDefinition\",\"occurrence\":2,\"hresult\":-42,\"selector\":{\"simvar\":\"AIRSPEED INDICATED\",\"unit\":\"knots\"}}\n"
+        );
+        let scenario = Scenario::parse(text, "test").unwrap();
+        let mut global = Global::new();
+        global.fault_counts = vec![0; scenario.faults.len()];
+        global.scenario = Some(scenario);
+        assert_eq!(
+            global.fault(
+                "SimConnect_AddToDataDefinition",
+                Some("AIRSPEED TRUE"),
+                Some("knots")
+            ),
+            None
+        );
+        assert_eq!(
+            global.fault(
+                "SimConnect_AddToDataDefinition",
+                Some("AIRSPEED INDICATED"),
+                Some("knots")
+            ),
+            None
+        );
+        assert_eq!(
+            global.fault(
+                "SimConnect_AddToDataDefinition",
+                Some("AIRSPEED INDICATED"),
+                Some("knots")
+            ),
+            Some(-42)
+        );
+        assert_eq!(
+            global.fault(
+                "SimConnect_AddToDataDefinition",
+                Some("AIRSPEED INDICATED"),
+                Some("knots")
+            ),
+            None
+        );
+    }
     #[test]
     fn events_persist_across_pass_without_implicit_reset() {
         let text = concat!(
@@ -682,7 +790,7 @@ mod ordering_tests {
         for frame in 0..160_u64 {
             emit(&mut s, &scenario, frame * 50_000, 0);
             let mut values = HashMap::new();
-            while let Some(packet) = s.queue.pop_front() {
+            while let Some((packet, _)) = s.queue.pop_front() {
                 let id = u32::from_le_bytes(packet[12..16].try_into().unwrap());
                 let value = f64::from_le_bytes(packet[40..48].try_into().unwrap());
                 assert!(values.insert(id, value).is_none());
@@ -702,7 +810,7 @@ mod ordering_tests {
         // The pass boundary restarts the three-second track at eight seconds.
         emit(&mut s, &scenario, 8_000_000, 0);
         assert_eq!(
-            u32::from_le_bytes(s.queue[0][12..16].try_into().unwrap()),
+            u32::from_le_bytes(s.queue[0].0[12..16].try_into().unwrap()),
             11
         );
     }
@@ -750,7 +858,7 @@ mod ordering_tests {
             let ids: Vec<u32> = s
                 .queue
                 .iter()
-                .map(|p| u32::from_le_bytes(p[8..12].try_into().unwrap()))
+                .map(|p| u32::from_le_bytes(p.0[8..12].try_into().unwrap()))
                 .collect();
             assert_eq!(ids, expected);
             assert_eq!(s.life.pause, 4);

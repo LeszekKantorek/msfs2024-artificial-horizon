@@ -32,6 +32,19 @@ pub struct Initial {
     pub pause: Pause,
     pub flight: Option<String>,
 }
+#[derive(Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Selector {
+    pub simvar: Option<String>,
+    pub unit: Option<String>,
+}
+#[derive(Clone)]
+pub struct ApiFault {
+    pub operation: String,
+    pub occurrence: u64,
+    pub hresult: i32,
+    pub selector: Option<Selector>,
+}
 #[derive(Clone, Copy, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Pause {
@@ -96,6 +109,17 @@ enum Record {
         at_us: u64,
         unavailable_ms: u64,
     },
+    ApiFault {
+        operation: String,
+        occurrence: u64,
+        hresult: i32,
+        selector: Option<Selector>,
+    },
+    RawPacket {
+        at_us: u64,
+        bytes_hex: String,
+        returned_length: u32,
+    },
 }
 #[derive(Clone)]
 pub enum Event {
@@ -103,6 +127,10 @@ pub enum Event {
     Flight(bool),
     FlightLoaded(Option<String>),
     Disconnect(u64),
+    RawPacket {
+        bytes: Vec<u8>,
+        returned_length: u32,
+    },
 }
 #[derive(Clone)]
 pub struct TimedEvent {
@@ -138,6 +166,7 @@ pub struct Scenario {
     pub duration: u64,
     pub initial: Initial,
     pub events: Vec<TimedEvent>,
+    pub faults: Vec<ApiFault>,
     tracks: Vec<Track>,
 }
 impl Scenario {
@@ -186,6 +215,7 @@ impl Scenario {
                         duration: duration_us,
                         initial,
                         events: vec![],
+                        faults: vec![],
                         tracks: vec![],
                     });
                 }
@@ -266,6 +296,79 @@ impl Scenario {
                                 .checked_add(duration)
                                 .ok_or_else(|| format!("{loc}: disconnect deadline overflow"))?;
                             s.event(&loc, at_us, Event::Disconnect(duration), i)?;
+                        }
+                        Record::ApiFault {
+                            operation,
+                            occurrence,
+                            hresult,
+                            selector,
+                        } => {
+                            if ![
+                                "SimConnect_Open",
+                                "SimConnect_AddToDataDefinition",
+                                "SimConnect_SubscribeToSystemEvent",
+                            ]
+                            .contains(&operation.as_str())
+                                || occurrence == 0
+                                || hresult >= 0
+                            {
+                                return Err(format!(
+                                    "{loc}: unsupported api_fault operation, occurrence, or hresult"
+                                ));
+                            }
+                            if let Some(ref filter) = selector
+                                && (operation != "SimConnect_AddToDataDefinition"
+                                    || (filter.simvar.is_none() && filter.unit.is_none())
+                                    || !CATALOG.iter().any(|(name, unit)| {
+                                        filter.simvar.as_deref().is_none_or(|v| v == *name)
+                                            && filter.unit.as_deref().is_none_or(|v| v == *unit)
+                                    }))
+                            {
+                                return Err(format!("{loc}: unsupported api_fault selector"));
+                            }
+                            s.faults.push(ApiFault {
+                                operation,
+                                occurrence,
+                                hresult,
+                                selector,
+                            });
+                        }
+                        Record::RawPacket {
+                            at_us,
+                            bytes_hex,
+                            returned_length,
+                        } => {
+                            if bytes_hex.len() % 2 != 0
+                                || !bytes_hex.bytes().all(|b| b.is_ascii_hexdigit())
+                            {
+                                return Err(format!(
+                                    "{loc}: bytes_hex must contain complete hexadecimal bytes"
+                                ));
+                            }
+                            let bytes: Vec<u8> = bytes_hex
+                                .as_bytes()
+                                .as_chunks::<2>()
+                                .0
+                                .iter()
+                                .map(|pair| {
+                                    let digit = |c: u8| (c as char).to_digit(16).unwrap() as u8;
+                                    digit(pair[0]) * 16 + digit(pair[1])
+                                })
+                                .collect();
+                            if returned_length as usize > bytes.len() {
+                                return Err(format!(
+                                    "{loc}: returned_length exceeds decoded allocation"
+                                ));
+                            }
+                            s.event(
+                                &loc,
+                                at_us,
+                                Event::RawPacket {
+                                    bytes,
+                                    returned_length,
+                                },
+                                i,
+                            )?;
                         }
                         Record::Scenario { .. } => unreachable!(),
                     }
@@ -399,6 +502,35 @@ mod tests {
     use super::*;
     fn header() -> &'static str {
         r#"{"type":"scenario","format":"msfs-efi-simconnect-demo","version":1,"mode":"scripted","frame_period_ms":50,"duration_us":15000000,"initial":{"sim_running":true,"pause":"off","flight":"demo.flt"}}"#
+    }
+    #[test]
+    fn fault_records_validate_operations_selectors_and_readable_lengths() {
+        for invalid in [
+            r#"{"type":"api_fault","operation":"SimConnect_Close","occurrence":1,"hresult":-1}"#,
+            r#"{"type":"api_fault","operation":"SimConnect_Open","occurrence":0,"hresult":-1}"#,
+            r#"{"type":"api_fault","operation":"SimConnect_Open","occurrence":1,"hresult":0}"#,
+            r#"{"type":"api_fault","operation":"SimConnect_Open","occurrence":1,"hresult":-1,"selector":{"simvar":"AIRSPEED INDICATED"}}"#,
+            r#"{"type":"api_fault","operation":"SimConnect_AddToDataDefinition","occurrence":1,"hresult":-1,"selector":{"unit":"knot"}}"#,
+            r#"{"type":"raw_packet","at_us":1,"bytes_hex":"0","returned_length":0}"#,
+            r#"{"type":"raw_packet","at_us":1,"bytes_hex":"zz","returned_length":1}"#,
+            r#"{"type":"raw_packet","at_us":1,"bytes_hex":"00","returned_length":2}"#,
+        ] {
+            assert!(
+                Scenario::parse(&format!("{}\n{}", header(), invalid), "test").is_err(),
+                "{invalid}"
+            );
+        }
+        let valid = format!(
+            "{}\n{}\n{}",
+            header(),
+            r#"{"type":"api_fault","operation":"SimConnect_AddToDataDefinition","occurrence":2,"hresult":-1,"selector":{"unit":"knots"}}"#,
+            r#"{"type":"raw_packet","at_us":1,"bytes_hex":"01020304","returned_length":2}"#
+        );
+        let scenario = Scenario::parse(&valid, "test").unwrap();
+        assert_eq!(scenario.faults.len(), 1);
+        assert!(
+            matches!(&scenario.events[0].event, Event::RawPacket { bytes, returned_length: 2 } if bytes == &[1,2,3,4])
+        );
     }
     #[test]
     fn holds_ramps_gaps_and_passes_follow_absolute_time() {

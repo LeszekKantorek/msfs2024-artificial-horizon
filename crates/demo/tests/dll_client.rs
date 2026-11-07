@@ -657,6 +657,116 @@ fn actual_dll_notifies_and_retains_packets() {
         }
         assert!(recovered);
         assert_eq!(close(h), 0);
+        std::fs::write(&scenario, concat!(
+            "{\"type\":\"scenario\",\"format\":\"msfs-efi-simconnect-demo\",\"version\":1,\"mode\":\"scripted\",\"frame_period_ms\":50,\"duration_us\":5000000,\"initial\":{\"sim_running\":true,\"pause\":\"off\",\"flight\":\"test\"}}\n",
+            "{\"type\":\"api_fault\",\"operation\":\"SimConnect_Open\",\"occurrence\":1,\"hresult\":-2147467259}\n",
+            "{\"type\":\"api_fault\",\"operation\":\"SimConnect_AddToDataDefinition\",\"occurrence\":1,\"hresult\":-2147467259,\"selector\":{\"simvar\":\"AIRSPEED INDICATED\",\"unit\":\"knots\"}}\n",
+            "{\"type\":\"api_fault\",\"operation\":\"SimConnect_SubscribeToSystemEvent\",\"occurrence\":1,\"hresult\":-2147467259}\n",
+            "{\"type\":\"raw_packet\",\"at_us\":50000,\"bytes_hex\":\"01020304\",\"returned_length\":2}\n"
+        )).unwrap();
+        assert_eq!(
+            setup(
+                scenario_wide.as_ptr(),
+                error.as_mut_ptr(),
+                error.len() as u32
+            ),
+            0
+        );
+        assert!(
+            open(
+                &mut h,
+                c"test".as_ptr(),
+                ptr::null_mut(),
+                0,
+                event,
+                u32::MAX
+            ) < 0
+        );
+        assert!(h.is_null());
+        assert_eq!(
+            open(
+                &mut h,
+                c"test".as_ptr(),
+                ptr::null_mut(),
+                0,
+                event,
+                u32::MAX
+            ),
+            0
+        );
+        assert_eq!(
+            add(
+                h,
+                71,
+                c"AIRSPEED TRUE".as_ptr(),
+                c"knots".as_ptr(),
+                4,
+                0.0,
+                u32::MAX
+            ),
+            0
+        );
+        assert!(
+            add(
+                h,
+                72,
+                c"AIRSPEED INDICATED".as_ptr(),
+                c"knots".as_ptr(),
+                4,
+                0.0,
+                u32::MAX
+            ) < 0
+        );
+        assert_eq!(
+            add(
+                h,
+                72,
+                c"AIRSPEED INDICATED".as_ptr(),
+                c"knots".as_ptr(),
+                4,
+                0.0,
+                u32::MAX
+            ),
+            0
+        );
+        assert!(subscribe(h, 81, c"Sim".as_ptr()) < 0);
+        assert_eq!(subscribe(h, 81, c"Sim".as_ptr()), 0);
+        thread::sleep(Duration::from_millis(100));
+        let mut saw_raw = false;
+        while next(h, &mut p, &mut n) == 0 {
+            if n == 2 {
+                assert!(!p.is_null());
+                assert_eq!(std::slice::from_raw_parts(p as *const u8, 2), &[1, 2]);
+                saw_raw = true;
+            }
+        }
+        assert!(saw_raw);
+        assert_eq!(close(h), 0);
+        assert_eq!(
+            open(
+                &mut h,
+                c"test".as_ptr(),
+                ptr::null_mut(),
+                0,
+                event,
+                u32::MAX
+            ),
+            0
+        );
+        assert_eq!(
+            add(
+                h,
+                72,
+                c"AIRSPEED INDICATED".as_ptr(),
+                c"knots".as_ptr(),
+                4,
+                0.0,
+                u32::MAX
+            ),
+            0
+        );
+        assert_eq!(subscribe(h, 81, c"Sim".as_ptr()), 0);
+        assert_eq!(close(h), 0);
         std::fs::write(&scenario, "not json").unwrap();
         assert!(
             setup(

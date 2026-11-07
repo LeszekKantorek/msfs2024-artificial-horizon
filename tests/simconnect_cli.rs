@@ -119,6 +119,7 @@ impl Application {
                     "--port",
                     &address.port().to_string(),
                 ])
+                .stdin(Stdio::piped())
                 .stdout(fs::File::create(&stdout).unwrap())
                 .stderr(fs::File::create(&stderr).unwrap())
                 .spawn()
@@ -176,6 +177,28 @@ impl Application {
             .unwrap();
         assert!(response.starts_with("HTTP/1.1 200"), "{response}");
         assert!(response.contains("{\"status\":\"ok\"}"), "{response}");
+    }
+    fn shutdown(&mut self) {
+        self.child
+            .0
+            .stdin
+            .as_mut()
+            .unwrap()
+            .write_all(b"stop\n")
+            .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            if let Some(status) = self.child.0.try_wait().unwrap() {
+                assert!(status.success(), "shutdown failed: {}", self.messages());
+                break;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "shutdown timed out: {}",
+                self.messages()
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
     }
     fn unavailable_stream(&self) -> TcpStream {
         self.unavailable_stream_for("simconnect")
@@ -882,5 +905,224 @@ fn inactive_flight_waits_for_new_attitude_after_resume() {
         saw_live && saw_waiting && resumed_at.is_some() && held_waiting && recovered,
         "incomplete inactive/resume sequence: {}",
         app.messages()
+    );
+}
+
+fn fault_case(name: &str) -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("demo-scenarios/errors")
+        .join(name)
+}
+fn fault_snapshot(
+    app: &Application,
+    predicate: impl Fn(&serde_json::Value) -> bool,
+) -> serde_json::Value {
+    let mut stream = app.request("/api/v1/events");
+    stream
+        .set_read_timeout(Some(Duration::from_millis(200)))
+        .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(6);
+    let mut pending = String::new();
+    while Instant::now() < deadline {
+        let mut bytes = [0; 8192];
+        match stream.read(&mut bytes) {
+            Ok(0) => panic!("SSE closed: {}", app.messages()),
+            Ok(n) => pending.push_str(&String::from_utf8_lossy(&bytes[..n])),
+            Err(e)
+                if matches!(
+                    e.kind(),
+                    std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock
+                ) =>
+            {
+                continue;
+            }
+            Err(e) => panic!("{e}"),
+        }
+        while let Some(end) = pending.find('\n') {
+            let line = pending[..end].trim_end_matches('\r').to_owned();
+            pending.drain(..=end);
+            if let Some(data) = line.strip_prefix("data: ")
+                && let Ok(snapshot) = serde_json::from_str::<serde_json::Value>(data)
+                && predicate(&snapshot)
+            {
+                return snapshot;
+            }
+        }
+    }
+    panic!("expected state not observed: {}", app.messages())
+}
+fn wait_fault_log(
+    path: &Path,
+    predicate: impl Fn(&[serde_json::Value]) -> bool,
+) -> Vec<serde_json::Value> {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        let content = fs::read_to_string(path).unwrap_or_default();
+        let records: Vec<_> = content
+            .lines()
+            .filter_map(|line| serde_json::from_str(line).ok())
+            .collect();
+        if predicate(&records) {
+            return records;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "expected fault records missing: {content}"
+        );
+        std::thread::sleep(Duration::from_millis(25));
+    }
+}
+fn start_fault(fixture: &Fixture, name: &str) -> (Application, PathBuf) {
+    let binary = fixture.binary();
+    let scenario = fault_case(name);
+    let log = fixture.0.join("fault-log.jsonl");
+    let app = Application::start(
+        &binary,
+        &fixture.0,
+        &[
+            "--scenario",
+            scenario.to_str().unwrap(),
+            "--log",
+            log.to_str().unwrap(),
+        ],
+    );
+    (app, log)
+}
+fn report_fault_evidence(fixture: &Fixture, name: &str, records: &[serde_json::Value]) {
+    use sha2::{Digest, Sha256};
+    let hash = |path: PathBuf| format!("{:x}", Sha256::digest(fs::read(path).unwrap()));
+    eprintln!(
+        "fault={name} scenario_sha256={} exe_sha256={} dll_sha256={} session_id={}",
+        hash(fault_case(name)),
+        hash(fixture.0.join("app.exe")),
+        hash(fixture.0.join("demo.dll")),
+        records[0]["session_id"]
+    );
+}
+#[test]
+fn fault_open_retries_once_then_publishes_live_and_keeps_http() {
+    let fixture = Fixture::new();
+    let (mut app, log) = start_fault(&fixture, "startup-retry.jsonl");
+    let snapshot = fault_snapshot(&app, |s| {
+        s["state"] == "live" && s["ias_kt"] == 90.0 && s["altitude_ft"] == 1000.0
+    });
+    assert_eq!(snapshot["source"], "demo");
+    app.assert_health();
+    let records = wait_fault_log(&log, |r| {
+        r.iter()
+            .filter(|v| v["kind"] == "connection_attempt")
+            .count()
+            >= 2
+            && r.iter().any(|v| {
+                v["kind"] == "api_result"
+                    && v["data"]["operation"] == "SimConnect_Open"
+                    && v["data"]["success"] == true
+            })
+    });
+    assert!(
+        records
+            .iter()
+            .any(|r| r["kind"] == "native_error" && r["data"]["operation"] == "SimConnect_Open")
+    );
+    report_fault_evidence(&fixture, "startup-retry.jsonl", &records);
+    app.shutdown();
+}
+#[test]
+fn fault_optional_definition_isolated_from_attitude_and_altitude() {
+    let fixture = Fixture::new();
+    let (mut app, log) = start_fault(&fixture, "optional-definition.jsonl");
+    let snapshot = fault_snapshot(&app, |s| s["state"] == "live" && s["altitude_ft"] == 1000.0);
+    assert_eq!(snapshot["source"], "demo");
+    assert!(snapshot.get("ias_kt").is_none());
+    assert_eq!(snapshot["attitude"]["pitch_deg"], 0.0);
+    app.assert_health();
+    let records = wait_fault_log(&log, |r| {
+        r.iter()
+            .any(|v| v["kind"] == "instrument_request" && v["data"]["name"] == "AIRSPEED INDICATED")
+    });
+    assert!(!records.iter().find(|r|r["kind"]=="instrument_request" && r["data"]["name"]=="AIRSPEED INDICATED").unwrap()["data"]["error"].is_null());
+    report_fault_evidence(&fixture, "optional-definition.jsonl", &records);
+    app.shutdown();
+}
+#[test]
+fn fault_required_subscription_ends_source_but_http_stays_available() {
+    let fixture = Fixture::new();
+    let (mut app, log) = start_fault(&fixture, "primary-subscribe.jsonl");
+    let records = wait_fault_log(&log, |r| r.iter().any(|v| v["kind"] == "session_end"));
+    assert!(records.iter().any(|r| r["kind"] == "native_error"
+        && r["data"]["operation"] == "SimConnect_SubscribeToSystemEvent"));
+    assert_eq!(
+        records
+            .iter()
+            .filter(|r| r["kind"] == "connection_attempt")
+            .count(),
+        1
+    );
+    assert_eq!(
+        records.iter().find(|r| r["kind"] == "session_end").unwrap()["data"]["success"],
+        false
+    );
+    let snapshot = fault_snapshot(&app, |s| s["state"] == "disconnected");
+    assert_eq!(snapshot["source"], "demo");
+    assert!(snapshot["attitude"].is_null());
+    app.assert_health();
+    report_fault_evidence(&fixture, "primary-subscribe.jsonl", &records);
+    app.shutdown();
+}
+#[test]
+fn fault_truncated_owned_packet_ends_source_after_live_but_not_http() {
+    let fixture = Fixture::new();
+    let (mut app, log) = start_fault(&fixture, "truncated-packet.jsonl");
+    let live = fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    assert_eq!(live["source"], "demo");
+    let records = wait_fault_log(&log, |r| r.iter().any(|v| v["kind"] == "session_end"));
+    assert!(records.iter().any(|r| {
+        r["kind"] == "native_error"
+            && r["data"]["detail"]
+                .as_str()
+                .is_some_and(|s| s.contains("truncated receive header"))
+    }));
+    assert_eq!(
+        records
+            .iter()
+            .filter(|r| r["kind"] == "connection_attempt")
+            .count(),
+        1
+    );
+    assert_eq!(
+        records.iter().find(|r| r["kind"] == "session_end").unwrap()["data"]["success"],
+        false
+    );
+    let snapshot = fault_snapshot(&app, |s| s["state"] == "disconnected");
+    assert!(snapshot["attitude"].is_null());
+    app.assert_health();
+    report_fault_evidence(&fixture, "truncated-packet.jsonl", &records);
+    app.shutdown();
+}
+
+#[test]
+fn fault_open_retry_wait_is_interruptible_by_shutdown() {
+    let fixture = Fixture::new();
+    let (mut app, log) = start_fault(&fixture, "startup-retry.jsonl");
+    let records = wait_fault_log(&log, |r| r.iter().any(|v| v["kind"] == "reconnect_wait"));
+    assert_eq!(
+        records
+            .iter()
+            .filter(|r| r["kind"] == "connection_attempt")
+            .count(),
+        1
+    );
+    app.shutdown();
+    let records = wait_fault_log(&log, |r| r.iter().any(|v| v["kind"] == "session_end"));
+    assert_eq!(
+        records
+            .iter()
+            .filter(|r| r["kind"] == "connection_attempt")
+            .count(),
+        1
+    );
+    assert_eq!(
+        records.iter().find(|r| r["kind"] == "session_end").unwrap()["data"]["success"],
+        true
     );
 }

@@ -297,6 +297,25 @@ The following outcomes describe the current consumer and supervisor, based on st
 | Invalid primary value | Publish invalid state; recovery requires a new eligible sample |
 | HTTP bind or application infrastructure failure | Coordinate shutdown and return an application error |
 
+### Staged Demo fault coverage
+
+The selected Demo subset and deferred mechanisms are distinct from simulator evidence:
+
+| Used export or boundary | Demo fault coverage | Deferred or separately tested behavior |
+| --- | --- | --- |
+| `SimConnect_Open` | One-based injected HRESULT; a later Open can recover | Other Open result shapes, including null success handles |
+| `SimConnect_AddToDataDefinition` | One-based HRESULT with optional native-name/unit selector | Other error channels and asynchronous exceptions |
+| `SimConnect_SubscribeToSystemEvent` | One-based injected HRESULT | Name-specific selectors and asynchronous errors |
+| `SimConnect_GetNextDispatch` | Timed owned raw bytes with bounded advertised length | Injected HRESULT, null dispatch, and target SDK empty-queue tuple |
+| `SimConnect_RequestDataOnSimObject` | Healthy calls only | Injected request failure and correlated exception |
+| `SimConnect_RequestSystemState` | Healthy calls only | Initial/later query failure and transport-silence watchdog |
+| `SimConnect_GetLastSentPacketID` | Healthy calls only | Injected failure and exception-correlation cases |
+| `SimConnect_Close` | Healthy cleanup only | Injected failed Close and retained-resource child-process check |
+| Invalid numeric data, unknown IDs, and malformed shapes | Existing decoder/normalization tests cover individual cases | Authored nonfinite values and remaining malformed shapes as Demo fault fixtures |
+| Loader, diagnostics, and host failures | Existing launch, journal, and supervision tests exercise selected cases | Missing host API and worker panic seams; no fictional native operation is added |
+
+The [fault scenarios](demo-scenarios.md) isolate recoverable and terminal producer outcomes. Their tests distinguish source failure from HTTP and process liveness. `E_FAIL` as an empty queue remains a current receiver policy; it is not verified target SDK behavior.
+
 ## Telemetry acquisition and availability
 
 ### Attitude and freshness

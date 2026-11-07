@@ -187,21 +187,21 @@ Timestamped records use `at_us` as a pass-relative offset. `pause` carries `mode
 
 Native pause delivery is an implementation verification requirement. The working assumption is continued messages with frozen values in both pause modes; it is not established SDK behavior. Verify each mode separately, including SIM_FRAME, events, state queries, and resume. The application's paused publication gate is separate. The scenario clock continues; baseline scenarios author holds across pause intervals rather than silently freezing ramps.
 
-Fault injection is accepted scope. The record vocabulary below is a proposed technical contract; implementation may stage coverage and must identify deferred cases. Fault records are opt-in and absent from the healthy default. Each is a JSON object with the shown `type` and fields. Timestamped records use nonnegative integer `at_us` within the pass.
+Fault records are opt-in and absent from the healthy default. The table distinguishes the implemented subset from deferred vocabulary. Each record is a JSON object. Timestamped records use nonnegative integer `at_us` within the pass.
 
-| `type` | Proposed fields and meaning |
-| --- | --- |
-| `api_fault` | `operation`: exact export name string; `occurrence`: positive integer; `hresult`: signed 32-bit integer. Optional `selector` is an object with string `simvar` and/or `unit` for definition/request association |
-| `exception` | `at_us`; `sent_call_occurrence`: positive integer; `sent_operation`: exact export name string; `code` and `index`: unsigned integers. Correlate with the packet ID captured from that actual call |
-| `raw_packet` | `at_us`; `bytes_hex`: even-length hexadecimal string; `returned_length`: unsigned integer no larger than the decoded owned allocation |
-| `null_dispatch` | `at_us`; `returned_length`: unsigned integer. Return a null pointer without dereferencing it |
-| `disconnect` | `at_us`; `unavailable_ms`: positive integer. Emit QUIT, then fail Open until the interval expires |
-| `flight_loaded` | `at_us`; `flight`: string or null. Update queried state and subscribed transition |
-| `transport_silence` | `at_us`; `duration_ms`: positive integer. Suppress all dispatch packets, including state replies, without emitting QUIT |
+| `type` | Fields and meaning | Status |
+| --- | --- | --- |
+| `api_fault` | `operation`: exact export name string; `occurrence`: positive integer; `hresult`: signed 32-bit integer. Optional `selector` is an object with string `simvar` and/or `unit` for definition association | Implemented for Open, AddToDataDefinition, and SubscribeToSystemEvent. Selectors apply only to AddToDataDefinition |
+| `exception` | `at_us`; `sent_call_occurrence`: positive integer; `sent_operation`: exact export name string; `code` and `index`: unsigned integers. Correlate with the packet ID captured from that actual call | Deferred |
+| `raw_packet` | `at_us`; `bytes_hex`: even-length hexadecimal string; `returned_length`: unsigned integer no larger than the decoded owned allocation | Implemented |
+| `null_dispatch` | `at_us`; `returned_length`: unsigned integer. Return a null pointer without dereferencing it | Deferred |
+| `disconnect` | `at_us`; `unavailable_ms`: positive integer. Emit QUIT, then fail Open until the interval expires | Implemented lifecycle record |
+| `flight_loaded` | `at_us`; `flight`: string or null. Update queried state and subscribed transition | Implemented lifecycle record |
+| `transport_silence` | `at_us`; `duration_ms`: positive integer. Suppress all dispatch packets, including state replies, without emitting QUIT | Deferred |
 
-Resolve field selectors through registered definitions rather than hard-coded request IDs. An occurrence is the one-based matching call since Configure, counted before applying the fault. An exception referencing a failed or unavailable sent call is a scenario error; do not fabricate a packet ID. Counters persist across passes and reconnects. Connection-scoped counters require an explicit rule selection.
+An `api_fault` occurrence counts matching calls since Configure, including failed Open calls and reconnects. Selectors match the AddToDataDefinition name and unit, not a request ID. When several rules match one call, each matching counter advances and the first triggered rule supplies the result. The HRESULT must be negative and occurrence positive. Unknown operations and selectors fail setup. Raw packet bytes are retained in DLL-owned storage, and the advertised length cannot exceed the decoded allocation.
 
-Malformed JSON is a setup error; malformed native bytes are deliberate runtime fixtures. Never return an unreadable non-null pointer or advertise more bytes than the allocation. Stop the emitter before an injected Close failure. Isolate terminal cases and test retained-resource cleanup in a child process. Transport silence preserves synchronous API results and the continuously advancing clock; it survives reconnects and ends with current state and new observations. Host failures require launch or harness fixtures, not invented native records.
+Malformed JSON is a setup error; a valid raw-packet instruction deliberately emits the authored native bytes. Terminal fault scenarios are separate files. Close failure, transport silence, asynchronous exceptions, null dispatch, and host failure injection are not implemented. Host failures require launch or harness fixtures, not invented native records.
 
 ### Selection and setup
 
