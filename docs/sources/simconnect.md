@@ -452,7 +452,7 @@ Interpret recorded evidence according to its diagnostic schema:
 
 | Diagnostic schema | Evidence interpretation |
 | --- | --- |
-| 1â€“3 | Candidate live states do not establish live telemetry publication |
+| 1–3 | Candidate live states do not establish live telemetry publication |
 | 2 | Cross-unit disagreements could invalidate samples. Account for this when interpreting recorded invalid states |
 | 4 | Records identify enabled live publication, but do not journal every publication |
 | 5 | Publication records identify the actual snapshot and sequence. Missing or interrupted records leave correlation incomplete |

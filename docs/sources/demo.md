@@ -58,15 +58,15 @@ Each row covers 40 samples, or two nominal seconds:
 
 | Time | Pitch (degrees) | Roll (degrees) | Slip/skid | Turn rate (deg/s) |
 | --- | --- | --- | --- | --- |
-| 0â€“2 s | 0 | 0 | 0 | 0 |
-| 2â€“4 s | 15 | 0 | -0.5 | 0 |
-| 4â€“6 s | -15 | 0 | 0.5 | 0 |
-| 6â€“8 s | 0 | -30 | 0 | -3 |
-| 8â€“10 s | 0 | 30 | 0 | 3 |
-| 10â€“12 s | 10 | 25 | 1 | 3 |
-| 12â€“14 s | -10 | -25 | -1 | -3 |
-| 14â€“16 s | 70 | 0 | 0 | 0 |
-| 16â€“18 s | -50 | 0 | 0 | 0 |
+| 0–2 s | 0 | 0 | 0 | 0 |
+| 2–4 s | 15 | 0 | -0.5 | 0 |
+| 4–6 s | -15 | 0 | 0.5 | 0 |
+| 6–8 s | 0 | -30 | 0 | -3 |
+| 8–10 s | 0 | 30 | 0 | 3 |
+| 10–12 s | 10 | 25 | 1 | 3 |
+| 12–14 s | -10 | -25 | -1 | -3 |
+| 14–16 s | 70 | 0 | 0 | 0 |
+| 16–18 s | -50 | 0 | 0 | 0 |
 
 The [attitude feature](../efi/attitude.md#demo-behavior) owns expected visual behavior and regression checks.
 
@@ -76,11 +76,11 @@ IAS, TAS, and GS share one fraction while retaining independent values:
 
 | Time | Fraction | IAS acceleration |
 | --- | --- | --- |
-| 0â€“2 s | Zero | 0 kt/s |
-| 2â€“8 s | Linear increase from zero to one | +25 kt/s |
-| 8â€“10 s | One | 0 kt/s |
-| 10â€“16 s | Linear decrease to zero | -25 kt/s |
-| 16â€“18 s | Zero | 0 kt/s |
+| 0–2 s | Zero | 0 kt/s |
+| 2–8 s | Linear increase from zero to one | +25 kt/s |
+| 8–10 s | One | 0 kt/s |
+| 10–16 s | Linear decrease to zero | -25 kt/s |
+| 16–18 s | Zero | 0 kt/s |
 
 Speed calculations use these values:
 
@@ -116,12 +116,12 @@ Each sweep includes both endpoints over 60 samples:
 
 | Time | Start altitude (ft) | End altitude (ft) |
 | --- | --- | --- |
-| 0â€“3 s | -120 | 120 |
-| 3â€“6 s | 980 | 1020 |
-| 6â€“9 s | 9980 | 10020 |
-| 9â€“12 s | 10020 | 9980 |
-| 12â€“15 s | 1020 | 980 |
-| 15â€“18 s | 120 | -120 |
+| 0–3 s | -120 | 120 |
+| 3–6 s | 980 | 1020 |
+| 6–9 s | 9980 | 10020 |
+| 9–12 s | 10020 | 9980 |
+| 12–15 s | 1020 | 980 |
+| 15–18 s | 120 | -120 |
 
 Pressure, display references, and validation follow these rules:
 
