@@ -29,7 +29,7 @@ The integration preserves these boundaries:
 | Execution | One long-running worker owns one active connection and all SimConnect calls |
 | Memory | Validate message types and lengths, respect packed layouts, copy owned values, retain no native buffer across dispatch |
 | Telemetry | Adapter normalization and publication through the caller's existing typed `Publisher` and watch channel |
-| Entry point | Main executable with DLL-path source selection as amended by [ADR 0009](0009-native-demo.md). Application composition owns HTTP/SSE |
+| Entry point | Main executable with DLL-path source selection as amended by [ADR 0010](0010-native-demo.md). Application composition owns HTTP/SSE |
 
 The binding surface remains limited:
 

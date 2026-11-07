@@ -1,4 +1,4 @@
-# ADR 0009: Native Demo playback
+# ADR 0010: Native Demo playback
 
 Decision status: Accepted.
 

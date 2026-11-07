@@ -40,7 +40,7 @@ The magnetic heading and selected-heading tracks repeat every 18 seconds. The se
 
 ## Native Demo playback
 
-The application uses the native Demo DLL through the shared receiver. [ADR 0009](../adr/0009-native-demo.md) records the change and its relationship to earlier decisions. The [scenario catalog](demo-scenarios.md) identifies planned scenarios; the [SimConnect guide](simconnect.md#planned-common-native-consumer) owns the native catalog and error outcomes.
+The application uses the native Demo DLL through the shared receiver. [ADR 0010](../adr/0010-native-demo.md) records the change and its relationship to earlier decisions. The [scenario catalog](demo-scenarios.md) identifies planned scenarios; the [SimConnect guide](simconnect.md#planned-common-native-consumer) owns the native catalog and error outcomes.
 
 The `demo-scenarios/demo_scenario.jsonl` file uses the same parser as other scenarios. It preserves applicable native-input phases and independent boundary checks, but does not supply fictional VFE/VNO/VNE or VX/VY/VG. IAS acceleration remains the receiver estimator. Existing full-profile presentation fixtures and requirements remain valid. Recorded-session conversion, diagnostic schema 4/5 import, and observations mode are excluded. Forward scenario-to-output verification relates the selected input, revision and timing to normalized log/SSE observations; it does not reconstruct the scenario from a recording.
 

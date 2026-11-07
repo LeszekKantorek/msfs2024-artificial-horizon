@@ -212,7 +212,7 @@ An empty queue ends the current batch early. Cancellation exits reception and st
 
 ## Planned common native consumer
 
-The accepted [native Demo decision](../adr/0009-native-demo.md) is implemented. The Demo DLL and official DLL use the same receiver, decoder, lifecycle gates, Publisher, and HTTP/SSE path. Source identity is selected before channel creation and stays Demo or SimConnect; a basename identifies selection, not authenticity. The Demo DLL reads its scenario from the host process arguments during Open.
+The accepted [native Demo decision](../adr/0010-native-demo.md) is implemented. The Demo DLL and official DLL use the same receiver, decoder, lifecycle gates, Publisher, and HTTP/SSE path. Source identity is selected before channel creation and stays Demo or SimConnect; a basename identifies selection, not authenticity. The Demo DLL reads its scenario from the host process arguments during Open.
 
 ### Used API and evidence
 
