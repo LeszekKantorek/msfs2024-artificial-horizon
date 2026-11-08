@@ -472,7 +472,7 @@ fn demo_serves_http_with_an_invalid_sibling_dll() {
     let fixture = Fixture::new();
     let binary = fixture.binary();
     fs::write(fixture.0.join("SimConnect.dll"), "not a native library").unwrap();
-    let scenario = Path::new(env!("CARGO_MANIFEST_DIR")).join("demo-scenarios/demo_scenario.jsonl");
+    let scenario = Path::new(env!("CARGO_MANIFEST_DIR")).join("demo-scenarios/demo-scenario.jsonl");
     for arguments in [
         vec!["--scenario", scenario.to_str().unwrap()],
         vec![

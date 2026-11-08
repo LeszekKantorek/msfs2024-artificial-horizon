@@ -729,7 +729,7 @@ mod tests {
     #[test]
     fn embedded_default_is_valid() {
         Scenario::parse(
-            include_str!("../../../demo-scenarios/demo_scenario.jsonl"),
+            include_str!("../../../demo-scenarios/demo-scenario.jsonl"),
             "default",
         )
         .unwrap();
@@ -738,7 +738,7 @@ mod tests {
     #[test]
     fn default_matches_independent_native_checkpoints() {
         let s = Scenario::parse(
-            include_str!("../../../demo-scenarios/demo_scenario.jsonl"),
+            include_str!("../../../demo-scenarios/demo-scenario.jsonl"),
             "default",
         )
         .unwrap();

@@ -35,7 +35,7 @@ cd msfs2024-artificial-horizon
 ```powershell
 rustup default stable
 cargo build --workspace --locked
-cargo run --locked --bin msfs2024-artificial-horizon -- --scenario demo-scenarios/demo_scenario.jsonl
+cargo run --locked --bin msfs2024-artificial-horizon -- --scenario demo-scenarios/demo-scenario.jsonl
 ```
 
 The workspace build places `demo.dll` beside the executable before startup.
@@ -61,7 +61,7 @@ Connect the phone to the server through the trusted private network:
 3. Start the server with LAN access:
 
    ```powershell
-   cargo run --locked --bin msfs2024-artificial-horizon -- --source demo.dll --scenario demo-scenarios/demo_scenario.jsonl --listen-address 0.0.0.0 --port 8080
+   cargo run --locked --bin msfs2024-artificial-horizon -- --source demo.dll --scenario demo-scenarios/demo-scenario.jsonl --listen-address 0.0.0.0 --port 8080
    ```
 
 4. Allow inbound TCP port `8080` in Windows Defender Firewall for the Private profile and local subnet.
@@ -91,7 +91,7 @@ Apply these LAN access constraints:
 ```powershell
 cargo run --locked --bin msfs2024-artificial-horizon -- --help
 cargo run --locked --bin msfs2024-artificial-horizon -- --version
-cargo run --locked --bin msfs2024-artificial-horizon -- --source demo.dll --scenario demo-scenarios/demo_scenario.jsonl --listen-address 127.0.0.1 --port 9000
+cargo run --locked --bin msfs2024-artificial-horizon -- --source demo.dll --scenario demo-scenarios/demo-scenario.jsonl --listen-address 127.0.0.1 --port 9000
 ```
 
 | Situation | Action / constraint |

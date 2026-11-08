@@ -84,7 +84,7 @@ fn main() {
     ));
     std::fs::copy(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../demo-scenarios/demo_scenario.jsonl"),
+            .join("../../demo-scenarios/demo-scenario.jsonl"),
         &unicode,
     )
     .unwrap();
@@ -160,7 +160,7 @@ fn actual_dll_notifies_and_retains_packets() {
         let scenario = std::path::PathBuf::from(scenario);
         std::fs::copy(
             std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("../../demo-scenarios/demo_scenario.jsonl"),
+                .join("../../demo-scenarios/demo-scenario.jsonl"),
             &scenario,
         )
         .unwrap();

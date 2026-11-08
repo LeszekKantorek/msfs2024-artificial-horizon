@@ -7,7 +7,7 @@ use std::{
 
 fn scenario() -> String {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("demo-scenarios/demo_scenario.jsonl")
+        .join("demo-scenarios/demo-scenario.jsonl")
         .to_string_lossy()
         .into_owned()
 }

@@ -12,11 +12,11 @@ Demo uses the project-owned `demo.dll` through the same native receiver and HTTP
 
 ## Scenario timing
 
-The `demo-scenarios/demo_scenario.jsonl` scenario uses a 50 ms synthetic frame and a 198-second continuously looping pass. Independent tracks use their own periods and restart at each pass boundary. Scheduler delays can skip frames. Source receipt and freshness follow the shared [SimConnect receiver](simconnect.md#delivery-frequency-and-loop-timing).
+The `demo-scenarios/demo-scenario.jsonl` scenario uses a 50 ms synthetic frame and a 198-second continuously looping pass. Independent tracks use their own periods and restart at each pass boundary. Scheduler delays can skip frames. Source receipt and freshness follow the shared [SimConnect receiver](simconnect.md#delivery-frequency-and-loop-timing).
 
 ### Attitude and coordinated turn
 
-Nine two-second attitude and turn phases use native pitch and bank radians, ball position, and turn rate. The input is in `demo-scenarios/demo_scenario.jsonl`. The [attitude feature](../efi/attitude.md#demo-behavior) owns presentation checks.
+Nine two-second attitude and turn phases use native pitch and bank radians, ball position, and turn rate. The input is in `demo-scenarios/demo-scenario.jsonl`. The [attitude feature](../efi/attitude.md#demo-behavior) owns presentation checks.
 
 ### Speed cycle and profile
 
@@ -42,7 +42,7 @@ The magnetic heading and selected-heading tracks repeat every 18 seconds. The se
 
 The application uses the native Demo DLL through the shared receiver. [ADR 0010](../adr/0010-native-demo.md) records the native playback decision. The [scenario catalog](demo-scenarios.md) identifies scenarios; the [SimConnect guide](simconnect.md#common-native-consumer) owns the native catalog and error outcomes.
 
-The `demo-scenarios/demo_scenario.jsonl` file uses the same parser as other scenarios. It preserves applicable native-input phases and independent boundary checks, but does not supply fictional VFE/VNO/VNE or VX/VY/VG. IAS acceleration remains the receiver estimator. Existing full-profile presentation fixtures and requirements remain valid. Recorded-session conversion, diagnostic schema 4/5 import, and observations mode are excluded. Forward scenario-to-output verification relates the selected input, revision and timing to normalized log/SSE observations; it does not reconstruct the scenario from a recording.
+The `demo-scenarios/demo-scenario.jsonl` file uses the same parser as other scenarios. It preserves applicable native-input phases and independent boundary checks, but does not supply fictional VFE/VNO/VNE or VX/VY/VG. IAS acceleration remains the receiver estimator. Existing full-profile presentation fixtures and requirements remain valid. Recorded-session conversion, diagnostic schema 4/5 import, and observations mode are excluded. Forward scenario-to-output verification relates the selected input, revision and timing to normalized log/SSE observations; it does not reconstruct the scenario from a recording.
 
 ### JSONL meaning
 
