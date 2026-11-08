@@ -28,6 +28,69 @@ type Query = unsafe extern "C" fn(*mut c_void, u32, *const c_char) -> i32;
 type LastSent = unsafe extern "C" fn(*mut c_void, *mut u32) -> i32;
 type Request = unsafe extern "C" fn(*mut c_void, u32, u32, u32, i32, u32, u32, u32, u32) -> i32;
 fn main() {
+    if std::env::args_os().any(|arg| arg == "--failed-close-probe") {
+        unsafe {
+            let dll_path = std::env::current_exe()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .join("demo.dll");
+            let wide: Vec<u16> = dll_path.as_os_str().encode_wide().chain([0]).collect();
+            let dll = LoadLibraryW(wide.as_ptr());
+            assert!(!dll.is_null());
+            let open: Open = std::mem::transmute(
+                GetProcAddress(dll, c"SimConnect_Open".as_ptr().cast()).unwrap(),
+            );
+            let close: Close = std::mem::transmute(
+                GetProcAddress(dll, c"SimConnect_Close".as_ptr().cast()).unwrap(),
+            );
+            let next: Next = std::mem::transmute(
+                GetProcAddress(dll, c"SimConnect_GetNextDispatch".as_ptr().cast()).unwrap(),
+            );
+            let add: Add = std::mem::transmute(
+                GetProcAddress(dll, c"SimConnect_AddToDataDefinition".as_ptr().cast()).unwrap(),
+            );
+            let request: Request = std::mem::transmute(
+                GetProcAddress(dll, c"SimConnect_RequestDataOnSimObject".as_ptr().cast()).unwrap(),
+            );
+            let mut h = ptr::null_mut();
+            assert_eq!(
+                open(
+                    &mut h,
+                    c"close-test".as_ptr(),
+                    ptr::null_mut(),
+                    0,
+                    ptr::null_mut(),
+                    u32::MAX
+                ),
+                0
+            );
+            assert_eq!(
+                add(
+                    h,
+                    100,
+                    c"AIRSPEED INDICATED".as_ptr(),
+                    c"knots".as_ptr(),
+                    4,
+                    0.0,
+                    u32::MAX
+                ),
+                0
+            );
+            assert_eq!(request(h, 100, 100, 0, 3, 0, 0, 0, 0), 0);
+            thread::sleep(Duration::from_millis(200));
+            assert_eq!(close(h), 0x80004005_u32 as i32);
+            let mut p = ptr::null_mut();
+            let mut n = 0;
+            while next(h, &mut p, &mut n) == 0 {}
+            thread::sleep(Duration::from_millis(250));
+            assert_eq!(next(h, &mut p, &mut n), 0x80004005_u32 as i32);
+            // The failed Close intentionally retains the handle and DLL until this child exits.
+        }
+        return;
+    }
     if std::env::args_os().any(|arg| arg == "--probe") {
         unsafe {
             let dll_path = std::env::current_exe()
@@ -78,6 +141,17 @@ fn main() {
         .status()
         .unwrap();
     assert!(status.success());
+    let close_scenario = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../demo-scenarios/errors/close-failure.jsonl");
+    assert!(
+        std::process::Command::new(std::env::current_exe().unwrap())
+            .arg("--failed-close-probe")
+            .arg("--scenario")
+            .arg(close_scenario)
+            .status()
+            .unwrap()
+            .success()
+    );
     let unicode = scenario.with_file_name(format!(
         "demo-\u{15b}cie\u{17c}ka-{}.jsonl",
         std::process::id()

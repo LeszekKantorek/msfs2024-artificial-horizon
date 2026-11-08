@@ -195,17 +195,17 @@ Fault records are opt-in and absent from the healthy default. The table distingu
 
 | `type` | Fields and meaning | Status |
 | --- | --- | --- |
-| `api_fault` | `operation`: exact export name string; `occurrence`: positive integer; `hresult`: signed 32-bit integer. Optional `selector` is an object with string `simvar` and/or `unit` for definition association | Implemented for Open, AddToDataDefinition, and SubscribeToSystemEvent. Selectors apply only to AddToDataDefinition |
-| `exception` | `at_us`; `sent_call_occurrence`: positive integer; `sent_operation`: exact export name string; `code` and `index`: unsigned integers. Correlate with the packet ID captured from that actual call | Deferred |
+| `api_fault` | `operation`: exact export name string; `occurrence`: positive integer; `hresult`: signed 32-bit integer. Optional `selector` is an object with string `simvar` and/or `unit` | Implemented for Open, AddToDataDefinition, RequestDataOnSimObject, SubscribeToSystemEvent, RequestSystemState, GetLastSentPacketID, and Close. Selectors apply to definition and single-field request calls |
+| `exception` | `at_us`; `sent_call_occurrence`: positive integer; `sent_operation`: export name string; `code` and `index`: unsigned integers. Correlate with a packet ID captured from a successful call | Implemented for AddToDataDefinition, RequestDataOnSimObject, SubscribeToSystemEvent, and RequestSystemState |
 | `raw_packet` | `at_us`; `bytes_hex`: even-length hexadecimal string; `returned_length`: unsigned integer no larger than the decoded owned allocation | Implemented |
 | `null_dispatch` | `at_us`; `returned_length`: unsigned integer. Return a null pointer without dereferencing it | Deferred |
 | `disconnect` | `at_us`; `unavailable_ms`: positive integer. Emit QUIT, then fail Open until the interval expires | Implemented lifecycle record |
 | `flight_loaded` | `at_us`; `flight`: string or null. Update queried state and subscribed transition | Implemented lifecycle record |
-| `transport_silence` | `at_us`; `duration_ms`: positive integer. Suppress all dispatch packets, including state replies, without emitting QUIT | Deferred |
+| `transport_silence` | `at_us`; `duration_ms`: positive integer. Suppress all dispatch packets, including state replies, without emitting QUIT | Implemented |
 
-An `api_fault` occurrence counts matching calls since the scenario was loaded, including failed Open calls and reconnects. Selectors match the AddToDataDefinition name and unit, not a request ID. When several rules match one call, each matching counter advances and the first triggered rule supplies the result. The HRESULT must be negative and occurrence positive. Unknown operations and selectors fail scenario validation. Raw packet bytes are retained in DLL-owned storage, and the advertised length cannot exceed the decoded allocation.
+An `api_fault` occurrence counts matching calls since the scenario was loaded, including failed Open calls and reconnects. Selectors match the name and unit of the definition or single-field request, not a request ID. When several rules match one call, each matching counter advances and the first triggered rule supplies the result. The HRESULT must be negative and occurrence positive. Unknown operations and selectors fail scenario validation. Raw packet bytes are retained in DLL-owned storage, and the advertised length cannot exceed the decoded allocation.
 
-Malformed JSON is a configuration error; a valid raw-packet instruction deliberately emits the authored native bytes. Terminal fault scenarios are separate files. Close failure, transport silence, asynchronous exceptions, null dispatch, and host failure injection are not implemented. Host failures require launch or harness fixtures, not invented native records.
+Malformed JSON is a configuration error; a valid raw-packet instruction deliberately emits the authored native bytes. An exception that references an unavailable sent call reports a scenario error on standard error and terminates the Demo source without fabricating a packet ID. Terminal fault scenarios are separate files. Failed Close stops Demo's emitter but leaves native ownership retained for process exit. Transport silence suppresses state replies as well as samples; after the interval, subscribed state is supplied again. Null dispatch and host failure injection remain outside the implemented Demo vocabulary. Host failures require launch or harness fixtures, not invented native records.
 
 ### Selection and setup
 
@@ -213,7 +213,7 @@ The CLI selects `demo.dll` by default or a supported absolute DLL path. Basename
 
 HTTP binds before Demo opens. On its first Open, the DLL reads `--scenario <path>` or `--scenario=<path>` from the process arguments and validates the complete file. Relative paths use the process working directory. The DLL caches the scenario and fault counters across retries and reconnects. The first successful Open starts the clock. Invalid or unreadable input produces a path and diagnostic on standard error and returns the Demo-specific customer HRESULT `0xA0040001`. The producer stops without retrying; HTTP and SSE remain available. There is no fallback scenario or worker thread on configuration failure. Rust panics must not cross the DLL ABI.
 
-The customer HRESULT has this terminal meaning for any Demo Open result, including an injected fault with the same value. Other injected Open failures remain retryable. The official SimConnect DLL is unaffected. The Demo DLL depends on the host process passing the scenario argument; another executable can use the DLL by passing the same argument.
+The customer HRESULT has this terminal meaning for any Demo Open result, including an injected fault with the same value. Demo also returns it from dispatch when an exception record references an unavailable sent call. Other injected Open failures remain retryable. The official SimConnect DLL is unaffected. The Demo DLL depends on the host process passing the scenario argument; another executable can use the DLL by passing the same argument.
 
 ### Forward scenario evidence
 
@@ -223,11 +223,11 @@ The [independent checkpoint fixture](../../tests/fixtures/demo-evidence.md) supp
 | --- | --- | --- |
 | Pitch and bank, radians | `attitude_raw` records primary radians; `attitude_sample` records the candidate | Negate both, convert to degrees, and wrap roll to `[-180, 180)`. Reject invalid pitch or nonfinite attitude. A grouped packet requires both components. |
 | IAS, TAS, GS in knots; altitude in feet; VSI in feet per minute; turn rate in degrees per second | `instrument_sample` identifies the native name, index, value, and active gate | `ias_kt`, `tas_kt`, `gs_kt`, `altitude_ft`, `vertical_speed_fpm`, and `turn_rate_dps` retain valid native values. Speeds must be nonnegative. |
-| Magnetic heading and selected heading, degrees | `instrument_sample` | Wrap to `[0, 360)`. Selected heading also requires `AUTOPILOT AVAILABLE` equal to 1. |
+| Magnetic heading and selected heading, degrees | `instrument_sample` | Wrap to `[0, 360)`. Selected heading also requires a finite nonzero `AUTOPILOT AVAILABLE`. |
 | Ball position | `instrument_sample` | Divide by 127 for `slip_skid`; reject values outside `[-1, 1]`. |
 | KOHLSMAN setting, inHg | `instrument_sample` | Multiply by `33.8638866667` for `baro_setting.pressure_hpa`; the receiver also formats `baro_text` in inHg. Invalid pressure is omitted. |
 | VS0, VS1, minimum rotation, and barber pole, knots | `instrument_sample` | Positive valid values populate the corresponding partial `airspeed_profile`; unsupported profile fields remain absent. |
-| Autopilot availability, selected altitude, and radio mode | `instrument_sample` for each | `selected_altitude_ft` requires availability equal to 1 and radio mode equal to 0. Each gate and target must remain fresh. |
+| Autopilot availability, selected altitude, and radio mode | `instrument_sample` for each | `selected_altitude_ft` requires finite nonzero availability and radio mode equal to 0. Each gate and target must remain fresh. |
 | IAS history | Individual IAS `instrument_sample` records | `ias_acceleration_ktps` derives from valid IAS acquisitions and their receiver times over a 500 ms window; it is not an authored native field. |
 
 A receipt is not proof of a final value: the worker logs raw observations even when lifecycle blocks publication. The `state_transition` record includes a published snapshot only on a transition, not for every instrument update. Capture SSE for other final checkpoints. SSE delivers latest snapshots and can coalesce publications, so do not assume a one-to-one packet count or exact wall-clock equality.

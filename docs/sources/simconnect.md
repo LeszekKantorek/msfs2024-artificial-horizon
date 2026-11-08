@@ -216,7 +216,7 @@ The accepted [native Demo decision](../adr/0010-native-demo.md) is implemented. 
 
 ### Used API and evidence
 
-The current receiver uses Windows x64 C ABI and packed receive layouts derived from SDK 1.8.1 headers. The eight exact exports are `SimConnect_Open`, `SimConnect_Close`, `SimConnect_GetNextDispatch`, `SimConnect_AddToDataDefinition`, `SimConnect_RequestDataOnSimObject`, `SimConnect_SubscribeToSystemEvent`, `SimConnect_RequestSystemState`, and `SimConnect_GetLastSentPacketID`. Official API definitions document those interfaces; the manually declared layouts and their emulator implementation require independent header and runtime verification. The [definition API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_addtodatadefinition/) documents FLOAT64 and units. All current fields request FLOAT64, including Bool. The SDK permits nonzero Bool true, including -1; current `AUTOPILOT AVAILABLE` handling accepts exactly 1. This discrepancy must not become the emulator oracle.
+The current receiver uses Windows x64 C ABI and packed receive layouts derived from SDK 1.8.1 headers. The eight exact exports are `SimConnect_Open`, `SimConnect_Close`, `SimConnect_GetNextDispatch`, `SimConnect_AddToDataDefinition`, `SimConnect_RequestDataOnSimObject`, `SimConnect_SubscribeToSystemEvent`, `SimConnect_RequestSystemState`, and `SimConnect_GetLastSentPacketID`. Official API definitions document those interfaces; the manually declared layouts and their emulator implementation require independent header and runtime verification. The [definition API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_addtodatadefinition/) documents FLOAT64 and units. All current fields request FLOAT64, including Bool. The SDK permits nonzero Bool true, including -1; `AUTOPILOT AVAILABLE` treats a received finite nonzero value as true.
 
 Normal attitude registration orders pitch radians, bank radians. Diagnostic registration orders pitch radians, pitch degrees, bank radians, bank degrees, repeated pitch radians, repeated bank radians. These shapes are current-consumer requirements, not evidence of simultaneous acquisition. The caller owns definition, request, event, and query IDs and field order; the DLL must route and encode those supplied values, not hard-code the current IDs. Current requests use user-aircraft proxy, `SIM_FRAME`, flags 0, origin 0, interval 0, and limit 0. The [request API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_requestdataonsimobject/) distinguishes these options from change-only requests. Other request modes are outside this used subset until implemented and verified.
 
@@ -279,7 +279,7 @@ Do not remove display capability because the Demo source becomes narrower.
 
 ### Dispatch and error limits
 
-The [dispatch API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/general/simconnect_getnextdispatch/) describes library-owned buffers and an empty-queue `SIMCONNECT_RECV_ID_NULL` message. It does not establish the complete empty-queue HRESULT, pointer, and length tuple. The current receiver treats `E_FAIL` as no packet; this is a consumer policy, not proof that every such failure means an empty queue. Compare both DLLs with a small independent client and verify notification, draining, returned-memory lifetime, and Close. Generate packets independently of dispatch; queued contents do not change when consumed late. Verify missed-frame and queue-overflow behavior before claiming parity; bound resources and do not silently discard lifecycle transitions.
+The [dispatch API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/general/simconnect_getnextdispatch/) describes library-owned buffers and an empty-queue `SIMCONNECT_RECV_ID_NULL` message. It does not establish the complete empty-queue HRESULT, pointer, and length tuple. On 2026-11-08, an independent client observed `E_FAIL`, a null pointer, and length `0` after draining the official DLL with MSFS 2024 in flight; Demo returned the same tuple. This observation does not prove that every `E_FAIL` means an empty queue. The receiver currently treats `E_FAIL` as no packet. Notification, returned-memory lifetime, missed-frame and queue-overflow behavior remain separate verification concerns. Generate packets independently of dispatch; queued contents do not change when consumed late. Bound resources and do not silently discard lifecycle transitions.
 
 Immediate HRESULT failures and asynchronous exception packets are distinct. Optional definition or request failures isolate the affected field. Transient connection loss follows the existing retry policy; terminal configuration, malformed required packets, or cleanup failure can terminate the producer while HTTP remains available. HTTP bind or application infrastructure failure instead ends the application. Exact behavior follows the current receiver and its diagnostics; injected failures do not establish that the official DLL emits the same error. Demo scenario validation failure occurs during Open, leaves HTTP available, and is never sent through dispatch.
 
@@ -288,6 +288,7 @@ The following outcomes describe the current consumer and supervisor, based on st
 | Trigger | Current outcome |
 | --- | --- |
 | Demo Open returns `0xA0040001` | Terminate the producer; HTTP remains available |
+| Demo dispatch reports scenario error `0xA0040001` | Terminate the producer; HTTP remains available |
 | Other Open failure or QUIT | Retry with bounded backoff after applicable cleanup; HTTP remains available |
 | Optional definition or request failure, or correlated optional exception | Remove the affected optional field; acquisition and HTTP continue |
 | Required initial definition, subscription, query, or request failure | Terminate the producer; HTTP remains available |
@@ -308,14 +309,14 @@ The selected Demo subset and deferred mechanisms are distinct from simulator evi
 | `SimConnect_AddToDataDefinition` | One-based HRESULT with optional native-name/unit selector | Other error channels and asynchronous exceptions |
 | `SimConnect_SubscribeToSystemEvent` | One-based injected HRESULT | Name-specific selectors and asynchronous errors |
 | `SimConnect_GetNextDispatch` | Timed owned raw bytes with bounded advertised length | Injected HRESULT, null dispatch, and target SDK empty-queue tuple |
-| `SimConnect_RequestDataOnSimObject` | Healthy calls only | Injected request failure and correlated exception |
-| `SimConnect_RequestSystemState` | Healthy calls only | Initial/later query failure and transport-silence watchdog |
-| `SimConnect_GetLastSentPacketID` | Healthy calls only | Injected failure and exception-correlation cases |
-| `SimConnect_Close` | Healthy cleanup only | Injected failed Close and retained-resource child-process check |
-| Invalid numeric data, unknown IDs, and malformed shapes | Existing decoder/normalization tests cover individual cases | Authored nonfinite values and remaining malformed shapes as Demo fault fixtures |
+| `SimConnect_RequestDataOnSimObject` | One-based HRESULT with optional single-field selector; correlated exception using the actual sent packet ID | Other request modes |
+| `SimConnect_RequestSystemState` | One-based HRESULT and bounded transport silence | Other system-state requests |
+| `SimConnect_GetLastSentPacketID` | One-based HRESULT; an uncorrelated exception can terminate the source | Other correlation failures |
+| `SimConnect_Close` | One-based HRESULT; failed Close stops the emitter and retains native ownership | Further cleanup failure shapes |
+| Invalid numeric data, unknown IDs, and malformed shapes | Decoder/normalization tests and owned raw-packet scenarios | Other malformed shapes and host-level memory faults |
 | Loader, diagnostics, and host failures | Existing launch, journal, and supervision tests exercise selected cases | Missing host API and worker panic seams; no fictional native operation is added |
 
-The [fault scenarios](demo-scenarios.md) isolate recoverable and terminal producer outcomes. Their tests distinguish source failure from HTTP and process liveness. `E_FAIL` as an empty queue remains a current receiver policy; it is not verified target SDK behavior.
+The [fault scenarios](demo-scenarios.md) isolate recoverable and terminal producer outcomes. Their tests distinguish source failure from HTTP and process liveness. The observed empty-queue tuple does not establish that every SDK `E_FAIL` has that cause.
 
 ## Telemetry acquisition and availability
 

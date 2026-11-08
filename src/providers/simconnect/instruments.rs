@@ -90,7 +90,7 @@ impl Instruments {
             VSpeedReferences::partial(get(11), None, None, None),
             get(12),
         );
-        let ap = get(13) == Some(1.0);
+        let ap = get(13).is_some_and(|value| value != 0.0);
         let baro = get(4).and_then(|pressure| BaroSetting::new(pressure * HPA_PER_INHG).ok());
         FlightSample::new(
             attitude,
@@ -355,5 +355,25 @@ mod tests {
         assert_eq!(state["selected_altitude_ft"], 3000.0);
         cache.receive(16, 1.0, now);
         assert!(snapshot(&cache).get("selected_altitude_ft").is_none());
+    }
+
+    #[test]
+    fn native_bool_minus_one_enables_selected_targets() {
+        let now = Instant::now();
+        let mut cache = Instruments::default();
+        for (index, value) in [(13, -1.0), (14, 270.0), (15, 3000.0), (16, 0.0)] {
+            cache.receive(index, value, now);
+        }
+        let state = snapshot(&cache);
+        assert_eq!(state["selected_heading_deg"], 270.0);
+        assert_eq!(state["selected_altitude_ft"], 3000.0);
+        cache.receive(16, -1.0, now);
+        let radio_mode = snapshot(&cache);
+        assert_eq!(radio_mode["selected_heading_deg"], 270.0);
+        assert!(radio_mode.get("selected_altitude_ft").is_none());
+        cache.receive(13, 0.0, now);
+        let unavailable = snapshot(&cache);
+        assert!(unavailable.get("selected_heading_deg").is_none());
+        assert!(unavailable.get("selected_altitude_ft").is_none());
     }
 }

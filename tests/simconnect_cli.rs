@@ -966,7 +966,14 @@ fn wait_fault_log(
     path: &Path,
     predicate: impl Fn(&[serde_json::Value]) -> bool,
 ) -> Vec<serde_json::Value> {
-    let deadline = Instant::now() + Duration::from_secs(5);
+    wait_fault_log_for(path, Duration::from_secs(5), predicate)
+}
+fn wait_fault_log_for(
+    path: &Path,
+    timeout: Duration,
+    predicate: impl Fn(&[serde_json::Value]) -> bool,
+) -> Vec<serde_json::Value> {
+    let deadline = Instant::now() + timeout;
     loop {
         let content = fs::read_to_string(path).unwrap_or_default();
         let records: Vec<_> = content
@@ -982,6 +989,407 @@ fn wait_fault_log(
         );
         std::thread::sleep(Duration::from_millis(25));
     }
+}
+#[test]
+fn fault_optional_request_isolated_from_attitude_and_altitude() {
+    let fixture = Fixture::new();
+    let (mut app, log) = start_fault(&fixture, "optional-request.jsonl");
+    let snapshot = fault_snapshot(&app, |s| s["state"] == "live" && s["altitude_ft"] == 1000.0);
+    assert!(snapshot.get("ias_kt").is_none());
+    assert!(snapshot["attitude"].is_object());
+    let records = wait_fault_log(&log, |r| {
+        r.iter()
+            .any(|v| v["kind"] == "instrument_request" && v["data"]["name"] == "AIRSPEED INDICATED")
+    });
+    assert!(!records.iter().find(|v| v["kind"] == "instrument_request" && v["data"]["name"] == "AIRSPEED INDICATED").unwrap()["data"]["error"].is_null());
+    app.assert_health();
+    app.shutdown();
+}
+
+#[test]
+fn fault_correlated_optional_exception_isolated_from_other_fields() {
+    let fixture = Fixture::new();
+    let (mut app, log) = start_fault(&fixture, "optional-exception.jsonl");
+    fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    let records = wait_fault_log_for(&log, Duration::from_secs(8), |r| {
+        r.iter()
+            .any(|v| v["kind"] == "instrument_unavailable" && v["data"]["index"] == 0)
+    });
+    assert!(
+        records
+            .iter()
+            .any(|v| v["kind"] == "instrument_unavailable" && v["data"]["index"] == 0)
+    );
+    let state = fault_snapshot(&app, |s| {
+        s["state"] == "live" && s["altitude_ft"] == 1000.0 && s.get("ias_kt").is_none()
+    });
+    assert!(state["attitude"].is_object());
+    app.assert_health();
+    app.shutdown();
+}
+
+#[test]
+fn fault_correlated_definition_exception_isolated_from_other_fields() {
+    let fixture = Fixture::new();
+    let (mut app, log) = start_fault(&fixture, "definition-exception.jsonl");
+    fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    wait_fault_log_for(&log, Duration::from_secs(8), |r| {
+        r.iter()
+            .any(|v| v["kind"] == "instrument_unavailable" && v["data"]["index"] == 0)
+    });
+    let state = fault_snapshot(&app, |s| {
+        s["state"] == "live" && s["altitude_ft"] == 1000.0 && s.get("ias_kt").is_none()
+    });
+    assert!(state["attitude"].is_object());
+    app.assert_health();
+    app.shutdown();
+}
+
+#[test]
+fn fault_uncorrelated_exception_ends_source_but_preserves_http() {
+    let fixture = Fixture::new();
+    let (mut app, log) = start_fault(&fixture, "uncorrelated-exception.jsonl");
+    fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    let records = wait_fault_log_for(&log, Duration::from_secs(8), |r| {
+        r.iter().any(|v| v["kind"] == "session_end")
+    });
+    assert!(
+        !records
+            .iter()
+            .any(|v| v["kind"] == "instrument_unavailable")
+    );
+    assert_eq!(
+        records
+            .iter()
+            .filter(|v| v["kind"] == "connection_attempt")
+            .count(),
+        1
+    );
+    fault_snapshot(&app, |s| s["state"] == "disconnected");
+    app.assert_health();
+    app.shutdown();
+}
+
+#[test]
+fn fault_lost_packet_id_makes_later_exception_uncorrelated() {
+    let fixture = Fixture::new();
+    let (mut app, log) = start_fault(&fixture, "packet-id-exception.jsonl");
+    fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    let records = wait_fault_log_for(&log, Duration::from_secs(8), |r| {
+        r.iter().any(|v| v["kind"] == "session_end")
+    });
+    assert!(
+        !records
+            .iter()
+            .any(|v| v["kind"] == "instrument_unavailable")
+    );
+    assert_eq!(
+        records
+            .iter()
+            .filter(|v| v["kind"] == "connection_attempt")
+            .count(),
+        1
+    );
+    fault_snapshot(&app, |s| s["state"] == "disconnected");
+    app.assert_health();
+    app.shutdown();
+}
+
+#[test]
+fn fault_exception_without_sent_call_is_terminal_scenario_error() {
+    let fixture = Fixture::new();
+    let (mut app, log) = start_fault(&fixture, "missing-sent-call.jsonl");
+    fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    let records = wait_fault_log_for(&log, Duration::from_secs(8), |r| {
+        r.iter().any(|v| v["kind"] == "session_end")
+    });
+    assert_eq!(
+        records
+            .iter()
+            .filter(|v| v["kind"] == "connection_attempt")
+            .count(),
+        1
+    );
+    assert!(
+        records
+            .iter()
+            .any(|v| v["kind"] == "native_error" && v["data"]["hresult"] == -1610350591)
+    );
+    assert!(app.messages().contains("exception references unavailable"));
+    fault_snapshot(&app, |s| s["state"] == "disconnected");
+    app.assert_health();
+    app.shutdown();
+}
+
+#[test]
+fn fault_exception_cannot_reference_failed_sent_call() {
+    let fixture = Fixture::new();
+    let (mut app, log) = start_fault(&fixture, "failed-sent-call.jsonl");
+    fault_snapshot(&app, |s| s["state"] == "live" && s["altitude_ft"] == 1000.0);
+    let records = wait_fault_log_for(&log, Duration::from_secs(8), |r| {
+        r.iter().any(|v| v["kind"] == "session_end")
+    });
+    assert_eq!(
+        records
+            .iter()
+            .filter(|v| v["kind"] == "connection_attempt")
+            .count(),
+        1
+    );
+    assert!(
+        records
+            .iter()
+            .any(|v| v["kind"] == "native_error" && v["data"]["hresult"] == -1610350591)
+    );
+    assert!(app.messages().contains("exception references unavailable"));
+    assert!(
+        !records
+            .iter()
+            .any(|v| v["kind"] == "instrument_unavailable")
+    );
+    app.assert_health();
+    app.shutdown();
+}
+
+#[test]
+fn fault_nonfinite_attitude_suppresses_live_until_fresh_recovery() {
+    let fixture = Fixture::new();
+    let (mut app, log) = start_fault(&fixture, "invalid-attitude.jsonl");
+    fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    let invalid = fault_snapshot(&app, |s| s["state"] == "invalid");
+    assert!(invalid["attitude"].is_null());
+    let records = wait_fault_log(&log, |r| {
+        r.iter()
+            .any(|v| v["kind"] == "attitude_sample" && !v["data"]["validation_error"].is_null())
+    });
+    assert!(
+        records
+            .iter()
+            .any(|v| v["kind"] == "attitude_sample" && !v["data"]["validation_error"].is_null())
+    );
+    fault_snapshot(&app, |s| s["state"] == "live" && s["attitude"].is_object());
+    app.assert_health();
+    app.shutdown();
+}
+
+#[test]
+fn fault_nonfinite_optional_value_preserves_attitude_and_altitude() {
+    let fixture = Fixture::new();
+    let (mut app, log) = start_fault(&fixture, "invalid-optional.jsonl");
+    fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    let records = wait_fault_log_for(&log, Duration::from_secs(8), |r| {
+        r.iter().any(|v| {
+            v["kind"] == "instrument_sample"
+                && v["data"]["name"] == "AIRSPEED INDICATED"
+                && v["data"]["value"]["classification"] == "nan"
+        })
+    });
+    assert!(
+        records
+            .iter()
+            .any(|v| v["kind"] == "instrument_sample"
+                && v["data"]["value"]["classification"] == "nan")
+    );
+    let state = fault_snapshot(&app, |s| {
+        s["state"] == "live" && s["altitude_ft"] == 1000.0 && s.get("ias_kt").is_none()
+    });
+    assert!(state["attitude"].is_object());
+    fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    app.assert_health();
+    app.shutdown();
+}
+
+#[test]
+fn native_bool_minus_one_enables_targets_and_zero_clears_them() {
+    let fixture = Fixture::new();
+    let (mut app, log) = start_fault(&fixture, "native-bool.jsonl");
+    fault_snapshot(&app, |s| {
+        s["state"] == "live"
+            && s["selected_heading_deg"] == 270.0
+            && s["selected_altitude_ft"] == 3000.0
+    });
+    let records = wait_fault_log(&log, |r| {
+        r.iter().any(|v| {
+            v["kind"] == "instrument_sample"
+                && v["data"]["name"] == "AUTOPILOT AVAILABLE"
+                && v["data"]["value"]["value"] == -1.0
+        })
+    });
+    assert!(records.iter().any(|v| v["kind"] == "instrument_sample"
+        && v["data"]["name"] == "AUTOPILOT AVAILABLE"
+        && v["data"]["value"]["value"] == -1.0));
+    fault_snapshot(&app, |s| {
+        s["state"] == "live"
+            && s["heading_deg"] == 180.0
+            && s.get("selected_heading_deg").is_none()
+            && s.get("selected_altitude_ft").is_none()
+    });
+    app.assert_health();
+    app.shutdown();
+}
+
+#[test]
+fn fault_initial_state_query_ends_source_but_http_stays_available() {
+    let fixture = Fixture::new();
+    let (mut app, log) = start_fault(&fixture, "initial-state-query.jsonl");
+    let records = wait_fault_log(&log, |r| r.iter().any(|v| v["kind"] == "session_end"));
+    assert!(records.iter().any(|v| v["kind"] == "native_error"
+        && v["data"]["operation"] == "SimConnect_RequestSystemState"));
+    assert_eq!(
+        records
+            .iter()
+            .filter(|v| v["kind"] == "connection_attempt")
+            .count(),
+        1
+    );
+    assert_eq!(
+        fault_snapshot(&app, |s| s["state"] == "disconnected")["attitude"],
+        serde_json::Value::Null
+    );
+    app.assert_health();
+    app.shutdown();
+}
+
+#[test]
+fn fault_periodic_state_query_reconnects_and_recovers() {
+    let fixture = Fixture::new();
+    let (mut app, log) = start_fault(&fixture, "periodic-state-query.jsonl");
+    fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    let records = wait_fault_log_for(&log, Duration::from_secs(15), |r| {
+        r.iter()
+            .filter(|v| v["kind"] == "connection_attempt")
+            .count()
+            >= 2
+    });
+    assert!(records.iter().any(|v| v["kind"] == "native_error"
+        && v["data"]["operation"] == "SimConnect_RequestSystemState"));
+    fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    app.assert_health();
+    app.shutdown();
+}
+
+#[test]
+fn fault_packet_id_failure_is_nonfatal() {
+    let fixture = Fixture::new();
+    let (mut app, log) = start_fault(&fixture, "packet-id.jsonl");
+    let records = wait_fault_log(&log, |r| {
+        r.iter().any(|v| {
+            v["kind"] == "native_error"
+                && v["data"]["operation"] == "SimConnect_GetLastSentPacketID"
+        })
+    });
+    assert!(records.iter().any(|v| v["kind"] == "native_error"
+        && v["data"]["operation"] == "SimConnect_GetLastSentPacketID"));
+    fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    app.assert_health();
+    app.shutdown();
+}
+
+#[test]
+fn fault_failed_close_keeps_http_available() {
+    let fixture = Fixture::new();
+    let (mut app, log) = start_fault(&fixture, "close-failure.jsonl");
+    let records = wait_fault_log(&log, |r| r.iter().any(|v| v["kind"] == "session_end"));
+    assert!(
+        records
+            .iter()
+            .any(|v| v["kind"] == "native_error" && v["data"]["operation"] == "SimConnect_Close")
+    );
+    fault_snapshot(&app, |s| s["state"] == "disconnected");
+    app.assert_health();
+    app.shutdown();
+}
+
+#[test]
+fn fault_transport_silence_causes_watchdog_reconnect_and_recovery() {
+    let fixture = Fixture::new();
+    let (mut app, log) = start_fault(&fixture, "transport-silence.jsonl");
+    fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    fault_snapshot(&app, |s| s["state"] == "stale");
+    app.assert_health();
+    let records = wait_fault_log_for(&log, Duration::from_secs(25), |r| {
+        r.iter().any(|v| {
+            v["kind"] == "connection_lost"
+                && v["data"]["reason"] == "diagnostic_watchdog_no_packets_for_15_seconds"
+        }) && r
+            .iter()
+            .filter(|v| v["kind"] == "connection_attempt")
+            .count()
+            >= 2
+    });
+    assert!(
+        !records.iter().any(
+            |v| v["kind"] == "connection_lost" && v["data"]["reason"] == "SIMCONNECT_RECV_QUIT"
+        )
+    );
+    fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    app.assert_health();
+    app.shutdown();
+}
+
+#[test]
+fn fault_stop_remains_responsive_during_transport_silence() {
+    let fixture = Fixture::new();
+    let (mut app, _) = start_fault(&fixture, "transport-silence.jsonl");
+    fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    fault_snapshot(&app, |s| s["state"] == "stale");
+    app.shutdown();
+}
+
+#[test]
+fn data_only_gap_with_state_replies_does_not_trigger_watchdog() {
+    let fixture = Fixture::new();
+    let (mut app, log) = start_fault(&fixture, "data-gap.jsonl");
+    fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    fault_snapshot(&app, |s| s["state"] == "stale");
+    let records = wait_fault_log_for(&log, Duration::from_secs(20), |r| {
+        r.iter()
+            .filter(|v| v["kind"] == "system_state_float")
+            .count()
+            >= 8
+    });
+    assert!(!records.iter().any(|v| v["kind"] == "connection_lost"));
+    assert_eq!(
+        records
+            .iter()
+            .filter(|v| v["kind"] == "connection_attempt")
+            .count(),
+        1
+    );
+    fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    app.assert_health();
+    app.shutdown();
+}
+
+#[test]
+fn stop_remains_responsive_during_data_gap() {
+    let fixture = Fixture::new();
+    let (mut app, _) = start_fault(&fixture, "data-gap.jsonl");
+    fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    fault_snapshot(&app, |s| s["state"] == "stale");
+    app.shutdown();
+}
+
+#[test]
+fn fault_stop_remains_responsive_under_dense_traffic() {
+    let fixture = Fixture::new();
+    let binary = fixture.binary();
+    let input = fs::read_to_string(fault_case("optional-definition.jsonl")).unwrap();
+    let input = input
+        .lines()
+        .filter(|line| !line.contains("api_fault"))
+        .collect::<Vec<_>>()
+        .join("\n")
+        .replace("\"frame_period_ms\":50", "\"frame_period_ms\":1");
+    let scenario = fixture.0.join("dense.jsonl");
+    fs::write(&scenario, input).unwrap();
+    let mut app = Application::start(
+        &binary,
+        &fixture.0,
+        &["--scenario", scenario.to_str().unwrap()],
+    );
+    fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    app.shutdown();
 }
 fn start_fault(fixture: &Fixture, name: &str) -> (Application, PathBuf) {
     let binary = fixture.binary();
@@ -1143,6 +1551,38 @@ fn fault_truncated_owned_packet_ends_source_after_live_but_not_http() {
     app.assert_health();
     report_fault_evidence(&fixture, "truncated-packet.jsonl", &records);
     app.shutdown();
+}
+
+#[test]
+fn malformed_owned_packet_shapes_end_only_the_source() {
+    for name in [
+        "invalid-header-size.jsonl",
+        "truncated-payload.jsonl",
+        "invalid-count.jsonl",
+    ] {
+        let fixture = Fixture::new();
+        let (mut app, log) = start_fault(&fixture, name);
+        fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+        let records = wait_fault_log_for(&log, Duration::from_secs(8), |r| {
+            r.iter().any(|v| v["kind"] == "session_end")
+        });
+        assert!(
+            records.iter().any(|v| v["kind"] == "native_error"
+                && v["data"]["operation"] == "decode receive packet"),
+            "{name}"
+        );
+        assert_eq!(
+            records
+                .iter()
+                .filter(|v| v["kind"] == "connection_attempt")
+                .count(),
+            1,
+            "{name}"
+        );
+        fault_snapshot(&app, |s| s["state"] == "disconnected");
+        app.assert_health();
+        app.shutdown();
+    }
 }
 
 #[test]

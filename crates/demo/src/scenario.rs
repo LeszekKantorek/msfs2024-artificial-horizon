@@ -109,6 +109,10 @@ enum Record {
         at_us: u64,
         unavailable_ms: u64,
     },
+    TransportSilence {
+        at_us: u64,
+        duration_ms: u64,
+    },
     ApiFault {
         operation: String,
         occurrence: u64,
@@ -120,6 +124,13 @@ enum Record {
         bytes_hex: String,
         returned_length: u32,
     },
+    Exception {
+        at_us: u64,
+        sent_operation: String,
+        sent_call_occurrence: usize,
+        code: u32,
+        index: u32,
+    },
 }
 #[derive(Clone)]
 pub enum Event {
@@ -127,9 +138,16 @@ pub enum Event {
     Flight(bool),
     FlightLoaded(Option<String>),
     Disconnect(u64),
+    TransportSilence(u64),
     RawPacket {
         bytes: Vec<u8>,
         returned_length: u32,
+    },
+    Exception {
+        sent_operation: String,
+        sent_call_occurrence: usize,
+        code: u32,
+        index: u32,
     },
 }
 #[derive(Clone)]
@@ -297,6 +315,16 @@ impl Scenario {
                                 .ok_or_else(|| format!("{loc}: disconnect deadline overflow"))?;
                             s.event(&loc, at_us, Event::Disconnect(duration), i)?;
                         }
+                        Record::TransportSilence { at_us, duration_ms } => {
+                            let duration = duration_ms
+                                .checked_mul(1000)
+                                .filter(|v| *v > 0)
+                                .ok_or_else(|| format!("{loc}: invalid duration_ms"))?;
+                            at_us
+                                .checked_add(duration)
+                                .ok_or_else(|| format!("{loc}: silence deadline overflow"))?;
+                            s.event(&loc, at_us, Event::TransportSilence(duration), i)?;
+                        }
                         Record::ApiFault {
                             operation,
                             occurrence,
@@ -307,6 +335,10 @@ impl Scenario {
                                 "SimConnect_Open",
                                 "SimConnect_AddToDataDefinition",
                                 "SimConnect_SubscribeToSystemEvent",
+                                "SimConnect_RequestDataOnSimObject",
+                                "SimConnect_RequestSystemState",
+                                "SimConnect_GetLastSentPacketID",
+                                "SimConnect_Close",
                             ]
                             .contains(&operation.as_str())
                                 || occurrence == 0
@@ -317,7 +349,11 @@ impl Scenario {
                                 ));
                             }
                             if let Some(ref filter) = selector
-                                && (operation != "SimConnect_AddToDataDefinition"
+                                && (![
+                                    "SimConnect_AddToDataDefinition",
+                                    "SimConnect_RequestDataOnSimObject",
+                                ]
+                                .contains(&operation.as_str())
                                     || (filter.simvar.is_none() && filter.unit.is_none())
                                     || !CATALOG.iter().any(|(name, unit)| {
                                         filter.simvar.as_deref().is_none_or(|v| v == *name)
@@ -366,6 +402,36 @@ impl Scenario {
                                 Event::RawPacket {
                                     bytes,
                                     returned_length,
+                                },
+                                i,
+                            )?;
+                        }
+                        Record::Exception {
+                            at_us,
+                            sent_operation,
+                            sent_call_occurrence,
+                            code,
+                            index,
+                        } => {
+                            if sent_call_occurrence == 0
+                                || ![
+                                    "SimConnect_AddToDataDefinition",
+                                    "SimConnect_RequestDataOnSimObject",
+                                    "SimConnect_SubscribeToSystemEvent",
+                                    "SimConnect_RequestSystemState",
+                                ]
+                                .contains(&sent_operation.as_str())
+                            {
+                                return Err(format!("{loc}: unsupported exception call reference"));
+                            }
+                            s.event(
+                                &loc,
+                                at_us,
+                                Event::Exception {
+                                    sent_operation,
+                                    sent_call_occurrence,
+                                    code,
+                                    index,
                                 },
                                 i,
                             )?;
@@ -505,6 +571,15 @@ mod tests {
     }
     #[test]
     fn scenario_suite_parses_and_tour_matches_independent_checkpoints() {
+        let fault_dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../demo-scenarios/errors");
+        for entry in std::fs::read_dir(fault_dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.extension().is_some_and(|ext| ext == "jsonl") {
+                let input = std::fs::read_to_string(&path).unwrap();
+                Scenario::parse(&input, &path.display().to_string()).unwrap();
+            }
+        }
         let tour = include_str!("../../../demo-scenarios/flight-tour.jsonl");
         for (name, input) in [
             ("tour", tour),
@@ -586,7 +661,7 @@ mod tests {
     #[test]
     fn fault_records_validate_operations_selectors_and_readable_lengths() {
         for invalid in [
-            r#"{"type":"api_fault","operation":"SimConnect_Close","occurrence":1,"hresult":-1}"#,
+            r#"{"type":"api_fault","operation":"SimConnect_Unknown","occurrence":1,"hresult":-1}"#,
             r#"{"type":"api_fault","operation":"SimConnect_Open","occurrence":0,"hresult":-1}"#,
             r#"{"type":"api_fault","operation":"SimConnect_Open","occurrence":1,"hresult":0}"#,
             r#"{"type":"api_fault","operation":"SimConnect_Open","occurrence":1,"hresult":-1,"selector":{"simvar":"AIRSPEED INDICATED"}}"#,
@@ -594,6 +669,8 @@ mod tests {
             r#"{"type":"raw_packet","at_us":1,"bytes_hex":"0","returned_length":0}"#,
             r#"{"type":"raw_packet","at_us":1,"bytes_hex":"zz","returned_length":1}"#,
             r#"{"type":"raw_packet","at_us":1,"bytes_hex":"00","returned_length":2}"#,
+            r#"{"type":"transport_silence","at_us":1,"duration_ms":0}"#,
+            r#"{"type":"exception","at_us":1,"sent_operation":"SimConnect_RequestDataOnSimObject","sent_call_occurrence":0,"code":2,"index":0}"#,
         ] {
             assert!(
                 Scenario::parse(&format!("{}\n{}", header(), invalid), "test").is_err(),

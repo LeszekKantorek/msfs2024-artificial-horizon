@@ -391,6 +391,7 @@ fn connections(
             output.update(&lifecycle, journal, Instant::now(), None)?;
             session(
                 &mut connection,
+                source,
                 notification.event(),
                 stop,
                 journal,
@@ -656,6 +657,7 @@ struct Counters {
 
 fn session(
     connection: &mut Connection<'_>,
+    source: Source,
     notification: &Event,
     stop: &Event,
     journal: &mut Journal,
@@ -719,7 +721,10 @@ fn session(
                 Err(error) => {
                     journal.record("native_error", || json!(&error), true);
                     // Decoder/ABI errors are fatal, never retried as routine disconnects.
-                    if error.operation == "SimConnect_GetNextDispatch" && error.hresult.is_some() {
+                    if error.operation == "SimConnect_GetNextDispatch"
+                        && error.hresult.is_some()
+                        && !(source == Source::Demo && error.hresult == Some(0xA004_0001u32 as i32))
+                    {
                         return Ok(SessionEnd::Reconnect);
                     }
                     return Err(error.into());

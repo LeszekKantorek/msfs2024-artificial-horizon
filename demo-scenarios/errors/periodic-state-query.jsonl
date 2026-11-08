@@ -1,0 +1,10 @@
+{"type":"scenario","format":"msfs-efi-simconnect-demo","version":1,"mode":"scripted","frame_period_ms":50,"duration_us":10000000,"initial":{"sim_running":true,"pause":"off","flight":"fault-test.flt"}}
+{"type":"signal","id":"pitch","simvar":"PLANE PITCH DEGREES","unit":"radians","repeat":false}
+{"type":"hold","signal":"pitch","value":0,"duration_ms":10000}
+{"type":"signal","id":"bank","simvar":"PLANE BANK DEGREES","unit":"radians","repeat":false}
+{"type":"hold","signal":"bank","value":0,"duration_ms":10000}
+{"type":"signal","id":"ias","simvar":"AIRSPEED INDICATED","unit":"knots","repeat":false}
+{"type":"hold","signal":"ias","value":90,"duration_ms":10000}
+{"type":"signal","id":"alt","simvar":"INDICATED ALTITUDE:1","unit":"feet","repeat":false}
+{"type":"hold","signal":"alt","value":1000,"duration_ms":10000}
+{"type":"api_fault","operation":"SimConnect_RequestSystemState","occurrence":3,"hresult":-2147467259}

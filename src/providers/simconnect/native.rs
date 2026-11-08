@@ -473,8 +473,8 @@ impl Connection<'_> {
         let hr = unsafe { (self.library.api.next)(self.handle, &mut data, &mut length) };
         self.dispatch_hresult = hr;
         if hr == E_FAIL {
-            // The consumer treats E_FAIL as empty; the official runtime's
-            // complete empty-queue result remains unverified. Demo uses E_FAIL.
+            // The consumer treats E_FAIL as empty. One target-runtime probe
+            // observed this result; not every E_FAIL is necessarily empty.
             return Ok(None);
         }
         result("SimConnect_GetNextDispatch", hr)?;
