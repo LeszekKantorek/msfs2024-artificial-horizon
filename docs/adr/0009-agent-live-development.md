@@ -1,6 +1,6 @@
 # ADR 0009: Agent-operated live development through the production application
 
-Decision status: Accepted, amended 2026-11-05.
+Decision status: Accepted.
 
 ## Context
 
@@ -19,7 +19,3 @@ Preserve one production provider, explicit Demo selection, existing telemetry co
 Reusing the production application observes its actual acquisition and HTTP delivery path without a separate SimConnect client. JSONL capture leaves interpretation and additional checks with the agent. Recorded SSE alone does not establish simulator accuracy, browser receipt, or display behavior. Demo and fixture runs do not establish live simulator acceptance.
 
 Independent native acquisition remains deferred until a concrete diagnostic problem requires it. The native integration and application lifecycle remain governed by [ADR 0006](0006-simconnect-manual-ffi.md) and [ADR 0007](0007-application-composition.md).
-
-## Previous decision
-
-The original decision proposed a broader harness with build and executable identification, readiness checks, diagnostic correlation, browser observations, sampling, and reports. The 2026-11-05 amendment replaced that harness with a simpler recorder. A later change selected JSONL data records instead of raw SSE framing. Earlier schema 5 diagnostic records and previous test results remain historical evidence; the current diagnostic journal uses schema 4.

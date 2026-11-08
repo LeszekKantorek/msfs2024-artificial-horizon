@@ -6,26 +6,12 @@ use tokio::sync::watch;
 
 use crate::{
     Config, ConfigError, Server, ServerError, Source,
-    providers::{
-        demo,
-        simconnect::{self, DiagnosticStatus, SimConnectConfig},
-    },
+    providers::simconnect::{self, DiagnosticStatus, SimConnectConfig},
     telemetry::{self, ChannelLifetime, Publisher, State, TelemetryError},
 };
 
 #[derive(Debug)]
-pub enum SourceSelection {
-    Demo,
-    SimConnect(SimConnectConfig),
-}
-impl SourceSelection {
-    fn source(&self) -> Source {
-        match self {
-            Self::Demo => Source::Demo,
-            Self::SimConnect(_) => Source::SimConnect,
-        }
-    }
-}
+pub struct SourceSelection(pub SimConnectConfig);
 
 #[derive(Debug, thiserror::Error)]
 pub enum ApplicationError {
@@ -62,12 +48,9 @@ pub async fn run(
     shutdown: impl Future<Output = io::Result<()>> + Send + 'static,
 ) -> Result<(), ApplicationError> {
     config.validate()?;
-    if let SourceSelection::SimConnect(options) = &selection {
-        // Resolve path syntax only: existence, exports, and native availability
-        // belong to acquisition and cannot prevent HTTP from starting.
-        simconnect::resolve_dll(options.dll.as_deref())?;
-    }
-    let source = selection.source();
+    let dll = simconnect::resolve_dll(selection.0.dll.as_deref())?;
+    let source = simconnect::source_kind(&dll);
+    simconnect::validate_scenario(source, selection.0.scenario.as_deref())?;
     let (publisher, subscription) = telemetry::channel(source);
     let lifetime = publisher.retain_channel();
     let server = Server::bind(config, subscription).await?;
@@ -122,32 +105,23 @@ async fn supervise(
     shutdown: watch::Receiver<bool>,
 ) -> Result<(), TelemetryError> {
     let acquisition = async {
-        match selection {
-            SourceSelection::Demo => {
-                if let Err(error) = demo::run(publisher, stopped(shutdown.clone())).await {
-                    eprintln!("Demo acquisition failed: {error}");
-                }
+        let report = simconnect::run(selection.0, publisher, async {
+            stopped(shutdown.clone()).await;
+            Ok(())
+        })
+        .await;
+        if let Err(error) = report.result {
+            eprintln!("Source acquisition failed: {error}");
+        }
+        match report.diagnostics {
+            DiagnosticStatus::Disabled => {}
+            DiagnosticStatus::Completed { path } => {
+                println!("Diagnostic session completed: {}", path.display())
             }
-            SourceSelection::SimConnect(config) => {
-                let report = simconnect::run(config, publisher, async {
-                    stopped(shutdown.clone()).await;
-                    Ok(())
-                })
-                .await;
-                if let Err(error) = report.result {
-                    eprintln!("SimConnect acquisition failed: {error}");
-                }
-                match report.diagnostics {
-                    DiagnosticStatus::Disabled => {}
-                    DiagnosticStatus::Completed { path } => {
-                        println!("Diagnostic session completed: {}", path.display())
-                    }
-                    DiagnosticStatus::Failed { path, error } => eprintln!(
-                        "Diagnostic session is incomplete ({}): {error}",
-                        path.display()
-                    ),
-                }
-            }
+            DiagnosticStatus::Failed { path, error } => eprintln!(
+                "Diagnostic session is incomplete ({}): {error}",
+                path.display()
+            ),
         }
     };
     supervise_acquisition(acquisition, lifetime, shutdown.clone()).await
@@ -195,7 +169,7 @@ fn print_startup(address: SocketAddr, source: Source) {
     }
     match source {
         Source::Demo => {
-            println!("Source: DEMO (synthetic telemetry, 20 Hz). Press Ctrl+C to stop.")
+            println!("Source: DEMO (synthetic telemetry). Press Ctrl+C to stop.")
         }
         Source::SimConnect => println!("Source: SIMCONNECT. Press Ctrl+C to stop."),
     }
@@ -219,18 +193,31 @@ mod tests {
             let reservation = TcpListener::bind("127.0.0.1:0").await.unwrap();
             let address = reservation.local_addr().unwrap();
             drop(reservation);
-            let selection = if simconnect {
-                SourceSelection::SimConnect(SimConnectConfig {
-                    dll: Some(std::env::temp_dir().join(format!(
-                        "missing-shutdown-{}-{}.dll",
+            let dll = if simconnect {
+                std::env::temp_dir()
+                    .join(format!(
+                        "missing-shutdown-{}-{}",
                         std::process::id(),
                         address.port()
-                    ))),
-                    log: None,
-                })
+                    ))
+                    .join("SimConnect.dll")
             } else {
-                SourceSelection::Demo
+                std::env::current_exe()
+                    .unwrap()
+                    .parent()
+                    .unwrap()
+                    .parent()
+                    .unwrap()
+                    .join("demo.dll")
             };
+            let selection = SourceSelection(SimConnectConfig {
+                dll: Some(dll),
+                log: None,
+                scenario: (!simconnect).then(|| {
+                    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                        .join("demo-scenarios/demo-scenario.jsonl")
+                }),
+            });
             let (stop, stopping) = tokio::sync::oneshot::channel();
             let app = tokio::spawn(run(
                 Config {
@@ -264,11 +251,7 @@ mod tests {
                         assert!(count > 0, "SSE ended before expected source state");
                         received.push_str(&String::from_utf8_lossy(&bytes[..count]));
                         if received.contains("event: telemetry")
-                            && received.contains(if simconnect {
-                                "\"state\":\"disconnected\""
-                            } else {
-                                "\"state\":\"live\""
-                            })
+                            && received.contains("\"state\":\"disconnected\"")
                         {
                             break;
                         }

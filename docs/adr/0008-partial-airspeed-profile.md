@@ -13,7 +13,7 @@ Dynamic redline also differs from a fixed VNE.
 * Validate each number independently and validate ordering only for each rendered interval.
 * Add optional redline separately from VNE.
 * Each warning and marker requires only its own inputs.
-* At the time of this decision, preserve the existing endpoint, schema version, source lifecycle, and application composition. The telemetry schema version field was later removed.
+* Preserve the existing endpoint, source lifecycle, and application composition.
 
 ## Alternatives
 
@@ -26,7 +26,7 @@ Dynamic redline also differs from a fixed VNE.
 ## Consequences
 
 * Consumers must replace all profile members on each snapshot and remove lost indications independently.
-* Full Demo profiles preserve existing presentation.
+* Full-profile presentation fixtures preserve coverage independently of Demo source availability.
 * Standard SimVars may still leave individual references unavailable.
 * Project minimum rotation is not an FMS-calculated takeoff Vr.
 

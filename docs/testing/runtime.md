@@ -19,7 +19,7 @@ Use committed `Cargo.lock`. These checks require no simulator or SDK.
 3. Start the server.
 
    ```powershell
-   cargo run --locked --bin msfs2024-artificial-horizon
+   cargo run --locked --bin msfs2024-artificial-horizon -- --scenario demo-scenarios/demo-scenario.jsonl
    ```
 
 4. Check the endpoints and CLI behavior below.

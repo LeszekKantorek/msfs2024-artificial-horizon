@@ -21,11 +21,12 @@ use std::{
     time::{Duration, Instant},
 };
 
-/// Acquisition options; omission selects SimConnect.dll beside the running executable.
+/// Acquisition options; omission selects demo.dll beside the running executable.
 #[derive(Debug, Default)]
 pub struct SimConnectConfig {
     pub dll: Option<PathBuf>,
     pub log: Option<PathBuf>,
+    pub scenario: Option<PathBuf>,
 }
 
 /// Acquisition and diagnostic outcomes remain independent.
@@ -56,36 +57,53 @@ impl From<NativeError> for SimConnectError {
 }
 
 /// Resolve one DLL path without searching PATH, the working directory, or SDK installs.
-pub fn resolve_dll(override_path: Option<&Path>) -> Result<PathBuf, SimConnectError> {
-    if let Some(path) = override_path {
-        return explicit_dll(path);
-    }
-    let executable = std::env::current_exe().map_err(|error| {
-        SimConnectError::Configuration(format!(
-            "cannot locate the running executable: {error}; specify an absolute --dll path"
-        ))
+pub fn resolve_dll(selected: Option<&Path>) -> Result<PathBuf, SimConnectError> {
+    let path = selected.unwrap_or_else(|| Path::new("demo.dll"));
+    let name = path.file_name().and_then(|v| v.to_str()).ok_or_else(|| {
+        SimConnectError::Configuration("--source must name demo.dll or SimConnect.dll".into())
     })?;
-    adjacent_dll(&executable)
-}
-
-fn explicit_dll(path: &Path) -> Result<PathBuf, SimConnectError> {
-    if !path.is_absolute() {
+    if !name.eq_ignore_ascii_case("demo.dll") && !name.eq_ignore_ascii_case("SimConnect.dll") {
         return Err(SimConnectError::Configuration(
-            "--dll must be an absolute path".into(),
+            "--source must name demo.dll or SimConnect.dll".into(),
         ));
     }
-    Ok(path.to_owned())
-}
-
-fn adjacent_dll(executable: &Path) -> Result<PathBuf, SimConnectError> {
+    if path.is_absolute() {
+        return Ok(path.to_owned());
+    }
+    if path.components().count() != 1 || path.as_os_str() != std::ffi::OsStr::new(name) {
+        return Err(SimConnectError::Configuration(
+            "--source must be a supported bare filename or an absolute path".into(),
+        ));
+    }
+    let executable = std::env::current_exe()?;
     executable
         .parent()
-        .map(|parent| parent.join("SimConnect.dll"))
-        .ok_or_else(|| {
-            SimConnectError::Configuration(
-                "cannot locate executable directory; specify --dll".into(),
-            )
-        })
+        .map(|parent| parent.join(path))
+        .ok_or_else(|| SimConnectError::Configuration("cannot locate executable directory".into()))
+}
+pub fn source_kind(path: &Path) -> Source {
+    if path
+        .file_name()
+        .and_then(|s| s.to_str())
+        .is_some_and(|s| s.eq_ignore_ascii_case("demo.dll"))
+    {
+        Source::Demo
+    } else {
+        Source::SimConnect
+    }
+}
+
+/// Validate the scenario selection for the chosen source.
+pub fn validate_scenario(source: Source, scenario: Option<&Path>) -> Result<(), SimConnectError> {
+    match (source, scenario) {
+        (Source::Demo, None) => Err(SimConnectError::Configuration(
+            "demo.dll requires --scenario <file>".into(),
+        )),
+        (Source::SimConnect, Some(_)) => Err(SimConnectError::Configuration(
+            "--scenario requires demo.dll".into(),
+        )),
+        _ => Ok(()),
+    }
 }
 
 /// Acquire on one native worker into the caller's SimConnect channel; never start HTTP.
@@ -99,16 +117,20 @@ pub async fn run(
         result: Err(error),
         diagnostics: DiagnosticStatus::Disabled,
     };
-    if publisher.source() != Source::SimConnect {
-        return early_error(SimConnectError::Configuration(
-            "publisher must identify the SimConnect source".into(),
-        ));
-    }
     let dll = match resolve_dll(config.dll.as_deref()) {
         Ok(dll) => dll,
         Err(error) => return early_error(error),
     };
-    println!("SimConnect DLL: {}", dll.display());
+    let source = source_kind(&dll);
+    if publisher.source() != source {
+        return early_error(SimConnectError::Configuration(
+            "publisher source must match selected DLL".into(),
+        ));
+    }
+    if let Err(error) = validate_scenario(source, config.scenario.as_deref()) {
+        return early_error(error);
+    }
+    println!("Selected DLL: {}", dll.display());
     println!(
         "Live telemetry requires an active, unpaused flight and fresh valid samples. Press Ctrl+C to stop."
     );
@@ -118,9 +140,16 @@ pub async fn run(
     };
     let worker_stop = Arc::clone(&stop);
     let log_path = config.log.clone();
+    let scenario = match config.scenario {
+        Some(path) if !path.is_absolute() => match std::env::current_dir() {
+            Ok(cwd) => Some(cwd.join(path)),
+            Err(e) => return early_error(e.into()),
+        },
+        other => other,
+    };
     let worker = match thread::Builder::new()
         .name("simconnect".into())
-        .spawn(move || worker_entry(dll, config.log, publisher, &worker_stop))
+        .spawn(move || worker_entry(dll, config.log, scenario, source, publisher, &worker_stop))
     {
         Ok(worker) => worker,
         Err(error) => return early_error(error.into()),
@@ -171,6 +200,8 @@ impl Drop for Cancellation {
 fn worker_entry(
     dll: PathBuf,
     log: Option<PathBuf>,
+    scenario: Option<PathBuf>,
+    source: Source,
     publisher: Publisher,
     stop: &Event,
 ) -> RunReport {
@@ -183,7 +214,11 @@ fn worker_entry(
             };
         }
     };
-    let mut journal = match Journal::open(log.as_deref(), &[&dll, &executable]) {
+    let mut protected = vec![dll.as_path(), executable.as_path()];
+    if let Some(path) = scenario.as_deref() {
+        protected.push(path);
+    }
+    let mut journal = match Journal::open(log.as_deref(), &protected) {
         Ok(journal) => journal,
         Err(error) => {
             return RunReport {
@@ -200,7 +235,7 @@ fn worker_entry(
     if let Some(path) = &log {
         println!("Session log: {}", path.display());
     }
-    let result = worker(&dll, publisher, &mut journal, stop);
+    let result = worker(&dll, source, publisher, &mut journal, stop);
     journal.record(
         "session_end",
         || {
@@ -236,6 +271,7 @@ fn command_record(program: &str, arguments: &[&str]) -> Value {
 
 fn worker(
     dll: &Path,
+    source: Source,
     publisher: Publisher,
     journal: &mut Journal,
     stop: &Event,
@@ -249,7 +285,7 @@ fn worker(
         "git_head_at_run": command_record("git", &["rev-parse", "HEAD"]),
         "git_changes_at_run": command_record("git", &["status", "--porcelain", "--untracked-files=no"]),
         "windows": command_record("cmd", &["/d", "/c", "ver"]),
-        "sdk": sdk_version(dll), "dll": dll,
+        "sdk": if source == Source::SimConnect { sdk_version(dll) } else { json!({"synthetic": true}) }, "dll": dll, "source": source,
         "base_requested_fields": ["pitch radians", "bank radians"],
         "angular_input": "native radians; convert to degrees locally",
         "unit_probe_profile": "SDK degrees and repeated radians are diagnostics only; six fields if logging is enabled at connection open",
@@ -261,12 +297,12 @@ fn worker(
     let library = Library::load(dll).map_err(|error| {
         journal.record("native_error", || json!(error), true);
         SimConnectError::Native(format!(
-            "{error}; selected DLL: {}; use --dll to select another absolute path",
+            "{error}; selected DLL: {}; use --source to select another DLL",
             dll.display()
         ))
     })?;
     journal.record("library_loaded", || json!({}), true);
-    let result = connections(&library, publisher, journal, stop);
+    let result = connections(&library, source, publisher, journal, stop);
     journal.record(
         "library_release",
         || {
@@ -296,6 +332,7 @@ fn retry_seconds(attempt: u32) -> u32 {
 
 fn connections(
     library: &Library,
+    source: Source,
     publisher: Publisher,
     journal: &mut Journal,
     stop: &Event,
@@ -328,6 +365,11 @@ fn connections(
             Err(error) => {
                 eprintln!("SimConnect connection unavailable: {error}");
                 journal.record("native_error", || json!(&error), true);
+                if source == Source::Demo && error.hresult == Some(0xA004_0001u32 as i32) {
+                    return Err(SimConnectError::Configuration(format!(
+                        "Demo scenario configuration failed: {error}"
+                    )));
+                }
                 let seconds = retry_seconds(failures);
                 failures = failures.saturating_add(1);
                 journal.record(
@@ -349,6 +391,7 @@ fn connections(
             output.update(&lifecycle, journal, Instant::now(), None)?;
             session(
                 &mut connection,
+                source,
                 notification.event(),
                 stop,
                 journal,
@@ -614,6 +657,7 @@ struct Counters {
 
 fn session(
     connection: &mut Connection<'_>,
+    source: Source,
     notification: &Event,
     stop: &Event,
     journal: &mut Journal,
@@ -623,6 +667,7 @@ fn session(
     configure(connection, journal)?;
     output.instruments.clear();
     let mut optional_packets = Vec::new();
+    let mut unavailable = [false; super::native::INSTRUMENT_FIELDS.len()];
     for (index, (name, units)) in super::native::INSTRUMENT_FIELDS.iter().enumerate() {
         let added = connection.add_instrument(index);
         if added.is_ok()
@@ -635,6 +680,7 @@ fn session(
         } else {
             added
         };
+        unavailable[index] = requested.is_err();
         if requested.is_ok()
             && let Ok(id) = connection.last_sent_packet_id()
         {
@@ -677,7 +723,10 @@ fn session(
                 Err(error) => {
                     journal.record("native_error", || json!(&error), true);
                     // Decoder/ABI errors are fatal, never retried as routine disconnects.
-                    if error.operation == "SimConnect_GetNextDispatch" && error.hresult.is_some() {
+                    if error.operation == "SimConnect_GetNextDispatch"
+                        && error.hresult.is_some()
+                        && !(source == Source::Demo && error.hresult == Some(0xA004_0001u32 as i32))
+                    {
                         return Ok(SessionEnd::Reconnect);
                     }
                     return Err(error.into());
@@ -705,6 +754,7 @@ fn session(
                 } => {
                     if let Some((_, field)) = optional_packets.iter().find(|(id, _)| *id == send_id)
                     {
+                        unavailable[*field] = true;
                         output.instruments.remove(*field);
                         journal.record(
                             "instrument_unavailable",
@@ -768,7 +818,7 @@ fn session(
                         },
                         false,
                     );
-                    if lifecycle.active() {
+                    if lifecycle.active() && !unavailable[index] {
                         output.instruments.receive(index, value, packet_received_at);
                     }
                 }
@@ -875,36 +925,24 @@ mod tests {
     use super::*;
 
     fn missing_dll() -> PathBuf {
-        std::env::temp_dir().join(format!(
-            "missing-simconnect-{}-{}.dll",
-            std::process::id(),
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos()
-        ))
+        std::env::temp_dir()
+            .join(format!("missing-simconnect-{}", std::process::id()))
+            .join("SimConnect.dll")
     }
-
     #[test]
-    fn dll_selection_uses_executable_directory_and_never_requires_existing_override() {
-        let executable = Path::new(r"C:\application\horizon.exe");
-        assert_eq!(
-            adjacent_dll(executable).unwrap(),
-            Path::new(r"C:\application\SimConnect.dll")
-        );
-        let explicit = Path::new(r"D:\runtime\chosen.dll");
+    fn dll_selection_uses_executable_directory_and_validates_basename() {
+        let explicit = Path::new(r"D:\runtime\SimConnect.dll");
         assert_eq!(resolve_dll(Some(explicit)).unwrap(), explicit);
-        assert!(matches!(
-            resolve_dll(Some(Path::new("relative.dll"))),
-            Err(SimConnectError::Configuration(_))
-        ));
+        for path in ["relative/demo.dll", "relative.dll", "demo"] {
+            assert!(resolve_dll(Some(Path::new(path))).is_err());
+        }
         assert_eq!(
             resolve_dll(None).unwrap(),
             std::env::current_exe()
                 .unwrap()
                 .parent()
                 .unwrap()
-                .join("SimConnect.dll")
+                .join("demo.dll")
         );
     }
 
@@ -919,7 +957,7 @@ mod tests {
 
     #[tokio::test]
     async fn wrong_channel_source_is_rejected_before_files_or_native_code() {
-        let (publisher, subscription) = telemetry::channel(Source::Demo);
+        let (publisher, subscription) = telemetry::channel(Source::SimConnect);
         let report = run(
             SimConnectConfig::default(),
             publisher,
@@ -1318,7 +1356,14 @@ mod tests {
         let (publisher, _subscription) = telemetry::channel(Source::SimConnect);
         let mut journal = Journal::failing_for_test();
         let stop = Event::new(true).unwrap();
-        let error = worker(&missing_dll(), publisher, &mut journal, &stop).unwrap_err();
+        let error = worker(
+            &missing_dll(),
+            Source::SimConnect,
+            publisher,
+            &mut journal,
+            &stop,
+        )
+        .unwrap_err();
         assert!(matches!(error, SimConnectError::Native(_)));
         assert!(matches!(journal.status(), DiagnosticStatus::Failed { .. }));
     }
@@ -1326,12 +1371,14 @@ mod tests {
     #[tokio::test]
     async fn missing_dll_keeps_a_complete_diagnostic_failure_session() {
         let dll = missing_dll();
-        let log = dll.with_extension("jsonl");
+        let log =
+            std::env::temp_dir().join(format!("missing-simconnect-{}.jsonl", std::process::id()));
         let (publisher, _subscription) = telemetry::channel(Source::SimConnect);
         let report = run(
             SimConnectConfig {
                 dll: Some(dll),
                 log: Some(log.clone()),
+                scenario: None,
             },
             publisher,
             std::future::pending(),

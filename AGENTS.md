@@ -17,41 +17,19 @@ Apply these scope, authorization, and communication requirements:
 
 ## Context selection
 
-Use [context-retrieve](.agents/skills/context-retrieve/SKILL.md) to locate project sources before reasoning or planning that depends on project knowledge. An implementation agent must also use it when preparing execution context, including work without an issue.
-State the concrete information needed, with known identifiers and constraints. Use the skill's verified source references and explicit gaps to select the passages to read; retrieval does not replace reading the governing requirements or the complete Subtask instructions.
+Follow [context selection and retrieval delegation](.context/context-retrival-delegation.md) before reasoning or planning that depends on project knowledge and when preparing implementation context.
 
-Delegate context-retrieve to one Luna High subagent (`gpt-6-luna`, reasoning effort `high`) for a bounded source-location question:
+Select the context skill that matches the requested outcome:
 
-* Give the subagent the question, known references, scope, and reading constraints. It performs read-only retrieval and returns verified paths, line ranges, brief source descriptions, and missing or inaccessible information.
-* The retrieval subagent executes the skill directly without further delegation. It does not edit files, run tests, implement changes, or select the project's technical direction.
-* The requesting agent reads the relevant returned passages and retains responsibility for interpretation, planning, and implementation. Reuse applicable verified results rather than repeating unchanged retrieval.
-* Check model availability before delegation. Report an unavailable Luna High configuration instead of silently substituting another model.
-
-Select a map by the requested outcome, affected behavior, or unresolved question:
-
-| Need | Map |
-| --- | --- |
-| Change behavior across component boundaries, such as providers, telemetry, HTTP, or the browser | [Changes across components](.context/component-changes.md) |
-| Understand or reconsider an accepted architecture choice | [Governing decisions](.context/architecture-decisions.md#find-the-governing-decision) |
-| Find instrument sources or additional guidance for implementation, diagnosis, validation, review, documentation, or delivery | [Task guidance](.context/task-guidance.md#practical-selection) |
-
-Apply these project navigation rules while using context-retrieve:
-
-1. Follow the applicable map rows and their conditions to the relevant sources.
-2. Read only the source sections needed for the task.
-3. Consult [.context/index.md](.context/index.md) as the final fallback when the maps leave a required source unidentified.
-4. Stop discovery when the expected result, applicable constraints, and validation method are clear.
-5. Return to the maps when a dependency, conflict, missing fact, or changed scope requires more context.
-
-Apply these reading and validation constraints:
-
-* Before planning or executing issue-based work, read the [GitHub issue context, including artifacts](.context/repository-instructions.md#read-github-issue-context).
-* A link is a reference, not an instruction to read every linked document recursively.
-* Reuse relevant content already read in this conversation while it remains applicable and unchanged.
-* Exclude `.context/sessions.log` and `.context/.sessions.lock` from knowledge retrieval.
-* Read README for startup or user-facing behavior, architecture for changed boundaries, and CONTRIBUTING for the applicable contribution stage.
-* Apply every relevant route when a change crosses boundaries, including required validation, acceptance, and accepted-plan invariants.
-* When validating a change, select required checks from the [validation scope matrix](docs/testing/index.md#validation-by-change-scope).
+| Skill | When | Additional resources |
+| --- | --- | --- |
+| [context-retrieve](.agents/skills/context-retrieve/SKILL.md) | Locate sources for a concrete question. | [Selection and delegation](.context/context-retrival-delegation.md) |
+| [context-preserve](.agents/skills/context-preserve/SKILL.md) | Preserve decisions and findings with their scope and evidence. | [Knowledge maintenance](.context/agent-maintenance.md#knowledge-maintenance) |
+| [context-review-sessions](.agents/skills/context-review-sessions/SKILL.md) | Review pending sessions through context-preserve. | [Knowledge maintenance](.context/agent-maintenance.md#knowledge-maintenance) |
+| [context-map](.agents/skills/context-map/SKILL.md) | Connect situations to sources for selective reading. | [Context index](.context/index.md) and [task guidance](.context/task-guidance.md) |
+| [context-maintain](.agents/skills/context-maintain/SKILL.md) | Improve coherence and organization of existing project knowledge. | [Knowledge maintenance](.context/agent-maintenance.md#knowledge-maintenance) |
+| [context-diagnose](.agents/skills/context-diagnose/SKILL.md) | Diagnose agent mistakes and check targeted improvements. | [Knowledge maintenance](.context/agent-maintenance.md#knowledge-maintenance) |
+| [context-compile](.agents/skills/context-compile/SKILL.md) | Turn established procedures into selectable skills. | [Project procedure skills](.context/agent-maintenance.md#project-procedure-skills) |
 
 ## Documentation ownership
 

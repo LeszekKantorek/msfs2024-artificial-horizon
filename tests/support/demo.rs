@@ -1,12 +1,11 @@
+#![allow(dead_code)]
 //! Repeatable degree fixtures; no simulator SDK conventions are assumed.
-use crate::telemetry::{
+use msfs2024_artificial_horizon::telemetry::{
     AirspeedProfile, Attitude, BaroSetting, BarometricAltitude, FlightSample, GroundSpeed,
-    HPA_PER_INHG, Heading, IasAcceleration, IndicatedAirspeed, Publisher, SAMPLE_PERIOD,
-    SelectedAltitude, SelectedHeading, SlipSkid, TelemetryError, TrueAirspeed, TurnRate,
-    VSpeedReferences, VerticalSpeed,
+    HPA_PER_INHG, Heading, IasAcceleration, IndicatedAirspeed, SAMPLE_PERIOD, SelectedAltitude,
+    SelectedHeading, SlipSkid, TelemetryError, TrueAirspeed, TurnRate, VSpeedReferences,
+    VerticalSpeed,
 };
-use std::future::Future;
-use tokio::time::{MissedTickBehavior, interval};
 const CYCLE_SAMPLES: u64 = 3960;
 pub fn attitude(sample: u64) -> Attitude {
     let (pitch, roll) = match (sample / 40) % 7 {
@@ -176,26 +175,4 @@ pub fn normalize_degrees(pitch: f64, roll: f64) -> Result<Attitude, TelemetryErr
             wrapped
         },
     )
-}
-pub async fn run(
-    mut publisher: Publisher,
-    shutdown: impl Future<Output = ()>,
-) -> Result<(), TelemetryError> {
-    let mut samples = interval(SAMPLE_PERIOD);
-    let mut freshness = interval(SAMPLE_PERIOD);
-    samples.set_missed_tick_behavior(MissedTickBehavior::Skip);
-    freshness.set_missed_tick_behavior(MissedTickBehavior::Skip);
-    let mut index = 0;
-    tokio::pin!(shutdown);
-    loop {
-        tokio::select! {
-            biased;
-            _ = &mut shutdown => return Ok(()),
-            _ = freshness.tick() => publisher.expire()?,
-            _ = samples.tick() => {
-                publisher.publish_sample(sample(index))?;
-                index = (index + 1) % CYCLE_SAMPLES;
-            }
-        }
-    }
 }

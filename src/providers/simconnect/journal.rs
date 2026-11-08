@@ -111,7 +111,7 @@ impl Journal {
             "schema_version": 4, "started_unix_ms": (started_unix_ns / 1_000_000).to_string(),
             "clock": "UTC Unix epoch milliseconds", "process_id": std::process::id(),
             "live_publication_enabled": true,
-            "validation_scope": "recorded MSFS2024 sessions; see docs/simconnect.md#live-publication-evidence",
+            "validation_scope": "native observations; source identity appears in the environment record",
         }), true) {
             // Dropping BufWriter retries writes; discard the failed buffer instead.
             let _ = active.writer.into_parts();

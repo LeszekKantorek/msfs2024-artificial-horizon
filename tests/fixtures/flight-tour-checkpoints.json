@@ -1,0 +1,18 @@
+[
+ {"time_us":0,"ias":0,"altitude":0,"vsi":0,"heading":90},
+ {"time_us":35000000,"ias":55,"altitude":0,"vsi":600,"heading":90},
+ {"time_us":40000000,"ias":65,"altitude":50,"vsi":2850,"heading":90},
+ {"time_us":60000000,"ias":65,"altitude":1000,"vsi":4000,"heading":90},
+ {"time_us":75000000,"ias":75,"altitude":2000,"vsi":800,"heading":90},
+ {"time_us":90000000,"ias":40,"altitude":2200,"vsi":-4200,"heading":90},
+ {"time_us":100000000,"ias":100,"altitude":1500,"vsi":1200,"heading":90},
+ {"time_us":115000000,"ias":110,"altitude":1800,"vsi":0,"heading":90},
+ {"time_us":125000000,"ias":110,"altitude":1800,"vsi":0,"heading":60},
+ {"time_us":140000000,"ias":110,"altitude":1800,"vsi":0,"heading":75},
+ {"time_us":145000000,"ias":110,"altitude":1800,"vsi":-3000,"heading":90},
+ {"time_us":165000000,"ias":75,"altitude":800,"vsi":-2100,"heading":90},
+ {"time_us":185000000,"ias":55,"altitude":100,"vsi":-400,"heading":90},
+ {"time_us":200000000,"ias":45,"altitude":0,"vsi":0,"heading":90},
+ {"time_us":215000000,"ias":0,"altitude":0,"vsi":0,"heading":90},
+ {"time_us":240000000,"ias":0,"altitude":0,"vsi":0,"heading":90}
+]

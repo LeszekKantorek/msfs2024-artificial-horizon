@@ -23,14 +23,15 @@ The application needs to retain unavailable state without adding another receive
 | `Server::bind(config, subscription)` | Receive an existing subscription. The server neither owns a `Publisher` nor starts a provider |
 | `Config` | Contain HTTP address and port only |
 | `SourceSelection` | Belong to application composition |
-| SimConnect | Keep the existing receiver, dedicated native worker, `RunReport`, and optional diagnostics |
+| Native sources | Use the same receiver, dedicated native worker, `RunReport`, and optional diagnostics for Demo and SimConnect |
 | Telemetry and SSE | Keep the v1 contracts. Detailed source errors remain diagnostic output |
 
 ### Startup and source failure
 
 Startup preserves these boundaries:
 
-* Bind HTTP before starting acquisition. Invalid configuration or a failed bind prevents producer startup.
+* Validate source selection and configuration before binding HTTP. Invalid configuration or a failed bind prevents producer startup. Bind HTTP before starting acquisition.
+* The Demo DLL validates scenario file contents on its first Open. A scenario error stops the producer while HTTP remains available.
 * DLL availability, exported functions, simulator connection, and flight readiness are producer concerns and do not delay HTTP startup.
 
 Publication ownership follows this sequence:

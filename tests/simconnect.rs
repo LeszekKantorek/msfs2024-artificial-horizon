@@ -7,20 +7,43 @@ use msfs2024_artificial_horizon::{
 use std::{path::PathBuf, time::Duration};
 
 #[tokio::test]
+async fn source_scenario_selection_is_validated_without_starting_a_worker() {
+    for (source, dll, scenario, expected) in [
+        (Source::Demo, None, None, "requires --scenario"),
+        (
+            Source::SimConnect,
+            Some(PathBuf::from("SimConnect.dll")),
+            Some(PathBuf::from("unused.jsonl")),
+            "--scenario requires demo.dll",
+        ),
+    ] {
+        let (publisher, _) = telemetry::channel(source);
+        let report = run(
+            SimConnectConfig {
+                dll,
+                log: None,
+                scenario,
+            },
+            publisher,
+            std::future::pending(),
+        )
+        .await;
+        assert!(report.result.unwrap_err().to_string().contains(expected));
+        assert!(matches!(report.diagnostics, DiagnosticStatus::Disabled));
+    }
+}
+
+#[tokio::test]
 async fn missing_explicit_dll_returns_controlled_error_without_diagnostics() {
-    let dll = std::env::temp_dir().join(format!(
-        "simconnect-missing-{}-{}.dll",
-        std::process::id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos()
-    ));
+    let dll = std::env::temp_dir()
+        .join(format!("simconnect-missing-{}", std::process::id()))
+        .join("SimConnect.dll");
     let (publisher, mut subscription) = telemetry::channel(Source::SimConnect);
     let report = run(
         SimConnectConfig {
             dll: Some(dll),
             log: None,
+            scenario: None,
         },
         publisher,
         std::future::pending(),
@@ -50,6 +73,7 @@ async fn official_dll_stops_on_requested_shutdown_and_uses_caller_channel() {
         SimConnectConfig {
             dll: Some(dll),
             log: Some(log.clone()),
+            scenario: None,
         },
         publisher,
         async {

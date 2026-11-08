@@ -34,7 +34,7 @@ These formats apply to `.context/` entries, their index, and navigation. They ar
 Maintain navigation and retrieval under these requirements:
 
 * Put direct routes in the [index](index.md) and conditional routes in [task guidance](task-guidance.md).
-* Keep retrieval procedure steps in context-retrieve. [AGENTS](../AGENTS.md#context-selection) owns project selection constraints; [implementation context preparation](iterative-development.md#prepare-subtask-context) applies them to execution. Maps supply destinations and use conditions rather than duplicate the procedure.
+* Keep retrieval procedure steps in context-retrieve. [Context selection and retrieval delegation](context-retrival-delegation.md) owns project selection constraints; [implementation context preparation](iterative-development.md#prepare-subtask-context) applies them to execution. Maps supply destinations and use conditions rather than duplicate the procedure.
 * When moving knowledge, update incoming links, index rows, and replacement paths.
 * Exclude session records from knowledge retrieval under [hook maintenance](#hook-maintenance).
 

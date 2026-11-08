@@ -24,29 +24,29 @@ User-aircraft flight instrument reception with optional diagnostics.
 2. From the repository root, start the application:
 
    ```powershell
-   cargo run --locked --release --bin msfs2024-artificial-horizon -- --source simconnect --log ".local\simconnect-sessions\flight.jsonl"
+   cargo run --locked --release --bin msfs2024-artificial-horizon -- --source SimConnect.dll --log ".local\simconnect-sessions\flight.jsonl"
    ```
 
 3. Check the console for the selected DLL and connection status.
    An active, unpaused flight produces `State: live` after a new sample passes availability checks.
-4. Open the printed HTTP URL. For phone access, use the [private LAN setup](../../README.md#use-your-phone) with `--source simconnect`.
+4. Open the printed HTTP URL. For phone access, use the [private LAN setup](../../README.md#use-your-phone) with `--source SimConnect.dll`.
 5. Press `Ctrl+C` to close HTTP clients and wait for native reception to stop.
 
 For a DLL in another directory, provide its absolute path:
 
 ```powershell
 $simconnectDll = Read-Host 'Absolute path to the official x64 SimConnect.dll'
-cargo run --locked --release --bin msfs2024-artificial-horizon -- --source simconnect --dll "$simconnectDll" --log ".local\simconnect-sessions\flight.jsonl"
+cargo run --locked --release --bin msfs2024-artificial-horizon -- --source "$simconnectDll" --log ".local\simconnect-sessions\flight.jsonl"
 ```
 
 ### Command-line options
 
 | Option | Behavior |
 | --- | --- |
-| No source option or `--source demo` | Demo with HTTP/SSE, without loading SimConnect |
-| `--source simconnect` | Native acquisition with HTTP/SSE and available flight instruments |
+| No source option or `--source demo.dll` | Project-owned Demo DLL with HTTP/SSE |
+| `--source SimConnect.dll` | Native acquisition with HTTP/SSE and available flight instruments |
 | `--listen-address`, `--port` | HTTP settings for either source. Defaults are `127.0.0.1` and `8080` |
-| `--dll <file>` | Optional absolute override. Default: `SimConnect.dll` beside the running EXE |
+| `--scenario <file>` | Required Demo-only JSONL file, absolute or relative to the working directory |
 | `--log <file>` | Optional exact JSONL destination, absolute or relative to the working directory |
 | `--help`, `--version` | Information without opening a DLL or log |
 | `stop` on standard input | A line containing `stop` requests coordinated shutdown |
@@ -54,9 +54,9 @@ cargo run --locked --release --bin msfs2024-artificial-horizon -- --source simco
 
 The CLI applies these restrictions:
 
-* `--dll` and `--log` require SimConnect.
-* Invalid HTTP settings and a relative DLL override are rejected before starting components.
-* `--simconnect` and `--scenario` are unsupported.
+* `--log` is available for either source. `--scenario` is required for Demo and rejected for SimConnect.
+* Invalid HTTP settings and relative DLL paths containing directories are rejected before starting components.
+* Legacy `--simconnect`, `--dll`, and source aliases are unsupported.
 * Log filenames distinguish scenarios. The application does not interpret them as metadata.
 
 ### DLL selection and errors
@@ -67,18 +67,18 @@ The CLI applies these restrictions:
 | Search | No `PATH`, working-directory, or SDK search. No fallback after explicit selection |
 | Dependencies | Selected DLL directory and Windows system directory only |
 | Errors | Missing DLL, incompatible architecture, or missing exports stop the producer. HTTP remains available |
-| Missing default DLL | Place it beside the EXE or select an absolute `--dll` path |
+| Missing default DLL | Place it beside the EXE or select an absolute `--source` path |
 | Console | DLL selection, connections, state changes, errors, and shutdown, including without logging |
 
 ## Public API
 
-The `providers::simconnect` module exports the acquisition interface independently of HTTP and process arguments.
+The `providers::simconnect` module exports the acquisition interface independently of HTTP. Demo playback also requires the host executable to pass `--scenario` in its process arguments.
 
 | Interface | Contract |
 | --- | --- |
-| `SimConnectConfig` | Optional `dll: Option<PathBuf>` and `log: Option<PathBuf>`. Both default to `None` |
+| `SimConnectConfig` | Optional `dll` and `log` paths; Demo requires a `scenario` path. The default DLL is adjacent `demo.dll` |
 | `resolve_dll(override_path)` | Return the selected path or `SimConnectError`. Validate path syntax without loading the DLL |
-| `run(config, publisher, shutdown)` | Consume a caller-supplied `Publisher` with `Source::SimConnect`. Await caller-owned shutdown with output `io::Result<()>` and return `RunReport` |
+| `run(config, publisher, shutdown)` | Consume a caller-supplied `Publisher` whose source matches the selected DLL. Await caller-owned shutdown with output `io::Result<()>` and return `RunReport` |
 | `RunReport::result` | Acquisition outcome as `Result<(), SimConnectError>` |
 | `RunReport::diagnostics` | Independent `DiagnosticStatus`: disabled, completed, or failed |
 | `SimConnectError` | Configuration, I/O, native, telemetry, or worker-panic failure |
@@ -86,7 +86,7 @@ The `providers::simconnect` module exports the acquisition interface independent
 The provider API preserves these boundaries:
 
 * The provider creates no hidden telemetry channel and never starts HTTP.
-* Configuration contains no scenario, process arguments, or HTTP settings.
+* Configuration carries an optional Demo scenario path for source validation and log protection, but no HTTP settings. The Demo DLL reads the scenario path from the process arguments; callers using Demo must pass the same path in `--scenario`.
 * DLL resolution uses the same executable-relative default for library and CLI calls, before opening diagnostics or loading native code.
 * Dropping the running future signals worker cancellation. Normal shutdown also waits for the worker and reports cleanup results.
 * A permanently blocked native call has no guaranteed completion deadline.
@@ -209,6 +209,114 @@ An empty queue ends the current batch early. Cancellation exits reception and st
 * Treat an empty dispatch or `E_FAIL` alone as insufficient evidence of disconnection.
 * Treat the silence watchdog as a reconnect trigger, not proof of native connection loss.
 * Do not promise a shutdown deadline when a native call is permanently blocked.
+
+## Common native consumer
+
+The accepted [native Demo decision](../adr/0010-native-demo.md) is implemented. The Demo DLL and official DLL use the same receiver, decoder, lifecycle gates, Publisher, and HTTP/SSE path. Source identity is selected before channel creation and stays Demo or SimConnect; a basename identifies selection, not authenticity. The Demo DLL reads its scenario from the host process arguments during Open.
+
+### Used API and evidence
+
+The current receiver uses Windows x64 C ABI and packed receive layouts derived from SDK 1.8.1 headers. The eight exact exports are `SimConnect_Open`, `SimConnect_Close`, `SimConnect_GetNextDispatch`, `SimConnect_AddToDataDefinition`, `SimConnect_RequestDataOnSimObject`, `SimConnect_SubscribeToSystemEvent`, `SimConnect_RequestSystemState`, and `SimConnect_GetLastSentPacketID`. Official API definitions document those interfaces; the manually declared layouts and their emulator implementation require independent header and runtime verification. The [definition API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_addtodatadefinition/) documents FLOAT64 and units. All current fields request FLOAT64, including Bool. The SDK permits nonzero Bool true, including -1; `AUTOPILOT AVAILABLE` treats a received finite nonzero value as true.
+
+Normal attitude registration orders pitch radians, bank radians. Diagnostic registration orders pitch radians, pitch degrees, bank radians, bank degrees, repeated pitch radians, repeated bank radians. These shapes are current-consumer requirements, not evidence of simultaneous acquisition. The caller owns definition, request, event, and query IDs and field order; the DLL must route and encode those supplied values, not hard-code the current IDs. Current requests use user-aircraft proxy, `SIM_FRAME`, flags 0, origin 0, interval 0, and limit 0. The [request API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_requestdataonsimobject/) distinguishes these options from change-only requests. Other request modes are outside this used subset until implemented and verified.
+
+The following evidence classifications apply separately to each part of the used API. Header-derived declarations are current-consumer evidence until an independent comparison with the target SDK header and runtime.
+
+| Item | Independent evidence and remaining verification |
+| --- | --- |
+| `SimConnect_Open` | [Open reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/general/simconnect_open/) documents the interface and notification handle. Compare the x64 declaration and notification behavior against the target header and runtime |
+| `SimConnect_Close` | [Close reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/general/simconnect_close/) documents the interface. Compare the x64 declaration and cleanup behavior against the target header and runtime |
+| `SimConnect_GetNextDispatch` | [Dispatch reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/general/simconnect_getnextdispatch/) documents the interface and library-owned buffer. Compare declaration, empty result tuple, and memory lifetime against target header and runtime |
+| `SimConnect_AddToDataDefinition` | [Definition reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_addtodatadefinition/) documents definition arguments and FLOAT64. Compare declaration and exact pair acceptance against target header and runtime |
+| `SimConnect_RequestDataOnSimObject` | [Request reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_requestdataonsimobject/) documents request IDs, periods, flags, origin, interval, and limit. Verify current `SIM_FRAME`, flags 0, origin 0, interval 0, limit 0, and user-aircraft proxy against the target runtime |
+| `SimConnect_SubscribeToSystemEvent` | [Event reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/general/simconnect_subscribetosystemevent/) documents subscriptions. Verify `Sim`, `Pause_EX1`, and `FlightLoaded` delivery against the target runtime |
+| `SimConnect_RequestSystemState` | [State reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/general/simconnect_requestsystemstate/) documents queries. Verify `Sim` and `FlightLoaded` response shapes and IDs against the target runtime |
+| `SimConnect_GetLastSentPacketID` | [Packet ID reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/debug/simconnect_getlastsentpacketid/) documents correlation. Verify declaration and association against target header and runtime |
+| Packed receive layouts | Current consumer assumes packed `RECV`, exception, open, event, filename, system-state, and simobject-data layouts. Independently compare size, offsets, packing, and variable payload bounds with target SDK headers; exercise each used shape with an independent client |
+| Two- and six-field attitude definitions | Current consumer defines these field orders; they are not SDK guarantees. Verify each field/unit using the catalog and independently inspect returned order and lengths |
+
+### Native field catalog
+
+`C` means a current-consumer compatibility assumption for the exact name, index, unit, and FLOAT64 request in that row. The consumer uses it, but this classification does not establish the exact combination independently. Before claiming SDK compatibility, check each `C` pair against its per-variable SDK entry, unit conversion rules, and the target runtime with an independent client. Record unsupported or ambiguous pairs individually. The SDK's [variable index](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simvars/simulation-variables/) locates the relevant variable pages. Aircraft availability remains a separate runtime question.
+
+| Native SimVar | Requested unit | Consumer meaning | Evidence classification |
+| --- | --- | --- | --- |
+| PLANE PITCH DEGREES | radians; degrees for diagnostics | Primary native pitch, with existing sign conversion | C |
+| PLANE BANK DEGREES | radians; degrees for diagnostics | Primary native bank, with existing sign/wrap conversion | C |
+| AIRSPEED INDICATED | knots | IAS and existing derived acceleration | C |
+| AIRSPEED TRUE | knots | TAS | C |
+| GROUND VELOCITY | knots | GS | C |
+| INDICATED ALTITUDE:1 | feet | Barometric altitude | C; indexed spelling unverified |
+| KOHLSMAN SETTING HG:1 | inHg | Numeric BARO after current conversion | C; index independently documented |
+| VERTICAL SPEED | feet per minute | VSI | C |
+| PLANE HEADING DEGREES MAGNETIC | degrees | Heading | C |
+| TURN COORDINATOR BALL | position 128 | Ball, divided by 127 in the current consumer | C |
+| TURN INDICATOR RATE | degrees per second | Turn rate | C |
+| DESIGN SPEED VS0 | knots | Optional VS0 | C |
+| DESIGN SPEED VS1 | knots | Optional VS1 | C |
+| DESIGN SPEED MIN ROTATION | knots | Optional VR reference | C |
+| AIRSPEED BARBER POLE | knots | Independent dynamic redline | C |
+| AUTOPILOT AVAILABLE | bool, FLOAT64 representation | Target availability gate | C |
+| AUTOPILOT HEADING LOCK DIR:0 | degrees | Selected heading | C; indexed spelling unverified |
+| AUTOPILOT ALTITUDE LOCK VAR:0 | feet | Selected altitude | C; indexed spelling unverified |
+| AUTOPILOT ALT RADIO MODE | bool, FLOAT64 representation | Barometric/radio target gate | C |
+
+
+The following independent references qualify individual indexed names:
+
+* `KOHLSMAN SETTING HG:1` is documented as the first altimeter.
+* `INDICATED ALTITUDE:1` is a current-consumer compatibility assumption: the inspected SDK example uses the unindexed name.
+* Both `:0` autopilot target reads are compatibility assumptions: slot documentation describes slot 0, but the exact indexed reads are not established by the inspected variable tables.
+
+The [autopilot variable reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simvars/aircraft-simvars/aircraft-autopilot-and-assistant-variables/), [aircraft system variables](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simvars/aircraft-simvars/aircraft-system-variables/), and [native units](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simvars/simulation-variable-units/) are independent references for the relevant catalog entries. Exact field/unit pairs beyond the stated indexed gaps still require per-variable verification; the current table is consumer evidence rather than a blanket SDK certification.
+
+Documentation of a base name or unit is not proof that each aircraft supplies it. Test the assumptions against the target SDK and simulator before claiming compatibility. An emulator that accepts the same assumptions is not an independent oracle.
+
+The fictional full VFE/VNO/VNE and VX/VY/VG profile is not generated through private SimVars.
+Keep independent browser/presentation fixtures for those existing supported display fields.
+Do not remove display capability because the Demo source becomes narrower.
+
+
+### Dispatch and error limits
+
+The [dispatch API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/general/simconnect_getnextdispatch/) describes library-owned buffers and an empty-queue `SIMCONNECT_RECV_ID_NULL` message. It does not establish the complete empty-queue HRESULT, pointer, and length tuple. On 2026-11-08, an independent client observed `E_FAIL`, a null pointer, and length `0` after draining the official DLL with MSFS 2024 in flight; Demo returned the same tuple. This observation does not prove that every `E_FAIL` means an empty queue. The receiver currently treats `E_FAIL` as no packet. Notification, returned-memory lifetime, missed-frame and queue-overflow behavior remain separate verification concerns. Generate packets independently of dispatch; queued contents do not change when consumed late. Bound resources and do not silently discard lifecycle transitions.
+
+Immediate HRESULT failures and asynchronous exception packets are distinct. Optional definition or request failures isolate the affected field. Transient connection loss follows the existing retry policy; terminal configuration, malformed required packets, or cleanup failure can terminate the producer while HTTP remains available. HTTP bind or application infrastructure failure instead ends the application. Exact behavior follows the current receiver and its diagnostics; injected failures do not establish that the official DLL emits the same error. Demo scenario validation failure occurs during Open, leaves HTTP available, and is never sent through dispatch.
+
+The following outcomes describe the current consumer and supervisor, based on static source analysis. They are not observed SDK error guarantees.
+
+| Trigger | Current outcome |
+| --- | --- |
+| Demo Open returns `0xA0040001` | Terminate the producer; HTTP remains available |
+| Demo dispatch reports scenario error `0xA0040001` | Terminate the producer; HTTP remains available |
+| Other Open failure or QUIT | Retry with bounded backoff after applicable cleanup; HTTP remains available |
+| Optional definition or request failure, or correlated optional exception | Remove the affected optional field; acquisition and HTTP continue |
+| Required initial definition, subscription, query, or request failure | Terminate the producer; HTTP remains available |
+| Later system-state query native failure or non-`E_FAIL` dispatch failure | Reconnect after successful cleanup; HTTP remains available |
+| Invalid native layout, uncorrelated exception, or Close failure | Terminate the producer; HTTP remains available. Close failure retains native mapping and notification ownership conservatively until process exit |
+| Unknown message or irrelevant routing | Ignore or reject according to the decoder; absence of replacement data permits expiry |
+| Total transport silence | The watchdog reconnects; primary data becomes stale first |
+| Invalid primary value | Publish invalid state; recovery requires a new eligible sample |
+| HTTP bind or application infrastructure failure | Coordinate shutdown and return an application error |
+
+### Staged Demo fault coverage
+
+The selected Demo subset and deferred mechanisms are distinct from simulator evidence:
+
+| Used export or boundary | Demo fault coverage | Deferred or separately tested behavior |
+| --- | --- | --- |
+| `SimConnect_Open` | One-based injected HRESULT; a later Open can recover | Other Open result shapes, including null success handles |
+| `SimConnect_AddToDataDefinition` | One-based HRESULT with optional native-name/unit selector; correlated exception using the actual sent packet ID | Other error channels |
+| `SimConnect_SubscribeToSystemEvent` | One-based injected HRESULT | Name-specific selectors and asynchronous errors |
+| `SimConnect_GetNextDispatch` | Timed owned raw bytes with bounded advertised length; the observed official empty-queue tuple matches Demo | Injected HRESULT, null dispatch, and behavior in other SDK/runtime conditions |
+| `SimConnect_RequestDataOnSimObject` | One-based HRESULT with optional single-field selector; correlated exception using the actual sent packet ID | Other request modes |
+| `SimConnect_RequestSystemState` | One-based HRESULT and bounded transport silence | Other system-state requests |
+| `SimConnect_GetLastSentPacketID` | One-based HRESULT; an uncorrelated exception can terminate the source | Other correlation failures |
+| `SimConnect_Close` | One-based HRESULT; failed Close stops the emitter and retains native ownership | Further cleanup failure shapes |
+| Invalid numeric data, unknown IDs, and malformed shapes | Decoder/normalization tests and owned raw-packet scenarios | Other malformed shapes and host-level memory faults |
+| Loader, diagnostics, and host failures | Existing launch, journal, and supervision tests exercise selected cases | Missing host API and worker panic seams; no fictional native operation is added |
+
+The [fault scenarios](demo-scenarios.md) isolate recoverable and terminal producer outcomes. Their tests distinguish source failure from HTTP and process liveness. The observed empty-queue tuple does not establish that every SDK `E_FAIL` has that cause.
 
 ## Telemetry acquisition and availability
 
@@ -398,14 +506,14 @@ Build the complete application and prepare an output directory before recording.
 cargo build --locked --release --target x86_64-pc-windows-msvc
 New-Item -ItemType Directory -Force .local/live | Out-Null
 $appExe = Join-Path $PWD 'target/x86_64-pc-windows-msvc/release/msfs2024-artificial-horizon.exe'
-node tools/live/run.mjs --exe "$appExe" --url http://127.0.0.1:8080/api/v1/events --output .local/live/demo.jsonl --duration-seconds 30 --max-messages 1000 -- --source demo --listen-address 127.0.0.1 --port 8080
+node tools/live/run.mjs --exe "$appExe" --url http://127.0.0.1:8080/api/v1/events --output .local/live/demo.jsonl --duration-seconds 30 --max-messages 1000 -- --source demo.dll --scenario demo-scenarios/demo-scenario.jsonl --listen-address 127.0.0.1 --port 8080
 ```
 
 For SimConnect, provide the official x64 DLL path and choose a new telemetry output filename. Add `--log` after `--` to record application diagnostics in a separate file:
 
 ```powershell
 $simconnectDll = Read-Host 'Absolute path to the official x64 SimConnect.dll'
-node tools/live/run.mjs --exe "$appExe" --url http://127.0.0.1:8080/api/v1/events --output .local/live/flight.jsonl --duration-seconds 30 --max-messages 1000 -- --source simconnect --dll "$simconnectDll" --log .local/live/simconnect.jsonl --listen-address 127.0.0.1 --port 8080
+node tools/live/run.mjs --exe "$appExe" --url http://127.0.0.1:8080/api/v1/events --output .local/live/flight.jsonl --duration-seconds 30 --max-messages 1000 -- --source "$simconnectDll" --log .local/live/simconnect.jsonl --listen-address 127.0.0.1 --port 8080
 ```
 
 Options before `--` configure the recorder. Arguments after `--`, including `--log`, go to the application. The recorder writes the telemetry JSONL file, and the application appends diagnostic records to the JSONL file. Use a new telemetry filename for each run and distinct log filenames to distinguish sessions. Inspect and compare the files separately.

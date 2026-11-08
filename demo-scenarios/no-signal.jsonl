@@ -1,0 +1,1 @@
+{"type":"scenario","format":"msfs-efi-simconnect-demo","version":1,"mode":"scripted","frame_period_ms":50,"duration_us":5000000,"initial":{"sim_running":true,"pause":"off","flight":"sparse.flt"}}

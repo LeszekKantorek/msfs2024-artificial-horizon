@@ -1,6 +1,7 @@
+#[path = "support/demo.rs"]
+mod demo;
 use msfs2024_artificial_horizon::{
     Source,
-    providers::demo,
     telemetry::{
         self, Attitude, FlightSample, GroundSpeed, IndicatedAirspeed, STALE_AFTER, SlipSkid, State,
         TurnRate,
@@ -349,28 +350,4 @@ async fn slow_consumers_get_only_latest_and_reading_does_not_refresh_age() {
     drop(publisher);
     assert!(slow.changed().await.is_err());
     assert!(second.changed().await.is_err());
-}
-
-#[tokio::test(start_paused = true)]
-async fn demo_has_twenty_hertz_cadence_skips_backlog_and_closes_on_shutdown() {
-    let (publisher, mut subscription) = telemetry::channel(Source::Demo);
-    let (stop, stopped) = tokio::sync::oneshot::channel();
-    let task = tokio::spawn(demo::run(publisher, async {
-        let _ = stopped.await;
-    }));
-    assert_eq!(value(subscription.changed().await.unwrap())["sequence"], 1);
-    advance(Duration::from_millis(49)).await;
-    tokio::task::yield_now().await;
-    assert_eq!(value(subscription.snapshot())["sequence"], 1);
-    advance(Duration::from_millis(1)).await;
-    assert_eq!(value(subscription.changed().await.unwrap())["sequence"], 2);
-    advance(Duration::from_millis(500)).await;
-    let snapshot = value(subscription.changed().await.unwrap());
-    assert_eq!(snapshot["sequence"], 3);
-    tokio::task::yield_now().await;
-    assert_eq!(value(subscription.snapshot())["sequence"], 3);
-    assert_eq!(snapshot["sample_age_ms"], 0);
-    stop.send(()).unwrap();
-    task.await.unwrap().unwrap();
-    assert!(subscription.changed().await.is_err());
 }

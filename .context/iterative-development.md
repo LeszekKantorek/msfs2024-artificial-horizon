@@ -25,17 +25,17 @@ Prepare and preserve handoffs under these requirements:
 * Use a self-contained Subtask as the primary execution handoff. Read its complete instructions, decisions, invariants, and applicable amendments before edits or delegation.
 * Preserve supplied accepted plans verbatim and locally, including their original language. Retain existing plans and their amendments without requiring future handoffs to use `.local/plans/`.
 * If a supplied plan governs the Subtask, preserve its requirements in the handoff and identify the governing source and amendments.
-* Record subsequent corrections explicitly, with the date and the requirements they supersede. Do not silently rewrite accepted decisions or discard earlier evidence.
+* Record subsequent handoff corrections explicitly, with the date and the requirements they supersede. Preserve earlier evidence. ADRs describe current accepted decisions; their history remains in Git.
 * Keep optional local indexes and notes as supplements. Another session must not depend on their continued availability to understand a Subtask.
 * Publish Subtask instructions and delivery evidence only within authorized GitHub work. Do not commit supplied plan originals or use Issues as a running progress notebook.
 
 ### Prepare Subtask context
 
-Delegate [context-retrieve](../.agents/skills/context-retrieve/SKILL.md) to a Luna High subagent under the [retrieval delegation rules](../AGENTS.md#context-selection) when preparing implementation context. Describe the requirements, decisions, code boundaries, or validation information needed, with the known issue identifiers and constraints. Use its verified references and missing-information report before dependent implementation; the implementing agent remains responsible for reading and interpreting the governing sources.
-For work without an issue, derive the retrieval question from the requested outcome. For a Subtask, prepare the context in this order:
+Select sources under the [context selection and retrieval delegation rules](context-retrival-delegation.md). Identify the requirements, decisions, code boundaries, and validation information needed, with known issue identifiers and constraints. Read and interpret the governing sources before dependent implementation.
+For work without an issue, derive the needed context from the requested outcome. For a Subtask, prepare the context in this order:
 
 1. Read the Subtask and its Task through [issue and artifact retrieval](repository-instructions.md#read-github-issue-context).
-   Use context-retrieve to locate the source sections required for its scope, then read those passages. Establish the intended result, constraints, dependencies, and validation. A source-location report does not replace complete Subtask instructions.
+   Locate the source sections required for its scope, then read those passages. Establish the intended result, constraints, dependencies, and validation. A source-location report does not replace complete Subtask instructions.
 2. Check the current revision and relevant changes. Verify cited files, sections, line ranges, and consequential assumptions against current code and contracts.
 3. If lines have moved, locate the intended passage by meaning and record a consequential mismatch. Line references remain valid handoff tools when checked.
 4. Resolve routine implementation details within scope. Use accepted decisions without redesigning them merely because the Subtask entered a new session.

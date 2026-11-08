@@ -12,7 +12,7 @@ Demo and SimConnect share the same downstream HTTP/SSE and EFI interfaces.
 
 The CLI defaults to Demo. Library application calls select `application::SourceSelection` explicitly.
 `Source` identifies `demo` or `simconnect` in telemetry and remains fixed for the channel lifetime.
-Selection is runtime configuration, not a Cargo feature or a separate package.
+Source selection is runtime configuration, not a Cargo feature. The Demo DLL is a separate workspace package.
 
 ## Shared responsibilities
 
@@ -23,7 +23,7 @@ Selection is runtime configuration, not a Cargo feature or a separate package.
 * Evaluate freshness independently of callbacks. Unavailable snapshots contain no live attitude.
 * Keep optional indications independent and preserve attitude-only publication.
 * Never replace unavailable data with zero or Demo values.
-* Accept caller-owned publication and shutdown without reading application arguments or HTTP configuration.
+* Accept caller-owned publication and shutdown without reading HTTP configuration. The Demo DLL reads its scenario path from host process arguments.
 * Create no hidden channel, telemetry history queue, or HTTP server.
 
 Application composition creates the channel, binds HTTP, and then starts the selected provider.

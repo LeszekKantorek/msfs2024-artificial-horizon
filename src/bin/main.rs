@@ -1,4 +1,4 @@
-use clap::{CommandFactory, Parser, ValueEnum, error::ErrorKind};
+use clap::{CommandFactory, Parser, error::ErrorKind};
 use msfs2024_artificial_horizon::{
     Config,
     application::{self, SourceSelection},
@@ -9,27 +9,21 @@ use std::{io, net::IpAddr, path::PathBuf, process::ExitCode};
 #[derive(Parser, Debug)]
 #[command(version, about)]
 struct Cli {
-    /// Selected source; demo produces synthetic telemetry at 20 Hz.
-    #[arg(long, value_enum, default_value = "demo")]
-    source: CliSource,
+    /// DLL source: demo.dll or SimConnect.dll, beside the EXE or an absolute path.
+    #[arg(long, default_value = "demo.dll")]
+    source: PathBuf,
+    /// Required for Demo: JSONL scenario file.
+    #[arg(long)]
+    scenario: Option<PathBuf>,
     /// HTTP interface (default: 127.0.0.1); use 0.0.0.0 for LAN access.
     #[arg(long)]
     listen_address: Option<IpAddr>,
     /// HTTP port, 1-65535 (default: 8080).
     #[arg(long, value_parser = clap::value_parser!(u16).range(1..))]
     port: Option<u16>,
-    /// SimConnect only: absolute DLL path; defaults to SimConnect.dll beside this EXE.
-    #[arg(long)]
-    dll: Option<PathBuf>,
-    /// SimConnect only: append diagnostic JSONL to this file (optional).
+    /// Append diagnostic JSONL to this file (optional).
     #[arg(long)]
     log: Option<PathBuf>,
-}
-
-#[derive(Clone, Copy, Debug, ValueEnum)]
-enum CliSource {
-    Demo,
-    Simconnect,
 }
 
 impl Cli {
@@ -39,21 +33,30 @@ impl Cli {
             listen_address: self.listen_address.unwrap_or(defaults.listen_address),
             port: self.port.unwrap_or(defaults.port),
         };
-        let source = match self.source {
-            CliSource::Demo => {
-                if self.dll.is_some() || self.log.is_some() {
-                    return Err(Self::command().error(
-                        ErrorKind::ArgumentConflict,
-                        "--dll and --log require --source simconnect",
-                    ));
+        let dll =
+            msfs2024_artificial_horizon::providers::simconnect::resolve_dll(Some(&self.source))
+                .map_err(|error| Self::command().error(ErrorKind::ValueValidation, error))?;
+        msfs2024_artificial_horizon::providers::simconnect::validate_scenario(
+            msfs2024_artificial_horizon::providers::simconnect::source_kind(&dll),
+            self.scenario.as_deref(),
+        )
+        .map_err(|error| Self::command().error(ErrorKind::ValueValidation, error))?;
+        let scenario = self
+            .scenario
+            .map(|path| {
+                if path.is_absolute() {
+                    Ok(path)
+                } else {
+                    std::env::current_dir().map(|cwd| cwd.join(path))
                 }
-                SourceSelection::Demo
-            }
-            CliSource::Simconnect => SourceSelection::SimConnect(SimConnectConfig {
-                dll: self.dll,
-                log: self.log,
-            }),
-        };
+            })
+            .transpose()
+            .map_err(|error| Self::command().error(ErrorKind::ValueValidation, error))?;
+        let source = SourceSelection(SimConnectConfig {
+            dll: Some(dll),
+            log: self.log,
+            scenario,
+        });
         Ok((config, source))
     }
 }
@@ -110,48 +113,37 @@ mod tests {
         assert!(!read_stop_command(std::io::Cursor::new(b"ignored\n")).unwrap());
     }
     #[test]
-    fn default_demo_and_explicit_simconnect_share_http_configuration() {
-        let (config, source) = Cli::try_parse_from(["main"])
+    fn source_validation_and_legacy_rejection() {
+        let (_, selected) = Cli::try_parse_from(["main", "--scenario", "x"])
             .unwrap()
             .into_configuration()
             .unwrap();
-        assert!(matches!(source, SourceSelection::Demo));
-        assert_eq!(config.socket_address(), "127.0.0.1:8080".parse().unwrap());
-        let (config, source) = Cli::try_parse_from([
-            "main",
-            "--source",
-            "simconnect",
-            "--listen-address",
-            "0.0.0.0",
-            "--port",
-            "9000",
-            "--dll",
-            "C:\\runtime\\SimConnect.dll",
-            "--log",
-            "sessions/test.jsonl",
-        ])
-        .unwrap()
-        .into_configuration()
-        .unwrap();
-        assert_eq!(config.socket_address(), "0.0.0.0:9000".parse().unwrap());
-        let SourceSelection::SimConnect(options) = source else {
-            panic!("expected SimConnect")
-        };
-        assert!(options.dll.unwrap().is_absolute());
-        assert_eq!(options.log, Some(PathBuf::from("sessions/test.jsonl")));
-    }
-    #[test]
-    fn diagnostic_options_require_simconnect_and_obsolete_options_are_rejected() {
-        for option in ["--dll", "--log"] {
+        assert_eq!(
+            msfs2024_artificial_horizon::providers::simconnect::source_kind(
+                selected.0.dll.as_ref().unwrap()
+            ),
+            msfs2024_artificial_horizon::Source::Demo
+        );
+        for value in ["demo", "simconnect", "foo.dll", "folder/demo.dll"] {
             assert!(
-                Cli::try_parse_from(["main", option, "file"])
+                Cli::try_parse_from(["main", "--source", value])
                     .unwrap()
                     .into_configuration()
                     .is_err()
             );
         }
-        for option in ["--simconnect", "--scenario", "--log-dir"] {
-            assert!(Cli::try_parse_from(["main", option]).is_err());
-        }
+        assert!(Cli::try_parse_from(["main", "--dll", "x"]).is_err());
+        assert!(
+            Cli::try_parse_from(["main", "--source", "SimConnect.dll", "--scenario", "x"])
+                .unwrap()
+                .into_configuration()
+                .is_err()
+        );
+        assert!(
+            Cli::try_parse_from(["main", "--source", "DEMO.dll", "--scenario", "x"])
+                .unwrap()
+                .into_configuration()
+                .is_ok()
+        );
     }
 }

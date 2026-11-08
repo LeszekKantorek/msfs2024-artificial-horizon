@@ -1,0 +1,152 @@
+{"type":"scenario","format":"msfs-efi-simconnect-demo","version":1,"mode":"scripted","frame_period_ms":50,"duration_us":198000000,"initial":{"sim_running":true,"pause":"off","flight":"demo-flight.flt"}}
+{"type":"signal","id":"pitch","simvar":"PLANE PITCH DEGREES","unit":"radians","repeat":true}
+{"type":"hold","signal":"pitch","duration_ms":2000,"value":-0.0}
+{"type":"hold","signal":"pitch","duration_ms":2000,"value":-0.2617993877991494}
+{"type":"hold","signal":"pitch","duration_ms":2000,"value":0.2617993877991494}
+{"type":"hold","signal":"pitch","duration_ms":2000,"value":-0.0}
+{"type":"hold","signal":"pitch","duration_ms":2000,"value":-0.0}
+{"type":"hold","signal":"pitch","duration_ms":2000,"value":-0.17453292519943295}
+{"type":"hold","signal":"pitch","duration_ms":2000,"value":0.17453292519943295}
+{"type":"hold","signal":"pitch","duration_ms":2000,"value":-1.2217304763960306}
+{"type":"hold","signal":"pitch","duration_ms":2000,"value":0.8726646259971648}
+{"type":"signal","id":"bank","simvar":"PLANE BANK DEGREES","unit":"radians","repeat":true}
+{"type":"hold","signal":"bank","duration_ms":2000,"value":-0.0}
+{"type":"hold","signal":"bank","duration_ms":2000,"value":-0.0}
+{"type":"hold","signal":"bank","duration_ms":2000,"value":-0.0}
+{"type":"hold","signal":"bank","duration_ms":2000,"value":0.5235987755982988}
+{"type":"hold","signal":"bank","duration_ms":2000,"value":-0.5235987755982988}
+{"type":"hold","signal":"bank","duration_ms":2000,"value":-0.4363323129985824}
+{"type":"hold","signal":"bank","duration_ms":2000,"value":0.4363323129985824}
+{"type":"hold","signal":"bank","duration_ms":2000,"value":-0.0}
+{"type":"hold","signal":"bank","duration_ms":2000,"value":-0.0}
+{"type":"signal","id":"ias","simvar":"AIRSPEED INDICATED","unit":"knots","repeat":true}
+{"type":"hold","signal":"ias","duration_ms":2000,"value":0}
+{"type":"ramp","signal":"ias","duration_ms":6000,"from":0,"to":150}
+{"type":"hold","signal":"ias","duration_ms":2000,"value":150}
+{"type":"ramp","signal":"ias","duration_ms":6000,"from":150,"to":0}
+{"type":"hold","signal":"ias","duration_ms":2000,"value":0}
+{"type":"signal","id":"tas","simvar":"AIRSPEED TRUE","unit":"knots","repeat":true}
+{"type":"hold","signal":"tas","duration_ms":2000,"value":0}
+{"type":"ramp","signal":"tas","duration_ms":6000,"from":0,"to":160}
+{"type":"hold","signal":"tas","duration_ms":2000,"value":160}
+{"type":"ramp","signal":"tas","duration_ms":6000,"from":160,"to":0}
+{"type":"hold","signal":"tas","duration_ms":2000,"value":0}
+{"type":"signal","id":"gs","simvar":"GROUND VELOCITY","unit":"knots","repeat":true}
+{"type":"hold","signal":"gs","duration_ms":2000,"value":0}
+{"type":"ramp","signal":"gs","duration_ms":6000,"from":0,"to":170}
+{"type":"hold","signal":"gs","duration_ms":2000,"value":170}
+{"type":"ramp","signal":"gs","duration_ms":6000,"from":170,"to":0}
+{"type":"hold","signal":"gs","duration_ms":2000,"value":0}
+{"type":"signal","id":"ball","simvar":"TURN COORDINATOR BALL","unit":"position 128","repeat":true}
+{"type":"hold","signal":"ball","duration_ms":2000,"value":0}
+{"type":"hold","signal":"ball","duration_ms":2000,"value":-63.5}
+{"type":"hold","signal":"ball","duration_ms":2000,"value":63.5}
+{"type":"hold","signal":"ball","duration_ms":2000,"value":0}
+{"type":"hold","signal":"ball","duration_ms":2000,"value":0}
+{"type":"hold","signal":"ball","duration_ms":2000,"value":127}
+{"type":"hold","signal":"ball","duration_ms":2000,"value":-127}
+{"type":"hold","signal":"ball","duration_ms":2000,"value":0}
+{"type":"hold","signal":"ball","duration_ms":2000,"value":0}
+{"type":"signal","id":"turn","simvar":"TURN INDICATOR RATE","unit":"degrees per second","repeat":true}
+{"type":"hold","signal":"turn","duration_ms":2000,"value":0}
+{"type":"hold","signal":"turn","duration_ms":2000,"value":0}
+{"type":"hold","signal":"turn","duration_ms":2000,"value":0}
+{"type":"hold","signal":"turn","duration_ms":2000,"value":-3}
+{"type":"hold","signal":"turn","duration_ms":2000,"value":3}
+{"type":"hold","signal":"turn","duration_ms":2000,"value":3}
+{"type":"hold","signal":"turn","duration_ms":2000,"value":-3}
+{"type":"hold","signal":"turn","duration_ms":2000,"value":0}
+{"type":"hold","signal":"turn","duration_ms":2000,"value":0}
+{"type":"signal","id":"baro","simvar":"KOHLSMAN SETTING HG:1","unit":"inHg","repeat":true}
+{"type":"hold","signal":"baro","duration_ms":2000,"value":29.92}
+{"type":"hold","signal":"baro","duration_ms":2000,"value":29.92}
+{"type":"hold","signal":"baro","duration_ms":2000,"value":29.92}
+{"type":"hold","signal":"baro","duration_ms":2000,"value":30.12}
+{"type":"hold","signal":"baro","duration_ms":2000,"value":30.12}
+{"type":"hold","signal":"baro","duration_ms":2000,"value":30.12}
+{"type":"hold","signal":"baro","duration_ms":2000,"value":29.72}
+{"type":"hold","signal":"baro","duration_ms":2000,"value":29.72}
+{"type":"hold","signal":"baro","duration_ms":2000,"value":29.72}
+{"type":"signal","id":"heading_target","simvar":"AUTOPILOT HEADING LOCK DIR:0","unit":"degrees","repeat":true}
+{"type":"hold","signal":"heading_target","duration_ms":2000,"value":350}
+{"type":"hold","signal":"heading_target","duration_ms":2000,"value":90}
+{"type":"hold","signal":"heading_target","duration_ms":2000,"value":180}
+{"type":"hold","signal":"heading_target","duration_ms":2000,"value":350}
+{"type":"hold","signal":"heading_target","duration_ms":2000,"value":350}
+{"type":"hold","signal":"heading_target","duration_ms":2000,"value":0}
+{"type":"hold","signal":"heading_target","duration_ms":2000,"value":0}
+{"type":"gap","signal":"heading_target","duration_ms":2000}
+{"type":"hold","signal":"heading_target","duration_ms":2000,"value":354}
+{"type":"signal","id":"heading","simvar":"PLANE HEADING DEGREES MAGNETIC","unit":"degrees","repeat":true}
+{"type":"hold","signal":"heading","duration_ms":6000,"value":354}
+{"type":"ramp","signal":"heading","duration_ms":2000,"from":354,"to":348}
+{"type":"ramp","signal":"heading","duration_ms":2000,"from":348,"to":354}
+{"type":"ramp","signal":"heading","duration_ms":2000,"from":354,"to":360}
+{"type":"ramp","signal":"heading","duration_ms":2000,"from":0,"to":-6}
+{"type":"hold","signal":"heading","duration_ms":4000,"value":354}
+{"type":"signal","id":"alt","simvar":"INDICATED ALTITUDE:1","unit":"feet","repeat":false}
+{"type":"ramp","signal":"alt","duration_ms":2950,"from":-120,"to":120}
+{"type":"hold","signal":"alt","duration_ms":50,"value":120}
+{"type":"ramp","signal":"alt","duration_ms":2950,"from":980,"to":1020}
+{"type":"hold","signal":"alt","duration_ms":50,"value":1020}
+{"type":"ramp","signal":"alt","duration_ms":2950,"from":9980,"to":10020}
+{"type":"hold","signal":"alt","duration_ms":50,"value":10020}
+{"type":"ramp","signal":"alt","duration_ms":2950,"from":10020,"to":9980}
+{"type":"hold","signal":"alt","duration_ms":50,"value":9980}
+{"type":"ramp","signal":"alt","duration_ms":2950,"from":1020,"to":980}
+{"type":"hold","signal":"alt","duration_ms":50,"value":980}
+{"type":"ramp","signal":"alt","duration_ms":2950,"from":120,"to":-120}
+{"type":"hold","signal":"alt","duration_ms":50,"value":-120}
+{"type":"hold","signal":"alt","duration_ms":6000,"value":8500}
+{"type":"ramp","signal":"alt","duration_ms":40000,"from":8500,"to":9500}
+{"type":"ramp","signal":"alt","duration_ms":20000,"from":9500,"to":10000}
+{"type":"hold","signal":"alt","duration_ms":6000,"value":10000}
+{"type":"ramp","signal":"alt","duration_ms":12000,"from":10000,"to":10300}
+{"type":"hold","signal":"alt","duration_ms":6000,"value":10300}
+{"type":"hold","signal":"alt","duration_ms":6000,"value":2500}
+{"type":"ramp","signal":"alt","duration_ms":40000,"from":2500,"to":1500}
+{"type":"ramp","signal":"alt","duration_ms":20000,"from":1500,"to":1000}
+{"type":"hold","signal":"alt","duration_ms":6000,"value":1000}
+{"type":"ramp","signal":"alt","duration_ms":12000,"from":1000,"to":700}
+{"type":"hold","signal":"alt","duration_ms":6000,"value":700}
+{"type":"signal","id":"vsi","simvar":"VERTICAL SPEED","unit":"feet per minute","repeat":false}
+{"type":"gap","signal":"vsi","duration_ms":50}
+{"type":"hold","signal":"vsi","duration_ms":2950,"value":4881.35593220339}
+{"type":"gap","signal":"vsi","duration_ms":50}
+{"type":"hold","signal":"vsi","duration_ms":2950,"value":813.5593220338983}
+{"type":"gap","signal":"vsi","duration_ms":50}
+{"type":"hold","signal":"vsi","duration_ms":2950,"value":813.5593220338983}
+{"type":"gap","signal":"vsi","duration_ms":50}
+{"type":"hold","signal":"vsi","duration_ms":2950,"value":-813.5593220338983}
+{"type":"gap","signal":"vsi","duration_ms":50}
+{"type":"hold","signal":"vsi","duration_ms":2950,"value":-813.5593220338983}
+{"type":"gap","signal":"vsi","duration_ms":50}
+{"type":"hold","signal":"vsi","duration_ms":2950,"value":-4881.35593220339}
+{"type":"gap","signal":"vsi","duration_ms":50}
+{"type":"hold","signal":"vsi","duration_ms":5950,"value":0.0}
+{"type":"hold","signal":"vsi","duration_ms":40000,"value":1500.0}
+{"type":"hold","signal":"vsi","duration_ms":20000,"value":1500.0}
+{"type":"hold","signal":"vsi","duration_ms":6000,"value":0.0}
+{"type":"hold","signal":"vsi","duration_ms":12000,"value":1500.0}
+{"type":"hold","signal":"vsi","duration_ms":6000,"value":0.0}
+{"type":"gap","signal":"vsi","duration_ms":50}
+{"type":"hold","signal":"vsi","duration_ms":5950,"value":0.0}
+{"type":"hold","signal":"vsi","duration_ms":40000,"value":-1500.0}
+{"type":"hold","signal":"vsi","duration_ms":20000,"value":-1500.0}
+{"type":"hold","signal":"vsi","duration_ms":6000,"value":0.0}
+{"type":"hold","signal":"vsi","duration_ms":12000,"value":-1500.0}
+{"type":"hold","signal":"vsi","duration_ms":6000,"value":0.0}
+{"type":"signal","id":"target_alt","simvar":"AUTOPILOT ALTITUDE LOCK VAR:0","unit":"feet","repeat":false}
+{"type":"gap","signal":"target_alt","duration_ms":18000}
+{"type":"hold","signal":"target_alt","duration_ms":90000,"value":10000}
+{"type":"hold","signal":"target_alt","duration_ms":90000,"value":1000}
+{"type":"signal","id":"ap","simvar":"AUTOPILOT AVAILABLE","unit":"bool","repeat":false}
+{"type":"hold","signal":"ap","duration_ms":198000,"value":1}
+{"type":"signal","id":"radio","simvar":"AUTOPILOT ALT RADIO MODE","unit":"bool","repeat":false}
+{"type":"hold","signal":"radio","duration_ms":198000,"value":0}
+{"type":"signal","id":"vs0","simvar":"DESIGN SPEED VS0","unit":"knots","repeat":false}
+{"type":"hold","signal":"vs0","duration_ms":198000,"value":40}
+{"type":"signal","id":"vs1","simvar":"DESIGN SPEED VS1","unit":"knots","repeat":false}
+{"type":"hold","signal":"vs1","duration_ms":198000,"value":50}
+{"type":"signal","id":"vr","simvar":"DESIGN SPEED MIN ROTATION","unit":"knots","repeat":false}
+{"type":"hold","signal":"vr","duration_ms":198000,"value":55}

@@ -8,21 +8,18 @@ End-to-end data flow, component responsibilities, application lifecycle, and lib
 
 ```mermaid
 flowchart LR
-    Simulator[MSFS2024] --> Adapter[Windows SimConnect provider]
-    Demo[Explicit demo provider] --> State[Validated latest snapshot]
-    Adapter --> State
+    Simulator[MSFS2024] --> Native[Official SimConnect DLL]
+    Demo[Demo DLL] --> Adapter[Shared native receiver]
+    Native --> Adapter
+    Adapter --> State[Validated latest snapshot]
     State --> HTTP[Rust HTTP server: Tokio + Axum]
     HTTP -->|HTML / CSS / JavaScript / SVG| Phone[Mobile browser]
     HTTP -->|SSE telemetry| Phone
 ```
 
-The diagram shows two source paths feeding the same browser display:
+Both DLL selections use one native receiver, normalization path, and publisher. Demo generates synthetic native observations; the official DLL supplies simulator data. HTTP serves the latest validated snapshot and browser assets.
 
-* The SimConnect provider receives flight data from MSFS2024.
-* Demo generates synthetic samples.
-* The selected provider publishes normalized telemetry into one validated latest snapshot.
-* The Rust HTTP server delivers that state through SSE. It also serves the browser assets.
-* The mobile browser validates incoming telemetry and renders the flight instruments.
+The [workspace build procedure](testing/automated.md#automated-checks) builds `demo.dll` alongside the executable. `cargo run` builds only the default application member.
 
 ## Components and execution
 
@@ -34,8 +31,8 @@ The diagram shows two source paths feeding the same browser display:
 | Application | Source selection, channel ownership, HTTP preparation, producer startup and coordinated shutdown |
 | Configuration | HTTP listen address and port validation |
 | Telemetry | Normalized attitude, validity, sequence, freshness |
-| Demo provider | Repeatable synthetic scenarios with explicit telemetry source identity |
-| SimConnect provider | SDK types, dispatch, units/signs, simulator lifecycle |
+| Demo DLL | Repeatable synthetic native observations and lifecycle events |
+| Native receiver | DLL loading, dispatch, units/signs, and lifecycle for either source |
 | State distribution | One latest snapshot, bounded memory, shared clients |
 | HTTP | Static assets, health, SSE framing, subscriptions, graceful shutdown |
 | Browser | Message validation, instrument/status display, receive timeout |
@@ -46,16 +43,16 @@ The application follows these composition constraints:
 
 * Select exactly one provider at startup.
 * Keep acquisition, normalization, current state, and HTTP in one Rust process.
-* Application composition connects either Demo or the SimConnect receiver to the same HTTP/SSE server.
+* Application composition connects the shared native receiver to the HTTP/SSE server.
 * The server receives a prepared subscription and does not select or start providers.
 
 > A provider failure must never select Demo automatically.
 
 | Interface | Contract |
 | --- | --- |
-| CLI | Parse source, HTTP address/port, optional SimConnect DLL/log, help, and version. Own process signals and exit status |
+| CLI | Parse DLL source, required Demo scenario and optional log, HTTP address/port, help, and version. Own process signals and exit status |
 | `Config` | Contain only `listen_address` and `port`. Never read process arguments |
-| `application::SourceSelection` | Select `Demo` or `SimConnect(SimConnectConfig)` explicitly |
+| `application::SourceSelection` | Hold the native source configuration; derive source identity from the selected DLL basename |
 | `application::run(config, source, shutdown)` | Validate configuration, create the channel, bind HTTP, start components, and collect results. Return `Result<(), ApplicationError>` |
 | Application shutdown future | Caller-owned future with output `io::Result<()>`. Only the CLI handles process signals |
 | `Source` | Identify the channel source for its lifetime, independently of HTTP configuration |
@@ -73,13 +70,11 @@ flowchart TB
             App["application::run"]
             HTTP["HTTP server task"]
             Provider["Selected provider task"]
-            Demo["Demo"]
             Bridge["SimConnect async entry point"]
             CLI -->|configuration and shutdown future| App
             App -->|bind and start| HTTP
             App -->|start and supervise| Provider
-            Provider -->|Demo selected| Demo
-            Provider -->|SimConnect selected| Bridge
+            Provider --> Bridge
         end
         subgraph Worker["Dedicated SimConnect thread"]
             Receiver["Receiver loop in runtime.rs"]
@@ -89,11 +84,10 @@ flowchart TB
         State["Telemetry latest-state channel"]
         App -.->|create and retain lifetime| State
         Bridge -->|start, signal stop, and join| Receiver
-        Demo -->|Publisher| State
         Receiver -->|Publisher| State
         State -->|Subscription| HTTP
     end
-    Native <-->|SimConnect| Simulator["MSFS2024"]
+    Native <-->|selected DLL| Source["Demo or SimConnect"]
     HTTP -->|Assets and SSE| Browser["Browser"]
 ```
 
@@ -217,7 +211,7 @@ The executable supplies a shutdown trigger to application composition. It accept
 
 ### Startup
 
-1. Validate configuration and the syntax of any selected SimConnect DLL path.
+1. Validate configuration and the selected DLL path syntax.
 2. Create the `waiting` telemetry channel and retain its lifetime handle.
 3. Bind HTTP with the prepared subscription. A failed bind prevents acquisition from starting.
 4. Start the HTTP task and the selected provider task.
@@ -259,7 +253,7 @@ The `msfs2024_artificial_horizon` library exposes these boundaries:
 | --- | --- |
 | Application assembly | Separate from reusable providers, telemetry, and HTTP |
 | Crate root | Re-exports `Config`, `ConfigError`, `Source`, `Server`, and `ServerError` |
-| Providers | Public interfaces through `providers::demo` and `providers::simconnect` |
+| Providers | Public native acquisition interface through `providers::simconnect` |
 
 Package organization follows these constraints:
 
