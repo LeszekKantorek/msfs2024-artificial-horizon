@@ -1046,6 +1046,37 @@ fn fault_correlated_definition_exception_isolated_from_other_fields() {
 }
 
 #[test]
+fn exception_before_sample_drops_same_frame_and_late_packets() {
+    let fixture = Fixture::new();
+    let (mut app, log) = start_fault(&fixture, "exception-before-sample.jsonl");
+    fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    let records = wait_fault_log_for(&log, Duration::from_secs(8), |r| {
+        r.iter().any(|v| {
+            v["kind"] == "instrument_sample"
+                && v["data"]["name"] == "AIRSPEED INDICATED"
+                && v["data"]["value"]["value"] == 190.0
+        })
+    });
+    let unavailable = records
+        .iter()
+        .position(|v| v["kind"] == "instrument_unavailable" && v["data"]["index"] == 0)
+        .unwrap();
+    assert!(
+        !records[unavailable + 1..]
+            .iter()
+            .any(|v| v["kind"] == "instrument_sample"
+                && v["data"]["name"] == "AIRSPEED INDICATED"
+                && v["data"]["value"]["value"] == 90.0)
+    );
+    let state = fault_snapshot(&app, |s| {
+        s["state"] == "live" && s["altitude_ft"] == 1000.0 && s.get("ias_kt").is_none()
+    });
+    assert!(state["attitude"].is_object());
+    app.assert_health();
+    app.shutdown();
+}
+
+#[test]
 fn fault_uncorrelated_exception_ends_source_but_preserves_http() {
     let fixture = Fixture::new();
     let (mut app, log) = start_fault(&fixture, "uncorrelated-exception.jsonl");
@@ -1390,6 +1421,78 @@ fn fault_stop_remains_responsive_under_dense_traffic() {
     );
     fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
     app.shutdown();
+}
+
+#[test]
+fn stop_interrupts_a_confirmed_queued_packet_burst() {
+    let fixture = Fixture::new();
+    let binary = fixture.binary();
+    let base = fs::read_to_string(fault_case("optional-definition.jsonl")).unwrap();
+    let mut input = base
+        .lines()
+        .filter(|line| !line.contains("api_fault"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    const FIRST: u32 = 0xf000;
+    const COUNT: u32 = 4096;
+    // One timestamp queues the whole burst while the emitter holds the state lock.
+    for id in FIRST..FIRST + COUNT {
+        let b = id.to_le_bytes();
+        input.push_str(&format!("\n{{\"type\":\"raw_packet\",\"at_us\":1000000,\"bytes_hex\":\"0c00000000000000{:02x}{:02x}{:02x}{:02x}\",\"returned_length\":12}}", b[0], b[1], b[2], b[3]));
+    }
+    let scenario = fixture.0.join("queued-burst.jsonl");
+    let log = fixture.0.join("queued-burst-log.jsonl");
+    fs::write(&scenario, input).unwrap();
+    let mut app = Application::start(
+        &binary,
+        &fixture.0,
+        &[
+            "--scenario",
+            scenario.to_str().unwrap(),
+            "--log",
+            log.to_str().unwrap(),
+        ],
+    );
+    fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    let deadline = Instant::now() + Duration::from_secs(8);
+    loop {
+        if fs::read_to_string(&log)
+            .unwrap_or_default()
+            .contains("\"id\":61440")
+        {
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "burst did not reach the receiver"
+        );
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    app.shutdown();
+    let records: Vec<serde_json::Value> = fs::read_to_string(&log)
+        .unwrap()
+        .lines()
+        .filter_map(|line| serde_json::from_str(line).ok())
+        .collect();
+    let received = records
+        .iter()
+        .filter(|v| {
+            v["kind"] == "dispatch"
+                && v["data"]["id"]
+                    .as_u64()
+                    .is_some_and(|id| id >= u64::from(FIRST) && id < u64::from(FIRST + COUNT))
+        })
+        .count();
+    // A partial burst proves Stop interrupted draining rather than following it.
+    assert!(
+        received > 0 && received < COUNT as usize,
+        "stop did not interrupt the burst: {received}"
+    );
+    assert!(
+        records
+            .iter()
+            .any(|v| v["kind"] == "session_end" && v["data"]["success"] == true)
+    );
 }
 fn start_fault(fixture: &Fixture, name: &str) -> (Application, PathBuf) {
     let binary = fixture.binary();

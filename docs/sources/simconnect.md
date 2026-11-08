@@ -306,9 +306,9 @@ The selected Demo subset and deferred mechanisms are distinct from simulator evi
 | Used export or boundary | Demo fault coverage | Deferred or separately tested behavior |
 | --- | --- | --- |
 | `SimConnect_Open` | One-based injected HRESULT; a later Open can recover | Other Open result shapes, including null success handles |
-| `SimConnect_AddToDataDefinition` | One-based HRESULT with optional native-name/unit selector | Other error channels and asynchronous exceptions |
+| `SimConnect_AddToDataDefinition` | One-based HRESULT with optional native-name/unit selector; correlated exception using the actual sent packet ID | Other error channels |
 | `SimConnect_SubscribeToSystemEvent` | One-based injected HRESULT | Name-specific selectors and asynchronous errors |
-| `SimConnect_GetNextDispatch` | Timed owned raw bytes with bounded advertised length | Injected HRESULT, null dispatch, and target SDK empty-queue tuple |
+| `SimConnect_GetNextDispatch` | Timed owned raw bytes with bounded advertised length; the observed official empty-queue tuple matches Demo | Injected HRESULT, null dispatch, and behavior in other SDK/runtime conditions |
 | `SimConnect_RequestDataOnSimObject` | One-based HRESULT with optional single-field selector; correlated exception using the actual sent packet ID | Other request modes |
 | `SimConnect_RequestSystemState` | One-based HRESULT and bounded transport silence | Other system-state requests |
 | `SimConnect_GetLastSentPacketID` | One-based HRESULT; an uncorrelated exception can terminate the source | Other correlation failures |

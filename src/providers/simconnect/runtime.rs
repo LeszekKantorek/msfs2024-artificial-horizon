@@ -667,6 +667,7 @@ fn session(
     configure(connection, journal)?;
     output.instruments.clear();
     let mut optional_packets = Vec::new();
+    let mut unavailable = [false; super::native::INSTRUMENT_FIELDS.len()];
     for (index, (name, units)) in super::native::INSTRUMENT_FIELDS.iter().enumerate() {
         let added = connection.add_instrument(index);
         if added.is_ok()
@@ -679,6 +680,7 @@ fn session(
         } else {
             added
         };
+        unavailable[index] = requested.is_err();
         if requested.is_ok()
             && let Ok(id) = connection.last_sent_packet_id()
         {
@@ -752,6 +754,7 @@ fn session(
                 } => {
                     if let Some((_, field)) = optional_packets.iter().find(|(id, _)| *id == send_id)
                     {
+                        unavailable[*field] = true;
                         output.instruments.remove(*field);
                         journal.record(
                             "instrument_unavailable",
@@ -815,7 +818,7 @@ fn session(
                         },
                         false,
                     );
-                    if lifecycle.active() {
+                    if lifecycle.active() && !unavailable[index] {
                         output.instruments.receive(index, value, packet_received_at);
                     }
                 }

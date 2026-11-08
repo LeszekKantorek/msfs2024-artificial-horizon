@@ -295,7 +295,11 @@ fn emit(s: &mut State, scenario: &Scenario, elapsed: u64, notification: usize) {
     s.life.through = elapsed;
     enum Due {
         Event(Event),
-        Packet(Vec<u8>),
+        Packet {
+            request: u32,
+            definition: u32,
+            bytes: Vec<u8>,
+        },
     }
     let mut due: Vec<(usize, Due)> = scenario
         .events
@@ -317,16 +321,29 @@ fn emit(s: &mut State, scenario: &Scenario, elapsed: u64, notification: usize) {
             for (value, _) in values {
                 b.extend(value.to_le_bytes());
             }
-            due.push((order, Due::Packet(packet(8, &b))));
+            due.push((
+                order,
+                Due::Packet {
+                    request,
+                    definition,
+                    bytes: packet(8, &b),
+                },
+            ));
         }
     }
     due.sort_by_key(|v| v.0);
     for (_, item) in due {
         match item {
             Due::Event(event) => apply_event(s, &event, elapsed, notification),
-            Due::Packet(packet) => {
-                if elapsed >= s.life.unavailable_until {
-                    send(s, notification, packet)
+            Due::Packet {
+                request,
+                definition,
+                bytes,
+            } => {
+                if elapsed >= s.life.unavailable_until
+                    && s.requests.contains(&(request, definition))
+                {
+                    send(s, notification, bytes)
                 }
             }
         }
