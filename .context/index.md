@@ -1,6 +1,7 @@
 | Entry | Use when |
 | --- | --- |
 | [Retrieve project sources](../.agents/skills/context-retrieve/SKILL.md) | Locating verified source passages for a concrete question before reasoning, planning, or preparing implementation context. |
+| [Context selection and retrieval delegation](context-retrival-delegation.md) | Selecting project sources, delegating retrieval, and passing context to agents. |
 | [Start the demo](../README.md#start-the-demo) | Building and running the demo for the first time. |
 | [User instructions](../README.md) | Finding first run, phone access, available behavior, and limitations. |
 | [Phone access](../README.md#use-your-phone) | Connecting a phone to the demo over the private LAN. |

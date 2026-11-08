@@ -22,6 +22,47 @@ Correct: each obligation can be checked separately.
 
 Use numbered steps when later actions depend on earlier results. Indent commands and results under their step.
 
+Incorrect: the bullets and table are detached from the step they qualify.
+
+```markdown
+1. Locate the affected claims.
+2. Compare each claim with its source.
+
+* Check units and thresholds.
+* Record unsupported changes.
+
+| Finding | Action |
+| --- | --- |
+| Missing evidence | Retain the unresolved question. |
+
+3. Report the findings.
+```
+
+Correct: keep the instructions and decision table inside the comparison step.
+
+```markdown
+1. Locate the affected claims.
+
+2. Compare each claim with its source.
+
+   Check the claims:
+
+   * Check units and thresholds.
+   * Record unsupported changes.
+
+   Select the next action:
+
+   | Finding | Action |
+   | --- | --- |
+   | Missing evidence | Retain the unresolved question. |
+
+3. Report the findings.
+```
+
+The indentation makes the checks and table part of Step 2. Without it, their relationship to the numbered procedure is ambiguous.
+
+Keep a command and its result inside the step that uses them:
+
 ````markdown
 1. Start the example server.
 
@@ -56,6 +97,20 @@ Alternative actions:
 | Authorized rewrite | Apply corrections and check the result. |
 ```
 
+### Grouped choices
+
+Use grouped bullets when options share a purpose and do not need individual explanations. State whether the reader selects one option or several, and distinguish examples from a closed set.
+
+```markdown
+Choose one format for presenting the result:
+
+* **For quick review:** summary, checklist, or comparison.
+* **For execution:** procedure, command sequence, or runbook.
+* **For reference:** specification, catalog, or structured record.
+```
+
+The introduction makes these alternatives rather than separate obligations. Use a decision table when the choice depends on conditions or consequences, and nested items when individual options need explanations.
+
 ## Meaning across table rows
 
 Source: “Cancellation signals both workers. Normal shutdown also joins their tasks.”
@@ -78,6 +133,7 @@ Correct: each row retains its complete behavior.
 | Normal shutdown | Signal both workers and join their tasks. |
 ```
 
+Each row can be read on its own without losing the shared signalling requirement.
 Use “then” only when the source establishes that order. Otherwise, retain “and”.
 
 ## Connected explanation
