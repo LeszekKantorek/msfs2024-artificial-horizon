@@ -56,7 +56,7 @@ impl Pause {
     pub fn flags(self) -> u32 {
         match self {
             Self::Off => 0,
-            Self::Normal => 1,
+            Self::Normal => 8,
             Self::Active => 4,
         }
     }

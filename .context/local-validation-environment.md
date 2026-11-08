@@ -31,6 +31,10 @@ If `PLAYWRIGHT_MODULE` cannot be resolved, check for an existing Playwright inst
 
 An `EACCES` connection failure to `127.0.0.1` can indicate that the current sandbox blocks loopback, even after Playwright loads successfully. Check the error and fixture environment first. If loopback is blocked, use an approved environment with loopback access. Do not treat a missing module, a browser launch error, and a blocked connection as the same failure.
 
+## A local recorder cannot connect
+
+An `EACCES` connection failure to `127.0.0.1` can also affect a Node recorder connecting to a locally started application. Check the application's listening address and port, then check whether the execution environment permits loopback connections. If sandbox restrictions block the connection, rerun the recorder and application together in an approved environment with loopback access. Record both attempts and their outcomes; the error alone does not establish the cause.
+
 ## Rust tests encounter sandbox restrictions
 
 Local socket or filesystem permission failures can prevent integration tests from exercising their intended behavior. Record the failing tests and native errors. Verify whether the execution environment permits their required loopback and file operations. If those operations are blocked, use an appropriately approved environment. Rerun the affected tests and retain their actual outcomes. Do not infer that every permission error is caused by sandboxing.

@@ -442,7 +442,7 @@ fn actual_dll_notifies_and_retains_packets() {
             }
             if id == 8 && u32::from_le_bytes(b[12..16].try_into().unwrap()) == 41 {
                 assert_eq!(f64::from_le_bytes(b[40..48].try_into().unwrap()), 70.0);
-                if current_pause == 1 {
+                if current_pause == 8 {
                     paused_samples[0] = true;
                 }
                 if current_pause == 4 {
@@ -450,7 +450,7 @@ fn actual_dll_notifies_and_retains_packets() {
                 }
             }
         }
-        assert_eq!(pause_flags, vec![0, 1, 4]);
+        assert_eq!(pause_flags, vec![0, 8, 4]);
         assert!(flight_event);
         assert_eq!(paused_samples, [true, true]);
         assert_eq!(close(h), 0);
