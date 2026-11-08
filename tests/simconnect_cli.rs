@@ -626,6 +626,15 @@ fn explicit_scenario_reaches_sse_and_independent_gap_expiry() {
         .lines()
         .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
         .collect();
+    let pause_flags: Vec<u64> = records
+        .iter()
+        .filter(|r| r["kind"] == "dispatch" && r["data"]["message"]["Event"]["event_id"] == 11)
+        .filter_map(|r| r["data"]["message"]["Event"]["data"].as_u64())
+        .collect();
+    assert!(
+        pause_flags.windows(4).any(|flags| flags == [8, 0, 4, 0]),
+        "expected Escape and Active Pause flags with resumes, got {pause_flags:?}"
+    );
     let observed = records
         .iter()
         .filter(|r| {
