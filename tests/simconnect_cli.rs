@@ -1050,6 +1050,78 @@ fn exception_before_sample_drops_same_frame_and_late_packets() {
     let fixture = Fixture::new();
     let (mut app, log) = start_fault(&fixture, "exception-before-sample.jsonl");
     fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    let mut stream = app.request("/api/v1/events");
+    stream
+        .set_read_timeout(Some(Duration::from_millis(200)))
+        .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(8);
+    let mut pending = String::new();
+    let mut saw_initial = false;
+    let mut unavailable_at: Option<Instant> = None;
+    let mut saw_raw_and_later_snapshot = false;
+    while Instant::now() < deadline {
+        let mut bytes = [0; 8192];
+        match stream.read(&mut bytes) {
+            Ok(0) => panic!("SSE closed: {}", app.messages()),
+            Ok(n) => pending.push_str(&String::from_utf8_lossy(&bytes[..n])),
+            Err(e)
+                if matches!(
+                    e.kind(),
+                    std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock
+                ) =>
+            {
+                continue;
+            }
+            Err(e) => panic!("{e}"),
+        }
+        while let Some(end) = pending.find('\n') {
+            let line = pending[..end].trim_end_matches('\r').to_owned();
+            pending.drain(..=end);
+            let Some(data) = line.strip_prefix("data: ") else {
+                continue;
+            };
+            let Ok(snapshot) = serde_json::from_str::<serde_json::Value>(data) else {
+                continue;
+            };
+            if snapshot["state"] != "live" || snapshot["altitude_ft"] != 1000.0 {
+                continue;
+            }
+            let raw_seen = fs::read_to_string(&log)
+                .unwrap_or_default()
+                .lines()
+                .any(|line| {
+                    line.contains("\"name\":\"AIRSPEED INDICATED\"")
+                        && line.contains("\"value\":190.0")
+                });
+            if let Some(start) = unavailable_at {
+                assert!(
+                    snapshot.get("ias_kt").is_none(),
+                    "IAS returned after correlated failure: {snapshot}"
+                );
+                saw_raw_and_later_snapshot |= raw_seen;
+                if start.elapsed() >= Duration::from_millis(1200) && saw_raw_and_later_snapshot {
+                    break;
+                }
+            } else if snapshot["ias_kt"] == 90.0 {
+                saw_initial = true;
+            } else if saw_initial && snapshot.get("ias_kt").is_none() {
+                assert!(
+                    !raw_seen,
+                    "late raw packet arrived before SSE established unavailable state"
+                );
+                unavailable_at = Some(Instant::now());
+            }
+        }
+        if unavailable_at.is_some_and(|start| start.elapsed() >= Duration::from_millis(1200))
+            && saw_raw_and_later_snapshot
+        {
+            break;
+        }
+    }
+    assert!(
+        saw_initial && unavailable_at.is_some() && saw_raw_and_later_snapshot,
+        "did not observe the full exception and late-packet SSE window"
+    );
     let records = wait_fault_log_for(&log, Duration::from_secs(8), |r| {
         r.iter().any(|v| {
             v["kind"] == "instrument_sample"
@@ -1068,10 +1140,6 @@ fn exception_before_sample_drops_same_frame_and_late_packets() {
                 && v["data"]["name"] == "AIRSPEED INDICATED"
                 && v["data"]["value"]["value"] == 90.0)
     );
-    let state = fault_snapshot(&app, |s| {
-        s["state"] == "live" && s["altitude_ft"] == 1000.0 && s.get("ias_kt").is_none()
-    });
-    assert!(state["attitude"].is_object());
     app.assert_health();
     app.shutdown();
 }
