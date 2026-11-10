@@ -44,8 +44,6 @@ Choose how to perform the review:
 | Delegation is authorized and available | Supply reviewers with the scope, context, permitted methods, and Steps 3–5. Require findings and coverage evidence. |
 | Delegation is unauthorized or unavailable | Perform the authorized local review and identify it as self-review. Selecting this skill does not authorize delegation. |
 | Several reviewers are authorized | Assign complementary mechanisms, such as semantic flow and resource lifecycle. Require a local maintainability pass in each assignment. |
-| Independent discovery is requested | Withhold previous findings until reports arrive. |
-| Regression review is requested | Supply earlier findings and require a disposition for each. |
 
 * Continue when each selected mechanism has governing context or a recorded gap, and responsibility for inspection is assigned.
 
@@ -87,7 +85,7 @@ Choose how to perform the review:
 ### 5. Assess candidates and reconcile reports
 
 * For delegated work, wait for returned reports. Mark interrupted, failed, or unreturned assignments as incomplete.
-* Check candidates from Steps 3–4 against current source, governing decisions, and counterevidence. Historical reports supply questions, not proof of current defects.
+* Check candidates from Steps 3–4 against current source, governing decisions, and counterevidence.
 * Require severity, file and line, evidence, consequence, smallest correction, and correction cost for each supported finding.
 * Distinguish implementation defects, maintenance costs, contradictory requirements, and missing evidence. Use the table to determine their disposition.
 
@@ -100,7 +98,6 @@ Choose how to perform the review:
 | Reviewers disagree | Compare their evidence and assumptions. Finding counts and repeated votes do not determine severity. |
 
 * Record other evidence states explicitly when these rows do not describe them.
-* For supplied earlier findings, record rediscovered, excluded with counterevidence, unresolved, or not examined. Silence does not establish resolution.
 * Continue when material candidates have dispositions and incomplete assignments remain visible. Zero findings is valid.
 
 ### 6. Deliver findings or verify authorized corrections

@@ -1,7 +1,6 @@
 | Entry | Use when |
 | --- | --- |
 | [Project review](../.agents/skills/project-review-change/SKILL.md) | Reviewing a scoped implementation or diff across contracts, lifecycle, maintainability, and test evidence. |
-| [Review evidence](review-evidence.md) | Interpreting historical review findings, complementary review scopes, and limits of comparisons between skills. |
 | [Retrieve project sources](../.agents/skills/context-retrieve/SKILL.md) | Locating verified source passages for a concrete question before reasoning, planning, or preparing implementation context. |
 | [Context selection and retrieval delegation](context-retrival-delegation.md) | Selecting project sources, delegating retrieval, and passing context to agents. |
 | [Start the demo](../README.md#start-the-demo) | Building and running the demo for the first time. |
