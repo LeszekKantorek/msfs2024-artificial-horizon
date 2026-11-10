@@ -91,5 +91,5 @@ Maintain each procedure in its owning `SKILL.md` under the [source ownership rul
 | [project-diagnose-failure](.agents/skills/project-diagnose-failure/SKILL.md) | Diagnose an observed application, test, build, or environment failure |
 | [project-validate-presentation](.agents/skills/project-validate-presentation/SKILL.md) | Validate EFI presentation and report the limits of desktop and device evidence |
 | [project-prepare-pr](.agents/skills/project-prepare-pr/SKILL.md) | Prepare a local PR description or publish the requested PR with accurate acceptance evidence |
-| [project-review-change](.agents/skills/project-review-change/SKILL.md) | Obtain and assess an independent diff review when delegation is authorized |
+| [project-review-change](.agents/skills/project-review-change/SKILL.md) | Review a diff or scoped implementation across contracts, lifecycle, maintainability, and evidence; delegate only when authorized |
 | [project-decide-architecture](.agents/skills/project-decide-architecture/SKILL.md) | Compare architecture options and record an ADR with its actual decision status |
