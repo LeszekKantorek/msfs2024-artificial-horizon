@@ -117,7 +117,7 @@ pub fn load_definition() -> Result<super::Definition, SimConnectError> {
 }
 
 pub fn validate_library(path: &Path) -> Result<(), SimConnectError> {
-    Library::load(path).map(|_| ()).map_err(|error| {
+    super::pe::validate(path).map_err(|error| {
         SimConnectError::Native(format!("{error}; selected DLL: {}", path.display()))
     })
 }
@@ -872,6 +872,8 @@ fn session(
                     break;
                 }
                 Err(error) => {
+                    lifecycle.disconnect();
+                    output.update(lifecycle, journal, Instant::now(), None)?;
                     journal.record("native_error", || json!(&error), true);
                     // Decoder/ABI errors are fatal, never retried as routine disconnects.
                     if error.operation == "SimConnect_GetNextDispatch"
@@ -888,7 +890,86 @@ fn session(
             last_packet = Instant::now();
             let is_attitude = matches!(packet.message, Message::Grouped { .. });
             let mut received_at = None;
+            if matches!(
+                packet.message,
+                Message::Quit | Message::Exception { exception: 1.., .. }
+            ) {
+                lifecycle.disconnect();
+                output.update(lifecycle, journal, Instant::now(), None)?;
+            }
+            let mut grouped_record = None;
+            let mut system_record = None;
+            match &packet.message {
+                Message::Event {
+                    event_id: lifecycle::EVENT_SIM,
+                    data,
+                } => lifecycle.sim(*data != 0),
+                Message::Event {
+                    event_id: lifecycle::EVENT_PAUSE,
+                    data,
+                } => lifecycle.pause(*data),
+                Message::Filename {
+                    event_id: lifecycle::EVENT_FLIGHT,
+                    filename,
+                    ..
+                } => {
+                    output.instruments.clear();
+                    lifecycle.flight(filename, true);
+                }
+                Message::SystemState {
+                    request_id,
+                    integer,
+                    float,
+                    string,
+                } => {
+                    system_record = Some((*request_id, *float));
+                    match *request_id {
+                        lifecycle::STATE_SIM => lifecycle.sim(*integer != 0),
+                        lifecycle::STATE_FLIGHT => {
+                            if lifecycle.flight_id() != Some(string.as_str()) {
+                                output.instruments.clear();
+                            }
+                            lifecycle.flight(string, false);
+                        }
+                        _ => {}
+                    }
+                }
+                Message::Grouped { values } => {
+                    use super::mapping::Field;
+                    sample_index += 1;
+                    let radians = [
+                        values[Field::Pitch as usize].unwrap_or(f64::NAN),
+                        values[Field::Roll as usize].unwrap_or(f64::NAN),
+                    ];
+                    let candidate = candidate_attitude(radians);
+                    grouped_record = Some((sample_index, **values, lifecycle.active(), radians));
+                    if lifecycle.active() && candidate.is_ok() {
+                        for mapping in &definition.mappings {
+                            if !matches!(mapping.field, Field::Pitch | Field::Roll) {
+                                output.instruments.receive(
+                                    mapping.field,
+                                    values[mapping.field as usize].unwrap_or(f64::NAN),
+                                    packet_received_at,
+                                );
+                            }
+                        }
+                    } else {
+                        output.instruments.clear();
+                    }
+                    lifecycle.sample(candidate, packet_received_at);
+                    received_at = Some(packet_received_at);
+                }
+                _ => {}
+            }
+            // Publish urgent lifecycle, validity and availability changes before diagnostic I/O.
+            output.update(lifecycle, journal, Instant::now(), received_at)?;
             journal.record("dispatch", || json!(&packet), !is_attitude);
+            if let Some((request_id, float)) = system_record {
+                journal.record("system_state_float", || json!({ "request_id": request_id, "raw": number(f64::from(float)), "native_f32_bits_hex": format!("{:08x}", float.to_bits()) }), false);
+            }
+            if let Some((sample_index, values, active, radians)) = grouped_record {
+                journal.record("grouped_sample", || json!({"sample_index":sample_index,"values":values.iter().map(|v| v.map(number)).collect::<Vec<_>>(),"active":active,"validation_error":candidate_attitude(radians).err().map(|error| error.to_string())}), false);
+            }
             match packet.message {
                 Message::Quit => {
                     journal.record(
@@ -938,68 +1019,8 @@ fn session(
                         exception_name(exception).unwrap_or("unknown")
                     )));
                 }
-                Message::Event {
-                    event_id: lifecycle::EVENT_SIM,
-                    data,
-                } => lifecycle.sim(data != 0),
-                Message::Event {
-                    event_id: lifecycle::EVENT_PAUSE,
-                    data,
-                } => lifecycle.pause(data),
-                Message::Filename {
-                    event_id: lifecycle::EVENT_FLIGHT,
-                    filename,
-                    ..
-                } => {
-                    output.instruments.clear();
-                    lifecycle.flight(&filename, true);
-                }
-                Message::SystemState {
-                    request_id,
-                    integer,
-                    float,
-                    string,
-                } => {
-                    journal.record(
-                        "system_state_float",
-                        || {
-                            json!({ "request_id": request_id, "raw": number(f64::from(float)),
-                            "native_f32_bits_hex": format!("{:08x}", float.to_bits()) })
-                        },
-                        false,
-                    );
-                    match request_id {
-                        lifecycle::STATE_SIM => lifecycle.sim(integer != 0),
-                        lifecycle::STATE_FLIGHT => {
-                            if lifecycle.flight_id() != Some(string.as_str()) {
-                                output.instruments.clear();
-                            }
-                            lifecycle.flight(&string, false);
-                        }
-                        _ => {}
-                    }
-                }
-                Message::Grouped { values } => {
-                    let now = packet_received_at;
-                    sample_index += 1;
-                    let radians = [values[0].unwrap_or(f64::NAN), values[1].unwrap_or(f64::NAN)];
-                    let candidate = candidate_attitude(radians);
-                    journal.record("grouped_sample", || json!({"sample_index":sample_index,"values":values.iter().map(|v| v.map(number)).collect::<Vec<_>>(),"active":lifecycle.active(),"validation_error":candidate.as_ref().err().map(ToString::to_string)}), false);
-                    if lifecycle.active() && candidate.is_ok() {
-                        for (index, value) in values[2..].iter().enumerate() {
-                            output
-                                .instruments
-                                .receive(index, value.unwrap_or(f64::NAN), now);
-                        }
-                    } else {
-                        output.instruments.clear();
-                    }
-                    lifecycle.sample(candidate, now);
-                    received_at = Some(now);
-                }
                 _ => {}
             }
-            output.update(lifecycle, journal, Instant::now(), received_at)?;
         }
         let now = Instant::now();
         output.update(lifecycle, journal, now, None)?;
@@ -1195,12 +1216,16 @@ mod tests {
             .unwrap();
         let equal = serde_json::to_value(subscription.snapshot()).unwrap();
         assert_eq!(equal["sequence"], first["sequence"].as_u64().unwrap() + 1);
-        output
-            .instruments
-            .receive(0, f64::NAN, now - Duration::from_millis(900));
-        output
-            .instruments
-            .receive(3, 1234.0, now - Duration::from_millis(900));
+        output.instruments.receive(
+            super::super::mapping::Field::IndicatedAirspeed,
+            f64::NAN,
+            now - Duration::from_millis(900),
+        );
+        output.instruments.receive(
+            super::super::mapping::Field::BarometricAltitude,
+            1234.0,
+            now - Duration::from_millis(900),
+        );
         output.update(&lifecycle, &mut journal, now, None).unwrap();
         let optional = serde_json::to_value(subscription.snapshot()).unwrap();
         assert_eq!(optional["state"], "live");
@@ -1513,9 +1538,11 @@ mod tests {
         lifecycle.pause(0);
         lifecycle.flight("test.flt", true);
         let now = Instant::now();
-        output
-            .instruments
-            .receive(0, 120.0, now - Duration::from_millis(900));
+        output.instruments.receive(
+            super::super::mapping::Field::IndicatedAirspeed,
+            120.0,
+            now - Duration::from_millis(900),
+        );
         lifecycle.sample(Ok(telemetry::Attitude::new(0.0, 0.0).unwrap()), now);
         output
             .update(&lifecycle, &mut journal, now, Some(now))
@@ -1563,7 +1590,9 @@ mod tests {
         let still_stale = serde_json::to_value(subscription.snapshot()).unwrap();
         assert_eq!(still_stale["state"], "stale");
         assert!(still_stale.get("ias_kt").is_none());
-        output.instruments.receive(0, 130.0, now);
+        output
+            .instruments
+            .receive(super::super::mapping::Field::IndicatedAirspeed, 130.0, now);
         lifecycle.pause(4);
         output.update(&lifecycle, &mut journal, now, None).unwrap();
         lifecycle.pause(0);

@@ -4,7 +4,7 @@ Demo uses the project-owned `demo.dll` through the same native receiver and HTTP
 
 ## Requirements and usage
 
-* Build the workspace to place `demo.dll` beside the executable. The DLL requires no simulator or official SDK.
+* Build the workspace to place `demo.dll` beside the executable, and copy `default.json` beside it. The DLL requires no simulator or official SDK.
 * Omit `--source`, select `--source demo.dll`, or provide an absolute path whose basename is `demo.dll`.
 * Select an authored JSONL file for every Demo run with `--scenario <path>`. Relative scenario paths resolve against the working directory. Restart to load changes.
 * Use `--log <path>` for optional synthetic native diagnostics. The browser remains read-only.
@@ -149,7 +149,7 @@ For grouped requests, Demo encodes a missing optional floating-point observation
 
 Demo must match SimConnect delivery semantics for the requests used by the application.
 The grouped request uses `SIMCONNECT_PERIOD_SIM_FRAME`, flags 0, origin 0, the configured interval, and limit 0.
-Demo schedules the first eligible frame and then skips the specified number of frames between scheduled deliveries. A gap, fault, or skipped frame can suppress a scheduled delivery without shifting the schedule. Interval 0 sends every frame; interval 1 sends every other frame. Scenario time advances independently of delivery, including when frames are skipped. This interpretation of nonzero intervals has not been verified against the official runtime.
+Demo schedules the first eligible frame and then schedules every `max(1, interval)` frames. A gap, fault, or skipped frame can suppress a scheduled delivery without shifting the schedule. Intervals 0 and 1 send every frame; interval 2 sends every other frame. Scenario time advances independently of delivery, including when frames are skipped. A bounded official-DLL observation supports these settings relative to a separate interval-zero request; it did not independently observe simulator frame events.
 The [SimConnect request contract](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_requestdataonsimobject/) distinguishes flags 0 from SIMCONNECT_DATA_REQUEST_FLAG_CHANGED.
 The application does not request the CHANGED flag. Do not enable equivalent filtering implicitly in Demo.
 
@@ -179,7 +179,7 @@ A scenario may provide any subset of signals, only lifecycle events, or no signa
 
 For integer datatypes, Demo sends only finite integral values within the requested type's range. A fractional or out-of-range value suppresses the complete packet instead of saturating it. This conversion policy is synthetic; it does not establish the official DLL's conversion behavior.
 
-Unreceived readings are internally unavailable (`None`). Existing SSE represents unavailable attitude and sample age as null and omits absent optional instrument fields. State, source, and sequence remain present. A received zero is a real observation subject to normal validation and freshness.
+Unreceived readings are internally unavailable (`None`). SSE represents unavailable attitude as null and omits absent optional instrument fields. Sample age is null before the first accepted sample and otherwise retains the age of the last accepted sample. State, source, and sequence remain present. A received zero is a real observation subject to normal validation and freshness.
 
 ### Lifecycle and faults
 
@@ -222,12 +222,12 @@ The [independent checkpoint fixture](../../tests/fixtures/demo-evidence.md) supp
 | Authored native input | Receipt diagnostic | Eligible final SSE value or rule |
 | --- | --- | --- |
 | Pitch and bank, radians | `grouped_sample` records raw values and the validation error, if any | Negate both, convert to degrees, and wrap roll to `[-180, 180)`. Reject invalid pitch or nonfinite attitude. A grouped packet requires both components. |
-| IAS, TAS, GS in knots; altitude in feet; VSI in feet per minute; turn rate in degrees per second | `grouped_sample` identifies the native name, index, value, and active gate | `ias_kt`, `tas_kt`, `gs_kt`, `altitude_ft`, `vertical_speed_fpm`, and `turn_rate_dps` retain valid native values. Speeds must be nonnegative. |
+| IAS, TAS, GS in knots; altitude in feet; VSI in feet per minute; turn rate in degrees per second | `grouped_sample` records values in canonical field order and the active gate | `ias_kt`, `tas_kt`, `gs_kt`, `altitude_ft`, `vertical_speed_fpm`, and `turn_rate_dps` retain valid native values. Speeds must be nonnegative. |
 | Magnetic heading and selected heading, degrees | `grouped_sample` | Wrap to `[0, 360)`. Selected heading also requires a finite nonzero `AUTOPILOT AVAILABLE`. |
 | Ball position | `grouped_sample` | Divide by 127 for `slip_skid`; reject values outside `[-1, 1]`. |
 | KOHLSMAN setting, inHg | `grouped_sample` | Multiply by `33.8638866667` for `baro_setting.pressure_hpa`; the receiver also formats `baro_text` in inHg. Invalid pressure is omitted. |
 | VS0, VS1, minimum rotation, and barber pole, knots | `grouped_sample` | Positive valid values populate the corresponding partial `airspeed_profile`; unsupported profile fields remain absent. |
-| Autopilot availability, selected altitude, and radio mode | `grouped_sample` for each | `selected_altitude_ft` requires finite nonzero availability and radio mode equal to 0. Each gate and target must remain fresh. |
+| Autopilot availability, selected altitude, and radio mode | `grouped_sample` | `selected_altitude_ft` requires finite nonzero availability and radio mode equal to 0. Each gate and target must remain fresh. |
 | IAS history | Grouped sample IAS values | `ias_acceleration_ktps` derives from valid IAS acquisitions and their receiver times over a 500 ms window; it is not an authored native field. |
 
 A receipt is not proof of a final value: the worker logs raw observations even when lifecycle blocks publication. The `state_transition` record includes a published snapshot only on a transition, not for every instrument update. Capture SSE for other final checkpoints. SSE delivers latest snapshots and can coalesce publications, so do not assume a one-to-one packet count or exact wall-clock equality.

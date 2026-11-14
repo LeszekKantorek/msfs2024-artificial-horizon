@@ -614,12 +614,24 @@ pub struct Subscription {
 pub fn channel(source: Source) -> (Publisher, Subscription) {
     make_channel(source, 500, false)
 }
-pub(crate) struct ScheduleGuard(tokio::task::JoinHandle<()>);
+pub struct ScheduleGuard(tokio::task::JoinHandle<()>);
 impl Drop for ScheduleGuard {
     fn drop(&mut self) {
         self.0.abort();
     }
 }
+/// Create a shared scheduled channel. Retain the guard while serving subscribers.
+/// The period must be within the same range accepted by application configuration.
+pub fn channel_with_schedule(
+    source: Source,
+    interval_ms: u32,
+) -> Result<(Publisher, Subscription, ScheduleGuard), crate::ConfigError> {
+    if !(1..=1_431_655_764).contains(&interval_ms) {
+        return Err(crate::ConfigError::InvalidSseInterval);
+    }
+    Ok(scheduled_channel(source, interval_ms))
+}
+
 /// Create the shared source cache and ordinary publication schedule.
 pub(crate) fn scheduled_channel(
     source: Source,
@@ -809,6 +821,9 @@ impl Publisher {
     }
 }
 impl Subscription {
+    pub(crate) fn interval_ms(&self) -> u32 {
+        self.receiver.borrow().sse_interval_ms
+    }
     /// Obtain current state and acknowledge it atomically, including on subscription.
     pub fn snapshot_and_update(&mut self) -> Snapshot {
         self.receiver.borrow_and_update().snapshot()

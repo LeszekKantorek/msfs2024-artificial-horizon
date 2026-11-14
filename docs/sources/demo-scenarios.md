@@ -13,8 +13,8 @@ The suite contains a narrated flight, focused availability and lifecycle inputs,
 | No signals | Initial lifecycle without instrument tracks | Repeats until shutdown | [No signals](../../demo-scenarios/no-signal.jsonl) | Not specified |
 | Startup retry | First Open fails; the following attempt recovers | Continues with live data and HTTP available | [Scenario](../../demo-scenarios/errors/startup-retry.jsonl) | Not specified |
 | Definition failure | Fail a mapping registration | Producer terminates and HTTP remains available | [Scenario](../../demo-scenarios/errors/optional-definition.jsonl) | Not specified |
-| Legacy optional request failure | Selector targets a former single-field request | Not applicable to the grouped request | [Scenario](../../demo-scenarios/errors/optional-request.jsonl) | Not specified |
-| Legacy optional exception | Refers to a former optional request sequence | Requires a grouped-request fixture before use | [Scenario](../../demo-scenarios/errors/optional-exception.jsonl) | Not specified |
+| Grouped request failure | Fail the grouped request | Producer terminates and HTTP remains available | [Scenario](../../demo-scenarios/errors/optional-request.jsonl) | Not specified |
+| Grouped request exception | Correlate a failure with the grouped request | Producer terminates and HTTP remains available | [Scenario](../../demo-scenarios/errors/optional-exception.jsonl) | Not specified |
 | Exception before sample | Deliver a correlated failure before a same-frame sample and inject a later stale packet | Producer terminates and late data cannot restore it | [Scenario](../../demo-scenarios/errors/exception-before-sample.jsonl) | Not specified |
 | Definition exception | Correlate an asynchronous failure with a definition entry | Producer terminates and HTTP remains available | [Scenario](../../demo-scenarios/errors/definition-exception.jsonl) | Not specified |
 | Uncorrelated exception | Deliver a native exception without a matching request | Producer ends while HTTP remains available | [Scenario](../../demo-scenarios/errors/uncorrelated-exception.jsonl) | Not specified |

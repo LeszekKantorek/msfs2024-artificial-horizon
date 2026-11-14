@@ -118,7 +118,9 @@ Check the environment before starting development:
 2. Start the demo:
 
    ```powershell
-   cargo run --locked --bin msfs2024-artificial-horizon -- --scenario demo-scenarios/demo-scenario.jsonl
+   cargo build --workspace --locked --target x86_64-pc-windows-msvc
+   Copy-Item default.json target/x86_64-pc-windows-msvc/debug/default.json
+   cargo run --locked --target x86_64-pc-windows-msvc --bin msfs2024-artificial-horizon -- --scenario demo-scenarios/demo-scenario.jsonl
    ```
 
 3. Open [http://127.0.0.1:8080](http://127.0.0.1:8080).

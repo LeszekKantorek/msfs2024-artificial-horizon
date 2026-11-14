@@ -2,26 +2,54 @@
 use serde::Deserialize;
 use std::{collections::HashSet, ffi::CString, path::Path};
 
-const FIELDS: [(&str, &str); 19] = [
-    ("pitch", "radians"),
-    ("roll", "radians"),
-    ("indicated_airspeed", "knots"),
-    ("true_airspeed", "knots"),
-    ("ground_speed", "knots"),
-    ("barometric_altitude", "feet"),
-    ("baro_setting", "inHg"),
-    ("vertical_speed", "feet per minute"),
-    ("heading", "degrees"),
-    ("slip_skid", "position 128"),
-    ("turn_rate", "degrees per second"),
-    ("vs0", "knots"),
-    ("vs1", "knots"),
-    ("rotation_speed", "knots"),
-    ("maximum_airspeed", "knots"),
-    ("autopilot_available", "bool"),
-    ("selected_heading", "degrees"),
-    ("selected_altitude", "feet"),
-    ("autopilot_alt_radio_mode", "bool"),
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[repr(usize)]
+pub(super) enum Field {
+    Pitch,
+    Roll,
+    IndicatedAirspeed,
+    TrueAirspeed,
+    GroundSpeed,
+    BarometricAltitude,
+    BaroSetting,
+    VerticalSpeed,
+    Heading,
+    SlipSkid,
+    TurnRate,
+    Vs0,
+    Vs1,
+    RotationSpeed,
+    MaximumAirspeed,
+    AutopilotAvailable,
+    SelectedHeading,
+    SelectedAltitude,
+    AutopilotAltRadioMode,
+}
+
+const FIELDS: [(Field, &str, &str); 19] = [
+    (Field::Pitch, "pitch", "radians"),
+    (Field::Roll, "roll", "radians"),
+    (Field::IndicatedAirspeed, "indicated_airspeed", "knots"),
+    (Field::TrueAirspeed, "true_airspeed", "knots"),
+    (Field::GroundSpeed, "ground_speed", "knots"),
+    (Field::BarometricAltitude, "barometric_altitude", "feet"),
+    (Field::BaroSetting, "baro_setting", "inHg"),
+    (Field::VerticalSpeed, "vertical_speed", "feet per minute"),
+    (Field::Heading, "heading", "degrees"),
+    (Field::SlipSkid, "slip_skid", "position 128"),
+    (Field::TurnRate, "turn_rate", "degrees per second"),
+    (Field::Vs0, "vs0", "knots"),
+    (Field::Vs1, "vs1", "knots"),
+    (Field::RotationSpeed, "rotation_speed", "knots"),
+    (Field::MaximumAirspeed, "maximum_airspeed", "knots"),
+    (Field::AutopilotAvailable, "autopilot_available", "bool"),
+    (Field::SelectedHeading, "selected_heading", "degrees"),
+    (Field::SelectedAltitude, "selected_altitude", "feet"),
+    (
+        Field::AutopilotAltRadioMode,
+        "autopilot_alt_radio_mode",
+        "bool",
+    ),
 ];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -65,7 +93,7 @@ impl NumericType {
 
 #[derive(Debug)]
 pub(super) struct Mapping {
-    pub field: usize,
+    pub field: Field,
     pub field_name: String,
     pub simvar: CString,
     pub unit: CString,
@@ -106,7 +134,7 @@ impl Definition {
         let mut offset = 0;
         for mapping in &self.mappings {
             let end = offset + mapping.datatype.size();
-            values[mapping.field] = mapping.datatype.decode(&payload[offset..end]);
+            values[mapping.field as usize] = mapping.datatype.decode(&payload[offset..end]);
             offset = end;
         }
         Ok(values)
@@ -127,14 +155,14 @@ impl Definition {
             let entry: Entry = serde_json::from_value(value)
                 .map_err(|error| format!("mapping entry {index}: {error}"))?;
             let err = |message: &str| format!("mapping entry {index} ({}): {message}", entry.field);
-            let field = FIELDS
+            let &(field, _, unit_name) = FIELDS
                 .iter()
-                .position(|(field, _)| *field == entry.field)
+                .find(|(_, name, _)| *name == entry.field)
                 .ok_or_else(|| err("unknown field"))?;
             if !seen.insert(field) {
                 return Err(err("duplicate field"));
             }
-            if entry.unit != FIELDS[field].1 {
+            if entry.unit != unit_name {
                 return Err(err("unit has no conversion for this field"));
             }
             let datatype = match entry.datatype.as_str() {
@@ -160,8 +188,8 @@ impl Definition {
                 type_name: entry.datatype,
             });
         }
-        for (index, (field, _)) in FIELDS.iter().enumerate() {
-            if !seen.contains(&index) {
+        for (id, field, _) in FIELDS {
+            if !seen.contains(&id) {
                 return Err(format!("missing required mapping {field}"));
             }
         }

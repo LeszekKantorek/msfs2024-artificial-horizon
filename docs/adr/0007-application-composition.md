@@ -21,7 +21,7 @@ The application needs to retain unavailable state without adding another receive
 | --- | --- |
 | Application composition | Select one source, validate configuration, create the channel, bind HTTP, and start the components |
 | `Server::bind(config, subscription)` | Receive an existing subscription. The server neither owns a `Publisher` nor starts a provider |
-| `Config` | Contain HTTP address and port only |
+| `Config` | Contain HTTP address, port, and SSE interval |
 | `SourceSelection` | Belong to application composition |
 | Native sources | Use the same receiver, dedicated native worker, `RunReport`, and optional diagnostics for Demo and SimConnect |
 | Telemetry and SSE | Keep the v1 contracts. Detailed source errors remain diagnostic output |
@@ -32,12 +32,12 @@ Startup preserves these boundaries:
 
 * Validate source selection and configuration before binding HTTP. Invalid configuration or a failed bind prevents producer startup. Bind HTTP before starting acquisition.
 * The Demo DLL validates scenario file contents on its first Open. A scenario error stops the producer while HTTP remains available.
-* DLL availability, exported functions, simulator connection, and flight readiness are producer concerns and do not delay HTTP startup.
+* Startup inspects the DLL file and required exports without loading it before binding. Worker initialization, dependency loading, simulator connection, and flight readiness remain producer concerns after binding.
 
 Publication ownership follows this sequence:
 
 1. Composition retains a nonpublishing handle to the same watch channel. Only the provider holds active publication while it runs.
-2. After the provider releases its publisher, composition recovers the latest state and publishes `disconnected`.
+2. The provider publishes `disconnected` on terminal paths before cleanup. After it releases its publisher, composition recovers the latest state and publishes `disconnected` as a fallback.
 3. The channel remains available to existing and new HTTP clients until application shutdown.
 
 Recovery preserves source identity, sequence continuity, and the last accepted sample time.

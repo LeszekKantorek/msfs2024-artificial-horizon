@@ -7,6 +7,7 @@ mod journal;
 mod lifecycle;
 mod mapping;
 mod native;
+mod pe;
 mod runtime;
 
 pub use journal::DiagnosticStatus;

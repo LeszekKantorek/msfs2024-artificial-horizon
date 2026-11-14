@@ -19,7 +19,7 @@ User-aircraft flight instrument reception with optional diagnostics.
 
 ### Run a session
 
-1. Place the official `SimConnect.dll` beside the executable.
+1. Place the official `SimConnect.dll` and the validated `default.json` beside the executable.
    For Cargo runs, use the applicable Cargo output directory.
 2. From the repository root, start the application:
 
@@ -68,7 +68,7 @@ The CLI applies these restrictions:
 | Default location | Beside the EXE, independent of the working directory |
 | Search | No `PATH`, working-directory, or SDK search. No fallback after explicit selection |
 | Dependencies | Selected DLL directory and Windows system directory only |
-| Errors | Missing DLL, incompatible architecture, or missing exports stop the producer. HTTP remains available |
+| Errors | Missing DLL, incompatible architecture, or missing exports stop startup before HTTP binds. A worker load failure, including a missing dependency, stops acquisition while HTTP remains available |
 | Missing default DLL | Place it beside the EXE or select an absolute `--source` path |
 | Console | DLL selection, connections, state changes, errors, and shutdown, including without logging |
 
@@ -78,7 +78,7 @@ The `providers::simconnect` module exports the acquisition interface independent
 
 | Interface | Contract |
 | --- | --- |
-| `SimConnectConfig` | Optional `dll` and `log` paths; Demo requires a `scenario` path. The default DLL is adjacent `demo.dll` |
+| `SimConnectConfig` | Optional `dll` and `log` paths, and the raw native `interval`; Demo requires a `scenario` path. The default DLL is adjacent `demo.dll` |
 | `resolve_dll(override_path)` | Return the selected path or `SimConnectError`. Validate path syntax without loading the DLL |
 | `run(config, publisher, shutdown)` | Consume a caller-supplied `Publisher` whose source matches the selected DLL. Await caller-owned shutdown with output `io::Result<()>` and return `RunReport` |
 | `RunReport::result` | Acquisition outcome as `Result<(), SimConnectError>` |
@@ -108,24 +108,25 @@ The provider uses minimal manual bindings and runtime DLL loading within the exi
 
 The application starts components in this order:
 
-1. Validate configuration.
-2. Create the waiting telemetry channel.
-3. Bind HTTP. A busy port prevents acquisition from starting.
-4. Start the producer.
+1. Validate configuration and load the adjacent mapping.
+2. Inspect the DLL file as an x64 PE image and validate required named export-table entries without loading it; reject files larger than 64 MiB. The worker performs authoritative loading and export resolution.
+3. Create the waiting telemetry channel and bind HTTP. A busy port prevents acquisition from starting.
+4. Start the producer. Its worker loads and initializes the DLL, resolves dependencies, and owns native calls.
 
-HTTP does not wait for DLL loading or simulator readiness.
+HTTP does not wait for worker loading or simulator readiness.
 
 | Condition | Application behavior |
 | --- | --- |
 | Simulator absent or disconnected | HTTP serves unavailable data while the existing provider retries |
 | Producer exits or panics | Existing SSE streams stay open. New clients receive `disconnected` |
-| DLL load or export failure | HTTP stays available. Console diagnostics identify the failure without Demo fallback |
+| Missing DLL, invalid image, or missing export | Startup fails before HTTP binds |
+| Worker DLL load or dependency failure | HTTP stays available. Console diagnostics identify the failure without Demo fallback |
 | Caller-selected shutdown or HTTP failure | Signal both components and wait for their results. HTTP failure returns an application error |
 
 | Output | Contract |
 | --- | --- |
 | Console diagnostics and optional log | Contain detailed source errors |
-| SSE | Unchanged schema |
+| SSE | Current telemetry schema, including the configured SSE period |
 | `/health` | HTTP liveness, independently of simulator availability |
 
 ### Reception and resource ownership
@@ -180,7 +181,7 @@ The diagram separates native acquisition from HTTP delivery and browser callback
 2. Register each configured variable under one definition, then request the complete definition once through `SimConnect_RequestDataOnSimObject` with `PERIOD_SIM_FRAME`.
 3. Read queued messages through `SimConnect_GetNextDispatch`, checking cancellation before each read.
 4. Decode each message, record its monotonic receive time, and update instrument observations or source lifecycle state.
-5. Publish eligible normalized telemetry through the caller-owned `Publisher`, preserving acquisition timestamps.
+5. Cache eligible normalized telemetry through the caller-owned `Publisher`, preserving acquisition timestamps; ordinary SSE delivery follows its shared schedule.
 6. After at most 128 messages, evaluate expiry, periodic diagnostics, system-state queries, and the silence watchdog.
 7. Wait for a Windows notification, cancellation, or a 50 ms timeout. Resume queue reading after notification or timeout.
 
@@ -198,7 +199,7 @@ An empty queue ends the current batch early. Cancellation exits reception and st
 | Diagnostic summary | Every second while the loop runs |
 | Silence watchdog | Reconnect after 15 seconds without packets |
 
-The interval counts simulation-frame events, not milliseconds. Zero requests every frame; nonzero values reduce delivery according to simulator frame timing. A large interval can leave the sample stale between packets: the source expires the whole sample after 1.5 times the SSE period, and IAS trend history resets at a gap of 500 ms or more.
+The interval counts simulation-frame events, not milliseconds. A bounded official-DLL observation found intervals 0 and 1 delivered once per separate interval-zero reference packet, and interval 2 once per two reference packets. That reference is another request rather than an independent simulator frame event. A large interval can leave the sample stale between packets: the source expires the whole sample after 1.5 times the SSE period, and IAS trend history resets at a gap of 500 ms or more.
 
 > The 50 ms wait timeout is not a fixed 20 Hz acquisition rate. Data delivery follows simulator frames and native queue availability.
 > Processing time and scheduling can delay loop work. These intervals are not hard real-time guarantees.
@@ -237,7 +238,7 @@ The following evidence classifications apply separately to each part of the used
 | `SimConnect_RequestSystemState` | [State reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/general/simconnect_requestsystemstate/) documents queries. Verify `Sim` and `FlightLoaded` response shapes and IDs against the target runtime |
 | `SimConnect_GetLastSentPacketID` | [Packet ID reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/debug/simconnect_getlastsentpacketid/) documents correlation. Verify declaration and association against target header and runtime |
 | Packed receive layouts | Current consumer assumes packed `RECV`, exception, open, event, filename, system-state, and simobject-data layouts. Independently compare size, offsets, packing, and variable payload bounds with target SDK headers; exercise each used shape with an independent client |
-| Grouped definition | Configuration determines order, units, and types. Official mixed-numeric untagged layout remains unverified |
+| Grouped definition | Configuration determines order, units, and types. The observed FLOAT64/FLOAT32 and three-FLOAT32 packets cover only those layouts; other mixed layouts remain unverified |
 
 ### Native field catalog
 
@@ -287,7 +288,7 @@ Do not remove display capability because the Demo source becomes narrower.
 
 The [dispatch API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/general/simconnect_getnextdispatch/) describes library-owned buffers and an empty-queue `SIMCONNECT_RECV_ID_NULL` message. It does not establish the complete empty-queue HRESULT, pointer, and length tuple. On 2026-11-08, an independent client observed `E_FAIL`, a null pointer, and length `0` after draining the official DLL with MSFS 2024 in flight; Demo returned the same tuple. This observation does not prove that every `E_FAIL` means an empty queue. The receiver currently treats `E_FAIL` as no packet. Notification, returned-memory lifetime, missed-frame and queue-overflow behavior remain separate verification concerns. Generate packets independently of dispatch; queued contents do not change when consumed late. Bound resources and do not silently discard lifecycle transitions.
 
-Immediate HRESULT failures and asynchronous exception packets are distinct. A definition or grouped request failure terminates the acquisition session. Transient connection loss follows the retry policy. Terminal runtime errors leave HTTP available; missing local configuration or an invalid DLL fails preflight before HTTP starts. Injected Demo failures do not establish that the official DLL emits the same error. Demo scenario validation failure occurs during Open and leaves HTTP available.
+Immediate HRESULT failures and asynchronous exception packets are distinct. A definition or grouped request failure terminates the acquisition session. Transient connection loss follows the retry policy. Terminal runtime errors leave HTTP available; missing local configuration, a missing DLL, an invalid image, or a missing export fails preflight before HTTP starts. Injected Demo failures do not establish that the official DLL emits the same error. Demo scenario validation failure occurs during Open and leaves HTTP available.
 
 The following outcomes describe the current consumer and supervisor, based on static source analysis. They are not observed SDK error guarantees.
 
@@ -347,7 +348,7 @@ Availability follows these rules:
 * No single event or nonempty filename establishes readiness.
 * Pause, invalid data, disconnect, and flight or simulator transitions invalidate retained attitude.
 * Resume and a new flight require a new valid sample.
-* Every eligible acquisition publishes with its original receive time, including identical angles.
+* Cache every eligible acquisition with its original receive time, including identical angles. The shared schedule publishes live snapshots.
 * Cached values, heartbeats, and system-state queries never refresh age.
 * Evaluate freshness during the [reading loop](#delivery-frequency-and-loop-timing), including quiet-period timeout checks. Unavailable publication carries no attitude.
 * Samples can continue during pause. Ordinary pause and menu can share flags, so the flags do not uniquely identify the UI phase.
@@ -557,7 +558,7 @@ The delivered configuration is:
 
 The [definition API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_addtodatadefinition/) registers each variable with the same definition ID. The [request API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_requestdataonsimobject/) then requests that definition once using `SIM_FRAME`, flags 0, origin 0, the configured interval, and limit 0. These are setup calls; the former separate requests were also persistent, not resent every frame. Grouping fields of the same cadence reduces application messages and dispatch callbacks, but no CPU, IPC, network, or frame-time improvement has been measured.
 
-An untagged response follows definition order and configured numeric widths. The decoder validates flags, count, entry metadata, and exact payload length before applying it. The SDK's managed-client guidance specifies sequential packing; official mixed-numeric untagged layout and count behavior remain unverified. `TAGGED` instead sends datum IDs with values. With `CHANGED` and without `TAGGED`, a change to one member sends the whole definition. Unchanged values can then produce silence, so this receiver keeps flags 0 for freshness. `SIM_FRAME` follows simulation frames; `VISUAL_FRAME`, `SECOND`, and `ONCE` have different cadence semantics. Grouping by cadence is general API guidance; this application uses one group. Facility-data APIs, including `AddToFacilityDefinition`, are separate from aircraft SimVar requests.
+An untagged response follows definition order and configured numeric widths. The decoder validates flags, count, entry metadata, and exact payload length before applying it. The SDK's managed-client guidance specifies sequential packing; a bounded official-DLL observation with FLOAT64 followed by FLOAT32 returned a 52-byte packet and count 2. A separate three-FLOAT32 mapping returned a 52-byte packet and count 3, distinguishing fields from rounded 8-byte units in that case. Other mixed layouts remain unverified. `TAGGED` instead sends datum IDs with values. With `CHANGED` and without `TAGGED`, a change to one member sends the whole definition. Unchanged values can then produce silence, so this receiver keeps flags 0 for freshness. `SIM_FRAME` follows simulation frames; `VISUAL_FRAME`, `SECOND`, and `ONCE` have different cadence semantics. Grouping by cadence is general API guidance; this application uses one group. Facility-data APIs, including `AddToFacilityDefinition`, are separate from aircraft SimVar requests.
 
 A definition or request failure terminates acquisition, publishes `disconnected`, and requires investigation and restart. Transport loss, simulator quit, and the connection watchdog use bounded reconnect delays. A correlated registration exception identifies a mapping only when its send ID matches that registration; `dwIndex` is an API parameter index. Unknown IDs are not attributed to a field. A version mismatch reports the selected DLL identity and available SDK metadata on stderr even when logging is disabled. A structurally invalid packet terminates acquisition; invalid attitude publishes `invalid` and a later valid packet may recover. Empty dispatch does not establish disconnection. HTTP remains available after runtime acquisition failure. The observed grouped flight contained all 19 fields. Official behavior when a field is missing remains unverified.
 
@@ -567,7 +568,7 @@ A definition or request failure terminates acquisition, publishes `disconnected`
 | --- | --- |
 | `session_start`, `environment`, `dll_identity` | Session configuration and identities |
 | `definition_registration`, `grouped_request` | Mapping entries and sent-packet IDs |
-| `dispatch`, `grouped_sample` | Owned decoded packets, raw values, and validation result |
+| `dispatch`, `grouped_sample` | Owned decoded packets and values in canonical field order, with validation result. This order can differ from the mapping registration order |
 | `native_error`, `native_exception` | Failure details and correlation when available |
 | `state_transition`, `connection_lost`, `reconnect_wait` | State and recovery observations |
 | `dispatch_summary`, `session_end` | Queue and cleanup observations |
@@ -659,7 +660,6 @@ Select manual checks only for a concrete change, contradiction, or additional cl
 | Startup and reconnect | Unavailable startup, menu and loading, fresh active data, simulator restart, new samples after reconnect. No demo fallback |
 | Attitude | Level, nose up and down, left and right bank, combined poses against the cockpit |
 | Pause and flight change | Unavailable attitude during ordinary pause, Active Pause, and menu. New samples after resume or another flight |
-| Unit diagnostics | Valid primary radians despite diagnostic discrepancies. Retain surrounding anomalous packets |
 | CPU or cancellation | Affected stable phase with or without logging, or the specific shutdown failure |
 
 Use these evidence rules:
@@ -679,7 +679,7 @@ Integrated acceptance follows these requirements:
 
 | Scenario | Expected result |
 | --- | --- |
-| Missing DLL or exports | Page and health remain available. SSE reports unavailable SimConnect without Demo fallback |
+| Missing DLL or exports | Startup fails before HTTP binds; no Demo fallback |
 | Level, nose up and down, left and right bank, combined poses | EFI orientation agrees with cockpit observations. Do not infer a precise angular accuracy claim |
 | Ordinary pause, Active Pause, flight exit, restart | Unavailable attitude during loss. Recovery requires a new valid active sample |
 | Two clients and a slow receiver | Both use one acquisition connection. A slow client does not delay the other or block reception |
@@ -728,5 +728,5 @@ The [validation evidence](https://github.com/LeszekKantorek/msfs2024-artificial-
 | --- | --- |
 | Native radians | Independent requested units do not guarantee simultaneous acquisition |
 | Official grouped flight | All 19 default FLOAT64 fields had finite values in the bounded capture; heading differed from the baseline |
-| Official missing-field and mixed-numeric behavior | Not yet verified |
+| Official missing-field behavior and other mixed-numeric layouts | Not yet verified; the two observed layouts are described in [grouped definition](#grouped-definition-and-payload) |
 | Native bindings and ownership | Defined in [ADR 0006](../adr/0006-simconnect-manual-ffi.md) |

@@ -98,6 +98,7 @@ cargo run --locked --bin msfs2024-artificial-horizon -- --source demo.dll --scen
 
 | Situation | Action / constraint |
 | --- | --- |
+| Native interval | Set `--simconnect-interval` to an integer from 0 through 4294967295; default 0. It is passed to the `SIM_FRAME` request |
 | SSE period | Set `--sse-interval-ms` to an integer from 1 through 1431655764; default 500 ms. Source and browser deadlines are 1.5 times this period |
 | Port occupied | Select another `--port` from `1` to `65535` |
 | Invalid address | Use an IPv4/IPv6 address, not a hostname, multicast address, or IPv4 broadcast address |
@@ -125,7 +126,7 @@ Configure native reception under these requirements:
 
 Interpret source availability and recorded results under these limits:
 
-* If SimConnect cannot start, HTTP remains available with unavailable display data. The console explains the source failure.
+* Missing DLLs, invalid DLL images, missing exports, and invalid mappings stop startup before HTTP binds. Dependency loading and runtime acquisition failures leave HTTP available with unavailable display data; the console explains the source failure.
 * Live publication requires a running simulator, a loaded flight, zero pause flags, and a fresh valid sample.
 * Recorded sessions support signs, pause/menu unavailability, fresh-sample recovery, and reconnect in the tested setup.
   The [evidence and limits](docs/sources/simconnect.md#live-publication-evidence) define that coverage.

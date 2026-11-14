@@ -273,12 +273,14 @@ fn apply_event(s: &mut State, event: &Event, at: u64, notification: usize) {
                 .and_then(|(id, _)| *id);
             if let Some(id) = id {
                 send(s, notification, packet(1, &u32s(&[*code, id, *index])));
-                if sent_operation == "SimConnect_RequestDataOnSimObject"
+                if *code != 0
+                    && sent_operation == "SimConnect_RequestDataOnSimObject"
                     && let Some(request) = s.sent_requests.get(&id).copied()
                 {
                     s.requests.retain(|entry| entry.id != request);
                 }
-                if sent_operation == "SimConnect_AddToDataDefinition"
+                if *code != 0
+                    && sent_operation == "SimConnect_AddToDataDefinition"
                     && let Some(definition) = s.sent_definitions.get(&id).copied()
                 {
                     s.requests.retain(|entry| entry.definition != definition);
@@ -327,7 +329,7 @@ fn first_request_frame(elapsed_us: u64, frame_us: u64) -> u64 {
 }
 
 fn frame_due(frame: u64, first_frame: u64, interval: u32) -> bool {
-    frame >= first_frame && (frame - first_frame).is_multiple_of(u64::from(interval) + 1)
+    frame >= first_frame && (frame - first_frame).is_multiple_of(u64::from(interval.max(1)))
 }
 
 fn emit(s: &mut State, scenario: &Scenario, elapsed: u64, notification: usize) {
@@ -1118,11 +1120,11 @@ mod ordering_tests {
         let first = first_request_frame(registration_us, 50_000);
         assert_eq!(first, 11);
         assert_ne!(first, first_request_frame(lagging_cursor_us, 50_000));
-        for interval in [1, u32::MAX] {
+        for interval in [2, u32::MAX] {
             assert!(!frame_due(10, first, interval));
             assert!(frame_due(11, first, interval));
             assert!(!frame_due(12, first, interval));
-            assert!(frame_due(11 + u64::from(interval) + 1, first, interval));
+            assert!(frame_due(11 + u64::from(interval), first, interval));
         }
     }
 
@@ -1130,8 +1132,8 @@ mod ordering_tests {
     fn frame_schedule_handles_boundaries_and_skips() {
         for (interval, expected) in [
             (0, vec![5, 6, 7, 8, 9, 10, 11]),
-            (1, vec![5, 7, 9, 11]),
-            (2, vec![5, 8, 11]),
+            (1, vec![5, 6, 7, 8, 9, 10, 11]),
+            (2, vec![5, 7, 9, 11]),
         ] {
             let actual: Vec<_> = (5..=11)
                 .filter(|&frame| frame_due(frame, 5, interval))
@@ -1139,7 +1141,7 @@ mod ordering_tests {
             assert_eq!(actual, expected);
         }
         for interval in [u32::MAX - 1, u32::MAX] {
-            let next = 5 + u64::from(interval) + 1;
+            let next = 5 + u64::from(interval);
             assert!(frame_due(5, 5, interval));
             assert!(!frame_due(next - 1, 5, interval));
             assert!(frame_due(next, 5, interval));
@@ -1174,7 +1176,7 @@ mod ordering_tests {
                 Request {
                     id: 12,
                     definition: 2,
-                    interval: 1,
+                    interval: 2,
                     first_frame: 0,
                 },
             ],
@@ -1198,6 +1200,29 @@ mod ordering_tests {
             sent_definitions: HashMap::new(),
             catching_up: false,
         };
+        for (operation, send_id) in [
+            ("SimConnect_RequestDataOnSimObject", 21),
+            ("SimConnect_AddToDataDefinition", 22),
+        ] {
+            s.life
+                .sent_calls
+                .insert(operation.into(), vec![(Some(send_id), 0)]);
+            s.sent_requests.insert(send_id, 11);
+            s.sent_definitions.insert(send_id, 1);
+            apply_event(
+                &mut s,
+                &Event::Exception {
+                    sent_operation: operation.into(),
+                    sent_call_occurrence: 1,
+                    code: 0,
+                    index: 0,
+                },
+                0,
+                0,
+            );
+            assert!(s.requests.iter().any(|request| request.id == 11));
+        }
+        s.queue.clear();
         for frame in 0..160_u64 {
             emit(&mut s, &scenario, frame * 50_000, 0);
             let mut values = HashMap::new();

@@ -19,7 +19,9 @@ Use committed `Cargo.lock`. These checks require no simulator or SDK.
 3. Start the server.
 
    ```powershell
-   cargo run --locked --bin msfs2024-artificial-horizon -- --scenario demo-scenarios/demo-scenario.jsonl
+   cargo build --workspace --locked --target x86_64-pc-windows-msvc
+   Copy-Item default.json target/x86_64-pc-windows-msvc/debug/default.json
+   cargo run --locked --target x86_64-pc-windows-msvc --bin msfs2024-artificial-horizon -- --scenario demo-scenarios/demo-scenario.jsonl
    ```
 
 4. Check the endpoints and CLI behavior below.
@@ -102,7 +104,7 @@ The following rules apply to the shared producer:
 
 | Property | Expected behavior |
 | --- | --- |
-| Sampling | One fresh sample every 50 ms, including unchanged poses. Skip missed ticks |
+| Sampling | Baseline scenario uses 50 ms frames at the default interval, including unchanged poses. Skip missed frames |
 | Initial state | `waiting`, then `live` on fresh data |
 | Expiry | No accepted sample for 1.5 times the SSE period makes the complete sample stale |
 | Source failure | Never substitute demo for unavailable SimConnect |

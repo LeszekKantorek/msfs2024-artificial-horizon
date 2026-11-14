@@ -83,9 +83,9 @@ Record the measurement environment and observations:
 
 | Behavior | Current requirement |
 | --- | --- |
-| Demo publication | Nominally 20 Hz |
-| SimConnect attitude acquisition | Each simulator frame |
-| Active-page stale indication | Within 1 second of the last usable sample |
+| Demo acquisition | Baseline scenario uses 50 ms frames at the default native interval; SSE defaults to 500 ms |
+| SimConnect attitude acquisition | `SIM_FRAME` with the configured native interval, default 0 |
+| Active-page stale indication | Browser deadline is 1.5 times the configured SSE period from SSE receipt. The source independently measures its deadline from native sample receipt |
 | Layout | At least 320 CSS px wide and 240 CSS px of usable height, in both orientations |
 
 Source cadence follows the [telemetry contract](../telemetry-contract.md#framing).

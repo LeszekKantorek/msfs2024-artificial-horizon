@@ -15,12 +15,13 @@ The public interfaces have these entry points:
 
 | Interface | Contract |
 | --- | --- |
-| `Server::bind(config, subscription)` | Validate HTTP configuration before acquiring a listener. Return `Result<Server, ServerError>` |
+| `Server::bind(config, subscription)` | Validate configuration and match its SSE interval to the supplied subscription before acquiring a listener. Return `Result<Server, ServerError>` |
 | `Server::local_address()` | Return the bound `SocketAddr` as `io::Result<SocketAddr>` |
 | `Server::run(shutdown)` | Consume the server and await caller-owned shutdown with output `()`. Return `io::Result<()>` |
 | `http::router()` | Build embedded asset and health routes without telemetry or acquisition |
 | `http::router_with_telemetry(subscription)` | Add `/api/v1/events` using the supplied channel, without starting a provider |
 | `ServerError::Config` | Invalid HTTP settings, rejected before binding |
+| `ServerError::IntervalMismatch` | Subscription period differs from the configured SSE period |
 | `ServerError::Bind` | Listener failure with the requested address and underlying I/O error |
 
 Server execution follows these constraints:
@@ -31,18 +32,20 @@ Server execution follows these constraints:
 
 ### Configuration
 
-`Config` contains HTTP settings only and never reads process arguments:
+`Config` contains listener and SSE schedule settings and never reads process arguments:
 
 | Field | Type | Default | Validation |
 | --- | --- | --- | --- |
 | `listen_address` | `IpAddr` | `127.0.0.1` | Reject multicast and `255.255.255.255`. Accept interface or wildcard addresses subject to OS binding |
 | `port` | `u16` | `8080` | Accept `1` through `65535`; reject zero |
+| `sse_interval_ms` | `u32` | `500` | Accept `1` through `1431655764`; match the supplied subscription |
 
 Configuration follows these rules:
 
 * `Config::validate()` applies the same checks to library and CLI callers.
 * `Config::socket_address()` combines the address and port.
 * Provider selection is separate from HTTP configuration.
+* `telemetry::channel_with_schedule` creates a shared schedule; retain its guard while serving. `telemetry::channel` publishes immediately with default 500 ms metadata and no timer. The server preserves the supplied subscription.
 * Use the [deployment constraints](architecture.md#deployment) before exposing the server to a LAN.
 
 ## HTTP routes

@@ -55,13 +55,13 @@ data: {"sequence":42,"source":"demo","sse_interval_ms":500,"state":"live","sampl
 Send SSE events under these requirements:
 
 * Send a full named `telemetry` event on subscription.
-* Send full latest-state snapshots on the shared ordinary schedule, including unchanged values.
+* Send full latest-state snapshots on the shared ordinary schedule while live, including unchanged values. Urgent changes do not reset the schedule phase.
 * Send detected state and optional availability changes promptly.
 * End every event with an empty line.
 
 | Timing | Initial value / rule |
 | --- | --- |
-| Valid samples | Source cadence: [Demo](sources/demo.md#scenario-timing) uses 20 Hz; [SimConnect attitude](sources/simconnect.md#attitude-and-freshness) requests each simulator frame |
+| Valid samples | Source cadence follows the configured native interval; [Demo](sources/demo.md#scenario-timing) uses synthetic frames and [SimConnect](sources/simconnect.md#attitude-and-freshness) uses simulator frames |
 | SSE period | `--sse-interval-ms`: integer 1 through 1431655764, default 500 ms. Every snapshot carries the effective value in `sse_interval_ms` |
 | Reconnect hint | `retry: 2000` |
 | Page retry | Close the failed EventSource. Create its replacement after 2,000 ms, including initial connection failures |
