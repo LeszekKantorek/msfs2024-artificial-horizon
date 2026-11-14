@@ -328,7 +328,7 @@ impl Connection<'_> {
         })
     }
 
-    pub fn request_attitude(&mut self) -> Result<(), NativeError> {
+    pub fn request_attitude(&mut self, interval: u32) -> Result<(), NativeError> {
         // SAFETY: resolved function and owned handle; flags=0 preserves equal samples.
         result("SimConnect_RequestDataOnSimObject", unsafe {
             (self.library.api.request_data)(
@@ -339,7 +339,7 @@ impl Connection<'_> {
                 PERIOD_SIM_FRAME,
                 0,
                 0,
-                0,
+                interval,
                 0,
             )
         })
@@ -692,6 +692,7 @@ mod tests {
         static CLOSE_CALLS: Cell<u32> = const { Cell::new(0) };
         static NEXT_RESULT: Cell<i32> = const { Cell::new(E_FAIL) };
         static NEXT_PACKET: std::cell::RefCell<Vec<u8>> = const { std::cell::RefCell::new(Vec::new()) };
+        static REQUEST_INTERVAL: Cell<u32> = const { Cell::new(0) };
         static ADD_FIELDS: std::cell::RefCell<Vec<(String, String, i32)>> = const { std::cell::RefCell::new(Vec::new()) };
     }
 
@@ -754,12 +755,14 @@ mod tests {
         _: u32,
         _: u32,
         _: u32,
-        _: i32,
-        _: u32,
-        _: u32,
-        _: u32,
-        _: u32,
+        period: i32,
+        flags: u32,
+        origin: u32,
+        interval: u32,
+        limit: u32,
     ) -> i32 {
+        assert_eq!((period, flags, origin, limit), (PERIOD_SIM_FRAME, 0, 0, 0));
+        REQUEST_INTERVAL.with(|value| value.set(interval));
         0
     }
     unsafe extern "C" fn mock_subscribe(_: HANDLE, _: u32, _: *const c_char) -> i32 {
@@ -802,6 +805,16 @@ mod tests {
             handle: ptr::without_provenance_mut(1),
             dispatch_hresult: 0,
             _thread_bound: PhantomData,
+        }
+    }
+
+    #[test]
+    fn request_passes_full_interval_unchanged() {
+        let library = mock_library();
+        for interval in [0, 1, u32::MAX - 1, u32::MAX] {
+            let mut connection = mock_connection(&library);
+            connection.request_attitude(interval).unwrap();
+            REQUEST_INTERVAL.with(|value| assert_eq!(value.get(), interval));
         }
     }
 

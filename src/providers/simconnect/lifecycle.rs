@@ -176,6 +176,23 @@ mod tests {
     }
 
     #[test]
+    fn source_expires_at_1000_ms() {
+        let mut lifecycle = active();
+        let at = Instant::now();
+        lifecycle.sample(Ok(attitude()), at);
+        assert!(matches!(
+            lifecycle.evaluate(at + Duration::from_millis(999)).state,
+            State::Live(_)
+        ));
+        for gap in [1000, 1001] {
+            assert!(matches!(
+                lifecycle.evaluate(at + Duration::from_millis(gap)).state,
+                State::Stale
+            ));
+        }
+    }
+
+    #[test]
     fn pause_and_menu_never_reuse_cached_attitude_on_resume() {
         let mut lifecycle = active();
         let at = Instant::now();

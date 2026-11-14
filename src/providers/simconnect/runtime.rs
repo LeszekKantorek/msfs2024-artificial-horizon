@@ -26,6 +26,7 @@ pub struct SimConnectConfig {
     pub dll: Option<PathBuf>,
     pub log: Option<PathBuf>,
     pub scenario: Option<PathBuf>,
+    pub interval: u32,
 }
 
 /// Acquisition and diagnostic outcomes remain independent.
@@ -190,7 +191,7 @@ pub async fn run_with_definition(
                 source,
                 publisher,
                 &worker_stop,
-                definition,
+                (definition, config.interval),
             )
         }) {
         Ok(worker) => worker,
@@ -246,8 +247,9 @@ fn worker_entry(
     source: Source,
     publisher: Publisher,
     stop: &Event,
-    definition: super::Definition,
+    acquisition: (super::Definition, u32),
 ) -> RunReport {
+    let (definition, interval) = acquisition;
     let executable = match std::env::current_exe() {
         Ok(path) => path,
         Err(error) => {
@@ -282,7 +284,15 @@ fn worker_entry(
     if let Some(path) = &log {
         println!("Session log: {}", path.display());
     }
-    let result = worker(&dll, source, publisher, &mut journal, stop, &definition);
+    let result = worker(
+        &dll,
+        source,
+        publisher,
+        &mut journal,
+        stop,
+        &definition,
+        interval,
+    );
     journal.record(
         "session_end",
         || {
@@ -323,6 +333,7 @@ fn worker(
     journal: &mut Journal,
     stop: &Event,
     definition: &super::Definition,
+    interval: u32,
 ) -> Result<(), SimConnectError> {
     let executable = std::env::current_exe()?;
     journal.record("environment", || json!({
@@ -350,7 +361,15 @@ fn worker(
         ))
     })?;
     journal.record("library_loaded", || json!({}), true);
-    let result = connections(&library, source, publisher, journal, stop, definition, dll);
+    let result = connections(
+        &library,
+        source,
+        publisher,
+        journal,
+        stop,
+        definition,
+        (dll, interval),
+    );
     journal.record(
         "library_release",
         || {
@@ -422,8 +441,9 @@ fn connections(
     journal: &mut Journal,
     stop: &Event,
     definition: &super::Definition,
-    dll: &Path,
+    request: (&Path, u32),
 ) -> Result<(), SimConnectError> {
+    let (dll, interval) = request;
     let mut output = Output {
         publisher,
         transition: None,
@@ -488,6 +508,7 @@ fn connections(
                     definition,
                     generation,
                     dll,
+                    interval,
                 },
             )
         })();
@@ -682,6 +703,7 @@ fn configure(
     journal: &mut Journal,
     definition: &super::Definition,
     generation: u64,
+    interval: u32,
 ) -> Result<Vec<SentOperation>, SimConnectError> {
     let mut sends = Vec::new();
     for (index, mapping) in definition.mappings.iter().enumerate() {
@@ -733,7 +755,7 @@ fn configure(
         });
     }
     query_states(connection, journal, &mut sends, generation)?;
-    connection.request_attitude()?;
+    connection.request_attitude(interval)?;
     let sent = connection.last_sent_packet_id().map_err(|error| {
         SimConnectError::Correlation(format!("{error}; cannot correlate grouped request"))
     })?;
@@ -746,7 +768,7 @@ fn configure(
     });
     journal.record(
         "grouped_request",
-        || json!({"generation":generation,"send_id":sent,"period":"SIM_FRAME","flags":0,"interval":0}),
+        || json!({"generation":generation,"send_id":sent,"period":"SIM_FRAME","flags":0,"interval":interval}),
         true,
     );
     Ok(sends)
@@ -804,6 +826,7 @@ struct SessionContext<'a> {
     definition: &'a super::Definition,
     generation: u64,
     dll: &'a Path,
+    interval: u32,
 }
 
 fn session(
@@ -820,8 +843,9 @@ fn session(
         definition,
         generation,
         dll,
+        interval,
     } = context;
-    let mut sends = configure(connection, journal, definition, generation)?;
+    let mut sends = configure(connection, journal, definition, generation, interval)?;
     output.instruments.clear();
     let mut counters = Counters::default();
     let mut last_packet = Instant::now();
@@ -1531,6 +1555,7 @@ mod tests {
             &stop,
             &super::super::mapping::Definition::parse(include_str!("../../../default.json"))
                 .unwrap(),
+            0,
         )
         .unwrap_err();
         assert!(matches!(error, SimConnectError::Native(_)));
@@ -1545,6 +1570,7 @@ mod tests {
         let (publisher, _subscription) = telemetry::channel(Source::SimConnect);
         let report = run_with_definition(
             SimConnectConfig {
+                interval: 0,
                 dll: Some(dll),
                 log: Some(log.clone()),
                 scenario: None,

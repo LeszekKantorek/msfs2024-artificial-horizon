@@ -148,8 +148,8 @@ For grouped requests, Demo encodes a missing optional floating-point observation
 #### Request-driven emission and unchanged values
 
 Demo must match SimConnect delivery semantics for the requests used by the application.
-The current instrument requests use SIMCONNECT_PERIOD_SIM_FRAME, flags 0, origin 0, interval 0, and limit 0.
-They request observations on each simulation frame without a change-only filter or a transmission-count limit.
+The grouped request uses `SIMCONNECT_PERIOD_SIM_FRAME`, flags 0, origin 0, the configured interval, and limit 0.
+Demo schedules the first eligible frame and then skips the specified number of frames between scheduled deliveries. A gap, fault, or skipped frame can suppress a scheduled delivery without shifting the schedule. Interval 0 sends every frame; interval 1 sends every other frame. Scenario time advances independently of delivery, including when frames are skipped. This interpretation of nonzero intervals has not been verified against the official runtime.
 The [SimConnect request contract](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_requestdataonsimobject/) distinguishes flags 0 from SIMCONNECT_DATA_REQUEST_FLAG_CHANGED.
 The application does not request the CHANGED flag. Do not enable equivalent filtering implicitly in Demo.
 

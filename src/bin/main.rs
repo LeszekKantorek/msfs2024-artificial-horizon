@@ -21,6 +21,9 @@ struct Cli {
     /// HTTP port, 1-65535 (default: 8080).
     #[arg(long, value_parser = clap::value_parser!(u16).range(1..))]
     port: Option<u16>,
+    /// SIM_FRAME interval in frame events (0-4294967295; default: 0).
+    #[arg(long, default_value_t = 0)]
+    simconnect_interval: u32,
     /// Append diagnostic JSONL to this file (optional).
     #[arg(long)]
     log: Option<PathBuf>,
@@ -56,6 +59,7 @@ impl Cli {
             dll: Some(dll),
             log: self.log,
             scenario,
+            interval: self.simconnect_interval,
         });
         Ok((config, source))
     }
@@ -107,6 +111,20 @@ async fn shutdown() -> io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn interval_cli_accepts_full_dword_and_rejects_invalid_values() {
+        assert_eq!(
+            Cli::try_parse_from(["main"]).unwrap().simconnect_interval,
+            0
+        );
+        for value in ["0", "1", "4294967294", "4294967295"] {
+            let cli = Cli::try_parse_from(["main", "--simconnect-interval", value]).unwrap();
+            assert_eq!(cli.simconnect_interval.to_string(), value);
+        }
+        for value in ["4294967296", "-1", "1.5"] {
+            assert!(Cli::try_parse_from(["main", "--simconnect-interval", value]).is_err());
+        }
+    }
     #[test]
     fn reads_stop_command_and_eof() {
         assert!(read_stop_command(std::io::Cursor::new(b"ignored\r\nstop\r\n")).unwrap());

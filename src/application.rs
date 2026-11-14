@@ -201,6 +201,7 @@ mod tests {
                     port,
                 },
                 SourceSelection(SimConnectConfig {
+                    interval: 0,
                     dll: Some(dll),
                     log: None,
                     scenario: Some(scenario),
@@ -421,6 +422,7 @@ mod tests {
                 demo_dll
             };
             let selection = SourceSelection(SimConnectConfig {
+                interval: 0,
                 dll: Some(dll.clone()),
                 log: None,
                 scenario: (!simconnect).then(|| {

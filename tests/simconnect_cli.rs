@@ -1820,6 +1820,43 @@ fn suite_path(name: &str) -> PathBuf {
         .join("demo-scenarios")
         .join(name)
 }
+fn assert_sample_cleared(live: &serde_json::Value, stale: &serde_json::Value) {
+    assert!(stale["attitude"].is_null());
+    for key in live.as_object().unwrap().keys() {
+        if !["sequence", "source", "state", "sample_age_ms", "attitude"].contains(&key.as_str()) {
+            assert!(stale.get(key).is_none(), "stale retained {key}: {stale}");
+        }
+    }
+}
+
+#[test]
+fn slow_interval_expires_complete_sample_and_recovers() {
+    let fixture = Fixture::new();
+    let binary = fixture.binary();
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/grouped-distinct.jsonl");
+    let mut app = Application::start(
+        &binary,
+        &fixture.0,
+        &[
+            "--scenario",
+            path.to_str().unwrap(),
+            "--simconnect-interval",
+            "24",
+        ],
+    );
+    let live = fault_snapshot(&app, |s| {
+        s["state"] == "live" && s["ias_kt"] == 101.0 && s["altitude_ft"] == 1300.0
+    });
+    let stale = fault_snapshot(&app, |s| s["state"] == "stale");
+    assert_sample_cleared(&live, &stale);
+    let recovered = fault_snapshot(&app, |s| {
+        s["state"] == "live" && s["ias_kt"] == 101.0 && s["altitude_ft"] == 1300.0
+    });
+    assert!(recovered["attitude"].is_object());
+    assert!(recovered.get("ias_acceleration_ktps").is_none());
+    app.shutdown();
+}
+
 #[test]
 fn focused_availability_reaches_live_gap_stale_and_fresh_recovery() {
     let fixture = Fixture::new();
@@ -1835,7 +1872,7 @@ fn focused_availability_reaches_live_gap_stale_and_fresh_recovery() {
     });
     assert!(gap["attitude"].is_object());
     let stale = fault_snapshot(&app, |s| s["state"] == "stale");
-    assert!(stale["attitude"].is_null());
+    assert_sample_cleared(&initial, &stale);
     let fresh = fault_snapshot(&app, |s| {
         s["state"] == "live"
             && s["ias_kt"] == 100.0
@@ -1852,7 +1889,19 @@ fn focused_lifecycle_retries_pauses_inactivates_and_reconnects() {
     let fixture = Fixture::new();
     let binary = fixture.binary();
     let path = suite_path("simulator-lifecycle.jsonl");
-    let mut app = Application::start(&binary, &fixture.0, &["--scenario", path.to_str().unwrap()]);
+    let log = fixture.0.join("interval-reconnect.jsonl");
+    let mut app = Application::start(
+        &binary,
+        &fixture.0,
+        &[
+            "--scenario",
+            path.to_str().unwrap(),
+            "--simconnect-interval",
+            "1",
+            "--log",
+            log.to_str().unwrap(),
+        ],
+    );
     let waiting = fault_snapshot(&app, |s| s["state"] == "waiting");
     assert!(waiting["attitude"].is_null());
     let live = fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
@@ -1871,6 +1920,19 @@ fn focused_lifecycle_retries_pauses_inactivates_and_reconnects() {
     assert!(disconnected["attitude"].is_null());
     let reconnected = fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
     assert!(reconnected["attitude"].is_object());
+    let records = wait_fault_log(&log, |records| {
+        records
+            .iter()
+            .filter(|v| v["kind"] == "grouped_request")
+            .count()
+            >= 2
+    });
+    assert!(
+        records
+            .iter()
+            .filter(|v| v["kind"] == "grouped_request")
+            .all(|v| v["data"]["interval"] == 1)
+    );
     app.assert_health();
     app.shutdown();
 }

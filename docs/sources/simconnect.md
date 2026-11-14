@@ -47,6 +47,7 @@ cargo run --locked --release --bin msfs2024-artificial-horizon -- --source "$sim
 | `--source SimConnect.dll` | Native acquisition with HTTP/SSE and available flight instruments |
 | `--listen-address`, `--port` | HTTP settings for either source. Defaults are `127.0.0.1` and `8080` |
 | `--scenario <file>` | Required Demo-only JSONL file, absolute or relative to the working directory |
+| `--simconnect-interval <frames>` | Raw `SIM_FRAME` interval from 0 through 4294967295, inclusive; default 0 |
 | `--log <file>` | Optional exact JSONL destination, absolute or relative to the working directory |
 | `--help`, `--version` | Information without opening a DLL or log |
 | `stop` on standard input | A line containing `stop` requests coordinated shutdown |
@@ -55,7 +56,7 @@ cargo run --locked --release --bin msfs2024-artificial-horizon -- --source "$sim
 The CLI applies these restrictions:
 
 * `--log` is available for either source. `--scenario` is required for Demo and rejected for SimConnect.
-* Invalid HTTP settings and relative DLL paths containing directories are rejected before starting components.
+* Invalid HTTP settings, frame intervals, and relative DLL paths containing directories are rejected before starting components.
 * Legacy `--simconnect`, `--dll`, and source aliases are unsupported.
 * Log filenames distinguish scenarios. The application does not interpret them as metadata.
 
@@ -188,13 +189,15 @@ An empty queue ends the current batch early. Cancellation exits reception and st
 
 | Operation | Frequency or trigger |
 | --- | --- |
-| Grouped delivery | Requested once per simulator frame with `PERIOD_SIM_FRAME`, without `CHANGED`. Equal values remain eligible for delivery |
+| Grouped delivery | Requested with `PERIOD_SIM_FRAME` and the configured raw interval, without `CHANGED`. Equal values remain eligible for delivery |
 | Native queue reads | Repeated within each batch, up to 128 messages or until the queue is empty |
 | Wait between batches | Notification or cancellation can wake the worker before the 50 ms timeout |
 | Freshness evaluation | After message processing and between batches. The 50 ms timeout provides checks during quiet periods |
 | System-state queries | Initial queries during configuration, then every 5 seconds while the loop runs |
 | Diagnostic summary | Every second while the loop runs |
 | Silence watchdog | Reconnect after 15 seconds without packets |
+
+The interval counts simulation-frame events, not milliseconds. Zero requests every frame; nonzero values reduce delivery according to simulator frame timing. A large interval can leave the sample stale between packets: the source expires the whole sample after 1000 ms, and IAS trend history resets at a gap of 500 ms or more.
 
 > The 50 ms wait timeout is not a fixed 20 Hz acquisition rate. Data delivery follows simulator frames and native queue availability.
 > Processing time and scheduling can delay loop work. These intervals are not hard real-time guarantees.
@@ -218,7 +221,7 @@ The accepted [native Demo decision](../adr/0010-native-demo.md) is implemented. 
 
 The current receiver uses Windows x64 C ABI and packed receive layouts derived from SDK 1.8.1 headers. The eight exact exports are `SimConnect_Open`, `SimConnect_Close`, `SimConnect_GetNextDispatch`, `SimConnect_AddToDataDefinition`, `SimConnect_RequestDataOnSimObject`, `SimConnect_SubscribeToSystemEvent`, `SimConnect_RequestSystemState`, and `SimConnect_GetLastSentPacketID`. Official API definitions document those interfaces; the manually declared layouts and their emulator implementation require independent header and runtime verification. The [definition API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_addtodatadefinition/) documents FLOAT64 and units. All current fields request FLOAT64, including Bool. The SDK permits nonzero Bool true, including -1; `AUTOPILOT AVAILABLE` treats a received finite nonzero value as true.
 
-The delivered mapping registers pitch and bank in radians and includes 17 optional inputs. The ordered configuration determines the response layout. On 2026-11-14, an official-DLL baseline observed all 19 inputs separately, and a grouped capture observed finite values for all 19 in 996 active valid packets. The two captures differed in heading and selected heading, which limits their comparability. The caller owns definition, request, event, and query IDs and field order; the DLL must route and encode those supplied values, not hard-code the current IDs. Current requests use user-aircraft proxy, `SIM_FRAME`, flags 0, origin 0, interval 0, and limit 0. The [request API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_requestdataonsimobject/) distinguishes these options from change-only requests. Other request modes are outside this used subset until implemented and verified.
+The delivered mapping registers pitch and bank in radians and includes 17 optional inputs. The ordered configuration determines the response layout. On 2026-11-14, an official-DLL baseline observed all 19 inputs separately, and a grouped capture observed finite values for all 19 in 996 active valid packets. The two captures differed in heading and selected heading, which limits their comparability. The caller owns definition, request, event, and query IDs and field order; the DLL must route and encode those supplied values, not hard-code the current IDs. Current requests use user-aircraft proxy, `SIM_FRAME`, flags 0, origin 0, the configured interval, and limit 0. The [request API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_requestdataonsimobject/) distinguishes these options from change-only requests. Other request modes are outside this used subset until implemented and verified.
 
 The following evidence classifications apply separately to each part of the used API. Header-derived declarations are current-consumer evidence until an independent comparison with the target SDK header and runtime.
 
@@ -228,7 +231,7 @@ The following evidence classifications apply separately to each part of the used
 | `SimConnect_Close` | [Close reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/general/simconnect_close/) documents the interface. Compare the x64 declaration and cleanup behavior against the target header and runtime |
 | `SimConnect_GetNextDispatch` | [Dispatch reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/general/simconnect_getnextdispatch/) documents the interface and library-owned buffer. Compare declaration, empty result tuple, and memory lifetime against target header and runtime |
 | `SimConnect_AddToDataDefinition` | [Definition reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_addtodatadefinition/) documents definition arguments and FLOAT64. Compare declaration and exact pair acceptance against target header and runtime |
-| `SimConnect_RequestDataOnSimObject` | [Request reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_requestdataonsimobject/) documents request IDs, periods, flags, origin, interval, and limit. Verify current `SIM_FRAME`, flags 0, origin 0, interval 0, limit 0, and user-aircraft proxy against the target runtime |
+| `SimConnect_RequestDataOnSimObject` | [Request reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_requestdataonsimobject/) documents request IDs, periods, flags, origin, interval, and limit. Verify current `SIM_FRAME`, flags 0, origin 0, configured interval, limit 0, and user-aircraft proxy against the target runtime |
 | `SimConnect_SubscribeToSystemEvent` | [Event reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/general/simconnect_subscribetosystemevent/) documents subscriptions. Verify `Sim`, `Pause_EX1`, and `FlightLoaded` delivery against the target runtime |
 | `SimConnect_RequestSystemState` | [State reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/general/simconnect_requestsystemstate/) documents queries. Verify `Sim` and `FlightLoaded` response shapes and IDs against the target runtime |
 | `SimConnect_GetLastSentPacketID` | [Packet ID reference](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/debug/simconnect_getlastsentpacketid/) documents correlation. Verify declaration and association against target header and runtime |
@@ -551,7 +554,7 @@ The delivered configuration is:
 }
 ```
 
-The [definition API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_addtodatadefinition/) registers each variable with the same definition ID. The [request API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_requestdataonsimobject/) then requests that definition once using `SIM_FRAME`, flags 0, origin 0, interval 0, and limit 0. These are setup calls; the former separate requests were also persistent, not resent every frame. Grouping fields of the same cadence reduces application messages and dispatch callbacks, but no CPU, IPC, network, or frame-time improvement has been measured.
+The [definition API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_addtodatadefinition/) registers each variable with the same definition ID. The [request API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_requestdataonsimobject/) then requests that definition once using `SIM_FRAME`, flags 0, origin 0, the configured interval, and limit 0. These are setup calls; the former separate requests were also persistent, not resent every frame. Grouping fields of the same cadence reduces application messages and dispatch callbacks, but no CPU, IPC, network, or frame-time improvement has been measured.
 
 An untagged response follows definition order and configured numeric widths. The decoder validates flags, count, entry metadata, and exact payload length before applying it. The SDK's managed-client guidance specifies sequential packing; official mixed-numeric untagged layout and count behavior remain unverified. `TAGGED` instead sends datum IDs with values. With `CHANGED` and without `TAGGED`, a change to one member sends the whole definition. Unchanged values can then produce silence, so this receiver keeps flags 0 for freshness. `SIM_FRAME` follows simulation frames; `VISUAL_FRAME`, `SECOND`, and `ONCE` have different cadence semantics. Grouping by cadence is general API guidance; this application uses one group. Facility-data APIs, including `AddToFacilityDefinition`, are separate from aircraft SimVar requests.
 

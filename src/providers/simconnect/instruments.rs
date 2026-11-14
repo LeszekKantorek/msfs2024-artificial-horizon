@@ -155,6 +155,17 @@ mod tests {
         assert!(cache.acceleration.is_none());
     }
     #[test]
+    fn ias_gap_boundary_is_independent_of_sample_freshness() {
+        let at = Instant::now();
+        for (gap, expected) in [(499, 2), (500, 1), (501, 1)] {
+            let mut cache = Instruments::default();
+            cache.receive(0, 100.0, at);
+            cache.receive(0, 101.0, at + Duration::from_millis(gap));
+            assert_eq!(cache.ias_history.len(), expected);
+            assert!(cache.values[0].is_some());
+        }
+    }
+    #[test]
     fn ias_window_handles_timing_noise_and_bounded_history() {
         let now = Instant::now();
         let mut cache = Instruments::default();
