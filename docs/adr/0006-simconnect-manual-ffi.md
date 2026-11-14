@@ -73,9 +73,9 @@ Live publication follows these rules within the [documented evidence limits](../
 * Record raw values before normalization and publication when logging is enabled.
 * Publish live only with running `Sim`, a loaded flight, zero pause flags, and a fresh finite, in-range sample.
 * Invalidate retained attitude on pause, invalid input, disconnect, and flight or simulator transitions.
-* Require a new sample after resume. Publish each eligible acquisition, including equal values, with its original receive time.
-* Keep the 1000 ms freshness limit. Cached values, queries, and heartbeats do not refresh age.
-* Use diagnostic schema 4 for enabled publication. Interpret recorded sessions through the [diagnostic schema rules](../sources/simconnect.md#diagnostic-schema-interpretation).
+* Require a new sample after resume. Cache each eligible acquisition, including equal values, with its original receive time; ordinary SSE delivery uses the shared schedule.
+* The original 1000 ms freshness limit was replaced by 1.5 times the configured SSE period. Cached values, queries, and heartbeats do not refresh age.
+* The original enabled-publication evidence used diagnostic schema 4. Interpret later sessions through the [diagnostic schema rules](../sources/simconnect.md#diagnostic-schema-interpretation).
 
 ## Alternatives and consequences
 

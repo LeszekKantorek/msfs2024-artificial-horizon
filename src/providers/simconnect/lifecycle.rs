@@ -1,6 +1,8 @@
 //! Conservative flight availability from lifecycle signals and fresh samples.
-use crate::telemetry::{Attitude, STALE_AFTER, State, TelemetryError};
-use std::time::Instant;
+#[cfg(test)]
+use crate::telemetry::STALE_AFTER;
+use crate::telemetry::{Attitude, State, TelemetryError};
+use std::time::{Duration, Instant};
 
 pub(super) const EVENT_SIM: u32 = 10;
 pub(super) const EVENT_PAUSE: u32 = 11;
@@ -92,7 +94,11 @@ impl Lifecycle {
         }
     }
 
+    #[cfg(test)]
     pub(super) fn evaluate(&self, now: Instant) -> Evaluation {
+        self.evaluate_with_timeout(now, STALE_AFTER)
+    }
+    pub(super) fn evaluate_with_timeout(&self, now: Instant, timeout: Duration) -> Evaluation {
         let (state, reason) = if !self.connected {
             (State::Disconnected, "connection_unavailable")
         } else if self.pause.is_some_and(|flags| flags != 0) {
@@ -105,7 +111,7 @@ impl Lifecycle {
         } else if self.invalid {
             (State::Invalid, "attitude_validation_failed")
         } else if let Some((received, attitude)) = self.sample {
-            if now.saturating_duration_since(received) >= STALE_AFTER {
+            if now.saturating_duration_since(received) >= timeout {
                 (State::Stale, "no_new_valid_sample")
             } else {
                 (
@@ -166,13 +172,30 @@ mod tests {
         lifecycle.sample(Ok(attitude()), at);
         lifecycle.sample(Ok(attitude()), at + Duration::from_millis(900));
         assert!(matches!(
-            lifecycle.evaluate(at + Duration::from_millis(1800)).state,
+            lifecycle.evaluate(at + Duration::from_millis(1649)).state,
             State::Live(_)
         ));
         assert!(matches!(
-            lifecycle.evaluate(at + Duration::from_millis(1900)).state,
+            lifecycle.evaluate(at + Duration::from_millis(1650)).state,
             State::Stale
         ));
+    }
+
+    #[test]
+    fn source_expires_at_750_ms() {
+        let mut lifecycle = active();
+        let at = Instant::now();
+        lifecycle.sample(Ok(attitude()), at);
+        assert!(matches!(
+            lifecycle.evaluate(at + Duration::from_millis(749)).state,
+            State::Live(_)
+        ));
+        for gap in [750, 751] {
+            assert!(matches!(
+                lifecycle.evaluate(at + Duration::from_millis(gap)).state,
+                State::Stale
+            ));
+        }
     }
 
     #[test]

@@ -4,7 +4,7 @@ Demo uses the project-owned `demo.dll` through the same native receiver and HTTP
 
 ## Requirements and usage
 
-* Build the workspace to place `demo.dll` beside the executable. The DLL requires no simulator or official SDK.
+* Build the workspace to place `demo.dll` beside the executable, and copy `default.json` beside it. The DLL requires no simulator or official SDK.
 * Omit `--source`, select `--source demo.dll`, or provide an absolute path whose basename is `demo.dll`.
 * Select an authored JSONL file for every Demo run with `--scenario <path>`. Relative scenario paths resolve against the working directory. Restart to load changes.
 * Use `--log <path>` for optional synthetic native diagnostics. The browser remains read-only.
@@ -32,7 +32,7 @@ After the initial sweeps, the baseline approaches and departs 10000 ft, then 100
 
 ### Vertical speed
 
-The native VSI track follows the scripted altitude phases and omits values at authored jumps. The receiver applies its existing independent freshness rules.
+The native VSI track follows the scripted altitude phases and omits values at authored jumps. The receiver applies grouped-sample freshness and omits invalid optional values.
 
 ### Heading cycle
 
@@ -143,22 +143,20 @@ Do not silently replace the current inclusive altitude sweeps with different int
 
 A hold is not a single received observation held inside the receiver.
 A five-second gap does not send repeated cached values.
-Missing optional observations expire according to the existing receiver's rules; they do not disappear instantly by implication.
-If a required component of a grouped native definition is in a gap, suppress that complete requested packet.
-For example, a missing pitch must not be paired with cached pitch and a current bank to create a fresh attitude.
+For grouped requests, Demo encodes a missing optional floating-point observation as synthetic NaN. The receiver omits that value in the new sample. A missing pitch or bank suppresses the grouped packet, as does a missing integer member. This synthetic behavior does not establish official missing-variable behavior.
 
 #### Request-driven emission and unchanged values
 
 Demo must match SimConnect delivery semantics for the requests used by the application.
-The current instrument requests use SIMCONNECT_PERIOD_SIM_FRAME, flags 0, origin 0, interval 0, and limit 0.
-They request observations on each simulation frame without a change-only filter or a transmission-count limit.
+The grouped request uses `SIMCONNECT_PERIOD_SIM_FRAME`, flags 0, origin 0, the configured interval, and limit 0.
+Demo schedules the first eligible frame and then schedules every `max(1, interval)` frames. A gap, fault, or skipped frame can suppress a scheduled delivery without shifting the schedule. Intervals 0 and 1 send every frame; interval 2 sends every other frame. Scenario time advances independently of delivery, including when frames are skipped. A bounded official-DLL observation supports these settings relative to a separate interval-zero request; it did not independently observe simulator frame events.
 The [SimConnect request contract](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_requestdataonsimobject/) distinguishes flags 0 from SIMCONNECT_DATA_REQUEST_FLAG_CHANGED.
 The application does not request the CHANGED flag. Do not enable equivalent filtering implicitly in Demo.
 
 * During `hold`, send the value on every due requested frame throughout the segment, even when it equals the previous value.
 * During `ramp`, evaluate the current value and send it on every due requested frame. Numeric equality does not suppress a sample with flags 0.
-* During `gap`, send no observations for that signal. Do not substitute zero or resend its previous value.
-* Preserve independent request routing. A signal gap does not suppress unrelated signals, lifecycle events, or ordinary state-query replies.
+* During `gap`, single-field requests send no observation. Grouped optional floating-point gaps use synthetic NaN; attitude or integer gaps suppress the packet. Never substitute zero or resend a previous value.
+* Lifecycle events and ordinary state-query replies remain independent of a signal gap.
 * Generate packets independently of GetNextDispatch calls. Requested cadence controls production; dispatch retrieves already queued packets.
 
 These rules apply while the request and source state permit delivery and no explicit scenario fault suppresses it.
@@ -167,8 +165,8 @@ Do not hard-code change-only emission or ignore the request arguments to make De
 Support the used API subset; any later request-mode change requires matching Demo behavior before claiming compatibility.
 
 For a healthy five-second IAS hold at 100, repeated packets carrying 100 are distinct observations.
-Each received IAS observation refreshes IAS acquisition time in the server.
-The existing 1000 ms expiry concerns missing observations, not an unchanged numeric value; ALT updates do not refresh IAS.
+Each accepted grouped packet refreshes the common sample receipt time.
+The configured whole-sample expiry concerns missing packets, not an unchanged numeric value.
 Keep these receive timestamps separate from the scenario clock, which continues increasing.
 
 Headings use explicit unwrapped ramp endpoints when crossing north.
@@ -177,9 +175,11 @@ The existing receiver normalizes native headings. Add no general angular interpo
 
 ### Sparse inputs and registration
 
-A scenario may provide any subset of signals, only lifecycle events, or no signal values. The DLL accepts supported registrations even when the scenario supplies no matching value. Unknown names and injected registration failures remain distinct from missing values. Missing values produce no samples and never become zero. A grouped definition emits no packet when any required component is missing; independent requests and events continue.
+A scenario may provide any subset of signals, only lifecycle events, or no signal values. The DLL accepts supported registrations even when the scenario supplies no matching value. Unknown names and injected registration failures remain distinct from missing values. Missing values never become zero. A grouped optional floating-point gap becomes synthetic NaN; missing attitude or integer values suppress the packet. Single-field requests remain silent for a gap. This is Demo behavior, not proof of official behavior.
 
-Unreceived readings are internally unavailable (`None`). Existing SSE represents unavailable attitude and sample age as null and omits absent optional instrument fields. State, source, and sequence remain present. A received zero is a real observation subject to normal validation and freshness.
+For integer datatypes, Demo sends only finite integral values within the requested type's range. A fractional or out-of-range value suppresses the complete packet instead of saturating it. This conversion policy is synthetic; it does not establish the official DLL's conversion behavior.
+
+Unreceived readings are internally unavailable (`None`). SSE represents unavailable attitude as null and omits absent optional instrument fields. Sample age is null before the first accepted sample and otherwise retains the age of the last accepted sample. State, source, and sequence remain present. A received zero is a real observation subject to normal validation and freshness.
 
 ### Lifecycle and faults
 
@@ -221,18 +221,18 @@ The [independent checkpoint fixture](../../tests/fixtures/demo-evidence.md) supp
 
 | Authored native input | Receipt diagnostic | Eligible final SSE value or rule |
 | --- | --- | --- |
-| Pitch and bank, radians | `attitude_raw` records primary radians; `attitude_sample` records the candidate | Negate both, convert to degrees, and wrap roll to `[-180, 180)`. Reject invalid pitch or nonfinite attitude. A grouped packet requires both components. |
-| IAS, TAS, GS in knots; altitude in feet; VSI in feet per minute; turn rate in degrees per second | `instrument_sample` identifies the native name, index, value, and active gate | `ias_kt`, `tas_kt`, `gs_kt`, `altitude_ft`, `vertical_speed_fpm`, and `turn_rate_dps` retain valid native values. Speeds must be nonnegative. |
-| Magnetic heading and selected heading, degrees | `instrument_sample` | Wrap to `[0, 360)`. Selected heading also requires a finite nonzero `AUTOPILOT AVAILABLE`. |
-| Ball position | `instrument_sample` | Divide by 127 for `slip_skid`; reject values outside `[-1, 1]`. |
-| KOHLSMAN setting, inHg | `instrument_sample` | Multiply by `33.8638866667` for `baro_setting.pressure_hpa`; the receiver also formats `baro_text` in inHg. Invalid pressure is omitted. |
-| VS0, VS1, minimum rotation, and barber pole, knots | `instrument_sample` | Positive valid values populate the corresponding partial `airspeed_profile`; unsupported profile fields remain absent. |
-| Autopilot availability, selected altitude, and radio mode | `instrument_sample` for each | `selected_altitude_ft` requires finite nonzero availability and radio mode equal to 0. Each gate and target must remain fresh. |
-| IAS history | Individual IAS `instrument_sample` records | `ias_acceleration_ktps` derives from valid IAS acquisitions and their receiver times over a 500 ms window; it is not an authored native field. |
+| Pitch and bank, radians | `grouped_sample` records raw values and the validation error, if any | Negate both, convert to degrees, and wrap roll to `[-180, 180)`. Reject invalid pitch or nonfinite attitude. A grouped packet requires both components. |
+| IAS, TAS, GS in knots; altitude in feet; VSI in feet per minute; turn rate in degrees per second | `grouped_sample` records values in canonical field order and the active gate | `ias_kt`, `tas_kt`, `gs_kt`, `altitude_ft`, `vertical_speed_fpm`, and `turn_rate_dps` retain valid native values. Speeds must be nonnegative. |
+| Magnetic heading and selected heading, degrees | `grouped_sample` | Wrap to `[0, 360)`. Selected heading also requires a finite nonzero `AUTOPILOT AVAILABLE`. |
+| Ball position | `grouped_sample` | Divide by 127 for `slip_skid`; reject values outside `[-1, 1]`. |
+| KOHLSMAN setting, inHg | `grouped_sample` | Multiply by `33.8638866667` for `baro_setting.pressure_hpa`; the receiver also formats `baro_text` in inHg. Invalid pressure is omitted. |
+| VS0, VS1, minimum rotation, and barber pole, knots | `grouped_sample` | Positive valid values populate the corresponding partial `airspeed_profile`; unsupported profile fields remain absent. |
+| Autopilot availability, selected altitude, and radio mode | `grouped_sample` | `selected_altitude_ft` requires finite nonzero availability and radio mode equal to 0. Each gate and target must remain fresh. |
+| IAS history | Grouped sample IAS values | `ias_acceleration_ktps` derives from valid IAS acquisitions and their receiver times over a 500 ms window; it is not an authored native field. |
 
 A receipt is not proof of a final value: the worker logs raw observations even when lifecycle blocks publication. The `state_transition` record includes a published snapshot only on a transition, not for every instrument update. Capture SSE for other final checkpoints. SSE delivers latest snapshots and can coalesce publications, so do not assume a one-to-one packet count or exact wall-clock equality.
 
-Each optional observation expires independently after 1000 ms without receipt. Equal hold samples refresh their own field; unrelated samples do not. A gap sends no replacement values. Live output requires active, unpaused lifecycle and a fresh valid attitude. Pause, flight changes, and disconnect clear cached optional values; a new eligible attitude is required for recovery. Missing optional fields are omitted, while unavailable attitude is null. The [SimConnect guide](simconnect.md#telemetry-acquisition-and-availability) defines the current gates and normalization.
+The complete sample expires after 1.5 times the SSE period without a grouped packet. Equal packets refresh its common receipt time. Live output requires active, unpaused lifecycle and a fresh valid attitude. Pause, flight changes, and disconnect clear cached values; a new eligible sample is required for recovery. Invalid optional fields are omitted, while unavailable attitude is null. The [SimConnect guide](simconnect.md#telemetry-acquisition-and-availability) defines the current gates and normalization.
 
 ## Validation
 

@@ -7,4 +7,4 @@
 {"type":"hold","signal":"ias","value":90,"duration_ms":10000}
 {"type":"signal","id":"alt","simvar":"INDICATED ALTITUDE:1","unit":"feet","repeat":false}
 {"type":"hold","signal":"alt","value":1000,"duration_ms":10000}
-{"type":"api_fault","operation":"SimConnect_RequestDataOnSimObject","occurrence":1,"hresult":-2147467259,"selector":{"simvar":"AIRSPEED INDICATED","unit":"knots"}}
+{"type":"api_fault","operation":"SimConnect_RequestDataOnSimObject","occurrence":1,"hresult":-2147467259}

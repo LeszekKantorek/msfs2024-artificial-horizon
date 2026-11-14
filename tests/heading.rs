@@ -75,11 +75,11 @@ async fn headings_share_freshness_and_clear_independently_on_old_publications_an
     let selected = SelectedHeading::new(1.0).unwrap();
     let full = empty.clone().with_heading(Some(heading), Some(selected));
     publisher.publish_sample(full.clone()).unwrap();
-    advance(Duration::from_millis(999)).await;
+    advance(Duration::from_millis(749)).await;
     let current = serde_json::to_value(subscription.snapshot()).unwrap();
     assert_eq!(current["heading_deg"], 359.0);
     assert_eq!(current["selected_heading_deg"], 1.0);
-    assert_eq!(current["sample_age_ms"], 999);
+    assert_eq!(current["sample_age_ms"], 749);
     advance(Duration::from_millis(1)).await;
     let stale = serde_json::to_value(subscription.snapshot()).unwrap();
     assert_eq!(stale["state"], "stale");

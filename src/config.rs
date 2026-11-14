@@ -6,6 +6,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 pub struct Config {
     pub listen_address: IpAddr,
     pub port: u16,
+    pub sse_interval_ms: u32,
 }
 
 impl Default for Config {
@@ -13,12 +14,16 @@ impl Default for Config {
         Self {
             listen_address: Ipv4Addr::LOCALHOST.into(),
             port: 8080,
+            sse_interval_ms: 500,
         }
     }
 }
 
 impl Config {
     pub fn validate(&self) -> Result<(), ConfigError> {
+        if !(1..=1_431_655_764).contains(&self.sse_interval_ms) {
+            return Err(ConfigError::InvalidSseInterval);
+        }
         if self.port == 0 {
             return Err(ConfigError::InvalidPort);
         }
@@ -37,6 +42,8 @@ impl Config {
 
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
+    #[error("SSE interval must be between 1 and 1431655764 milliseconds")]
+    InvalidSseInterval,
     #[error("port must be between 1 and 65535; port 0 is not a supported configuration")]
     InvalidPort,
     #[error(

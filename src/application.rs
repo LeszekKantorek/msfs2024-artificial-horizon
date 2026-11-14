@@ -51,14 +51,19 @@ pub async fn run(
     let dll = simconnect::resolve_dll(selection.0.dll.as_deref())?;
     let source = simconnect::source_kind(&dll);
     simconnect::validate_scenario(source, selection.0.scenario.as_deref())?;
-    let (publisher, subscription) = telemetry::channel(source);
+    let definition = simconnect::load_definition()?;
+    simconnect::validate_library(&dll)?;
+    let (publisher, subscription, _schedule) =
+        telemetry::scheduled_channel(source, config.sse_interval_ms);
     let lifetime = publisher.retain_channel();
     let server = Server::bind(config, subscription).await?;
     print_startup(server.local_address()?, source);
     let (stop, stopping) = watch::channel(false);
     let guard = Shutdown(stop);
     let http = tokio::spawn(server.run(stopped(stopping.clone())));
-    let producer = tokio::spawn(supervise(selection, publisher, lifetime, stopping));
+    let producer = tokio::spawn(supervise(
+        selection, definition, publisher, lifetime, stopping,
+    ));
     coordinate(http, producer, guard, shutdown).await
 }
 
@@ -100,12 +105,13 @@ async fn coordinate(
 
 async fn supervise(
     selection: SourceSelection,
+    definition: simconnect::Definition,
     publisher: Publisher,
     lifetime: ChannelLifetime,
     shutdown: watch::Receiver<bool>,
 ) -> Result<(), TelemetryError> {
     let acquisition = async {
-        let report = simconnect::run(selection.0, publisher, async {
+        let report = simconnect::run_with_definition(selection.0, definition, publisher, async {
             stopped(shutdown.clone()).await;
             Ok(())
         })
@@ -181,37 +187,245 @@ mod tests {
     use crate::telemetry::Attitude;
     use tokio::time::{Duration, timeout};
 
+    #[test]
+    fn held_close_child() {
+        let Some(port) = std::env::var_os("MSFS_TEST_PORT") else {
+            return;
+        };
+        let port = port.to_string_lossy().parse().unwrap();
+        let dll = std::path::PathBuf::from(std::env::var_os("MSFS_TEST_DLL").unwrap());
+        let scenario = std::path::PathBuf::from(std::env::var_os("MSFS_TEST_SCENARIO").unwrap());
+        tokio::runtime::Runtime::new().unwrap().block_on(async {
+            run(
+                Config {
+                    listen_address: "127.0.0.1".parse().unwrap(),
+                    port,
+                    sse_interval_ms: 60_000,
+                },
+                SourceSelection(SimConnectConfig {
+                    interval: 0,
+                    dll: Some(dll),
+                    log: None,
+                    scenario: Some(scenario),
+                }),
+                async {
+                    tokio::time::sleep(Duration::from_secs(8)).await;
+                    Ok(())
+                },
+            )
+            .await
+            .unwrap();
+        });
+    }
+
+    #[test]
+    fn terminal_state_and_stderr_precede_held_close() {
+        use std::{
+            io::{Read, Write},
+            net::{TcpListener, TcpStream},
+            process::{Command, Stdio},
+            time::Instant,
+        };
+        let directory =
+            std::env::temp_dir().join(format!("msfs-close-gate-{}", std::process::id()));
+        std::fs::create_dir(&directory).unwrap();
+        let deps = directory.join("deps");
+        std::fs::create_dir(&deps).unwrap();
+        let original = std::env::current_exe().unwrap();
+        let child_exe = deps.join("test.exe");
+        std::fs::copy(&original, &child_exe).unwrap();
+        std::fs::copy(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("default.json"),
+            deps.join("default.json"),
+        )
+        .unwrap();
+        let dll = directory.join("demo.dll");
+        std::fs::copy(
+            original
+                .parent()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .join("demo.dll"),
+            &dll,
+        )
+        .unwrap();
+        let scenario = directory.join("scenario.jsonl");
+        let mut input = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("demo-scenarios/errors/definition-exception.jsonl"),
+        )
+        .unwrap();
+        if !input.ends_with('\n') {
+            input.push('\n');
+        }
+        input.push_str("{\"type\":\"api_fault\",\"operation\":\"SimConnect_Close\",\"occurrence\":1,\"hresult\":-2147467259}\n");
+        std::fs::write(&scenario, input).unwrap();
+        let port = TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port();
+        let stderr_path = directory.join("stderr.txt");
+        let stderr = std::fs::File::create(&stderr_path).unwrap();
+        struct ChildGuard(std::process::Child);
+        impl Drop for ChildGuard {
+            fn drop(&mut self) {
+                let _ = self.0.kill();
+                let _ = self.0.wait();
+            }
+        }
+        let mut child = ChildGuard(
+            Command::new(&child_exe)
+                .args([
+                    "--exact",
+                    "application::tests::held_close_child",
+                    "--nocapture",
+                    "--skip",
+                    "--scenario",
+                ])
+                .arg(&scenario)
+                .env("MSFS_TEST_CLOSE_GATE", &directory)
+                .env("MSFS_TEST_PORT", port.to_string())
+                .env("MSFS_TEST_DLL", &dll)
+                .env("MSFS_TEST_SCENARIO", &scenario)
+                .stdout(Stdio::null())
+                .stderr(stderr)
+                .spawn()
+                .unwrap(),
+        );
+        let deadline = Instant::now() + Duration::from_secs(7);
+        let connect = || loop {
+            if let Ok(mut socket) = TcpStream::connect(("127.0.0.1", port)) {
+                socket
+                    .set_read_timeout(Some(Duration::from_millis(200)))
+                    .unwrap();
+                socket
+                    .write_all(b"GET /api/v1/events HTTP/1.1\r\nHost: localhost\r\n\r\n")
+                    .unwrap();
+                break socket;
+            }
+            assert!(Instant::now() < deadline, "HTTP did not start");
+            std::thread::sleep(Duration::from_millis(10));
+        };
+        let mut active = connect();
+        let read_until = |socket: &mut TcpStream, target: &str| {
+            let mut response = String::new();
+            while !response.contains(target) {
+                let mut bytes = [0; 8192];
+                match socket.read(&mut bytes) {
+                    Ok(0) => panic!("SSE closed: {response}"),
+                    Ok(n) => response.push_str(&String::from_utf8_lossy(&bytes[..n])),
+                    Err(error)
+                        if matches!(
+                            error.kind(),
+                            std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
+                        ) => {}
+                    Err(error) => panic!("SSE read: {error}"),
+                }
+                assert!(
+                    Instant::now() < deadline,
+                    "SSE did not reach {target}: {response}"
+                );
+            }
+            response
+        };
+        read_until(&mut active, "\"state\":\"live\"");
+        while !directory.join("entered").exists() {
+            assert!(Instant::now() < deadline, "close was not reached");
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        let response = read_until(&mut active, "\"state\":\"disconnected\"");
+        let assert_disconnected = |response: &str| {
+            let snapshot = response
+                .lines()
+                .filter_map(|line| line.strip_prefix("data: "))
+                .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+                .find(|value| value["state"] == "disconnected")
+                .unwrap();
+            assert!(snapshot["attitude"].is_null());
+            assert!(snapshot.get("ias_kt").is_none());
+            assert!(snapshot.get("altitude_ft").is_none());
+        };
+        assert_disconnected(&response);
+        let response = read_until(&mut connect(), "\"state\":\"disconnected\"");
+        assert_disconnected(&response);
+        let before_release = std::fs::read_to_string(&stderr_path).unwrap();
+        assert!(
+            before_release.contains("Asynchronous SimConnect exception"),
+            "{before_release}"
+        );
+        std::fs::write(directory.join("release"), b"release").unwrap();
+        assert!(child.0.wait().unwrap().success());
+        let after_release = std::fs::read_to_string(&stderr_path).unwrap();
+        assert!(
+            after_release.contains("SimConnect cleanup failed"),
+            "{after_release}"
+        );
+        for file in [
+            child_exe,
+            deps.join("default.json"),
+            dll,
+            scenario,
+            stderr_path,
+            directory.join("entered"),
+            directory.join("release"),
+        ] {
+            std::fs::remove_file(file).unwrap();
+        }
+        std::fs::remove_dir(deps).unwrap();
+        std::fs::remove_dir(directory).unwrap();
+    }
+
     #[tokio::test]
     async fn caller_shutdown_closes_real_sse_and_releases_port_in_both_modes() {
         use tokio::{
             io::{AsyncReadExt, AsyncWriteExt},
             net::{TcpListener, TcpStream},
         };
+        static MAPPING: std::sync::Once = std::sync::Once::new();
+        MAPPING.call_once(|| {
+            let directory = std::env::current_exe()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .to_owned();
+            std::fs::copy(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("default.json"),
+                directory.join("default.json"),
+            )
+            .unwrap();
+        });
         for simconnect in [false, true] {
             // Public configuration rejects port zero; reserve an ephemeral port
             // first and release it immediately before application startup.
             let reservation = TcpListener::bind("127.0.0.1:0").await.unwrap();
             let address = reservation.local_addr().unwrap();
             drop(reservation);
+            let demo_dll = std::env::current_exe()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .join("demo.dll");
             let dll = if simconnect {
-                std::env::temp_dir()
+                let path = std::env::temp_dir()
                     .join(format!(
                         "missing-shutdown-{}-{}",
                         std::process::id(),
                         address.port()
                     ))
-                    .join("SimConnect.dll")
+                    .join("SimConnect.dll");
+                std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+                std::fs::copy(&demo_dll, &path).unwrap();
+                path
             } else {
-                std::env::current_exe()
-                    .unwrap()
-                    .parent()
-                    .unwrap()
-                    .parent()
-                    .unwrap()
-                    .join("demo.dll")
+                demo_dll
             };
             let selection = SourceSelection(SimConnectConfig {
-                dll: Some(dll),
+                interval: 0,
+                dll: Some(dll.clone()),
                 log: None,
                 scenario: (!simconnect).then(|| {
                     std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -223,6 +437,7 @@ mod tests {
                 Config {
                     listen_address: address.ip(),
                     port: address.port(),
+                    ..Config::default()
                 },
                 selection,
                 async { stopping.await.map_err(io::Error::other) },
@@ -268,6 +483,10 @@ mod tests {
                 .unwrap()
                 .unwrap()
                 .unwrap();
+            if simconnect {
+                std::fs::remove_file(&dll).unwrap();
+                std::fs::remove_dir(dll.parent().unwrap()).unwrap();
+            }
             for mut client in clients {
                 timeout(Duration::from_secs(2), client.read_to_end(&mut Vec::new()))
                     .await

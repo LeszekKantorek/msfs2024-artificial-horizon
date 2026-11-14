@@ -76,10 +76,10 @@ async fn vertical_speed_shares_freshness_and_clears_on_old_samples_and_states() 
             .clone()
             .with_vertical_speed(Some(VerticalSpeed::new(fpm).unwrap()));
         publisher.publish_sample(full.clone()).unwrap();
-        advance(Duration::from_millis(999)).await;
+        advance(Duration::from_millis(749)).await;
         let current = serde_json::to_value(subscription.snapshot()).unwrap();
         assert_eq!(current["vertical_speed_fpm"], fpm);
-        assert_eq!(current["sample_age_ms"], 999);
+        assert_eq!(current["sample_age_ms"], 749);
         assert!(current.get("altitude_ft").is_none());
         assert!(current.get("baro_text").is_none());
         advance(Duration::from_millis(1)).await;

@@ -5,8 +5,8 @@ import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
 import { once } from 'node:events';
 import { setTimeout as delay } from 'node:timers/promises';
-import { resolve } from 'node:path';
-import { mkdir } from 'node:fs/promises';
+import { dirname, join, resolve } from 'node:path';
+import { copyFile, mkdir, mkdtemp, rmdir, unlink } from 'node:fs/promises';
 
 const reservation = createServer();
 reservation.listen(0, '127.0.0.1');
@@ -19,6 +19,8 @@ let server;
 let browser;
 let session;
 let primaryError;
+let unavailableDirectory;
+let unavailableDll;
 async function start(sourceArguments = ['--source', 'demo.dll', '--scenario', resolve('demo-scenarios/demo-scenario.jsonl')]) {
   server = spawn(executable, [...sourceArguments, '--port', String(port)], { stdio: ['ignore', 'pipe', 'pipe'] });
   let failure;
@@ -251,9 +253,12 @@ try {
   await checkSourceLoss(page);
   await start();
   await checkRecovery(page);
-  // A failed real provider keeps HTTP connected and invalidates prior demo values.
+  // A synthetic unavailable provider keeps HTTP connected and invalidates prior demo values.
   await stop();
-  await start(['--source', resolve('.local/missing-browser-test/SimConnect.dll')]);
+  unavailableDirectory = await mkdtemp(resolve('.local/browser-unavailable-'));
+  unavailableDll = join(unavailableDirectory, 'SimConnect.dll');
+  await copyFile(join(dirname(executable), 'demo.dll'), unavailableDll);
+  await start(['--source', unavailableDll]);
   await page.waitForFunction(() => {
     const instrument = document.querySelector('.instrument');
     return instrument.dataset.source === 'simconnect' && instrument.dataset.state === 'disconnected' &&
@@ -287,5 +292,12 @@ try {
   primaryError = error;
   throw error;
 } finally {
-  await cleanupBrowserAndProcess({ session, primaryError, stop });
+  let cleanupError;
+  try { await cleanupBrowserAndProcess({ session, primaryError, stop }); }
+  catch (error) { if (!primaryError) cleanupError = error; }
+  try {
+    if (unavailableDll) await unlink(unavailableDll).catch(error => { if (error.code !== 'ENOENT') throw error; });
+    if (unavailableDirectory) await rmdir(unavailableDirectory);
+  } catch (error) { if (!primaryError && !cleanupError) cleanupError = error; }
+  if (cleanupError) throw cleanupError;
 }

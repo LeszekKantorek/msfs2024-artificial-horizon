@@ -1,7 +1,6 @@
 import { isValidSnapshot, normalizeOptionalIndications } from './validation.js';
 
 // One read-only subscription, with independent source and transport status.
-const STALE_AFTER = 1000;
 const RETRY_AFTER = 2000;
 
 export function createTelemetryClient({
@@ -26,7 +25,7 @@ export function createTelemetryClient({
   function expireSample(receivedAt, remaining) {
     const left = remaining - (now() - receivedAt);
     if (left > 0) {
-      ageTimer = schedule(() => expireSample(receivedAt, remaining), left);
+      ageTimer = schedule(() => expireSample(receivedAt, remaining), Math.ceil(left));
       return;
     }
     ageTimer = null;
@@ -47,12 +46,11 @@ export function createTelemetryClient({
     sequence = snapshot.sequence;
     clearAge();
     const receivedAt = now();
-    const remaining = STALE_AFTER - (snapshot.sample_age_ms ?? 0);
-    report({ source: snapshot.source,
-      state: snapshot.state === 'live' && remaining <= 0 ? 'stale' : snapshot.state });
+    const remaining = snapshot.sse_interval_ms * 1.5;
+    report({ source: snapshot.source, state: snapshot.state });
     if (status.state === 'live') {
       publishSample(snapshot, receivedAt + remaining);
-      ageTimer = schedule(() => expireSample(receivedAt, remaining), remaining);
+      ageTimer = schedule(() => expireSample(receivedAt, remaining), Math.ceil(remaining));
     }
   }
   function retry() {

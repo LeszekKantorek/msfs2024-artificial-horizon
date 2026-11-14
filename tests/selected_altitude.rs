@@ -57,10 +57,10 @@ async fn selected_altitude_is_optional_and_clears_with_the_shared_deadline() {
             .clone()
             .with_selected_altitude(Some(SelectedAltitude::new(feet).unwrap()));
         publisher.publish_sample(full.clone()).unwrap();
-        advance(Duration::from_millis(999)).await;
+        advance(Duration::from_millis(749)).await;
         let snapshot = serde_json::to_value(subscription.snapshot()).unwrap();
         assert_eq!(snapshot["selected_altitude_ft"], feet);
-        assert_eq!(snapshot["sample_age_ms"], 999);
+        assert_eq!(snapshot["sample_age_ms"], 749);
         publisher.publish_sample(full.clone()).unwrap();
         assert_eq!(
             serde_json::to_value(subscription.snapshot()).unwrap()["sample_age_ms"],

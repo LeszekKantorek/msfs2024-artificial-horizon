@@ -51,10 +51,10 @@ async fn true_airspeed_is_independent_and_shares_the_sample_deadline() {
         assert!(wire.get("schema_version").is_none());
     }
     publisher.publish_sample(full.clone()).unwrap();
-    advance(Duration::from_millis(999)).await;
+    advance(Duration::from_millis(749)).await;
     let fresh: Value = serde_json::to_value(subscription.snapshot()).unwrap();
     assert_eq!(fresh["tas_kt"], 160.0);
-    assert_eq!(fresh["sample_age_ms"], 999);
+    assert_eq!(fresh["sample_age_ms"], 749);
     let retained = subscription.snapshot();
     advance(Duration::from_millis(1)).await;
     let stale = serde_json::to_value(subscription.snapshot()).unwrap();
