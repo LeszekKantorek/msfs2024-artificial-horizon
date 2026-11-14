@@ -32,6 +32,11 @@ impl Fixture {
         let original = Path::new(env!("CARGO_BIN_EXE_msfs2024-artificial-horizon"));
         fs::copy(original, &binary).unwrap();
         fs::copy(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("default.json"),
+            self.0.join("default.json"),
+        )
+        .unwrap();
+        fs::copy(
             original.parent().unwrap().join("demo.dll"),
             self.0.join("demo.dll"),
         )
@@ -91,6 +96,148 @@ fn output(binary: &Path, cwd: &Path, arguments: &[&str]) -> Output {
         assert!(Instant::now() < deadline, "CLI did not exit promptly");
         std::thread::sleep(Duration::from_millis(10));
     }
+}
+
+#[test]
+fn missing_mapping_does_not_fall_back_to_working_directory() {
+    let executable_dir = Fixture::new();
+    let cwd = Fixture::new();
+    let binary = executable_dir.binary();
+    fs::remove_file(executable_dir.0.join("default.json")).unwrap();
+    fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("default.json"),
+        cwd.0.join("default.json"),
+    )
+    .unwrap();
+    let scenario = Path::new(env!("CARGO_MANIFEST_DIR")).join("demo-scenarios/demo-scenario.jsonl");
+    let result = output(
+        &binary,
+        &cwd.0,
+        &[
+            "--source",
+            "demo.dll",
+            "--scenario",
+            scenario.to_str().unwrap(),
+        ],
+    );
+    assert!(!result.status.success());
+    let error = String::from_utf8_lossy(&result.stderr);
+    assert!(error.contains("default.json"), "{error}");
+}
+
+#[test]
+fn reordered_mixed_numeric_mapping_reaches_sse() {
+    let fixture = Fixture::new();
+    let binary = fixture.binary();
+    let mapping_path = fixture.0.join("default.json");
+    let mut mapping: serde_json::Value =
+        serde_json::from_slice(&fs::read(&mapping_path).unwrap()).unwrap();
+    let entries = mapping["mappings"].as_array_mut().unwrap();
+    entries.swap(0, 2);
+    entries[0]["type"] = "SIMCONNECT_DATATYPE_INT32".into();
+    entries[1]["type"] = "SIMCONNECT_DATATYPE_FLOAT32".into();
+    entries[2]["type"] = "SIMCONNECT_DATATYPE_INT64".into();
+    fs::write(mapping_path, serde_json::to_vec(&mapping).unwrap()).unwrap();
+    let scenario = fixture.0.join("mixed.jsonl");
+    fs::write(&scenario, concat!(
+        "{\"type\":\"scenario\",\"format\":\"msfs-efi-simconnect-demo\",\"version\":1,\"mode\":\"scripted\",\"frame_period_ms\":50,\"duration_us\":10000000,\"initial\":{\"sim_running\":true,\"pause\":\"off\",\"flight\":\"mixed\"}}\n",
+        "{\"type\":\"signal\",\"id\":\"pitch\",\"simvar\":\"PLANE PITCH DEGREES\",\"unit\":\"radians\",\"repeat\":true}\n",
+        "{\"type\":\"hold\",\"signal\":\"pitch\",\"value\":-1,\"duration_ms\":10000}\n",
+        "{\"type\":\"signal\",\"id\":\"bank\",\"simvar\":\"PLANE BANK DEGREES\",\"unit\":\"radians\",\"repeat\":true}\n",
+        "{\"type\":\"hold\",\"signal\":\"bank\",\"value\":0.5,\"duration_ms\":10000}\n",
+        "{\"type\":\"signal\",\"id\":\"ias\",\"simvar\":\"AIRSPEED INDICATED\",\"unit\":\"knots\",\"repeat\":true}\n",
+        "{\"type\":\"hold\",\"signal\":\"ias\",\"value\":123,\"duration_ms\":10000}\n"
+    )).unwrap();
+    let mut app = Application::start(
+        &binary,
+        &fixture.0,
+        &["--scenario", scenario.to_str().unwrap()],
+    );
+    let snapshot = fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 123.0);
+    assert!(
+        (snapshot["attitude"]["pitch_deg"].as_f64().unwrap() - 1.0_f64.to_degrees()).abs() < 1e-9
+    );
+    assert!(
+        (snapshot["attitude"]["roll_deg"].as_f64().unwrap() + 0.5_f64.to_degrees()).abs() < 1e-9
+    );
+    app.shutdown();
+}
+
+#[test]
+fn grouped_distinct_fields_replace_one_invalid_optional() {
+    let fixture = Fixture::new();
+    let binary = fixture.binary();
+    let scenario =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/grouped-distinct.jsonl");
+    let log = fixture.0.join("distinct.jsonl");
+    let mut app = Application::start(
+        &binary,
+        &fixture.0,
+        &[
+            "--scenario",
+            scenario.to_str().unwrap(),
+            "--log",
+            log.to_str().unwrap(),
+        ],
+    );
+    let initial = fault_snapshot(&app, |s| {
+        s["state"] == "live" && s["ias_kt"] == 101.0 && s["tas_kt"] == 111.0
+    });
+    assert_eq!(initial["altitude_ft"], 1300.0);
+    let records = wait_fault_log_for(&log, Duration::from_secs(8), |records| {
+        records.iter().any(|r| {
+            r["kind"] == "grouped_sample" && r["data"]["values"][3]["classification"] == "nan"
+        })
+    });
+    let samples: Vec<_> = records
+        .iter()
+        .filter(|r| r["kind"] == "grouped_sample" && r["data"]["active"] == true)
+        .collect();
+    let gap = samples
+        .iter()
+        .position(|r| r["data"]["values"][3]["classification"] == "nan")
+        .unwrap();
+    assert!(gap > 0);
+    let expected = [
+        -0.1, 0.2, 101.0, 111.0, 121.0, 1300.0, 29.9, 321.0, 222.0, 32.0, 1.2, 40.0, 50.0, 60.0,
+        160.0, 1.0, 270.0, 3000.0, 0.0,
+    ];
+    for (index, value) in expected.iter().enumerate() {
+        assert_eq!(
+            samples[gap - 1]["data"]["values"][index]["value"].as_f64(),
+            Some(*value),
+            "before gap index {index}"
+        );
+        if index == 3 {
+            assert_eq!(
+                samples[gap]["data"]["values"][index]["classification"],
+                "nan"
+            );
+        } else {
+            assert_eq!(
+                samples[gap]["data"]["values"][index]["value"].as_f64(),
+                Some(*value),
+                "gap index {index}"
+            );
+        }
+    }
+    let gap_snapshot = fault_snapshot(&app, |s| {
+        s["state"] == "live" && s["ias_kt"] == 101.0 && s.get("tas_kt").is_none()
+    });
+    let comparable = |mut snapshot: serde_json::Value| {
+        let object = snapshot.as_object_mut().unwrap();
+        for field in [
+            "sequence",
+            "sample_age_ms",
+            "tas_kt",
+            "ias_acceleration_ktps",
+        ] {
+            object.remove(field);
+        }
+        snapshot
+    };
+    assert_eq!(comparable(initial), comparable(gap_snapshot));
+    app.shutdown();
 }
 
 /// Cleanup uses process termination only as a test fallback. These process tests
@@ -200,9 +347,6 @@ impl Application {
             std::thread::sleep(Duration::from_millis(20));
         }
     }
-    fn unavailable_stream(&self) -> TcpStream {
-        self.unavailable_stream_for("simconnect")
-    }
     fn unavailable_stream_for(&self, source: &str) -> TcpStream {
         let mut socket = self.request("/api/v1/events");
         let mut response = String::new();
@@ -243,64 +387,27 @@ fn default_dll_is_beside_executable_and_explicit_missing_dll_does_not_fall_back(
     )
     .unwrap();
     let binary = fixture.binary();
-    let expected = fixture.0.join("SimConnect.dll");
-    {
-        let mut app = Application::start(&binary, &cwd, &["--source", "SimConnect.dll"]);
-        let mut first = app.unavailable_stream();
-        app.assert_health();
-        let mut second = app.unavailable_stream();
-        for stream in [&mut first, &mut second] {
-            stream
-                .set_read_timeout(Some(Duration::from_millis(150)))
-                .unwrap();
-            let mut bytes = [0; 4096];
-            loop {
-                match stream.read(&mut bytes) {
-                    Ok(0) => panic!("existing SSE closed after producer failure"),
-                    Ok(_) => continue, // Permit trailing chunk framing already in flight.
-                    Err(error) => {
-                        assert!(matches!(
-                            error.kind(),
-                            std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
-                        ));
-                        break;
-                    }
-                }
-            }
-        }
-        app.assert_health();
-        let messages = app.messages();
-        assert!(messages.contains(expected.to_str().unwrap()), "{messages}");
-        assert!(messages.contains("--source"), "{messages}");
-        assert!(messages.contains("Listening on"), "{messages}");
-        assert_eq!(
-            fs::read_dir(&cwd).unwrap().count(),
-            1,
-            "no implicit diagnostics"
-        );
-    }
-    fs::write(&expected, "invalid sibling DLL").unwrap();
+    let sibling = fixture.0.join("SimConnect.dll");
+    let result = output(&binary, &cwd, &["--source", "SimConnect.dll"]);
+    assert!(!result.status.success());
+    let error = String::from_utf8_lossy(&result.stderr);
+    assert!(error.contains(sibling.to_str().unwrap()), "{error}");
+    assert!(!String::from_utf8_lossy(&result.stdout).contains("Listening on"));
+    fs::write(&sibling, "invalid sibling DLL").unwrap();
     let override_path = fixture.0.join("missing").join("SimConnect.dll");
-    let mut app = Application::start(
+    let result = output(
         &binary,
         &cwd,
         &["--source", override_path.to_str().unwrap()],
     );
-    let _stream = app.unavailable_stream();
-    app.assert_health();
-    let messages = app.messages();
-    assert!(
-        messages.contains(override_path.to_str().unwrap()),
-        "{messages}"
-    );
-    assert!(
-        !messages.contains(expected.to_str().unwrap()),
-        "must not try sibling DLL: {messages}"
-    );
+    let error = String::from_utf8_lossy(&result.stderr);
+    assert!(!result.status.success());
+    assert!(error.contains(override_path.to_str().unwrap()), "{error}");
+    assert!(!error.contains(sibling.to_str().unwrap()), "{error}");
 }
 
 #[test]
-fn invalid_library_and_missing_exports_preserve_http_and_report_distinct_errors() {
+fn invalid_library_and_missing_exports_fail_before_http() {
     let fixture = Fixture::new();
     let binary = fixture.binary();
     let invalid = fixture.0.join("SimConnect.dll");
@@ -316,10 +423,10 @@ fn invalid_library_and_missing_exports_preserve_http_and_report_distinct_errors(
         (&invalid, "LoadLibrary"),
         (&system, "missing export SimConnect_Open"),
     ] {
-        let mut app = Application::start(&binary, &fixture.0, &["--source", dll.to_str().unwrap()]);
-        let _stream = app.unavailable_stream();
-        app.assert_health();
-        assert!(app.messages().contains(expected), "{}", app.messages());
+        let result = output(&binary, &fixture.0, &["--source", dll.to_str().unwrap()]);
+        assert!(!result.status.success());
+        assert!(String::from_utf8_lossy(&result.stderr).contains(expected));
+        assert!(!String::from_utf8_lossy(&result.stdout).contains("Listening on"));
     }
 }
 
@@ -349,62 +456,42 @@ fn help_and_version_do_not_open_requested_files() {
 }
 
 #[test]
-fn explicit_log_appends_distinct_complete_sessions_when_native_loading_fails() {
+fn missing_library_fails_before_creating_log() {
     let fixture = Fixture::new();
     let binary = fixture.binary();
     let dll = fixture.0.join("missing").join("SimConnect.dll");
     let log = fixture.0.join("sessions/loader-failure.jsonl");
-    for _ in 0..2 {
-        let mut app = Application::start(
-            &binary,
-            &fixture.0,
-            &[
-                "--source",
-                dll.to_str().unwrap(),
-                "--log",
-                "sessions/loader-failure.jsonl",
-            ],
-        );
-        let _stream = app.unavailable_stream();
-        app.assert_health();
-        assert!(app.messages().contains("Diagnostic session completed"));
-    }
-    let records: Vec<serde_json::Value> = fs::read_to_string(log)
-        .unwrap()
-        .lines()
-        .map(|line| serde_json::from_str(line).unwrap())
-        .collect();
-    let starts: Vec<_> = records
-        .iter()
-        .filter(|r| r["kind"] == "session_start")
-        .collect();
-    let ends: Vec<_> = records
-        .iter()
-        .filter(|r| r["kind"] == "session_end")
-        .collect();
-    assert_eq!(starts.len(), 2);
-    assert_eq!(ends.len(), 2);
-    assert_ne!(starts[0]["session_id"], starts[1]["session_id"]);
-    assert!(starts.iter().all(|r| r["data"].get("scenario").is_none()));
-    assert!(ends.iter().all(|r| r["data"]["success"] == false));
-}
-
-#[test]
-fn a_log_open_failure_prevents_native_load_but_preserves_http() {
-    let fixture = Fixture::new();
-    let binary = fixture.binary();
-    let dll = fixture.0.join("missing").join("SimConnect.dll");
-    let mut app = Application::start(
+    let result = output(
         &binary,
         &fixture.0,
         &[
             "--source",
             dll.to_str().unwrap(),
             "--log",
+            log.to_str().unwrap(),
+        ],
+    );
+    assert!(!result.status.success());
+    assert!(!log.exists());
+}
+
+#[test]
+fn a_log_open_failure_prevents_native_load_but_preserves_http() {
+    let fixture = Fixture::new();
+    let binary = fixture.binary();
+    let scenario = Path::new(env!("CARGO_MANIFEST_DIR")).join("demo-scenarios/demo-scenario.jsonl");
+    let mut app = Application::start(
+        &binary,
+        &fixture.0,
+        &[
+            "--scenario",
+            scenario.to_str().unwrap(),
+            "--log",
             fixture.0.to_str().unwrap(),
         ],
     );
-    let _stream = app.unavailable_stream();
+    let state = fault_snapshot(&app, |s| s["state"] == "disconnected");
+    assert_eq!(state["source"], "demo");
     app.assert_health();
     let messages = app.messages();
     assert!(
@@ -420,13 +507,14 @@ fn occupied_http_port_prevents_producer_and_diagnostics_start() {
     let reservation = TcpListener::bind("127.0.0.1:0").unwrap();
     let port = reservation.local_addr().unwrap().port().to_string();
     let log = fixture.0.join("must-not-exist/session.jsonl");
-    let dll = fixture.0.join("missing").join("SimConnect.dll");
+    let binary = fixture.binary();
+    let scenario = Path::new(env!("CARGO_MANIFEST_DIR")).join("demo-scenarios/demo-scenario.jsonl");
     let result = output(
-        Path::new(env!("CARGO_BIN_EXE_msfs2024-artificial-horizon")),
+        &binary,
         &fixture.0,
         &[
-            "--source",
-            dll.to_str().unwrap(),
+            "--scenario",
+            scenario.to_str().unwrap(),
             "--port",
             &port,
             "--log",
@@ -492,7 +580,7 @@ fn demo_serves_http_with_an_invalid_sibling_dll() {
 }
 
 #[test]
-fn explicit_scenario_reaches_sse_and_independent_gap_expiry() {
+fn explicit_scenario_reaches_sse_and_grouped_optional_gap() {
     let fixture = Fixture::new();
     let binary = fixture.binary();
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/demo-evidence.jsonl");
@@ -536,7 +624,7 @@ fn explicit_scenario_reaches_sse_and_independent_gap_expiry() {
     let mut normal_resume = false;
     let mut active_pause = false;
     let mut loop_resume = false;
-    let deadline = started + Duration::from_secs(25);
+    let deadline = started + Duration::from_secs(35);
     while Instant::now() < deadline && !loop_resume {
         let mut bytes = [0; 8192];
         match stream.read(&mut bytes) {
@@ -608,7 +696,7 @@ fn explicit_scenario_reaches_sse_and_independent_gap_expiry() {
     );
     assert!(
         gap,
-        "IAS did not expire independently while ALT continued: {}",
+        "IAS did not become unavailable while ALT continued: {}",
         app.messages()
     );
     assert!(
@@ -637,11 +725,7 @@ fn explicit_scenario_reaches_sse_and_independent_gap_expiry() {
     );
     let observed = records
         .iter()
-        .filter(|r| {
-            r["kind"] == "instrument_sample"
-                && r["data"]["name"] == "AIRSPEED INDICATED"
-                && r["data"]["value"]["value"] == 100.0
-        })
+        .filter(|r| r["kind"] == "grouped_sample" && r["data"]["values"][2]["value"] == 100.0)
         .count();
     assert!(observed > 2, "raw diagnostic IAS receipts: {observed}");
     let marker = records
@@ -656,8 +740,8 @@ fn explicit_scenario_reaches_sse_and_independent_gap_expiry() {
         .map(|(i, _)| i)
         .expect("initial, 2-second, and 7.5-second pause-off events");
     let ias = |r: &serde_json::Value| {
-        (r["kind"] == "instrument_sample" && r["data"]["name"] == "AIRSPEED INDICATED")
-            .then(|| r["data"]["value"]["value"].as_f64())
+        (r["kind"] == "grouped_sample")
+            .then(|| r["data"]["values"][2]["value"].as_f64())
             .flatten()
     };
     let before = records[..marker].iter().rev().find_map(ias).unwrap();
@@ -1000,155 +1084,115 @@ fn wait_fault_log_for(
     }
 }
 #[test]
-fn fault_optional_request_isolated_from_attitude_and_altitude() {
+fn fault_grouped_request_failure_terminates_session() {
     let fixture = Fixture::new();
     let (mut app, log) = start_fault(&fixture, "optional-request.jsonl");
-    let snapshot = fault_snapshot(&app, |s| s["state"] == "live" && s["altitude_ft"] == 1000.0);
-    assert!(snapshot.get("ias_kt").is_none());
-    assert!(snapshot["attitude"].is_object());
-    let records = wait_fault_log(&log, |r| {
-        r.iter()
-            .any(|v| v["kind"] == "instrument_request" && v["data"]["name"] == "AIRSPEED INDICATED")
-    });
-    assert!(!records.iter().find(|v| v["kind"] == "instrument_request" && v["data"]["name"] == "AIRSPEED INDICATED").unwrap()["data"]["error"].is_null());
+    let records = wait_fault_log(&log, |r| r.iter().any(|v| v["kind"] == "session_end"));
+    assert!(!records.iter().any(|v| v["kind"] == "grouped_request"));
+    assert!(!records.iter().any(|v| v["kind"] == "reconnect_wait"));
+    let state = fault_snapshot(&app, |s| s["state"] == "disconnected");
+    assert!(state["attitude"].is_null());
     app.assert_health();
     app.shutdown();
 }
 
 #[test]
-fn fault_correlated_optional_exception_isolated_from_other_fields() {
+fn correlated_grouped_request_exception_identifies_operation() {
     let fixture = Fixture::new();
     let (mut app, log) = start_fault(&fixture, "optional-exception.jsonl");
     fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
     let records = wait_fault_log_for(&log, Duration::from_secs(8), |r| {
-        r.iter()
-            .any(|v| v["kind"] == "instrument_unavailable" && v["data"]["index"] == 0)
+        r.iter().any(|v| v["kind"] == "native_exception")
     });
-    assert!(
-        records
-            .iter()
-            .any(|v| v["kind"] == "instrument_unavailable" && v["data"]["index"] == 0)
-    );
-    let state = fault_snapshot(&app, |s| {
-        s["state"] == "live" && s["altitude_ft"] == 1000.0 && s.get("ias_kt").is_none()
-    });
-    assert!(state["attitude"].is_object());
-    app.assert_health();
-    app.shutdown();
-}
-
-#[test]
-fn fault_correlated_definition_exception_isolated_from_other_fields() {
-    let fixture = Fixture::new();
-    let (mut app, log) = start_fault(&fixture, "definition-exception.jsonl");
-    fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
-    wait_fault_log_for(&log, Duration::from_secs(8), |r| {
-        r.iter()
-            .any(|v| v["kind"] == "instrument_unavailable" && v["data"]["index"] == 0)
-    });
-    let state = fault_snapshot(&app, |s| {
-        s["state"] == "live" && s["altitude_ft"] == 1000.0 && s.get("ias_kt").is_none()
-    });
-    assert!(state["attitude"].is_object());
-    app.assert_health();
-    app.shutdown();
-}
-
-#[test]
-fn exception_before_sample_drops_same_frame_and_late_packets() {
-    let fixture = Fixture::new();
-    let (mut app, log) = start_fault(&fixture, "exception-before-sample.jsonl");
-    fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
-    let mut stream = app.request("/api/v1/events");
-    stream
-        .set_read_timeout(Some(Duration::from_millis(200)))
+    let error = records
+        .iter()
+        .find(|v| v["kind"] == "native_exception")
         .unwrap();
-    let deadline = Instant::now() + Duration::from_secs(8);
-    let mut pending = String::new();
-    let mut saw_initial = false;
-    let mut unavailable_at: Option<Instant> = None;
-    let mut saw_raw_and_later_snapshot = false;
-    while Instant::now() < deadline {
-        let mut bytes = [0; 8192];
-        match stream.read(&mut bytes) {
-            Ok(0) => panic!("SSE closed: {}", app.messages()),
-            Ok(n) => pending.push_str(&String::from_utf8_lossy(&bytes[..n])),
-            Err(e)
-                if matches!(
-                    e.kind(),
-                    std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock
-                ) =>
-            {
-                continue;
-            }
-            Err(e) => panic!("{e}"),
-        }
-        while let Some(end) = pending.find('\n') {
-            let line = pending[..end].trim_end_matches('\r').to_owned();
-            pending.drain(..=end);
-            let Some(data) = line.strip_prefix("data: ") else {
-                continue;
-            };
-            let Ok(snapshot) = serde_json::from_str::<serde_json::Value>(data) else {
-                continue;
-            };
-            if snapshot["state"] != "live" || snapshot["altitude_ft"] != 1000.0 {
-                continue;
-            }
-            let raw_seen = fs::read_to_string(&log)
-                .unwrap_or_default()
-                .lines()
-                .any(|line| {
-                    line.contains("\"name\":\"AIRSPEED INDICATED\"")
-                        && line.contains("\"value\":190.0")
-                });
-            if let Some(start) = unavailable_at {
-                assert!(
-                    snapshot.get("ias_kt").is_none(),
-                    "IAS returned after correlated failure: {snapshot}"
-                );
-                saw_raw_and_later_snapshot |= raw_seen;
-                if start.elapsed() >= Duration::from_millis(1200) && saw_raw_and_later_snapshot {
-                    break;
-                }
-            } else if snapshot["ias_kt"] == 90.0 {
-                saw_initial = true;
-            } else if saw_initial && snapshot.get("ias_kt").is_none() {
-                assert!(
-                    !raw_seen,
-                    "late raw packet arrived before SSE established unavailable state"
-                );
-                unavailable_at = Some(Instant::now());
-            }
-        }
-        if unavailable_at.is_some_and(|start| start.elapsed() >= Duration::from_millis(1200))
-            && saw_raw_and_later_snapshot
+    assert_eq!(
+        error["data"]["operation"],
+        "SimConnect_RequestDataOnSimObject"
+    );
+    assert_eq!(error["data"]["mapping"], "no correlated mapping");
+    fault_snapshot(&app, |s| s["state"] == "disconnected");
+    app.assert_health();
+    app.shutdown();
+}
+
+#[test]
+fn version_mismatch_reports_dll_and_sdk_without_log() {
+    let fixture = Fixture::new();
+    let binary = fixture.binary();
+    let scenario = fixture.0.join("version-mismatch.jsonl");
+    let input = fs::read_to_string(fault_case("optional-exception.jsonl"))
+        .unwrap()
+        .replace("\"code\":2", "\"code\":5");
+    fs::write(&scenario, input).unwrap();
+    let mut app = Application::start(
+        &binary,
+        &fixture.0,
+        &["--scenario", scenario.to_str().unwrap()],
+    );
+    fault_snapshot(&app, |s| s["state"] == "live");
+    fault_snapshot(&app, |s| s["state"] == "disconnected");
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        let messages = app.messages();
+        if messages.contains("VERSION_MISMATCH")
+            && messages.contains("DLL identity:")
+            && messages.contains("SDK metadata:")
         {
             break;
         }
+        assert!(Instant::now() < deadline, "{messages}");
+        std::thread::sleep(Duration::from_millis(10));
     }
-    assert!(
-        saw_initial && unavailable_at.is_some() && saw_raw_and_later_snapshot,
-        "did not observe the full exception and late-packet SSE window"
-    );
-    let records = wait_fault_log_for(&log, Duration::from_secs(8), |r| {
-        r.iter().any(|v| {
-            v["kind"] == "instrument_sample"
-                && v["data"]["name"] == "AIRSPEED INDICATED"
-                && v["data"]["value"]["value"] == 190.0
-        })
+    app.assert_health();
+    app.shutdown();
+}
+
+#[test]
+fn correlated_definition_exception_terminates_group() {
+    let fixture = Fixture::new();
+    let (mut app, log) = start_fault(&fixture, "definition-exception.jsonl");
+    fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    let records = wait_fault_log_for(&log, Duration::from_secs(8), |records| {
+        records.iter().any(|r| r["kind"] == "native_exception")
     });
-    let unavailable = records
+    let exception = records
         .iter()
-        .position(|v| v["kind"] == "instrument_unavailable" && v["data"]["index"] == 0)
+        .find(|r| r["kind"] == "native_exception")
         .unwrap();
-    assert!(
-        !records[unavailable + 1..]
-            .iter()
-            .any(|v| v["kind"] == "instrument_sample"
-                && v["data"]["name"] == "AIRSPEED INDICATED"
-                && v["data"]["value"]["value"] == 90.0)
+    assert_eq!(
+        exception["data"]["operation"],
+        "SimConnect_AddToDataDefinition"
     );
+    assert!(
+        exception["data"]["mapping"]
+            .as_str()
+            .unwrap()
+            .contains("baro_setting")
+    );
+    let state = fault_snapshot(&app, |s| s["state"] == "disconnected");
+    assert!(state.get("ias_kt").is_none());
+    assert!(state["attitude"].is_null());
+    app.assert_health();
+    app.shutdown();
+}
+
+#[test]
+fn exception_before_sample_prevents_late_packets_restoring_live() {
+    let fixture = Fixture::new();
+    let (mut app, log) = start_fault(&fixture, "exception-before-sample.jsonl");
+    fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    let records = wait_fault_log_for(&log, Duration::from_secs(8), |r| {
+        r.iter().any(|v| v["kind"] == "session_end")
+    });
+    assert!(records.iter().any(|v| v["kind"] == "native_exception"));
+    assert!(!records.iter().any(|v| v["kind"] == "reconnect_wait"));
+    let state = fault_snapshot(&app, |s| s["state"] == "disconnected");
+    assert!(state["attitude"].is_null());
+    std::thread::sleep(Duration::from_millis(1000));
+    fault_snapshot(&app, |s| s["state"] == "disconnected");
     app.assert_health();
     app.shutdown();
 }
@@ -1179,25 +1223,19 @@ fn fault_uncorrelated_exception_ends_source_but_preserves_http() {
 }
 
 #[test]
-fn fault_lost_packet_id_makes_later_exception_uncorrelated() {
+fn lost_registration_packet_id_stops_before_later_exception() {
     let fixture = Fixture::new();
     let (mut app, log) = start_fault(&fixture, "packet-id-exception.jsonl");
-    fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
     let records = wait_fault_log_for(&log, Duration::from_secs(8), |r| {
         r.iter().any(|v| v["kind"] == "session_end")
     });
-    assert!(
-        !records
-            .iter()
-            .any(|v| v["kind"] == "instrument_unavailable")
-    );
-    assert_eq!(
-        records
-            .iter()
-            .filter(|v| v["kind"] == "connection_attempt")
-            .count(),
-        1
-    );
+    assert!(records.iter().any(|v| {
+        v["kind"] == "acquisition_failure"
+            && v["data"]["error"]
+                .as_str()
+                .is_some_and(|s| s.contains("correlate"))
+    }));
+    assert!(!records.iter().any(|v| v["kind"] == "native_exception"));
     fault_snapshot(&app, |s| s["state"] == "disconnected");
     app.assert_health();
     app.shutdown();
@@ -1230,31 +1268,20 @@ fn fault_exception_without_sent_call_is_terminal_scenario_error() {
 }
 
 #[test]
-fn fault_exception_cannot_reference_failed_sent_call() {
+fn failed_registration_stops_before_later_exception() {
     let fixture = Fixture::new();
     let (mut app, log) = start_fault(&fixture, "failed-sent-call.jsonl");
-    fault_snapshot(&app, |s| s["state"] == "live" && s["altitude_ft"] == 1000.0);
     let records = wait_fault_log_for(&log, Duration::from_secs(8), |r| {
         r.iter().any(|v| v["kind"] == "session_end")
     });
-    assert_eq!(
-        records
-            .iter()
-            .filter(|v| v["kind"] == "connection_attempt")
-            .count(),
-        1
-    );
     assert!(
         records
             .iter()
-            .any(|v| v["kind"] == "native_error" && v["data"]["hresult"] == -1610350591)
+            .any(|v| v["kind"] == "native_error" && v["data"]["field"] == "indicated_airspeed")
     );
-    assert!(app.messages().contains("exception references unavailable"));
-    assert!(
-        !records
-            .iter()
-            .any(|v| v["kind"] == "instrument_unavailable")
-    );
+    assert!(!records.iter().any(|v| v["kind"] == "native_exception"));
+    assert!(!records.iter().any(|v| v["kind"] == "grouped_request"));
+    fault_snapshot(&app, |s| s["state"] == "disconnected");
     app.assert_health();
     app.shutdown();
 }
@@ -1268,12 +1295,12 @@ fn fault_nonfinite_attitude_suppresses_live_until_fresh_recovery() {
     assert!(invalid["attitude"].is_null());
     let records = wait_fault_log(&log, |r| {
         r.iter()
-            .any(|v| v["kind"] == "attitude_sample" && !v["data"]["validation_error"].is_null())
+            .any(|v| v["kind"] == "grouped_sample" && !v["data"]["validation_error"].is_null())
     });
     assert!(
         records
             .iter()
-            .any(|v| v["kind"] == "attitude_sample" && !v["data"]["validation_error"].is_null())
+            .any(|v| v["kind"] == "grouped_sample" && !v["data"]["validation_error"].is_null())
     );
     fault_snapshot(&app, |s| s["state"] == "live" && s["attitude"].is_object());
     app.assert_health();
@@ -1287,17 +1314,12 @@ fn fault_nonfinite_optional_value_preserves_attitude_and_altitude() {
     fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
     let records = wait_fault_log_for(&log, Duration::from_secs(8), |r| {
         r.iter().any(|v| {
-            v["kind"] == "instrument_sample"
-                && v["data"]["name"] == "AIRSPEED INDICATED"
-                && v["data"]["value"]["classification"] == "nan"
+            v["kind"] == "grouped_sample" && v["data"]["values"][2]["classification"] == "nan"
         })
     });
-    assert!(
-        records
-            .iter()
-            .any(|v| v["kind"] == "instrument_sample"
-                && v["data"]["value"]["classification"] == "nan")
-    );
+    assert!(records.iter().any(
+        |v| v["kind"] == "grouped_sample" && v["data"]["values"][2]["classification"] == "nan"
+    ));
     let state = fault_snapshot(&app, |s| {
         s["state"] == "live" && s["altitude_ft"] == 1000.0 && s.get("ias_kt").is_none()
     });
@@ -1317,15 +1339,14 @@ fn native_bool_minus_one_enables_targets_and_zero_clears_them() {
             && s["selected_altitude_ft"] == 3000.0
     });
     let records = wait_fault_log(&log, |r| {
-        r.iter().any(|v| {
-            v["kind"] == "instrument_sample"
-                && v["data"]["name"] == "AUTOPILOT AVAILABLE"
-                && v["data"]["value"]["value"] == -1.0
-        })
+        r.iter()
+            .any(|v| v["kind"] == "grouped_sample" && v["data"]["values"][15]["value"] == -1.0)
     });
-    assert!(records.iter().any(|v| v["kind"] == "instrument_sample"
-        && v["data"]["name"] == "AUTOPILOT AVAILABLE"
-        && v["data"]["value"]["value"] == -1.0));
+    assert!(
+        records
+            .iter()
+            .any(|v| v["kind"] == "grouped_sample" && v["data"]["values"][15]["value"] == -1.0)
+    );
     fault_snapshot(&app, |s| {
         s["state"] == "live"
             && s["heading_deg"] == 180.0
@@ -1377,18 +1398,19 @@ fn fault_periodic_state_query_reconnects_and_recovers() {
 }
 
 #[test]
-fn fault_packet_id_failure_is_nonfatal() {
+fn fault_packet_id_failure_terminates_setup() {
     let fixture = Fixture::new();
     let (mut app, log) = start_fault(&fixture, "packet-id.jsonl");
-    let records = wait_fault_log(&log, |r| {
-        r.iter().any(|v| {
-            v["kind"] == "native_error"
-                && v["data"]["operation"] == "SimConnect_GetLastSentPacketID"
-        })
-    });
-    assert!(records.iter().any(|v| v["kind"] == "native_error"
-        && v["data"]["operation"] == "SimConnect_GetLastSentPacketID"));
-    fault_snapshot(&app, |s| s["state"] == "live" && s["ias_kt"] == 90.0);
+    let records = wait_fault_log(&log, |r| r.iter().any(|v| v["kind"] == "session_end"));
+    assert!(records.iter().any(|v| {
+        v["kind"] == "acquisition_failure"
+            && v["data"]["error"]
+                .as_str()
+                .is_some_and(|s| s.contains("correlate"))
+    }));
+    assert!(!records.iter().any(|v| v["kind"] == "grouped_request"));
+    let state = fault_snapshot(&app, |s| s["state"] == "disconnected");
+    assert!(state["attitude"].is_null());
     app.assert_health();
     app.shutdown();
 }
@@ -1661,22 +1683,23 @@ fn demo_configuration_hresult_in_injected_open_fault_is_terminal() {
     app.shutdown();
 }
 #[test]
-fn fault_optional_definition_isolated_from_attitude_and_altitude() {
+fn failed_middle_definition_terminates_without_request() {
     let fixture = Fixture::new();
     let (mut app, log) = start_fault(&fixture, "optional-definition.jsonl");
-    let snapshot = fault_snapshot(&app, |s| s["state"] == "live" && s["altitude_ft"] == 1000.0);
-    assert_eq!(snapshot["source"], "demo");
-    assert!(snapshot.get("ias_kt").is_none());
-    assert_eq!(snapshot["attitude"]["pitch_deg"], 0.0);
+    let records = wait_fault_log(&log, |r| r.iter().any(|v| v["kind"] == "session_end"));
+    assert!(
+        records
+            .iter()
+            .any(|v| v["kind"] == "native_error" && v["data"]["field"] == "indicated_airspeed")
+    );
+    assert!(!records.iter().any(|v| v["kind"] == "grouped_request"));
+    assert!(!records.iter().any(|v| v["kind"] == "reconnect_wait"));
+    let state = fault_snapshot(&app, |s| s["state"] == "disconnected");
+    assert!(state["attitude"].is_null());
     app.assert_health();
-    let records = wait_fault_log(&log, |r| {
-        r.iter()
-            .any(|v| v["kind"] == "instrument_request" && v["data"]["name"] == "AIRSPEED INDICATED")
-    });
-    assert!(!records.iter().find(|r|r["kind"]=="instrument_request" && r["data"]["name"]=="AIRSPEED INDICATED").unwrap()["data"]["error"].is_null());
-    report_fault_evidence(&fixture, "optional-definition.jsonl", &records);
     app.shutdown();
 }
+
 #[test]
 fn fault_required_subscription_ends_source_but_http_stays_available() {
     let fixture = Fixture::new();
@@ -1912,16 +1935,9 @@ fn focused_sparse_scenarios_never_fabricate_live_attitude() {
             assert!(saw_paused && saw_resume, "{name}");
         }
         if name == "ias-only.jsonl" {
-            let records = wait_fault_log(&log, |r| {
-                r.iter().any(|v| {
-                    v["kind"] == "instrument_sample"
-                        && v["data"]["name"] == "AIRSPEED INDICATED"
-                        && v["data"]["value"]["value"] == 100.0
-                })
-            });
-            assert!(records.iter().any(|v| v["kind"] == "instrument_sample"
-                && v["data"]["name"] == "AIRSPEED INDICATED"
-                && v["data"]["value"]["value"] == 100.0));
+            let records =
+                wait_fault_log(&log, |r| r.iter().any(|v| v["kind"] == "grouped_request"));
+            assert!(!records.iter().any(|v| v["kind"] == "grouped_sample"));
         }
         app.assert_health();
         app.shutdown();

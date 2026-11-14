@@ -3,7 +3,6 @@ use super::{
     journal::{DiagnosticStatus, Journal, fingerprint, number},
     lifecycle::{self, Lifecycle, candidate_attitude, state_name},
     native::{Connection, Library, Message, NativeError},
-    unit_check,
 };
 use crate::{
     Source,
@@ -44,6 +43,8 @@ pub enum SimConnectError {
     Io(#[from] io::Error),
     #[error("SimConnect error: {0}")]
     Native(String),
+    #[error("SimConnect send-ID correlation failed: {0}")]
+    Correlation(String),
     #[error("Telemetry error: {0}")]
     Telemetry(#[from] telemetry::TelemetryError),
     #[error("SimConnect worker panicked")]
@@ -106,10 +107,42 @@ pub fn validate_scenario(source: Source, scenario: Option<&Path>) -> Result<(), 
     }
 }
 
+pub fn load_definition() -> Result<super::Definition, SimConnectError> {
+    let exe = std::env::current_exe()?;
+    let directory = exe.parent().ok_or_else(|| {
+        SimConnectError::Configuration("cannot locate executable directory".into())
+    })?;
+    super::Definition::load(&directory.join("default.json")).map_err(SimConnectError::Configuration)
+}
+
+pub fn validate_library(path: &Path) -> Result<(), SimConnectError> {
+    Library::load(path).map(|_| ()).map_err(|error| {
+        SimConnectError::Native(format!("{error}; selected DLL: {}", path.display()))
+    })
+}
+
 /// Acquire on one native worker into the caller's SimConnect channel; never start HTTP.
 /// Caller owns signals. Cancellation signals the worker even if this future is dropped.
 pub async fn run(
     config: SimConnectConfig,
+    publisher: Publisher,
+    shutdown: impl Future<Output = io::Result<()>>,
+) -> RunReport {
+    let definition = match load_definition() {
+        Ok(definition) => definition,
+        Err(error) => {
+            return RunReport {
+                result: Err(error),
+                diagnostics: DiagnosticStatus::Disabled,
+            };
+        }
+    };
+    run_with_definition(config, definition, publisher, shutdown).await
+}
+
+pub async fn run_with_definition(
+    config: SimConnectConfig,
+    definition: super::Definition,
     publisher: Publisher,
     shutdown: impl Future<Output = io::Result<()>>,
 ) -> RunReport {
@@ -149,8 +182,17 @@ pub async fn run(
     };
     let worker = match thread::Builder::new()
         .name("simconnect".into())
-        .spawn(move || worker_entry(dll, config.log, scenario, source, publisher, &worker_stop))
-    {
+        .spawn(move || {
+            worker_entry(
+                dll,
+                config.log,
+                scenario,
+                source,
+                publisher,
+                &worker_stop,
+                definition,
+            )
+        }) {
         Ok(worker) => worker,
         Err(error) => return early_error(error.into()),
     };
@@ -204,6 +246,7 @@ fn worker_entry(
     source: Source,
     publisher: Publisher,
     stop: &Event,
+    definition: super::Definition,
 ) -> RunReport {
     let executable = match std::env::current_exe() {
         Ok(path) => path,
@@ -214,7 +257,11 @@ fn worker_entry(
             };
         }
     };
-    let mut protected = vec![dll.as_path(), executable.as_path()];
+    let mapping_path = executable
+        .parent()
+        .expect("executable has a directory")
+        .join("default.json");
+    let mut protected = vec![dll.as_path(), executable.as_path(), mapping_path.as_path()];
     if let Some(path) = scenario.as_deref() {
         protected.push(path);
     }
@@ -235,7 +282,7 @@ fn worker_entry(
     if let Some(path) = &log {
         println!("Session log: {}", path.display());
     }
-    let result = worker(&dll, source, publisher, &mut journal, stop);
+    let result = worker(&dll, source, publisher, &mut journal, stop, &definition);
     journal.record(
         "session_end",
         || {
@@ -275,6 +322,7 @@ fn worker(
     publisher: Publisher,
     journal: &mut Journal,
     stop: &Event,
+    definition: &super::Definition,
 ) -> Result<(), SimConnectError> {
     let executable = std::env::current_exe()?;
     journal.record("environment", || json!({
@@ -286,9 +334,9 @@ fn worker(
         "git_changes_at_run": command_record("git", &["status", "--porcelain", "--untracked-files=no"]),
         "windows": command_record("cmd", &["/d", "/c", "ver"]),
         "sdk": if source == Source::SimConnect { sdk_version(dll) } else { json!({"synthetic": true}) }, "dll": dll, "source": source,
-        "base_requested_fields": ["pitch radians", "bank radians"],
+        "requested_fields": definition.mappings.iter().map(|mapping| &mapping.field_name).collect::<Vec<_>>(),
         "angular_input": "native radians; convert to degrees locally",
-        "unit_probe_profile": "SDK degrees and repeated radians are diagnostics only; six fields if logging is enabled at connection open",
+        "payload_profile": "one ordered untagged grouped definition",
         "sign_convention": "positive nose up and right wing down; native pitch and bank negated",
         "note": "runtime toolchain/git metadata is contextual; executable SHA-256 identifies the tested bytes",
     }), true);
@@ -302,7 +350,7 @@ fn worker(
         ))
     })?;
     journal.record("library_loaded", || json!({}), true);
-    let result = connections(&library, source, publisher, journal, stop);
+    let result = connections(&library, source, publisher, journal, stop, definition, dll);
     journal.record(
         "library_release",
         || {
@@ -330,12 +378,51 @@ fn retry_seconds(attempt: u32) -> u32 {
     (1_u32 << attempt.min(4)).min(10)
 }
 
+fn exception_name(code: u32) -> Option<&'static str> {
+    Some(match code {
+        0 => "NONE",
+        1 => "ERROR",
+        2 => "SIZE_MISMATCH",
+        3 => "UNRECOGNIZED_ID",
+        4 => "UNOPENED",
+        5 => "VERSION_MISMATCH",
+        6 => "TOO_MANY_GROUPS",
+        7 => "NAME_UNRECOGNIZED",
+        8 => "TOO_MANY_EVENT_NAMES",
+        9 => "EVENT_ID_DUPLICATE",
+        10 => "TOO_MANY_MAPS",
+        11 => "TOO_MANY_OBJECTS",
+        12 => "TOO_MANY_REQUESTS",
+        18 => "INVALID_DATA_TYPE",
+        19 => "INVALID_DATA_SIZE",
+        20 => "DATA_ERROR",
+        21 => "INVALID_ARRAY",
+        24 => "OPERATION_INVALID_FOR_OBJECT_TYPE",
+        25 => "ILLEGAL_OPERATION",
+        26 => "ALREADY_SUBSCRIBED",
+        27 => "INVALID_ENUM",
+        28 => "DEFINITION_ERROR",
+        29 => "DUPLICATE_ID",
+        30 => "DATUM_ID",
+        31 => "OUT_OF_BOUNDS",
+        44 => "EVENT_NAME_RESERVED",
+        45 => "INTERNAL",
+        _ => return None,
+    })
+}
+
+fn exception_is_terminal(code: u32) -> bool {
+    code != 0
+}
+
 fn connections(
     library: &Library,
     source: Source,
     publisher: Publisher,
     journal: &mut Journal,
     stop: &Event,
+    definition: &super::Definition,
+    dll: &Path,
 ) -> Result<(), SimConnectError> {
     let mut output = Output {
         publisher,
@@ -360,7 +447,7 @@ fn connections(
             || json!({ "generation": generation }),
             true,
         );
-        let mut connection = match library.open(notification.event().handle(), journal.enabled()) {
+        let mut connection = match library.open(notification.event().handle()) {
             Ok(connection) => connection,
             Err(error) => {
                 eprintln!("SimConnect connection unavailable: {error}");
@@ -391,15 +478,34 @@ fn connections(
             output.update(&lifecycle, journal, Instant::now(), None)?;
             session(
                 &mut connection,
-                source,
                 notification.event(),
                 stop,
                 journal,
                 &mut lifecycle,
                 &mut output,
+                SessionContext {
+                    source,
+                    definition,
+                    generation,
+                    dll,
+                },
             )
         })();
-        // Explicit cleanup is attempted even when the logger or packet decoder failed.
+        // Invalidate the published state before native cleanup can block.
+        lifecycle.disconnect();
+        let publication = output.update(&lifecycle, journal, Instant::now(), None);
+        if let Err(error) = &result {
+            eprintln!("SimConnect acquisition failed in generation {generation}: {error}");
+            journal.record(
+                "acquisition_failure",
+                || json!({"generation":generation,"error":error.to_string()}),
+                true,
+            );
+        }
+        if let Err(error) = &publication {
+            eprintln!("SimConnect disconnect publication failed: {error}");
+        }
+        // Explicit cleanup is attempted even when publication or acquisition failed.
         let closed = connection.close();
         match &closed {
             Ok(()) => journal.record(
@@ -409,6 +515,11 @@ fn connections(
             ),
             Err(error) => journal.record("native_error", || json!(error), true),
         };
+        if let Err(error) = &closed {
+            eprintln!("SimConnect cleanup failed: {error}");
+        }
+        let session_end = result?;
+        publication?;
         closed?;
         journal.record(
             "notification_release",
@@ -416,9 +527,7 @@ fn connections(
             true,
         );
         drop(notification);
-        lifecycle.disconnect();
-        output.update(&lifecycle, journal, Instant::now(), None)?;
-        match result? {
+        match session_end {
             SessionEnd::Stop => return Ok(()),
             SessionEnd::Reconnect => {}
         }
@@ -523,32 +632,43 @@ enum SessionEnd {
     Reconnect,
 }
 
+#[derive(Debug)]
+struct SentOperation {
+    generation: u64,
+    id: u32,
+    operation: &'static str,
+    mapping: Option<usize>,
+    query_id: Option<u32>,
+}
+
+fn find_sent(sends: &[SentOperation], generation: u64, id: u32) -> Option<&SentOperation> {
+    sends
+        .iter()
+        .find(|sent| sent.generation == generation && sent.id == id)
+}
+
 fn api_result(
     connection: &Connection<'_>,
     journal: &mut Journal,
     operation: &str,
     result: Result<(), NativeError>,
     context: impl FnOnce() -> Value,
-) -> Result<(), SimConnectError> {
+) -> Result<u32, SimConnectError> {
     match result {
         Ok(()) => {
-            if !journal.enabled() {
-                return Ok(());
-            }
-            let sent = connection.last_sent_packet_id();
+            let sent = connection.last_sent_packet_id().map_err(|error| {
+                journal.record("native_error", || json!(&error), true);
+                SimConnectError::Correlation(format!("{error}; cannot correlate {operation}"))
+            })?;
             journal.record(
                 "api_result",
                 || {
                     json!({ "operation": operation, "success": true,
-                "send_id": sent.as_ref().ok(), "context": context() })
+                "send_id": sent, "context": context() })
                 },
                 false,
             );
-            match sent {
-                Ok(id) => journal.record("api_result", || json!({ "operation": "SimConnect_GetLastSentPacketID", "success": true, "send_id": id }), false),
-                Err(error) => journal.record("native_error", || json!(error), true),
-            }
-            Ok(())
+            Ok(sent)
         }
         Err(error) => {
             journal.record("native_error", || json!(&error), true);
@@ -560,34 +680,36 @@ fn api_result(
 fn configure(
     connection: &mut Connection<'_>,
     journal: &mut Journal,
-) -> Result<(), SimConnectError> {
-    let field_count = connection.attitude_field_count();
-    journal.record(
-        "attitude_definition",
-        || {
-            json!({
-                "field_count": field_count,
-                "fields": if field_count == 2 { &[
-                    "pitch radians", "bank radians",
-                ][..] } else { &[
-                    "pitch radians", "pitch degrees", "bank radians", "bank degrees",
-                    "pitch radians repeated", "bank radians repeated",
-                ][..] },
-                "angular_input": "native radians; degree probes never determine sample validity",
-                "atomicity_verified": false,
-            })
-        },
-        true,
-    );
-    for index in 0..field_count {
-        let result = connection.add_attitude_field(index);
-        api_result(
-            connection,
-            journal,
-            "SimConnect_AddToDataDefinition",
-            result,
-            || json!({ "field_index": index }),
-        )?;
+    definition: &super::Definition,
+    generation: u64,
+) -> Result<Vec<SentOperation>, SimConnectError> {
+    let mut sends = Vec::new();
+    for (index, mapping) in definition.mappings.iter().enumerate() {
+        let result = connection.add_mapping(mapping);
+        if let Err(error) = result {
+            journal.record("native_error", || json!({"generation":generation,"error":error,"field":mapping.field_name,"simvar":mapping.simvar.to_string_lossy(),"unit":mapping.unit.to_string_lossy(),"type":mapping.type_name}), true);
+            return Err(SimConnectError::Native(format!(
+                "{error}; generation {generation}, field={}, SimVar={}, unit={}, type={}",
+                mapping.field_name,
+                mapping.simvar.to_string_lossy(),
+                mapping.unit.to_string_lossy(),
+                mapping.type_name
+            )));
+        }
+        let sent = connection.last_sent_packet_id().map_err(|error| {
+            SimConnectError::Correlation(format!(
+                "{error}; generation {generation}, cannot correlate registration for field {}",
+                mapping.field_name
+            ))
+        })?;
+        sends.push(SentOperation {
+            generation,
+            id: sent,
+            operation: "SimConnect_AddToDataDefinition",
+            mapping: Some(index),
+            query_id: None,
+        });
+        journal.record("definition_registration", || json!({"generation":generation,"send_id":sent,"field":mapping.field_name,"simvar":mapping.simvar.to_string_lossy(),"unit":mapping.unit.to_string_lossy(),"type":mapping.type_name}), true);
     }
     for (id, name) in [
         (lifecycle::EVENT_SIM, c"Sim"),
@@ -595,34 +717,59 @@ fn configure(
         (lifecycle::EVENT_FLIGHT, c"FlightLoaded"),
     ] {
         let result = connection.subscribe(id, name);
-        api_result(
+        let sent = api_result(
             connection,
             journal,
             "SimConnect_SubscribeToSystemEvent",
             result,
             || json!({ "event_id": id, "name": name.to_string_lossy() }),
         )?;
+        sends.push(SentOperation {
+            generation,
+            id: sent,
+            operation: "SimConnect_SubscribeToSystemEvent",
+            mapping: None,
+            query_id: None,
+        });
     }
-    query_states(connection, journal)?;
-    let result = connection.request_attitude();
-    api_result(
-        connection,
-        journal,
-        "SimConnect_RequestDataOnSimObject",
-        result,
-        || json!({ "period": "SIM_FRAME", "flags": 0, "object_id": 0 }),
-    )
+    query_states(connection, journal, &mut sends, generation)?;
+    connection.request_attitude()?;
+    let sent = connection.last_sent_packet_id().map_err(|error| {
+        SimConnectError::Correlation(format!("{error}; cannot correlate grouped request"))
+    })?;
+    sends.push(SentOperation {
+        generation,
+        id: sent,
+        operation: "SimConnect_RequestDataOnSimObject",
+        mapping: None,
+        query_id: None,
+    });
+    journal.record(
+        "grouped_request",
+        || json!({"generation":generation,"send_id":sent,"period":"SIM_FRAME","flags":0,"interval":0}),
+        true,
+    );
+    Ok(sends)
 }
-
 fn query_states(
     connection: &mut Connection<'_>,
     journal: &mut Journal,
+    sends: &mut Vec<SentOperation>,
+    generation: u64,
 ) -> Result<(), SimConnectError> {
     for (id, name) in [
         (lifecycle::STATE_SIM, c"Sim"),
         (lifecycle::STATE_FLIGHT, c"FlightLoaded"),
     ] {
-        request_state(connection, journal, id, name)?;
+        let sent = request_state(connection, journal, id, name)?;
+        sends.retain(|entry| entry.query_id != Some(id));
+        sends.push(SentOperation {
+            generation,
+            id: sent,
+            operation: "SimConnect_RequestSystemState",
+            mapping: None,
+            query_id: Some(id),
+        });
     }
     Ok(())
 }
@@ -632,7 +779,7 @@ fn request_state(
     journal: &mut Journal,
     id: u32,
     name: &CStr,
-) -> Result<(), SimConnectError> {
+) -> Result<u32, SimConnectError> {
     let result = connection.request_state(id, name);
     api_result(
         connection,
@@ -650,54 +797,34 @@ struct Counters {
     efail_dispatch: u64,
     notification_wakes: u64,
     timeout_wakes: u64,
-    unit_pair_mismatches: u64,
-    repeated_radian_changes: u64,
-    repeated_nonfinite: u64,
+}
+
+struct SessionContext<'a> {
+    source: Source,
+    definition: &'a super::Definition,
+    generation: u64,
+    dll: &'a Path,
 }
 
 fn session(
     connection: &mut Connection<'_>,
-    source: Source,
     notification: &Event,
     stop: &Event,
     journal: &mut Journal,
     lifecycle: &mut Lifecycle,
     output: &mut Output,
+    context: SessionContext<'_>,
 ) -> Result<SessionEnd, SimConnectError> {
-    configure(connection, journal)?;
+    let SessionContext {
+        source,
+        definition,
+        generation,
+        dll,
+    } = context;
+    let mut sends = configure(connection, journal, definition, generation)?;
     output.instruments.clear();
-    let mut optional_packets = Vec::new();
-    let mut unavailable = [false; super::native::INSTRUMENT_FIELDS.len()];
-    for (index, (name, units)) in super::native::INSTRUMENT_FIELDS.iter().enumerate() {
-        let added = connection.add_instrument(index);
-        if added.is_ok()
-            && let Ok(id) = connection.last_sent_packet_id()
-        {
-            optional_packets.push((id, index));
-        }
-        let requested = if added.is_ok() {
-            connection.request_instrument(index)
-        } else {
-            added
-        };
-        unavailable[index] = requested.is_err();
-        if requested.is_ok()
-            && let Ok(id) = connection.last_sent_packet_id()
-        {
-            optional_packets.push((id, index));
-        }
-        journal.record(
-            "instrument_request",
-            || {
-                json!({"index":index, "name":name.to_string_lossy(),
-            "units":units.to_string_lossy(), "error":requested.err().map(|e| e.to_string())})
-            },
-            true,
-        );
-    }
     let mut counters = Counters::default();
     let mut last_packet = Instant::now();
-    let mut last_sample: Option<Instant> = None;
     let mut sample_index = 0_u64;
     let mut summary = Instant::now();
     let mut query = Instant::now();
@@ -711,7 +838,7 @@ fn session(
             if matches!(stop.wait(None, 0)?, Wake::Stop) {
                 return Ok(SessionEnd::Stop);
             }
-            let packet = match connection.next() {
+            let packet = match connection.next_grouped(definition) {
                 Ok(Some(packet)) => packet,
                 Ok(None) => {
                     counters.empty_dispatch += 1;
@@ -735,7 +862,7 @@ fn session(
             let packet_received_at = Instant::now();
             counters.packets += 1;
             last_packet = Instant::now();
-            let is_attitude = matches!(packet.message, Message::Attitude { .. });
+            let is_attitude = matches!(packet.message, Message::Grouped { .. });
             let mut received_at = None;
             journal.record("dispatch", || json!(&packet), !is_attitude);
             match packet.message {
@@ -752,19 +879,39 @@ fn session(
                     send_id,
                     index,
                 } => {
-                    if let Some((_, field)) = optional_packets.iter().find(|(id, _)| *id == send_id)
-                    {
-                        unavailable[*field] = true;
-                        output.instruments.remove(*field);
-                        journal.record(
-                            "instrument_unavailable",
-                            || json!({"index":field,"exception":exception,"send_id":send_id}),
-                            true,
-                        );
+                    if !exception_is_terminal(exception) {
                         continue;
                     }
+                    let sent = find_sent(&sends, generation, send_id);
+                    let mapping =
+                        sent.and_then(|sent| sent.mapping.map(|entry| &definition.mappings[entry]));
+                    let operation = sent
+                        .map(|sent| sent.operation)
+                        .unwrap_or("unknown operation");
+                    let context = mapping
+                        .map(|m| {
+                            format!(
+                                "field={}, SimVar={}, unit={}, type={}",
+                                m.field_name,
+                                m.simvar.to_string_lossy(),
+                                m.unit.to_string_lossy(),
+                                m.type_name
+                            )
+                        })
+                        .unwrap_or_else(|| "no correlated mapping".into());
+                    let compatibility = if exception == 5 {
+                        format!(
+                            "; DLL identity: {}; SDK metadata: {}",
+                            identity(dll),
+                            sdk_version(dll)
+                        )
+                    } else {
+                        String::new()
+                    };
+                    journal.record("native_exception", || json!({"generation":generation,"exception":exception,"name":exception_name(exception),"send_id":send_id,"parameter_index":index,"operation":operation,"mapping":context}), true);
                     return Err(SimConnectError::Native(format!(
-                        "Asynchronous SimConnect exception {exception}, send_id {send_id}, index {index}"
+                        "Asynchronous SimConnect exception {} ({exception}), generation {generation}, send_id {send_id}, parameter index {index}, operation {operation}; {context}{compatibility}",
+                        exception_name(exception).unwrap_or("unknown")
                     )));
                 }
                 Message::Event {
@@ -808,68 +955,21 @@ fn session(
                         _ => {}
                     }
                 }
-                Message::Instrument { index, value } => {
-                    journal.record(
-                        "instrument_sample",
-                        || {
-                            json!({"index":index,
-                        "name":super::native::INSTRUMENT_FIELDS[index].0.to_string_lossy(),
-                        "value":number(value),"active":lifecycle.active()})
-                        },
-                        false,
-                    );
-                    if lifecycle.active() && !unavailable[index] {
-                        output.instruments.receive(index, value, packet_received_at);
-                    }
-                }
-                Message::Attitude {
-                    radians,
-                    unit_probe,
-                    ..
-                } => {
+                Message::Grouped { values } => {
                     let now = packet_received_at;
                     sample_index += 1;
-                    journal.record("attitude_raw", || json!({
-                        "sample_index": sample_index,
-                        "raw": { "pitch_radians": number(radians[0]),
-                            "pitch_degrees": unit_probe.as_ref().map(|p| number(p.degrees[0])),
-                            "bank_radians": number(radians[1]),
-                            "bank_degrees": unit_probe.as_ref().map(|p| number(p.degrees[1])) },
-                        "repeated_radians": unit_probe.as_ref().map(|p| json!({
-                            "pitch": number(p.repeated_radians[0]), "bank": number(p.repeated_radians[1]),
-                        })),
-                        "interval_us": last_sample.map(|at| now.saturating_duration_since(at).as_micros().to_string()),
-                    }), false);
-                    if journal.enabled()
-                        && let Some(probe) = &unit_probe
-                    {
-                        let values = [radians[0], probe.degrees[0], radians[1], probe.degrees[1]];
-                        let repeated_radians = Some(probe.repeated_radians);
-                        let observation = unit_check::observe(values, repeated_radians);
-                        counters.unit_pair_mismatches += u64::from(observation.primary_mismatch);
-                        counters.repeated_radian_changes += u64::from(observation.repeats_changed);
-                        counters.repeated_nonfinite += u64::from(observation.repeats_nonfinite);
-                        if observation.anomalous() {
-                            journal.record(
-                                "attitude_unit_check",
-                                || {
-                                    json!({
-                                        "sample_index": sample_index,
-                                        "affects_sample_validity": false,
-                                        "comparison": unit_check::details(values, repeated_radians),
-                                    })
-                                },
-                                true,
-                            );
-                        }
-                    }
+                    let radians = [values[0].unwrap_or(f64::NAN), values[1].unwrap_or(f64::NAN)];
                     let candidate = candidate_attitude(radians);
-                    journal.record("attitude_sample", || json!({
-                        "sample_index": sample_index,
-                        "candidate_attitude": candidate.as_ref().ok(), "candidate_is_hypothesis": false,
-                        "validation_error": candidate.as_ref().err().map(ToString::to_string),
-                    }), false);
-                    last_sample = Some(now);
+                    journal.record("grouped_sample", || json!({"sample_index":sample_index,"values":values.iter().map(|v| v.map(number)).collect::<Vec<_>>(),"active":lifecycle.active(),"validation_error":candidate.as_ref().err().map(ToString::to_string)}), false);
+                    if lifecycle.active() && candidate.is_ok() {
+                        for (index, value) in values[2..].iter().enumerate() {
+                            output
+                                .instruments
+                                .receive(index, value.unwrap_or(f64::NAN), now);
+                        }
+                    } else {
+                        output.instruments.clear();
+                    }
                     lifecycle.sample(candidate, now);
                     received_at = Some(now);
                 }
@@ -893,7 +993,7 @@ fn session(
             summary = now;
         }
         if query.elapsed() >= Duration::from_secs(5) {
-            match query_states(connection, journal) {
+            match query_states(connection, journal, &mut sends, generation) {
                 Ok(()) => query = now,
                 Err(SimConnectError::Native(_)) => return Ok(SessionEnd::Reconnect),
                 Err(error) => return Err(error),
@@ -923,6 +1023,45 @@ fn session(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn exception_policy_is_terminal_except_none() {
+        for code in [
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 18, 19, 20, 21, 24, 25, 26, 27, 28, 29, 30, 31,
+            44, 45,
+        ] {
+            assert!(exception_is_terminal(code));
+            assert!(exception_name(code).is_some(), "code {code}");
+        }
+        assert!(!exception_is_terminal(0));
+        assert!(exception_is_terminal(u32::MAX));
+        assert!(exception_name(u32::MAX).is_none());
+    }
+    #[test]
+    fn correlation_checks_generation_and_preserves_operation() {
+        let sends = vec![
+            SentOperation {
+                generation: 7,
+                id: 11,
+                operation: "SimConnect_AddToDataDefinition",
+                mapping: Some(3),
+                query_id: None,
+            },
+            SentOperation {
+                generation: 7,
+                id: 12,
+                operation: "SimConnect_RequestDataOnSimObject",
+                mapping: None,
+                query_id: None,
+            },
+        ];
+        let entry = find_sent(&sends, 7, 11).unwrap();
+        assert_eq!(entry.mapping, Some(3));
+        let request = find_sent(&sends, 7, 12).unwrap();
+        assert_eq!(request.operation, "SimConnect_RequestDataOnSimObject");
+        assert_eq!(request.mapping, None);
+        assert!(find_sent(&sends, 8, 11).is_none());
+        assert!(find_sent(&sends, 7, 99).is_none());
+    }
 
     fn missing_dll() -> PathBuf {
         std::env::temp_dir()
@@ -1053,7 +1192,7 @@ mod tests {
             .unwrap();
         let expired = serde_json::to_value(subscription.snapshot()).unwrap();
         assert_eq!(expired["state"], "live");
-        assert!(expired.get("altitude_ft").is_none());
+        assert_eq!(expired["altitude_ft"], 1234.0);
         lifecycle.disconnect();
         output.update(&lifecycle, &mut journal, now, None).unwrap();
         let disconnected = serde_json::to_value(subscription.snapshot()).unwrap();
@@ -1299,7 +1438,7 @@ mod tests {
     }
 
     #[test]
-    fn optional_expiry_does_not_renew_attitude_and_pause_clears_extensions() {
+    fn sample_expiry_and_pause_clear_all_indications() {
         let (publisher, subscription) = telemetry::channel(Source::SimConnect);
         let mut output = Output {
             publisher,
@@ -1333,8 +1472,36 @@ mod tests {
             )
             .unwrap();
         let state = serde_json::to_value(subscription.snapshot()).unwrap();
-        assert!(state.get("ias_kt").is_none());
+        assert_eq!(state["ias_kt"], 120.0);
         assert_eq!(state["state"], "live");
+        output
+            .update(
+                &lifecycle,
+                &mut journal,
+                now + Duration::from_millis(999),
+                None,
+            )
+            .unwrap();
+        let just_fresh = serde_json::to_value(subscription.snapshot()).unwrap();
+        assert_eq!(just_fresh["state"], "live");
+        assert_eq!(just_fresh["ias_kt"], 120.0);
+        output
+            .update(&lifecycle, &mut journal, now + telemetry::STALE_AFTER, None)
+            .unwrap();
+        let stale = serde_json::to_value(subscription.snapshot()).unwrap();
+        assert_eq!(stale["state"], "stale");
+        assert!(stale.get("ias_kt").is_none());
+        output
+            .update(
+                &lifecycle,
+                &mut journal,
+                now + Duration::from_millis(1001),
+                None,
+            )
+            .unwrap();
+        let still_stale = serde_json::to_value(subscription.snapshot()).unwrap();
+        assert_eq!(still_stale["state"], "stale");
+        assert!(still_stale.get("ias_kt").is_none());
         output.instruments.receive(0, 130.0, now);
         lifecycle.pause(4);
         output.update(&lifecycle, &mut journal, now, None).unwrap();
@@ -1362,6 +1529,8 @@ mod tests {
             publisher,
             &mut journal,
             &stop,
+            &super::super::mapping::Definition::parse(include_str!("../../../default.json"))
+                .unwrap(),
         )
         .unwrap_err();
         assert!(matches!(error, SimConnectError::Native(_)));
@@ -1374,12 +1543,14 @@ mod tests {
         let log =
             std::env::temp_dir().join(format!("missing-simconnect-{}.jsonl", std::process::id()));
         let (publisher, _subscription) = telemetry::channel(Source::SimConnect);
-        let report = run(
+        let report = run_with_definition(
             SimConnectConfig {
                 dll: Some(dll),
                 log: Some(log.clone()),
                 scenario: None,
             },
+            super::super::mapping::Definition::parse(include_str!("../../../default.json"))
+                .unwrap(),
             publisher,
             std::future::pending(),
         )
@@ -1394,7 +1565,7 @@ mod tests {
             .lines()
             .map(|line| serde_json::from_str(line).unwrap())
             .collect();
-        assert_eq!(records[0]["data"]["schema_version"], 4);
+        assert_eq!(records[0]["data"]["schema_version"], 6);
         assert_eq!(records[0]["data"]["live_publication_enabled"], true);
         assert!(records[0]["data"].get("attitude_signs_verified").is_none());
         assert!(

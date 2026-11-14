@@ -10,7 +10,7 @@ const IAS_HISTORY_LIMIT: usize = 256;
 
 #[derive(Default)]
 pub(super) struct Instruments {
-    values: [Option<(f64, Instant)>; super::native::INSTRUMENT_FIELDS.len()],
+    values: [Option<f64>; 17],
     ias_history: VecDeque<(f64, Instant)>,
     acceleration: Option<f64>,
     pub dirty: bool,
@@ -18,14 +18,6 @@ pub(super) struct Instruments {
 impl Instruments {
     pub fn clear(&mut self) {
         *self = Self::default();
-    }
-    pub fn remove(&mut self, index: usize) {
-        self.values[index] = None;
-        self.dirty = true;
-        if index == 0 {
-            self.ias_history.clear();
-            self.acceleration = None;
-        }
     }
     pub fn receive(&mut self, index: usize, value: f64, now: Instant) {
         self.dirty = true;
@@ -40,7 +32,7 @@ impl Instruments {
                     } else if now == last_at {
                         self.ias_history.pop_back();
                         self.ias_history.push_back((value, now));
-                        self.values[index] = Some((value, now));
+                        self.values[index] = Some(value);
                         return;
                     }
                 }
@@ -62,7 +54,7 @@ impl Instruments {
                 }
             }
         }
-        self.values[index] = value.is_finite().then_some((value, now));
+        self.values[index] = value.is_finite().then_some(value);
     }
     pub fn expire(&mut self, now: Instant) {
         if self
@@ -75,16 +67,9 @@ impl Instruments {
             }
             self.ias_history.clear();
         }
-        for index in 0..self.values.len() {
-            if self.values[index]
-                .is_some_and(|(_, at)| now.saturating_duration_since(at) >= STALE_AFTER)
-            {
-                self.remove(index);
-            }
-        }
     }
     pub fn sample(&self, attitude: Attitude) -> FlightSample {
-        let get = |i: usize| self.values[i].map(|(v, _)| v);
+        let get = |i: usize| self.values[i];
         let profile = AirspeedProfile::partial(
             [get(9), get(10), None, None, None],
             VSpeedReferences::partial(get(11), None, None, None),
@@ -139,7 +124,7 @@ mod tests {
         serde_json::to_value(subscription.snapshot()).unwrap()
     }
     #[test]
-    fn optional_values_remain_independent_and_expire() {
+    fn optional_values_are_validated_independently() {
         let now = Instant::now();
         let mut cache = Instruments::default();
         cache.receive(0, f64::NAN, now);
@@ -152,7 +137,7 @@ mod tests {
         assert_eq!(state["airspeed_profile"]["vs0_kt"], 40.0);
         assert_eq!(state["airspeed_profile"]["references"]["vr_kt"], 55.0);
         cache.expire(now + STALE_AFTER);
-        assert!(snapshot(&cache).get("altitude_ft").is_none());
+        assert_eq!(snapshot(&cache)["altitude_ft"], -50.0);
     }
     #[test]
     fn trend_uses_acquisitions_and_resets_after_gap_or_invalid_data() {
@@ -291,7 +276,7 @@ mod tests {
         assert!(reversal_90.unwrap() <= 0.6);
     }
     #[test]
-    fn baro_requires_fresh_valid_pressure() {
+    fn baro_requires_valid_pressure() {
         let now = Instant::now();
         let mut cache = Instruments::default();
         cache.receive(4, 29.92, now);
@@ -299,8 +284,6 @@ mod tests {
         assert!(
             (reading["baro_setting"]["pressure_hpa"].as_f64().unwrap() - 1013.2075).abs() < 0.001
         );
-        cache.expire(now + STALE_AFTER);
-        assert!(snapshot(&cache).get("baro_setting").is_none());
         cache.receive(4, 0.0, now + STALE_AFTER);
         assert!(snapshot(&cache).get("baro_setting").is_none());
     }

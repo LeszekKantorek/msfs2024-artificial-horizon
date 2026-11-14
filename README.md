@@ -34,11 +34,13 @@ cd msfs2024-artificial-horizon
 
 ```powershell
 rustup default stable
+$env:CARGO_BUILD_TARGET = 'x86_64-pc-windows-msvc'
 cargo build --workspace --locked
+Copy-Item default.json target/x86_64-pc-windows-msvc/debug/default.json
 cargo run --locked --bin msfs2024-artificial-horizon -- --scenario demo-scenarios/demo-scenario.jsonl
 ```
 
-The workspace build places `demo.dll` beside the executable before startup.
+The workspace build places `demo.dll` beside the executable. The copy command places the mandatory mapping there too.
 
 ### 3. Open the display
 
@@ -100,10 +102,13 @@ cargo run --locked --bin msfs2024-artificial-horizon -- --source demo.dll --scen
 | Invalid address | Use an IPv4/IPv6 address, not a hostname, multicast address, or IPv4 broadcast address |
 | Phone cannot connect | Check the private network, PC address, port, VPN interface, and firewall scope |
 | SimConnect DLL cannot load | Place the official x64 DLL beside the executable or supply an absolute `--source` path. Demo never replaces SimConnect automatically |
+| Mapping cannot load | Place the validated `default.json` beside the executable, then restart |
 
 Select native reception with `--source SimConnect.dll`:
 
 ```powershell
+cargo build --workspace --locked --release
+Copy-Item default.json target/x86_64-pc-windows-msvc/release/default.json
 cargo run --locked --release --bin msfs2024-artificial-horizon -- --source SimConnect.dll --log ".local\simconnect-sessions\active-pause.jsonl"
 ```
 
