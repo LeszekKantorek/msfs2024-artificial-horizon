@@ -98,6 +98,7 @@ cargo run --locked --bin msfs2024-artificial-horizon -- --source demo.dll --scen
 
 | Situation | Action / constraint |
 | --- | --- |
+| SSE period | Set `--sse-interval-ms` to an integer from 1 through 1431655764; default 500 ms. Source and browser deadlines are 1.5 times this period |
 | Port occupied | Select another `--port` from `1` to `65535` |
 | Invalid address | Use an IPv4/IPv6 address, not a hostname, multicast address, or IPv4 broadcast address |
 | Phone cannot connect | Check the private network, PC address, port, VPN interface, and firewall scope |

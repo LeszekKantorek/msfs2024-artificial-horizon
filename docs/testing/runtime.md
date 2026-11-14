@@ -104,7 +104,7 @@ The following rules apply to the shared producer:
 | --- | --- |
 | Sampling | One fresh sample every 50 ms, including unchanged poses. Skip missed ticks |
 | Initial state | `waiting`, then `live` on fresh data |
-| Expiry | No accepted sample for 1,000 ms makes attitude stale |
+| Expiry | No accepted sample for 1.5 times the SSE period makes the complete sample stale |
 | Source failure | Never substitute demo for unavailable SimConnect |
 
 ### Fixtures and tests

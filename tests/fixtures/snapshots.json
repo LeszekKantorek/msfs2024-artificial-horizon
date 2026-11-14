@@ -1,9 +1,9 @@
 [
- {"sequence":0,"source":"demo","state":"waiting","sample_age_ms":null,"attitude":null},
- {"sequence":1,"source":"demo","state":"live","sample_age_ms":0,"attitude":{"pitch_deg":5.0,"roll_deg":15.0}},
- {"sequence":2,"source":"demo","state":"paused","sample_age_ms":50,"attitude":null},
- {"sequence":3,"source":"demo","state":"waiting","sample_age_ms":100,"attitude":null},
- {"sequence":4,"source":"demo","state":"disconnected","sample_age_ms":150,"attitude":null},
- {"sequence":5,"source":"demo","state":"invalid","sample_age_ms":200,"attitude":null},
- {"sequence":7,"source":"demo","state":"stale","sample_age_ms":1000,"attitude":null}
+ {"sse_interval_ms":500,"sequence":0,"source":"demo","state":"waiting","sample_age_ms":null,"attitude":null},
+ {"sse_interval_ms":500,"sequence":1,"source":"demo","state":"live","sample_age_ms":0,"attitude":{"pitch_deg":5.0,"roll_deg":15.0}},
+ {"sse_interval_ms":500,"sequence":2,"source":"demo","state":"paused","sample_age_ms":50,"attitude":null},
+ {"sse_interval_ms":500,"sequence":3,"source":"demo","state":"waiting","sample_age_ms":100,"attitude":null},
+ {"sse_interval_ms":500,"sequence":4,"source":"demo","state":"disconnected","sample_age_ms":150,"attitude":null},
+ {"sse_interval_ms":500,"sequence":5,"source":"demo","state":"invalid","sample_age_ms":200,"attitude":null},
+ {"sse_interval_ms":500,"sequence":7,"source":"demo","state":"stale","sample_age_ms":750,"attitude":null}
 ]

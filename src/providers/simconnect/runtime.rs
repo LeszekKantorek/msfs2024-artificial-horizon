@@ -609,7 +609,7 @@ impl Output {
             self.instruments.clear();
         }
         self.instruments.expire(now);
-        let evaluation = lifecycle.evaluate(now);
+        let evaluation = lifecycle.evaluate_with_timeout(now, self.publisher.stale_after());
         let transition = (state_name(evaluation.state), evaluation.reason);
         let changed = self.transition != Some(transition);
         match evaluation.state {
@@ -1461,6 +1461,43 @@ mod tests {
         assert!(snapshot["attitude"].is_null());
     }
 
+    #[tokio::test(start_paused = true)]
+    async fn output_uses_configured_source_deadline_at_2000_ms() {
+        let (publisher, subscription, _schedule) =
+            telemetry::scheduled_channel(Source::SimConnect, 2000);
+        let mut output = Output {
+            publisher,
+            transition: None,
+            instruments: Default::default(),
+        };
+        let mut journal = Journal::open(None, &[]).unwrap();
+        let mut lifecycle = Lifecycle::default();
+        lifecycle.connect();
+        lifecycle.sim(true);
+        lifecycle.pause(0);
+        lifecycle.flight("test.flt", true);
+        let now = Instant::now();
+        lifecycle.sample(Ok(telemetry::Attitude::new(0.0, 0.0).unwrap()), now);
+        output
+            .update(&lifecycle, &mut journal, now, Some(now))
+            .unwrap();
+        for (gap, expected) in [(2999, "live"), (3000, "stale"), (3001, "stale")] {
+            output
+                .update(
+                    &lifecycle,
+                    &mut journal,
+                    now + Duration::from_millis(gap),
+                    None,
+                )
+                .unwrap();
+            assert_eq!(
+                serde_json::to_value(subscription.snapshot()).unwrap()["state"],
+                expected
+            );
+            assert_eq!(output.transition.unwrap().0, expected);
+        }
+    }
+
     #[test]
     fn sample_expiry_and_pause_clear_all_indications() {
         let (publisher, subscription) = telemetry::channel(Source::SimConnect);
@@ -1502,7 +1539,7 @@ mod tests {
             .update(
                 &lifecycle,
                 &mut journal,
-                now + Duration::from_millis(999),
+                now + Duration::from_millis(749),
                 None,
             )
             .unwrap();

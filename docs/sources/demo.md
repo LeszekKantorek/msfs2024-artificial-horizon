@@ -166,7 +166,7 @@ Support the used API subset; any later request-mode change requires matching Dem
 
 For a healthy five-second IAS hold at 100, repeated packets carrying 100 are distinct observations.
 Each accepted grouped packet refreshes the common sample receipt time.
-The 1000 ms expiry concerns missing packets, not an unchanged numeric value.
+The configured whole-sample expiry concerns missing packets, not an unchanged numeric value.
 Keep these receive timestamps separate from the scenario clock, which continues increasing.
 
 Headings use explicit unwrapped ramp endpoints when crossing north.
@@ -232,7 +232,7 @@ The [independent checkpoint fixture](../../tests/fixtures/demo-evidence.md) supp
 
 A receipt is not proof of a final value: the worker logs raw observations even when lifecycle blocks publication. The `state_transition` record includes a published snapshot only on a transition, not for every instrument update. Capture SSE for other final checkpoints. SSE delivers latest snapshots and can coalesce publications, so do not assume a one-to-one packet count or exact wall-clock equality.
 
-The complete sample expires after 1000 ms without a grouped packet. Equal packets refresh its common receipt time. Live output requires active, unpaused lifecycle and a fresh valid attitude. Pause, flight changes, and disconnect clear cached values; a new eligible sample is required for recovery. Invalid optional fields are omitted, while unavailable attitude is null. The [SimConnect guide](simconnect.md#telemetry-acquisition-and-availability) defines the current gates and normalization.
+The complete sample expires after 1.5 times the SSE period without a grouped packet. Equal packets refresh its common receipt time. Live output requires active, unpaused lifecycle and a fresh valid attitude. Pause, flight changes, and disconnect clear cached values; a new eligible sample is required for recovery. Invalid optional fields are omitted, while unavailable attitude is null. The [SimConnect guide](simconnect.md#telemetry-acquisition-and-availability) defines the current gates and normalization.
 
 ## Validation
 

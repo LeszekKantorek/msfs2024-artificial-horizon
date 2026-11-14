@@ -30,7 +30,7 @@ Controlled browser inputs, desktop commands, layout checks, and full-panel accep
 
 | Scenario | Check |
 | --- | --- |
-| `hold: true` | Comments continue without samples. Live attitude becomes stale after one second |
+| `hold: true` | Comments continue without samples. Live attitude becomes stale after 1.5 times the effective SSE period |
 | Malformed JSON | Instrument becomes obscured |
 | Reconnect or background/resume | Check the logged active SSE count for parallel subscriptions from one page |
 

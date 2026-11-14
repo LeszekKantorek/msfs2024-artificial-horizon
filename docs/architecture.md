@@ -170,7 +170,7 @@ The flow separates acquisition, shared state, delivery, and presentation. The Ru
 | Detect silent sources | Expire samples server-side even without publications |
 | Release stalled clients | Close writers that exceed the socket deadline |
 
-A subscription reads the shared current state. Snapshot reads calculate freshness at access time; slow consumers can skip intermediate samples without delaying acquisition.
+A subscription reads the shared current state. Source receipts update that state independently of the shared ordinary SSE schedule. State and availability transitions publish promptly; slow consumers can skip intermediate samples without delaying acquisition. Snapshot reads calculate freshness at access time.
 
 ### HTTP/SSE delivery and browser consumption
 

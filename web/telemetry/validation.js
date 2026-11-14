@@ -2,6 +2,7 @@ const STATES = new Set(['waiting', 'live', 'paused', 'stale', 'disconnected', 'i
 
 export function isValidSnapshot(value) {
   if (!value ||
+      !Number.isInteger(value.sse_interval_ms) || value.sse_interval_ms < 1 || value.sse_interval_ms > 1431655764 ||
       !Number.isSafeInteger(value.sequence) || value.sequence < 0 ||
       !['demo', 'simconnect'].includes(value.source) || !STATES.has(value.state) ||
       !(value.sample_age_ms === null ||

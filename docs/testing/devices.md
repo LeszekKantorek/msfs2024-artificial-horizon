@@ -16,7 +16,7 @@ Desktop emulation does not establish mobile lifecycle compatibility.
 | HTTP server restart | Reconnect accepts sequence restart |
 | Background / phone lock / resume | Fresh sample required before live |
 | Two phones / deliberately slow receiver | Independent delivery, bounded memory |
-| Source stops, SSE remains open | Stale within one second on active page. Heartbeats cannot mask it |
+| Source stops, SSE remains open | Stale after the configured source or browser deadline on the active page. Heartbeats cannot mask it |
 | Invalid values | Visible invalid state, no level-flight fallback |
 
 Apply the [attitude comparison](../efi/attitude.md#simulator-comparison-scope) and other affected feature scenarios in addition to this shared matrix.

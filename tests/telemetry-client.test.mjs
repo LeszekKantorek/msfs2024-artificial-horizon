@@ -5,7 +5,7 @@ import { isValidSnapshot, normalizeOptionalIndications } from '../web/telemetry/
 import { readFileSync } from 'node:fs';
 
 const live = (sequence = 1, age = 0) => ({ sequence,
-  source: 'demo', state: 'live', sample_age_ms: age,
+  source: 'demo', state: 'live', sse_interval_ms: 500, sample_age_ms: age,
   attitude: { pitch_deg: 5, roll_deg: 15 } });
 const profile = JSON.parse(readFileSync(new URL('./fixtures/airspeed-profile.json', import.meta.url)));
 
@@ -23,7 +23,7 @@ test('TAS clears absent readings and follows sample expiry, reconnect and resume
   const h = harness(); h.client.start();
   let connection = h.connections[0]; connection.onopen();
   connection.send({ ...live(1, 400), tas_kt: 160, ias_kt: 150, gs_kt: 170 });
-  assert.equal(h.samples.at(-1).tas_kt, 160); assert.equal(h.samples.at(-1).expiresAt, 600);
+  assert.equal(h.samples.at(-1).tas_kt, 160); assert.equal(h.samples.at(-1).expiresAt, 750);
   connection.send({ ...live(2), ias_kt: 150, gs_kt: 170 });
   assert.equal(h.samples.at(-1).tas_kt, null); assert.equal(h.samples.at(-1).ias_kt, 150);
   connection.send({ ...live(3), tas_kt: 85.5 });
@@ -116,7 +116,7 @@ test('headings retain shared freshness and clear on old snapshots, reconnect and
   const h = harness(); h.client.start();
   h.connections[0].send({ ...live(1, 400), heading_deg: 359, selected_heading_deg: 1 });
   assert.equal(h.samples.at(-1).heading_deg, 359); assert.equal(h.samples.at(-1).selected_heading_deg, 1);
-  assert.equal(h.samples.at(-1).expiresAt, 600);
+  assert.equal(h.samples.at(-1).expiresAt, 750);
   h.connections[0].send({ ...live(2), heading_deg: 0, selected_heading_deg: 360 });
   assert.equal(h.samples.at(-1).heading_deg, 0); assert.equal(h.samples.at(-1).selected_heading_deg, null);
   h.advance(1000); assert.equal(h.status.state, 'stale');
@@ -163,13 +163,13 @@ test('new sample callback supports old snapshots and clears previously valid opt
   const h = harness(); h.client.start();
   const connection = h.connections[0]; connection.onopen();
   connection.send({ ...live(1, 400), slip_skid: 1, turn_rate_dps: 3 });
-  assert.deepEqual(h.samples.at(-1), { attitude: live().attitude, slip_skid: 1, turn_rate_dps: 3, ias_kt: null, gs_kt: null, tas_kt: null, altitude_ft: null, selected_altitude_ft: null, vertical_speed_fpm: null, heading_deg: null, selected_heading_deg: null, baro_text: null, airspeed_profile: null, ias_acceleration_ktps: null, expiresAt: 600 });
+  assert.deepEqual(h.samples.at(-1), { attitude: live().attitude, slip_skid: 1, turn_rate_dps: 3, ias_kt: null, gs_kt: null, tas_kt: null, altitude_ft: null, selected_altitude_ft: null, vertical_speed_fpm: null, heading_deg: null, selected_heading_deg: null, baro_text: null, airspeed_profile: null, ias_acceleration_ktps: null, expiresAt: 750 });
   connection.send({ ...live(2), slip_skid: 'bad', turn_rate_dps: -3 });
   assert.equal(h.status.state, 'live');
   assert.equal(h.samples.at(-1).slip_skid, null);
   assert.equal(h.samples.at(-1).turn_rate_dps, -3);
   connection.send(live(3));
-  assert.deepEqual(h.samples.at(-1), { attitude: live().attitude, slip_skid: null, turn_rate_dps: null, ias_kt: null, gs_kt: null, tas_kt: null, altitude_ft: null, selected_altitude_ft: null, vertical_speed_fpm: null, heading_deg: null, selected_heading_deg: null, baro_text: null, airspeed_profile: null, ias_acceleration_ktps: null, expiresAt: 1000 });
+  assert.deepEqual(h.samples.at(-1), { attitude: live().attitude, slip_skid: null, turn_rate_dps: null, ias_kt: null, gs_kt: null, tas_kt: null, altitude_ft: null, selected_altitude_ft: null, vertical_speed_fpm: null, heading_deg: null, selected_heading_deg: null, baro_text: null, airspeed_profile: null, ias_acceleration_ktps: null, expiresAt: 750 });
   connection.send({ ...live(4), state: 'unknown', turn_rate_dps: 3 });
   assert.equal(h.status.state, 'invalid');
   assert.equal(h.samples.length, 3);
@@ -181,12 +181,12 @@ test('altitude and pressure share freshness and recover independently through re
   connection.send({ ...live(1, 400), altitude_ft: -20, baro_text: '29.92 inHg' });
   assert.equal(h.samples.at(-1).altitude_ft, -20);
   assert.equal(h.samples.at(-1).baro_text, '29.92 inHg');
-  assert.equal(h.samples.at(-1).expiresAt, 600);
+  assert.equal(h.samples.at(-1).expiresAt, 750);
   h.advance(125);
   connection.send({ ...live(2, 400), altitude_ft: 0, baro_text: 29.92 });
   assert.equal(h.samples.at(-1).altitude_ft, 0);
   assert.equal(h.samples.at(-1).baro_text, null);
-  assert.equal(h.samples.at(-1).expiresAt, 725);
+  assert.equal(h.samples.at(-1).expiresAt, 875);
   connection.send({ ...live(3), altitude_ft: '0', baro_text: '30.12 inHg' });
   assert.equal(h.samples.at(-1).altitude_ft, null);
   assert.equal(h.samples.at(-1).baro_text, '30.12 inHg');
@@ -207,7 +207,7 @@ test('altitude and pressure share freshness and recover independently through re
 test('selected altitude shares the deadline, clears old values and recovers through the single connection', () => {
   const h = harness(); h.client.start();
   h.connections[0].send({ ...live(1, 400), selected_altitude_ft: 0 });
-  assert.equal(h.samples.at(-1).selected_altitude_ft, 0); assert.equal(h.samples.at(-1).expiresAt, 600);
+  assert.equal(h.samples.at(-1).selected_altitude_ft, 0); assert.equal(h.samples.at(-1).expiresAt, 750);
   h.connections[0].send({ ...live(2), selected_altitude_ft: 'bad' });
   assert.equal(h.samples.at(-1).selected_altitude_ft, null); assert.equal(h.status.state, 'live');
   h.connections[0].send({ ...live(3), selected_altitude_ft: -120 });
@@ -223,7 +223,7 @@ test('selected altitude shares the deadline, clears old values and recovers thro
 test('VSI shares freshness and preserves independence through reconnect and resume', () => {
   const h = harness(); h.client.start();
   h.connections[0].send({ ...live(1, 400), vertical_speed_fpm: 1500 });
-  assert.equal(h.samples.at(-1).vertical_speed_fpm, 1500); assert.equal(h.samples.at(-1).expiresAt, 600);
+  assert.equal(h.samples.at(-1).vertical_speed_fpm, 1500); assert.equal(h.samples.at(-1).expiresAt, 750);
   assert.equal(h.samples.at(-1).altitude_ft, null); assert.equal(h.samples.at(-1).baro_text, null);
   h.connections[0].send({ ...live(2), vertical_speed_fpm: 'bad', altitude_ft: 0 });
   assert.equal(h.samples.at(-1).vertical_speed_fpm, null); assert.equal(h.status.state, 'live');
@@ -249,10 +249,10 @@ test('accepted samples report current status before attitude and sample callback
   assert.deepEqual(h.events[0].value, status);
   assert.deepEqual(h.events[1].status, status);
   assert.deepEqual(h.events[2].status, status);
-  assert.deepEqual(h.events[1].value, { attitude: { pitch_deg: 5, roll_deg: 15 }, expiresAt: 725 });
+  assert.deepEqual(h.events[1].value, { attitude: { pitch_deg: 5, roll_deg: 15 }, expiresAt: 875 });
   assert.deepEqual(h.events[2].value, { attitude: { pitch_deg: 5, roll_deg: 15 },
     slip_skid: null, turn_rate_dps: null, ias_kt: 1000, gs_kt: null, tas_kt: null,
-    altitude_ft: null, selected_altitude_ft: null, vertical_speed_fpm: null, heading_deg: null, selected_heading_deg: null, baro_text: null, airspeed_profile: profile, ias_acceleration_ktps: -5, expiresAt: 725 });
+    altitude_ft: null, selected_altitude_ft: null, vertical_speed_fpm: null, heading_deg: null, selected_heading_deg: null, baro_text: null, airspeed_profile: profile, ias_acceleration_ktps: -5, expiresAt: 875 });
   assert.notStrictEqual(h.events[1].value.attitude, h.events[2].value.attitude);
   h.events[1].value.attitude.pitch_deg = 90;
   assert.deepEqual(h.events[2].value.attitude, { pitch_deg: 5, roll_deg: 15 });
@@ -297,7 +297,7 @@ test('IAS and GS validate independently, preserve overflow values and clear omit
   assert.equal(h.samples.at(-1).ias_kt, 123);
   h.advance(500);
   connection.send({ ...live(2), ias_kt: 123, gs_kt: 'bad' });
-  assert.equal(h.samples.at(-1).expiresAt, 1500);
+  assert.equal(h.samples.at(-1).expiresAt, 1250);
   assert.equal(h.samples.at(-1).ias_kt, 123);
   assert.equal(h.samples.at(-1).gs_kt, null);
   assert.equal(h.status.state, 'live');
@@ -318,7 +318,7 @@ test('profile and source acceleration retain their own availability through irre
     assert.equal(h.samples.at(-1).ias_acceleration_ktps, 5);
     assert.deepEqual(h.samples.at(-1).airspeed_profile, profile);
   }
-  assert.equal(h.samples.at(-1).expiresAt, 1650);
+  assert.equal(h.samples.at(-1).expiresAt, 1500);
   connection.send({ ...extended(4), ias_acceleration_ktps: '5' });
   assert.equal(h.samples.at(-1).ias_acceleration_ktps, null);
   assert.deepEqual(h.samples.at(-1).airspeed_profile, profile);
@@ -336,7 +336,7 @@ test('profile and source acceleration retain their own availability through irre
   connection.send(extended(8)); h.advance(1000);
   assert.equal(h.status.state, 'stale');
   const accepted = h.samples.length;
-  connection.send(extended(9, 1000)); assert.equal(h.samples.length, accepted);
+  connection.send(extended(9, 1000)); assert.equal(h.samples.length, accepted + 1);
   connection.onerror(); h.advance(2000);
   assert.equal(h.connections.length, 2);
   connection = h.connections[1]; connection.onopen();
@@ -350,16 +350,14 @@ test('profile and source acceleration retain their own availability through irre
   assert.equal(h.samples.at(-1).ias_acceleration_ktps, null);
 });
 
-test('freshness accounts for server age; duplicates and open events cannot refresh it', () => {
+test('delivery deadline ignores source age and duplicates cannot renew it', () => {
   const h = harness(); h.client.start();
   const connection = h.connections[0];
   connection.onopen(); connection.send(live(10, 500));
-  h.advance(499); assert.equal(h.status.state, 'live');
+  h.advance(749); assert.equal(h.status.state, 'live');
   connection.send(live(10, 0));
   h.advance(1); assert.equal(h.status.state, 'stale');
-  assert.equal(h.connections.length, 1);
-  connection.send(live(11, 1000)); assert.equal(h.status.state, 'stale');
-  connection.send(live(12)); assert.equal(h.status.state, 'live');
+  connection.send(live(11, 1000)); assert.equal(h.status.state, 'live');
 });
 
 test('an early age timer reschedules against the original sample deadline', () => {
@@ -369,9 +367,9 @@ test('an early age timer reschedules against the original sample deadline', () =
   h.advance(200);
   h.fireNextTimerEarly();
   assert.equal(h.status.state, 'live');
-  assert.equal(h.samples.at(-1).expiresAt, 600);
+  assert.equal(h.samples.at(-1).expiresAt, 750);
   assert.equal(h.timers.size, 1);
-  h.advance(399); assert.equal(h.status.state, 'live');
+  h.advance(549); assert.equal(h.status.state, 'live');
   h.advance(1); assert.equal(h.status.state, 'stale');
   assert.equal(h.samples.length, 1);
   assert.equal(h.timers.size, 0);
@@ -415,9 +413,9 @@ test('attitude callback accepts only fresh new live samples with a monotonic dea
   const connection = h.connections[0]; connection.onopen();
   h.advance(100);
   connection.send(live(1, 400));
-  assert.deepEqual(h.attitudes, [{ attitude: live().attitude, expiresAt: 700 }]);
+  assert.deepEqual(h.attitudes, [{ attitude: live().attitude, expiresAt: 850 }]);
   connection.send(live(1));
-  connection.send(live(2, 1000));
+  connection.send({ ...live(2, 1000), state: 'stale', attitude: null });
   connection.receive({ data: 'broken JSON' });
   for (const [index, state] of ['waiting', 'paused', 'stale', 'disconnected', 'invalid'].entries()) {
     connection.send({ ...live(index + 3), state, attitude: null });
@@ -425,7 +423,7 @@ test('attitude callback accepts only fresh new live samples with a monotonic dea
   assert.equal(h.attitudes.length, 1);
   connection.send(live(8));
   assert.equal(h.attitudes.length, 2);
-  assert.equal(h.attitudes.at(-1).expiresAt, 1100);
+  assert.equal(h.attitudes.at(-1).expiresAt, 850);
   h.client.stop(); connection.send(live(9));
   assert.equal(h.attitudes.length, 2);
   h.client.start(); h.connections[1].onopen();
@@ -464,4 +462,33 @@ test('SimConnect attitude-only live clears demo extensions and source loss retai
   assert.equal(h.status.state, 'live');
   assert.equal(h.samples.length, count + 1);
   h.client.stop();
+});
+
+
+test('period metadata bounds and odd delivery deadline use a rounded timer', () => {
+  for (const period of [1, 500, 2000, 60001, 1431655764]) {
+    assert.ok(isValidSnapshot({ ...live(), sse_interval_ms: period }));
+  }
+  for (const period of [undefined, 0, -1, 1.5, 1431655765, '500']) {
+    assert.ok(!isValidSnapshot({ ...live(), sse_interval_ms: period }));
+  }
+  const h = harness(); h.client.start();
+  h.connections[0].send({ ...live(), sse_interval_ms: 1 });
+  assert.equal(h.samples.at(-1).expiresAt, 1.5);
+  assert.equal([...h.timers.values()][0].at, 2);
+  h.advance(1); assert.equal(h.status.state, 'live');
+  h.advance(1); assert.equal(h.status.state, 'stale');
+  h.connections[0].send({ ...live(2), sse_interval_ms: 1431655764 });
+  assert.equal([...h.timers.values()][0].at - 2, 2147483646);
+});
+
+test('2000 ms stream remains live between emissions and expires after 3000 ms of silence', () => {
+  const h = harness(); h.client.start();
+  const c = h.connections[0];
+  c.send({ ...live(1), sse_interval_ms: 2000 });
+  h.advance(2000); assert.equal(h.status.state, 'live');
+  c.send({ ...live(2), sse_interval_ms: 2000 });
+  h.advance(2999); assert.equal(h.status.state, 'live');
+  c.send({ ...live(2), sse_interval_ms: 2000 });
+  h.advance(1); assert.equal(h.status.state, 'stale');
 });

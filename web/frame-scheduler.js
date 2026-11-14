@@ -50,7 +50,7 @@ export function createFrameScheduler({
           if (current !== generation || token !== timerGeneration) return;
           timer = null;
           schedule();
-        }, Math.max(0, Math.min(nextUpdateAt, latest.expiresAt) - now()));
+        }, Math.ceil(Math.max(0, Math.min(nextUpdateAt, latest.expiresAt) - now())));
       }
     });
   }

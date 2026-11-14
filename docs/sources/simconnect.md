@@ -47,6 +47,7 @@ cargo run --locked --release --bin msfs2024-artificial-horizon -- --source "$sim
 | `--source SimConnect.dll` | Native acquisition with HTTP/SSE and available flight instruments |
 | `--listen-address`, `--port` | HTTP settings for either source. Defaults are `127.0.0.1` and `8080` |
 | `--scenario <file>` | Required Demo-only JSONL file, absolute or relative to the working directory |
+| `--sse-interval-ms <ms>` | Ordinary SSE period from 1 through 1431655764 ms; default 500 ms |
 | `--simconnect-interval <frames>` | Raw `SIM_FRAME` interval from 0 through 4294967295, inclusive; default 0 |
 | `--log <file>` | Optional exact JSONL destination, absolute or relative to the working directory |
 | `--help`, `--version` | Information without opening a DLL or log |
@@ -197,7 +198,7 @@ An empty queue ends the current batch early. Cancellation exits reception and st
 | Diagnostic summary | Every second while the loop runs |
 | Silence watchdog | Reconnect after 15 seconds without packets |
 
-The interval counts simulation-frame events, not milliseconds. Zero requests every frame; nonzero values reduce delivery according to simulator frame timing. A large interval can leave the sample stale between packets: the source expires the whole sample after 1000 ms, and IAS trend history resets at a gap of 500 ms or more.
+The interval counts simulation-frame events, not milliseconds. Zero requests every frame; nonzero values reduce delivery according to simulator frame timing. A large interval can leave the sample stale between packets: the source expires the whole sample after 1.5 times the SSE period, and IAS trend history resets at a gap of 500 ms or more.
 
 > The 50 ms wait timeout is not a fixed 20 Hz acquisition rate. Data delivery follows simulator frames and native queue availability.
 > Processing time and scheduling can delay loop work. These intervals are not hard real-time guarantees.
@@ -356,7 +357,7 @@ Availability follows these rules:
 | `waiting` | Incomplete or inactive lifecycle, or a new sample required |
 | `live` | Valid sample from an active, unpaused flight |
 | `paused` | Nonzero pause flags, including unknown bits |
-| `stale` | No new valid sample for 1000 ms while expecting live data |
+| `stale` | No new valid sample for 1.5 times the SSE period while expecting live data |
 | `disconnected` | Native connection unavailable |
 | `invalid` | Input fails normalization or validation |
 
@@ -379,7 +380,7 @@ The native worker requests these optional observations:
 Optional fields follow these availability rules:
 
 * A valid packet replaces all optional observations together. Each optional value is validated separately and an invalid value is omitted.
-* The complete sample expires after 1000 ms without an accepted packet. Pauses, flight changes, and reconnect clear cached values.
+* The complete sample expires after 1.5 times the SSE period without an accepted packet. Pauses, flight changes, and reconnect clear cached values.
 * Invalid attitude makes the complete sample unavailable; a later valid packet can recover.
 
 Speed profiles have these source limits:
@@ -399,7 +400,7 @@ The trend describes knots per real second, including when simulation speed diffe
 
 Trend freshness and history follow these rules:
 
-* Acceleration expires after 0.5 seconds without a new IAS sample. IAS shares the complete sample's one-second freshness.
+* Acceleration expires after 500 ms without a new IAS sample, and IAS trend history resets at a gap of 500 ms or more. IAS shares the complete sample's freshness deadline.
 * The history resets after invalid input, a stale gap, pause, or flight change.
 
 ## Diagnostic logging

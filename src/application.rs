@@ -53,7 +53,8 @@ pub async fn run(
     simconnect::validate_scenario(source, selection.0.scenario.as_deref())?;
     let definition = simconnect::load_definition()?;
     simconnect::validate_library(&dll)?;
-    let (publisher, subscription) = telemetry::channel(source);
+    let (publisher, subscription, _schedule) =
+        telemetry::scheduled_channel(source, config.sse_interval_ms);
     let lifetime = publisher.retain_channel();
     let server = Server::bind(config, subscription).await?;
     print_startup(server.local_address()?, source);
@@ -199,6 +200,7 @@ mod tests {
                 Config {
                     listen_address: "127.0.0.1".parse().unwrap(),
                     port,
+                    sse_interval_ms: 60_000,
                 },
                 SourceSelection(SimConnectConfig {
                     interval: 0,
@@ -435,6 +437,7 @@ mod tests {
                 Config {
                     listen_address: address.ip(),
                     port: address.port(),
+                    ..Config::default()
                 },
                 selection,
                 async { stopping.await.map_err(io::Error::other) },

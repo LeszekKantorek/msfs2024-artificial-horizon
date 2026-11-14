@@ -45,7 +45,7 @@ const server = createServer((request, response) => {
       if (fixture.hold) { response.write(': heartbeat\n\n'); return; }
       if (fixture.malformed) { response.write('event: telemetry\ndata: broken JSON\n\n'); return; }
       const snapshot = { sequence: sequence++, source: 'demo',
-        state: fixture.state, sample_age_ms: fixture.sample_age_ms ?? 0,
+        state: fixture.state, sse_interval_ms: fixture.sse_interval_ms ?? 500, sample_age_ms: fixture.sample_age_ms ?? 0,
         attitude: fixture.state === 'live' ? { pitch_deg: fixture.pitch_deg, roll_deg: fixture.roll_deg } : null };
       if (fixture.state === 'live' && !fixture.attitude_only) {
         snapshot.heading_deg = fixture.heading_deg;

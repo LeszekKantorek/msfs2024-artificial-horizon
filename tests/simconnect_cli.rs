@@ -607,6 +607,8 @@ fn explicit_scenario_reaches_sse_and_grouped_optional_gap() {
             "demo.dll",
             "--scenario",
             scenario.to_str().unwrap(),
+            "--sse-interval-ms",
+            "100",
             "--log",
             log.to_str().unwrap(),
         ],
@@ -1823,7 +1825,16 @@ fn suite_path(name: &str) -> PathBuf {
 fn assert_sample_cleared(live: &serde_json::Value, stale: &serde_json::Value) {
     assert!(stale["attitude"].is_null());
     for key in live.as_object().unwrap().keys() {
-        if !["sequence", "source", "state", "sample_age_ms", "attitude"].contains(&key.as_str()) {
+        if ![
+            "sequence",
+            "source",
+            "sse_interval_ms",
+            "state",
+            "sample_age_ms",
+            "attitude",
+        ]
+        .contains(&key.as_str())
+        {
             assert!(stale.get(key).is_none(), "stale retained {key}: {stale}");
         }
     }
