@@ -607,7 +607,7 @@ fn explicit_scenario_reaches_sse_and_grouped_optional_gap() {
             "demo.dll",
             "--scenario",
             scenario.to_str().unwrap(),
-            "--sse-interval-ms",
+            "--stale-interval",
             "100",
             "--log",
             log.to_str().unwrap(),
@@ -1828,7 +1828,7 @@ fn assert_sample_cleared(live: &serde_json::Value, stale: &serde_json::Value) {
         if ![
             "sequence",
             "source",
-            "sse_interval_ms",
+            "stale_interval_ms",
             "state",
             "sample_age_ms",
             "attitude",

@@ -48,21 +48,21 @@ There are no write/control endpoints.
 ```text
 retry: 2000
 event: telemetry
-data: {"sequence":42,"source":"demo","sse_interval_ms":500,"state":"live","sample_age_ms":0,"attitude":{"pitch_deg":5.0,"roll_deg":15.0}}
+data: {"sequence":42,"source":"demo","stale_interval_ms":750,"state":"live","sample_age_ms":0,"attitude":{"pitch_deg":5.0,"roll_deg":15.0}}
 
 ```
 
 Send SSE events under these requirements:
 
 * Send a full named `telemetry` event on subscription.
-* Send full latest-state snapshots on the shared ordinary schedule while live, including unchanged values. Urgent changes do not reset the schedule phase.
+* Notify subscribers for each accepted sample, including unchanged values. State transitions also publish promptly; no cached live snapshots are sent periodically.
 * Send detected state and optional availability changes promptly.
 * End every event with an empty line.
 
 | Timing | Initial value / rule |
 | --- | --- |
 | Valid samples | Source cadence follows the configured native interval; [Demo](sources/demo.md#scenario-timing) uses synthetic frames and [SimConnect](sources/simconnect.md#attitude-and-freshness) uses simulator frames |
-| SSE period | `--sse-interval-ms`: integer 1 through 1431655764, default 500 ms. Every snapshot carries the effective value in `sse_interval_ms` |
+| Stale threshold | `--stale-interval`: integer 1 through 2147483647 ms, default 750 ms. Every snapshot carries the effective value in `stale_interval_ms` |
 | Reconnect hint | `retry: 2000` |
 | Page retry | Close the failed EventSource. Create its replacement after 2,000 ms, including initial connection failures |
 | Idle heartbeat | SSE comment every 10 seconds when otherwise idle |
@@ -87,7 +87,7 @@ Preserve these connection and delivery requirements:
 | --- | --- |
 | `sequence` | Nonnegative, increasing publication number within one server run. JSON safe integer |
 | `source` | `demo` or `simconnect`. Never silently change on failure |
-| `sse_interval_ms` | Required effective SSE period as an integer from 1 through 1431655764 |
+| `stale_interval_ms` | Required stale threshold in milliseconds as an integer from 1 through 2147483647 |
 | `state` | `waiting`, `live`, `paused`, `stale`, `disconnected`, or `invalid` |
 | `sample_age_ms` | Nonnegative server-monotonic age of last accepted sample, or `null` before any sample |
 | `attitude` | Object only for `live`, otherwise `null` |
@@ -135,7 +135,7 @@ Extended live example:
 {
   "sequence": 42,
   "source": "demo",
-  "sse_interval_ms": 500,
+  "stale_interval_ms": 750,
   "state": "live",
   "sample_age_ms": 0,
   "attitude": {"pitch_deg": 10.0, "roll_deg": 25.0},
@@ -288,7 +288,7 @@ Unavailable state example:
 {
   "sequence": 43,
   "source": "simconnect",
-  "sse_interval_ms": 500,
+  "stale_interval_ms": 750,
   "state": "disconnected",
   "sample_age_ms": 1250,
   "attitude": null
@@ -320,7 +320,7 @@ Apply these application and pressure-field compatibility constraints:
 | `waiting` | Source connected, but no active flight or usable sample yet |
 | `live` | Usable current sample from an active, unpaused source |
 | `paused` | Simulator explicitly reports pause. Invalidate displayed live attitude |
-| `stale` | No accepted sample for 1.5 times the SSE period while expecting live data |
+| `stale` | No accepted sample for the configured stale threshold while expecting live data |
 | `disconnected` | Simulator connection unavailable or lost |
 | `invalid` | Current source data cannot be normalized or validated |
 
@@ -328,11 +328,11 @@ Apply these application and pressure-field compatibility constraints:
 
 ### Age calculation
 
-The server measures sample age from the monotonic receipt time of the last accepted grouped packet. It expires the entire sample at or beyond 1.5 times `sse_interval_ms`. Publishing cached data and heartbeats do not change that receipt time. Equal values in a newly accepted packet do renew it.
+The server measures sample age from the monotonic receipt time of the last accepted grouped packet. It expires the entire sample at or beyond `stale_interval_ms`. Publishing cached data and heartbeats do not change that receipt time. Equal values in a newly accepted packet do renew it.
 
-The browser independently sets a delivery deadline at local receipt time plus 1.5 times `sse_interval_ms` for each accepted live sequence. It does not subtract `sample_age_ms` from that deadline. Duplicate sequences, malformed messages, heartbeats, and connection-open events do not renew the deadline. `sample_age_ms` describes source age; it excludes network transit and does not measure end-to-end latency.
+The browser sets a deadline at local receipt time plus `max(0, stale_interval_ms - sample_age_ms)` for each accepted live sequence. Samples with no remaining budget do not render live. Duplicate sequences, malformed messages, heartbeats, and connection-open events do not renew the deadline. `sample_age_ms` describes source age; it excludes network transit and does not measure end-to-end latency.
 
-Odd periods retain half-millisecond deadlines. Browser timers round the remaining delay up and recheck the deadline on callback. The upper period bound keeps that delay within the signed 32-bit timer range. Scheduling and network delivery do not guarantee real-time operation.
+Browser timers round the remaining delay up and recheck the deadline on callback. The upper threshold bound keeps that delay within the signed 32-bit timer range. Scheduling and network delivery do not guarantee real-time operation.
 
 ### Browser indication
 

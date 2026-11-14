@@ -306,7 +306,7 @@ Check the six-second speed trend during full-panel acceptance.
 
 ### Trend evidence and interpretation
 
-The provider calculates acceleration using a bounded [0.5-second acquisition window](../sources/simconnect.md#optional-instrument-observations).
+The provider calculates acceleration by linear regression of the [last five valid acquisitions](../sources/simconnect.md#optional-instrument-observations). The trend is unavailable until all five observations are present.
 The browser uses that acceleration for the [six-second prediction](#trend-prediction).
 
 The [recorded trend validation](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/87) supports these conclusions:
@@ -314,9 +314,9 @@ The [recorded trend validation](https://github.com/LeszekKantorek/msfs2024-artif
 | Evidence | Result and limit |
 | --- | --- |
 | Adjacent-acquisition replay | Differencing adjacent acquisitions produced acceleration spikes. This reconstruction does not establish painted-frame behavior. |
-| Recorded-session replay | The 0.5-second window produced a maximum acceleration of 8.061 kt/s in one recording. Journal elapsed times approximate worker receipt times. |
-| Automated checks | Synthetic cases cover noise, response, timing, and lifecycle behavior. Controlled browser checks provide separate presentation evidence. |
-| Reported live observation | The trend was stable at approximately constant IAS and responded sensibly to acceleration and deceleration. Aircraft details were not supplied. |
+| Recorded-session replay | The previous 0.5-second window produced a maximum acceleration of 8.061 kt/s in one recording. Journal elapsed times approximate worker receipt times. |
+| Automated checks | Synthetic cases cover regression, timing, and lifecycle behavior. Controlled browser checks provide separate presentation evidence. |
+| Reported live observation | The previous estimator was reported stable at approximately constant IAS and responsive to acceleration and deceleration. This observation does not validate the five-sample regression. Aircraft details were not supplied. |
 | Interpretation | Replay does not establish painted-frame behavior, perceived live behavior, or physical acceleration accuracy. |
 | Diagnostic hypothesis | Receipt timing is a possible cause of spikes in adjacent-acquisition derivatives. It is not a confirmed universal diagnosis of rapid IAS changes. |
 

@@ -598,6 +598,33 @@ struct Output {
     transition: Option<(&'static str, &'static str)>,
 }
 impl Output {
+    fn prepare_acquisition(&mut self) -> Option<telemetry::Snapshot> {
+        if !self.publisher.is_stale() {
+            return None;
+        }
+        self.instruments.clear();
+        let stale = ("stale", "no_new_valid_sample");
+        if self.transition == Some(stale) {
+            return None;
+        }
+        self.transition = Some(stale);
+        Some(self.publisher.snapshot())
+    }
+    fn log_monitor_stale(journal: &mut Journal, snapshot: Option<telemetry::Snapshot>) {
+        if let Some(snapshot) = snapshot {
+            journal.record(
+                "state_transition",
+                || {
+                    json!({ "candidate_state": "stale",
+                "candidate_is_hypothesis": false, "published": snapshot,
+                "reason": "no_new_valid_sample",
+                "note": "shared expiry monitor committed stale before the next acquisition" })
+                },
+                true,
+            );
+            println!("State: stale (candidate: stale, no_new_valid_sample)");
+        }
+    }
     fn update(
         &mut self,
         lifecycle: &Lifecycle,
@@ -605,18 +632,29 @@ impl Output {
         now: Instant,
         received_at: Option<Instant>,
     ) -> Result<(), SimConnectError> {
+        let transition = self.update_state(lifecycle, now, received_at)?;
+        if let Some(transition) = transition {
+            self.log_transition(journal, Some(transition), self.publisher.snapshot());
+        }
+        Ok(())
+    }
+    fn update_state(
+        &mut self,
+        lifecycle: &Lifecycle,
+        now: Instant,
+        received_at: Option<Instant>,
+    ) -> Result<Option<(&'static str, &'static str)>, SimConnectError> {
         if !lifecycle.active() {
             self.instruments.clear();
         }
-        self.instruments.expire(now);
+        self.instruments
+            .clear_if_stale(now, self.publisher.stale_after());
         let evaluation = lifecycle.evaluate_with_timeout(now, self.publisher.stale_after());
         let transition = (state_name(evaluation.state), evaluation.reason);
         let changed = self.transition != Some(transition);
         match evaluation.state {
-            // Publish each new acquisition, including equal angles. Timer ticks
-            // and lifecycle queries must never republish a cached live sample.
             telemetry::State::Live(attitude) => {
-                if (received_at.is_some() || self.instruments.dirty)
+                if received_at.is_some()
                     && let Some(at) = lifecycle.sample_time()
                 {
                     self.publisher
@@ -626,25 +664,27 @@ impl Output {
             state if changed => self.publisher.publish(state)?,
             _ => {}
         }
-        self.instruments.dirty = false;
         if changed {
-            journal.record(
-                "state_transition",
-                || {
-                    json!({ "candidate_state": transition.0,
-                "candidate_is_hypothesis": false, "published": self.publisher.snapshot(),
-                "reason": evaluation.reason,
-                "note": "live publication requires a new valid sample from an active, unpaused flight" })
-                },
-                true,
-            );
+            self.transition = Some(transition);
+        }
+        Ok(changed.then_some(transition))
+    }
+    fn log_transition(
+        &self,
+        journal: &mut Journal,
+        transition: Option<(&'static str, &'static str)>,
+        snapshot: telemetry::Snapshot,
+    ) {
+        if let Some(transition) = transition {
+            journal.record("state_transition", || json!({ "candidate_state": transition.0,
+                "candidate_is_hypothesis": false, "published": snapshot,
+                "reason": transition.1,
+                "note": "live publication requires a new valid sample from an active, unpaused flight" }), true);
             println!(
                 "State: {} (candidate: {}, {})",
                 transition.0, transition.0, transition.1
             );
-            self.transition = Some(transition);
         }
-        Ok(())
     }
 }
 
@@ -886,16 +926,23 @@ fn session(
                 }
             };
             let packet_received_at = Instant::now();
+            // Serialize acquisition history and publication with expiry transitions.
+            let gate = output.publisher.acquisition_gate();
+            let acquisition_guard = gate.lock().unwrap_or_else(|e| e.into_inner());
+            let monitor_stale = output.prepare_acquisition();
             counters.packets += 1;
             last_packet = Instant::now();
             let is_attitude = matches!(packet.message, Message::Grouped { .. });
             let mut received_at = None;
+            let mut early_transition = None;
             if matches!(
                 packet.message,
                 Message::Quit | Message::Exception { exception: 1.., .. }
             ) {
                 lifecycle.disconnect();
-                output.update(lifecycle, journal, Instant::now(), None)?;
+                let transition = output.update_state(lifecycle, Instant::now(), None)?;
+                early_transition =
+                    transition.map(|transition| (transition, output.publisher.snapshot()));
             }
             let mut grouped_record = None;
             let mut system_record = None;
@@ -944,6 +991,9 @@ fn session(
                     let candidate = candidate_attitude(radians);
                     grouped_record = Some((sample_index, **values, lifecycle.active(), radians));
                     if lifecycle.active() && candidate.is_ok() {
+                        output
+                            .instruments
+                            .clear_if_stale(packet_received_at, output.publisher.stale_after());
                         for mapping in &definition.mappings {
                             if !matches!(mapping.field, Field::Pitch | Field::Roll) {
                                 output.instruments.receive(
@@ -962,7 +1012,16 @@ fn session(
                 _ => {}
             }
             // Publish urgent lifecycle, validity and availability changes before diagnostic I/O.
-            output.update(lifecycle, journal, Instant::now(), received_at)?;
+            let transition = output.update_state(lifecycle, Instant::now(), received_at)?;
+            let transition = transition.map(|transition| (transition, output.publisher.snapshot()));
+            drop(acquisition_guard);
+            Output::log_monitor_stale(journal, monitor_stale);
+            if let Some((transition, snapshot)) = early_transition {
+                output.log_transition(journal, Some(transition), snapshot);
+            }
+            if let Some((transition, snapshot)) = transition {
+                output.log_transition(journal, Some(transition), snapshot);
+            }
             journal.record("dispatch", || json!(&packet), !is_attitude);
             if let Some((request_id, float)) = system_record {
                 journal.record("system_state_float", || json!({ "request_id": request_id, "raw": number(f64::from(float)), "native_f32_bits_hex": format!("{:08x}", float.to_bits()) }), false);
@@ -1226,7 +1285,10 @@ mod tests {
             1234.0,
             now - Duration::from_millis(900),
         );
-        output.update(&lifecycle, &mut journal, now, None).unwrap();
+        lifecycle.sample(Ok(attitude), now);
+        output
+            .update(&lifecycle, &mut journal, now, Some(now))
+            .unwrap();
         let optional = serde_json::to_value(subscription.snapshot()).unwrap();
         assert_eq!(optional["state"], "live");
         assert!(optional.get("ias_kt").is_none());
@@ -1487,9 +1549,63 @@ mod tests {
     }
 
     #[tokio::test(start_paused = true)]
+    async fn monitor_expiry_before_acquisition_clears_prior_ias_history() {
+        let (mut publisher, subscription, _guard) =
+            telemetry::managed_channel(Source::SimConnect, 750).unwrap();
+        let mut instruments = super::super::instruments::Instruments::default();
+        let start = Instant::now();
+        for i in 0..5 {
+            instruments.receive(
+                super::super::mapping::Field::IndicatedAirspeed,
+                100.0 + i as f64,
+                start + Duration::from_millis(i * 100),
+            );
+        }
+        publisher
+            .publish_sample(instruments.sample(telemetry::Attitude::new(0.0, 0.0).unwrap()))
+            .unwrap();
+        tokio::task::yield_now().await;
+        tokio::time::advance(Duration::from_millis(750)).await;
+        tokio::task::yield_now().await;
+        assert_eq!(
+            serde_json::to_value(subscription.snapshot()).unwrap()["state"],
+            "stale"
+        );
+        let mut output = Output {
+            instruments,
+            publisher,
+            transition: None,
+        };
+        let gate = output.publisher.acquisition_gate();
+        let _lock = gate.lock().unwrap();
+        let stale = output.prepare_acquisition();
+        assert!(stale.is_some());
+        assert!(output.prepare_acquisition().is_none());
+        let path = missing_dll().with_extension("monitor.jsonl");
+        let mut journal = Journal::open(Some(&path), &[]).unwrap();
+        Output::log_monitor_stale(&mut journal, stale);
+        journal.finish();
+        let records = std::fs::read_to_string(&path).unwrap();
+        assert!(records.contains("shared expiry monitor committed stale"));
+        let _ = std::fs::remove_file(path);
+        output.instruments.receive(
+            super::super::mapping::Field::IndicatedAirspeed,
+            105.0,
+            start + Duration::from_millis(749),
+        );
+        let sample = serde_json::to_value(
+            output
+                .instruments
+                .sample(telemetry::Attitude::new(0.0, 0.0).unwrap()),
+        )
+        .unwrap();
+        assert!(sample.get("ias_acceleration_ktps").is_none());
+    }
+
+    #[tokio::test(start_paused = true)]
     async fn output_uses_configured_source_deadline_at_2000_ms() {
         let (publisher, subscription, _schedule) =
-            telemetry::scheduled_channel(Source::SimConnect, 2000);
+            telemetry::managed_channel(Source::SimConnect, 2000).unwrap();
         let mut output = Output {
             publisher,
             transition: None,
@@ -1506,7 +1622,7 @@ mod tests {
         output
             .update(&lifecycle, &mut journal, now, Some(now))
             .unwrap();
-        for (gap, expected) in [(2999, "live"), (3000, "stale"), (3001, "stale")] {
+        for (gap, expected) in [(1999, "live"), (2000, "stale"), (2001, "stale")] {
             output
                 .update(
                     &lifecycle,

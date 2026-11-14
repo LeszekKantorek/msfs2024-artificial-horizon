@@ -61,7 +61,7 @@ Accepted live samples invoke callbacks in this order:
 | Connection fails or construction throws | Close the connection, clear the age timer, report reconnecting/waiting, and retry after 2000 ms while active |
 | Malformed or invalid snapshot | Clear the age timer and report invalid state |
 | Valid snapshot with sequence no greater than the retained sequence | Ignore the snapshot |
-| Accepted live snapshot | Set the delivery deadline to local receipt time plus 1.5 times the required `sse_interval_ms` |
+| Accepted live snapshot | Set the delivery deadline to local receipt time plus `max(0, stale_interval_ms - sample_age_ms)`; reject expired samples before drawing |
 | Fresh live snapshot | Publish with the deadline `receivedAt + remaining` and schedule expiry |
 | Early expiry timer | Reschedule using the original received time and remaining duration |
 | Expiry deadline reached | Report stale even without another sample |

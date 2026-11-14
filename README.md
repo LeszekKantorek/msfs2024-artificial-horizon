@@ -99,7 +99,7 @@ cargo run --locked --bin msfs2024-artificial-horizon -- --source demo.dll --scen
 | Situation | Action / constraint |
 | --- | --- |
 | Native interval | Set `--simconnect-interval` to an integer from 0 through 4294967295; default 0. It is passed to the `SIM_FRAME` request |
-| SSE period | Set `--sse-interval-ms` to an integer from 1 through 1431655764; default 500 ms. Source and browser deadlines are 1.5 times this period |
+| Stale threshold | Set `--stale-interval` to an integer from 1 through 2147483647 ms; default 750 ms. It controls sample expiry, not publication cadence |
 | Port occupied | Select another `--port` from `1` to `65535` |
 | Invalid address | Use an IPv4/IPv6 address, not a hostname, multicast address, or IPv4 broadcast address |
 | Phone cannot connect | Check the private network, PC address, port, VPN interface, and firewall scope |

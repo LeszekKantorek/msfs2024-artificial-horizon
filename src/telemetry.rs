@@ -448,9 +448,11 @@ pub enum State {
 /// Immutable wire snapshot. Obtain a new one immediately before serialization.
 #[derive(Clone, Debug, Serialize)]
 pub struct Snapshot {
+    #[serde(skip)]
+    projected_stale: bool,
     sequence: u64,
     source: Source,
-    sse_interval_ms: u32,
+    stale_interval_ms: u32,
     state: &'static str,
     sample_age_ms: Option<u64>,
     attitude: Option<Attitude>,
@@ -483,11 +485,20 @@ pub struct Snapshot {
     #[serde(skip_serializing_if = "Option::is_none")]
     baro_setting: Option<BaroSetting>,
 }
+impl Snapshot {
+    pub(crate) fn projected_stale_sequence(&self) -> Option<u64> {
+        self.projected_stale.then_some(self.sequence)
+    }
+    pub(crate) fn commits_projected_stale(&self, sequence: u64) -> bool {
+        self.state == "stale"
+            && !self.projected_stale
+            && self.sequence == sequence.saturating_add(1)
+    }
+}
 #[derive(Clone, Debug)]
 struct Current {
     source: Source,
-    sse_interval_ms: u32,
-    scheduled: bool,
+    stale_interval_ms: u32,
     sequence: u64,
     state: State,
     accepted_at: Option<Instant>,
@@ -508,53 +519,23 @@ struct Current {
 }
 impl Current {
     fn stale_after(&self) -> Duration {
-        Duration::from_micros(u64::from(self.sse_interval_ms) * 1500)
+        Duration::from_millis(u64::from(self.stale_interval_ms))
     }
-    fn effective_state(&self) -> State {
+    fn effective_state(&self, now: Instant) -> State {
         if matches!(self.state, State::Live(_))
             && self
                 .accepted_at
-                .is_some_and(|at| at.elapsed() >= self.stale_after())
+                .is_some_and(|at| now.saturating_duration_since(at) >= self.stale_after())
         {
             State::Stale
         } else {
             self.state
         }
     }
-    fn availability(&self) -> [bool; 24] {
-        let profile = self.airspeed_profile;
-        [
-            self.heading.is_some(),
-            self.selected_heading.is_some(),
-            self.slip_skid.is_some(),
-            self.turn_rate.is_some(),
-            self.ias.is_some(),
-            self.gs.is_some(),
-            self.tas.is_some(),
-            profile.is_some(),
-            self.ias_acceleration.is_some(),
-            self.altitude.is_some(),
-            self.selected_altitude.is_some(),
-            self.vertical_speed.is_some(),
-            self.baro.is_some(),
-            self.baro_setting.is_some(),
-            profile.is_some_and(|p| p.vs0_kt.is_some()),
-            profile.is_some_and(|p| p.vs1_kt.is_some()),
-            profile.is_some_and(|p| p.vfe_kt.is_some()),
-            profile.is_some_and(|p| p.vno_kt.is_some()),
-            profile.is_some_and(|p| p.vne_kt.is_some()),
-            profile.is_some_and(|p| p.redline_kt.is_some()),
-            profile.is_some_and(|p| p.references.vr_kt.is_some()),
-            profile.is_some_and(|p| p.references.vx_kt.is_some()),
-            profile.is_some_and(|p| p.references.vy_kt.is_some()),
-            profile.is_some_and(|p| p.references.vg_kt.is_some()),
-        ]
-    }
     fn snapshot(&self) -> Snapshot {
-        let age = self
-            .accepted_at
-            .map(|at| Instant::now().saturating_duration_since(at));
-        let state = self.effective_state();
+        let now = Instant::now();
+        let age = self.accepted_at.map(|at| now.saturating_duration_since(at));
+        let state = self.effective_state(now);
         let (state, attitude) = match state {
             State::Waiting => ("waiting", None),
             State::Live(attitude) => ("live", Some(attitude)),
@@ -564,9 +545,10 @@ impl Current {
             State::Invalid => ("invalid", None),
         };
         Snapshot {
+            projected_stale: state == "stale" && matches!(self.state, State::Live(_)),
             sequence: self.sequence,
             source: self.source,
-            sse_interval_ms: self.sse_interval_ms,
+            stale_interval_ms: self.stale_interval_ms,
             state,
             sample_age_ms: age.map(|age| u64::try_from(age.as_millis()).unwrap_or(u64::MAX)),
             attitude,
@@ -590,10 +572,12 @@ impl Current {
 /// Single writer owns publication numbering and accepted sample time.
 pub struct Publisher {
     sender: std::sync::Arc<watch::Sender<Current>>,
+    gate: std::sync::Arc<std::sync::Mutex<()>>,
 }
 /// Keeps the existing channel open without granting a second publication owner.
 pub(crate) struct ChannelLifetime {
     sender: std::sync::Arc<watch::Sender<Current>>,
+    gate: std::sync::Arc<std::sync::Mutex<()>>,
 }
 impl ChannelLifetime {
     pub(crate) async fn recover(self) -> Publisher {
@@ -604,6 +588,7 @@ impl ChannelLifetime {
         }
         Publisher {
             sender: self.sender,
+            gate: self.gate,
         }
     }
 }
@@ -612,92 +597,63 @@ pub struct Subscription {
     receiver: watch::Receiver<Current>,
 }
 pub fn channel(source: Source) -> (Publisher, Subscription) {
-    make_channel(source, 500, false)
+    make_channel(source, 750)
 }
-pub struct ScheduleGuard(tokio::task::JoinHandle<()>);
-impl Drop for ScheduleGuard {
+/// Aborts the shared expiry monitor when dropped.
+pub struct MonitorGuard(tokio::task::JoinHandle<()>);
+impl Drop for MonitorGuard {
     fn drop(&mut self) {
         self.0.abort();
     }
 }
-/// Create a shared scheduled channel. Retain the guard while serving subscribers.
-/// The period must be within the same range accepted by application configuration.
-pub fn channel_with_schedule(
+/// Create a source channel with one shared, independently running expiry monitor.
+pub fn managed_channel(
     source: Source,
-    interval_ms: u32,
-) -> Result<(Publisher, Subscription, ScheduleGuard), crate::ConfigError> {
-    if !(1..=1_431_655_764).contains(&interval_ms) {
-        return Err(crate::ConfigError::InvalidSseInterval);
+    stale_interval_ms: u32,
+) -> Result<(Publisher, Subscription, MonitorGuard), crate::ConfigError> {
+    if !(1..=2_147_483_647).contains(&stale_interval_ms) {
+        return Err(crate::ConfigError::InvalidStaleInterval);
     }
-    Ok(scheduled_channel(source, interval_ms))
-}
-
-/// Create the shared source cache and ordinary publication schedule.
-pub(crate) fn scheduled_channel(
-    source: Source,
-    interval_ms: u32,
-) -> (Publisher, Subscription, ScheduleGuard) {
-    let (publisher, subscription) = make_channel(source, interval_ms, true);
+    let (publisher, subscription) = make_channel(source, stale_interval_ms);
     let sender = std::sync::Arc::downgrade(&publisher.sender);
+    let gate = publisher.gate.clone();
+    let mut changes = subscription.receiver.clone();
     let task = tokio::spawn(async move {
-        let period = Duration::from_millis(u64::from(interval_ms));
-        let mut next_tick = Instant::now() + period;
         loop {
-            let Some(strong) = sender.upgrade() else {
-                break;
-            };
             let deadline = {
-                let current = strong.borrow();
-                if matches!(current.state, State::Live(_)) {
+                let current = changes.borrow_and_update();
+                if matches!(current.state, State::Live(_)) && current.sequence < MAX_SEQUENCE {
                     current.accepted_at.map(|at| at + current.stale_after())
                 } else {
                     None
                 }
             };
-            drop(strong);
-            let expired = if let Some(deadline) = deadline {
-                tokio::select! { _ = tokio::time::sleep_until(next_tick) => false, _ = tokio::time::sleep_until(deadline) => true }
-            } else {
-                tokio::time::sleep_until(next_tick).await;
-                false
-            };
-            if !expired {
-                let now = Instant::now();
-                let remainder =
-                    now.saturating_duration_since(next_tick).as_nanos() % period.as_nanos();
-                next_tick = now + period - Duration::from_nanos(remainder as u64);
-            }
-            let Some(strong) = sender.upgrade() else {
+            if let Some(deadline) = deadline {
+                tokio::select! {
+                    result = changes.changed() => if result.is_err() { break; },
+                    _ = tokio::time::sleep_until(deadline) => {
+                        let Some(sender) = sender.upgrade() else { break; };
+                        let _guard = gate.lock().unwrap_or_else(|e| e.into_inner());
+                        sender.send_if_modified(|current| {
+                            if matches!(current.state, State::Live(_)) && current.accepted_at.is_some_and(|at| at.elapsed() >= current.stale_after()) && current.sequence < MAX_SEQUENCE {
+                                current.sequence += 1;
+                                current.state = State::Stale;
+                                true
+                            } else { false }
+                        });
+                    }
+                }
+            } else if changes.changed().await.is_err() {
                 break;
-            };
-            strong.send_if_modified(|current| {
-                if !matches!(current.state, State::Live(_)) {
-                    return false;
-                }
-                let stale = current
-                    .accepted_at
-                    .is_some_and(|at| at.elapsed() >= current.stale_after());
-                if expired && !stale {
-                    return false;
-                }
-                if current.sequence == MAX_SEQUENCE {
-                    return false;
-                }
-                current.sequence += 1;
-                if stale {
-                    current.state = State::Stale;
-                }
-                true
-            });
+            }
         }
     });
-    (publisher, subscription, ScheduleGuard(task))
+    Ok((publisher, subscription, MonitorGuard(task)))
 }
-fn make_channel(source: Source, interval_ms: u32, scheduled: bool) -> (Publisher, Subscription) {
+fn make_channel(source: Source, interval_ms: u32) -> (Publisher, Subscription) {
     let current = Current {
         source,
-        sse_interval_ms: interval_ms,
-        scheduled,
+        stale_interval_ms: interval_ms,
         sequence: 0,
         state: State::Waiting,
         accepted_at: None,
@@ -720,6 +676,7 @@ fn make_channel(source: Source, interval_ms: u32, scheduled: bool) -> (Publisher
     (
         Publisher {
             sender: std::sync::Arc::new(sender),
+            gate: std::sync::Arc::new(std::sync::Mutex::new(())),
         },
         Subscription { receiver },
     )
@@ -728,7 +685,15 @@ impl Publisher {
     pub(crate) fn retain_channel(&self) -> ChannelLifetime {
         ChannelLifetime {
             sender: self.sender.clone(),
+            gate: self.gate.clone(),
         }
+    }
+
+    pub(crate) fn acquisition_gate(&self) -> std::sync::Arc<std::sync::Mutex<()>> {
+        self.gate.clone()
+    }
+    pub(crate) fn is_stale(&self) -> bool {
+        matches!(self.sender.borrow().state, State::Stale)
     }
 
     pub(crate) fn stale_after(&self) -> Duration {
@@ -753,7 +718,7 @@ impl Publisher {
     pub fn publish_sample(&mut self, sample: FlightSample) -> Result<(), TelemetryError> {
         self.publish_sample_at(sample, Instant::now())
     }
-    /// Preserve acquisition time when optional indications change or expire.
+    /// Preserve the receipt time of an accepted acquisition.
     pub(crate) fn publish_sample_at(
         &mut self,
         sample: FlightSample,
@@ -769,13 +734,15 @@ impl Publisher {
     ) -> Result<(), TelemetryError> {
         let mut exhausted = false;
         self.sender.send_if_modified(|current| {
+            if !matches!(state, State::Live(_))
+                && std::mem::discriminant(&current.state) == std::mem::discriminant(&state)
+            {
+                return false;
+            }
             if current.sequence == MAX_SEQUENCE {
                 exhausted = true;
                 return false;
             }
-            let old_effective = std::mem::discriminant(&current.effective_state());
-            let old_availability = current.availability();
-            let old_state = std::mem::discriminant(&current.state);
             current.sequence += 1;
             if matches!(state, State::Live(_)) {
                 current.accepted_at = Some(received_at);
@@ -795,10 +762,7 @@ impl Publisher {
             current.vertical_speed = sample.as_ref().and_then(|s| s.vertical_speed_fpm);
             current.baro_setting = sample.as_ref().and_then(|s| s.baro_setting);
             current.baro = sample.as_ref().and_then(|s| s.baro_text.clone());
-            !current.scheduled
-                || old_state != std::mem::discriminant(&current.state)
-                || old_effective != std::mem::discriminant(&current.effective_state())
-                || old_availability != current.availability()
+            true
         });
         if exhausted {
             return Err(TelemetryError::SequenceExhausted);
@@ -822,7 +786,7 @@ impl Publisher {
 }
 impl Subscription {
     pub(crate) fn interval_ms(&self) -> u32 {
-        self.receiver.borrow().sse_interval_ms
+        self.receiver.borrow().stale_interval_ms
     }
     /// Obtain current state and acknowledge it atomically, including on subscription.
     pub fn snapshot_and_update(&mut self) -> Snapshot {
@@ -878,151 +842,26 @@ pub enum TelemetryError {
 mod tests {
     use super::*;
     #[tokio::test(start_paused = true)]
-    async fn nested_profile_availability_changes_publish_immediately() {
-        let (mut publisher, mut receiver, _schedule) = scheduled_channel(Source::Demo, 2000);
-        let attitude = Attitude::new(0.0, 0.0).unwrap();
-        let sample = |vr: Option<f64>| {
-            FlightSample::new(attitude, None, None).with_airspeed_indications(
-                AirspeedProfile::partial(
-                    [Some(40.0), None, None, None, None],
-                    VSpeedReferences::partial(vr, None, None, None),
-                    None,
-                ),
-                None,
-            )
-        };
-        publisher.publish_sample(sample(None)).unwrap();
-        receiver.changed().await.unwrap();
-        publisher.publish_sample(sample(Some(55.0))).unwrap();
-        assert!(receiver.receiver.has_changed().unwrap());
-        receiver.changed().await.unwrap();
-        publisher.publish_sample(sample(Some(56.0))).unwrap();
-        assert!(!receiver.receiver.has_changed().unwrap());
-        publisher.publish_sample(sample(None)).unwrap();
-        assert!(receiver.receiver.has_changed().unwrap());
-    }
-
-    #[tokio::test(start_paused = true)]
-    async fn short_period_skips_missed_ticks_without_burst() {
-        let (mut publisher, mut receiver, _schedule) = scheduled_channel(Source::Demo, 1);
-        tokio::task::yield_now().await;
-        publisher
-            .publish(State::Live(Attitude::new(0.0, 0.0).unwrap()))
-            .unwrap();
-        receiver.changed().await.unwrap();
-        // Keep the native receipt fresh at the delayed scheduler time.
-        tokio::time::advance(Duration::from_micros(3500)).await;
-        publisher
-            .publish(State::Live(Attitude::new(0.0, 0.0).unwrap()))
-            .unwrap();
-        receiver.snapshot_and_update();
-        tokio::task::yield_now().await;
-        receiver.changed().await.unwrap();
-        tokio::task::yield_now().await;
-        assert!(!receiver.receiver.has_changed().unwrap());
-        tokio::time::advance(Duration::from_micros(500)).await;
-        tokio::task::yield_now().await;
-        assert!(receiver.receiver.has_changed().unwrap());
-    }
-
-    #[tokio::test(start_paused = true)]
-    async fn fresh_receipt_notifies_after_a_projected_stale_snapshot() {
-        let (mut publisher, mut receiver, _schedule) = scheduled_channel(Source::Demo, 500);
-        let sample = FlightSample::new(Attitude::new(0.0, 0.0).unwrap(), None, None);
+    async fn immediate_equal_samples_and_expiry_are_independent() {
+        let (mut publisher, mut receiver, guard) = managed_channel(Source::Demo, 750).unwrap();
+        let sample = FlightSample::new(Attitude::new(1.0, 2.0).unwrap(), None, None);
         publisher.publish_sample(sample.clone()).unwrap();
-        receiver.changed().await.unwrap();
-        publisher.sender.send_if_modified(|current| {
-            current.accepted_at = Some(Instant::now() - Duration::from_millis(750));
-            false
-        });
-        assert_eq!(receiver.snapshot_and_update().state, "stale");
+        let first = receiver.changed().await.unwrap();
+        tokio::time::advance(Duration::from_millis(500)).await;
         publisher.publish_sample(sample).unwrap();
-        assert!(receiver.receiver.has_changed().unwrap());
-        assert_eq!(receiver.changed().await.unwrap().state, "live");
-    }
-
-    #[tokio::test(start_paused = true)]
-    async fn dropping_schedule_owner_cancels_a_long_timer() {
-        let (_publisher, _receiver, schedule) = scheduled_channel(Source::Demo, 1_431_655_764);
-        let abort = schedule.0.abort_handle();
+        let second = receiver.changed().await.unwrap();
+        assert_eq!(second.sequence, first.sequence + 1);
+        assert_eq!(second.sample_age_ms, Some(0));
         tokio::task::yield_now().await;
-        assert!(!abort.is_finished());
-        drop(schedule);
-        tokio::task::yield_now().await;
-        assert!(abort.is_finished());
-    }
-
-    #[tokio::test(start_paused = true)]
-    async fn provider_stale_notifies_even_when_snapshot_already_projects_stale() {
-        let (mut publisher, mut receiver, _schedule) = scheduled_channel(Source::Demo, 500);
-        publisher
-            .publish(State::Live(Attitude::new(0.0, 0.0).unwrap()))
-            .unwrap();
-        receiver.changed().await.unwrap();
-        publisher.sender.send_if_modified(|current| {
-            current.accepted_at = Some(Instant::now() - Duration::from_millis(750));
-            false
-        });
-        assert_eq!(receiver.snapshot().state, "stale");
+        tokio::time::advance(Duration::from_millis(749)).await;
         assert!(!receiver.receiver.has_changed().unwrap());
-        publisher.publish(State::Stale).unwrap();
-        assert!(receiver.receiver.has_changed().unwrap());
-        assert_eq!(receiver.changed().await.unwrap().state, "stale");
-    }
-
-    #[tokio::test(start_paused = true)]
-    async fn shared_schedule_keeps_current_cache_and_expires_from_receipt() {
-        let (mut publisher, mut receiver, _schedule) = scheduled_channel(Source::Demo, 2000);
-        tokio::task::yield_now().await;
-        let first = FlightSample::new(Attitude::new(1.0, 2.0).unwrap(), None, None);
-        publisher.publish_sample(first.clone()).unwrap();
-        receiver.changed().await.unwrap();
-        tokio::time::advance(Duration::from_millis(1000)).await;
-        publisher.publish_sample(first.clone()).unwrap();
-        assert!(!receiver.receiver.has_changed().unwrap());
-        tokio::time::advance(Duration::from_millis(500)).await;
-        let initial = receiver.snapshot_and_update();
-        assert_eq!(initial.state, "live");
-        assert_eq!(initial.sample_age_ms, Some(500));
-        tokio::time::advance(Duration::from_millis(500)).await;
-        tokio::task::yield_now().await;
-        let regular = receiver.changed().await.unwrap();
-        assert_eq!(regular.state, "live");
-        assert!(regular.sequence > initial.sequence);
-        assert_eq!(regular.sample_age_ms, Some(1000));
-        tokio::time::advance(Duration::from_millis(1999)).await;
-        assert_eq!(receiver.snapshot().state, "live");
         tokio::time::advance(Duration::from_millis(1)).await;
         tokio::task::yield_now().await;
         assert_eq!(receiver.changed().await.unwrap().state, "stale");
-        publisher.publish_sample(first).unwrap();
-        assert_eq!(receiver.changed().await.unwrap().state, "live");
-        publisher.publish(State::Paused).unwrap();
-        assert_eq!(receiver.changed().await.unwrap().state, "paused");
-        tokio::time::advance(Duration::from_millis(2000)).await;
+        let abort = guard.0.abort_handle();
+        drop(guard);
         tokio::task::yield_now().await;
-        assert!(!receiver.receiver.has_changed().unwrap());
-    }
-
-    #[tokio::test(start_paused = true)]
-    async fn deadlines_preserve_half_milliseconds_and_maximum_arithmetic() {
-        for ms in [1, 500, 2000, 60001, 1_431_655_764] {
-            let (publisher, _, _schedule) = scheduled_channel(Source::Demo, ms);
-            assert_eq!(
-                publisher.stale_after(),
-                Duration::from_micros(u64::from(ms) * 1500)
-            );
-        }
-        let (mut publisher, mut receiver, _schedule) = scheduled_channel(Source::Demo, 1);
-        tokio::task::yield_now().await;
-        publisher
-            .publish(State::Live(Attitude::new(0.0, 0.0).unwrap()))
-            .unwrap();
-        receiver.changed().await.unwrap();
-        tokio::time::advance(Duration::from_micros(1499)).await;
-        assert_eq!(receiver.snapshot().state, "live");
-        tokio::time::advance(Duration::from_micros(1)).await;
-        assert_eq!(receiver.snapshot().state, "stale");
+        assert!(abort.is_finished());
     }
 
     #[tokio::test(start_paused = true)]

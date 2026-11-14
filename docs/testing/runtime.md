@@ -106,7 +106,7 @@ The following rules apply to the shared producer:
 | --- | --- |
 | Sampling | Baseline scenario uses 50 ms frames at the default interval, including unchanged poses. Skip missed frames |
 | Initial state | `waiting`, then `live` on fresh data |
-| Expiry | No accepted sample for 1.5 times the SSE period makes the complete sample stale |
+| Expiry | No accepted sample for the configured stale threshold makes the complete sample stale |
 | Source failure | Never substitute demo for unavailable SimConnect |
 
 ### Fixtures and tests

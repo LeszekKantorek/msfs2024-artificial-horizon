@@ -46,7 +46,7 @@ impl Drop for ShutdownGuard {
 impl Server {
     pub async fn bind(config: Config, subscription: Subscription) -> Result<Self, ServerError> {
         config.validate()?;
-        if subscription.interval_ms() != config.sse_interval_ms {
+        if subscription.interval_ms() != config.stale_interval_ms {
             return Err(ServerError::IntervalMismatch);
         }
         let address = config.socket_address();
@@ -102,7 +102,7 @@ struct Health {
 pub enum ServerError {
     #[error(transparent)]
     Config(#[from] ConfigError),
-    #[error("SSE interval does not match the supplied telemetry subscription")]
+    #[error("Stale interval does not match the supplied telemetry subscription")]
     IntervalMismatch,
     #[error("cannot listen on {address}: {source}; choose an available local address and port")]
     Bind {
@@ -127,14 +127,14 @@ mod tests {
     async fn rejects_a_subscription_with_a_different_interval() {
         let (_, subscription) = telemetry::channel(crate::Source::Demo);
         let config = Config {
-            sse_interval_ms: 1000,
+            stale_interval_ms: 1000,
             ..Config::default()
         };
         assert!(matches!(
             Server::bind(config, subscription).await,
             Err(ServerError::IntervalMismatch)
         ));
-        assert!(telemetry::channel_with_schedule(crate::Source::Demo, 0).is_err());
+        assert!(telemetry::managed_channel(crate::Source::Demo, 0).is_err());
     }
 
     #[tokio::test(start_paused = true)]

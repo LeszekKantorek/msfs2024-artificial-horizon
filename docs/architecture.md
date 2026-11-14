@@ -50,8 +50,8 @@ The application follows these composition constraints:
 
 | Interface | Contract |
 | --- | --- |
-| CLI | Parse DLL source, required Demo scenario, optional log, native and SSE intervals, HTTP address/port, help, and version. Own process signals and exit status |
-| `Config` | Contain `listen_address`, `port`, and `sse_interval_ms`. Never read process arguments |
+| CLI | Parse DLL source, required Demo scenario, optional log, native interval and stale threshold, HTTP address/port, help, and version. Own process signals and exit status |
+| `Config` | Contain `listen_address`, `port`, and `stale_interval_ms`. Never read process arguments |
 | `application::SourceSelection` | Hold the native source configuration; derive source identity from the selected DLL basename |
 | `application::run(config, source, shutdown)` | Validate configuration, create the channel, bind HTTP, start components, and collect results. Return `Result<(), ApplicationError>` |
 | Application shutdown future | Caller-owned future with output `io::Result<()>`. Only the CLI handles process signals |
@@ -170,7 +170,7 @@ The flow separates acquisition, shared state, delivery, and presentation. The Ru
 | Detect silent sources | Expire samples server-side even without publications |
 | Release stalled clients | Close writers that exceed the socket deadline |
 
-A subscription reads the shared current state. Source receipts update that state independently of the shared ordinary SSE schedule. State and availability transitions publish promptly; slow consumers can skip intermediate samples without delaying acquisition. Snapshot reads calculate freshness at access time.
+A subscription reads the shared current state. Each accepted acquisition notifies subscribers immediately. State transitions also publish promptly; slow consumers can skip intermediate samples without delaying acquisition. Snapshot reads calculate freshness at access time.
 
 ### HTTP/SSE delivery and browser consumption
 
@@ -193,11 +193,11 @@ Delivery and presentation have separate owners:
 
 | API / owner | Behavior |
 | --- | --- |
-| `telemetry::channel(Source)` | Return one `Publisher` and a cloneable `Subscription` with immediate publication and default period metadata |
-| `telemetry::channel_with_schedule(Source, interval)` | Return a shared scheduled channel and a guard the caller retains; reject invalid periods |
+| `telemetry::channel(Source)` | Return one `Publisher` and a cloneable `Subscription` with immediate publication and default stale threshold metadata |
+| `telemetry::managed_channel(Source, stale_interval_ms)` | Return a shared channel and expiry monitor guard the caller retains; reject invalid thresholds |
 | `Publisher` | Accept typed `State`. Only `State::Live(Attitude)` carries validated normalized degrees |
 | Provider | Emit live only for fresh callbacks from an active, unpaused source. Otherwise emit explicit unavailable states |
-| `Publisher::expire()` | Evaluate expiry for a caller-managed channel; the scheduled channel evaluates expiry independently |
+| `Publisher::expire()` | Evaluate expiry for a caller-managed channel; the managed channel evaluates expiry independently |
 | `Subscription::snapshot()` | Read current state without acknowledging pending publication |
 | `changed().await` | Wait for and acknowledge the newest publication |
 | `snapshot_and_update()` | Read and acknowledge atomically for the first SSE event, preventing duplicate delivery of a pending publication |

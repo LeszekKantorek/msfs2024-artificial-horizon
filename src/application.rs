@@ -54,10 +54,14 @@ pub async fn run(
     let definition = simconnect::load_definition()?;
     simconnect::validate_library(&dll)?;
     let (publisher, subscription, _schedule) =
-        telemetry::scheduled_channel(source, config.sse_interval_ms);
+        telemetry::managed_channel(source, config.stale_interval_ms)
+            .expect("validated configuration");
     let lifetime = publisher.retain_channel();
+    let stale_interval_ms = config.stale_interval_ms;
     let server = Server::bind(config, subscription).await?;
     print_startup(server.local_address()?, source);
+    println!("SimConnect interval: {} frame events", selection.0.interval);
+    println!("Stale interval: {stale_interval_ms} ms");
     let (stop, stopping) = watch::channel(false);
     let guard = Shutdown(stop);
     let http = tokio::spawn(server.run(stopped(stopping.clone())));
@@ -200,7 +204,7 @@ mod tests {
                 Config {
                     listen_address: "127.0.0.1".parse().unwrap(),
                     port,
-                    sse_interval_ms: 60_000,
+                    stale_interval_ms: 60_000,
                 },
                 SourceSelection(SimConnectConfig {
                     interval: 0,

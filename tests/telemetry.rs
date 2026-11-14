@@ -165,7 +165,7 @@ async fn extended_publication_shares_age_and_clears_absent_or_unavailable_indica
     assert_eq!(
         full,
         json!({"sequence":1,"source":"demo","state":"live",
-        "sse_interval_ms":500,"sample_age_ms":0,"attitude":{"pitch_deg":10.0,"roll_deg":25.0},"slip_skid":1.0,"turn_rate_dps":3.0,"ias_kt":150.0,"gs_kt":170.0,"tas_kt":160.0,
+        "stale_interval_ms":750,"sample_age_ms":0,"attitude":{"pitch_deg":10.0,"roll_deg":25.0},"slip_skid":1.0,"turn_rate_dps":3.0,"ias_kt":150.0,"gs_kt":170.0,"tas_kt":160.0,
         "airspeed_profile": serde_json::from_str::<Value>(include_str!("fixtures/airspeed-profile.json")).unwrap(), "ias_acceleration_ktps":-25.0, "altitude_ft":10006.440677966102, "baro_text":"30.12 inHg"})
     );
     advance(Duration::from_millis(749)).await;

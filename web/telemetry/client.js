@@ -46,8 +46,8 @@ export function createTelemetryClient({
     sequence = snapshot.sequence;
     clearAge();
     const receivedAt = now();
-    const remaining = snapshot.sse_interval_ms * 1.5;
-    report({ source: snapshot.source, state: snapshot.state });
+    const remaining = Math.max(0, snapshot.stale_interval_ms - snapshot.sample_age_ms);
+    report({ source: snapshot.source, state: snapshot.state === 'live' && remaining === 0 ? 'stale' : snapshot.state });
     if (status.state === 'live') {
       publishSample(snapshot, receivedAt + remaining);
       ageTimer = schedule(() => expireSample(receivedAt, remaining), Math.ceil(remaining));

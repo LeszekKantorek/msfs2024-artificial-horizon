@@ -47,7 +47,7 @@ cargo run --locked --release --bin msfs2024-artificial-horizon -- --source "$sim
 | `--source SimConnect.dll` | Native acquisition with HTTP/SSE and available flight instruments |
 | `--listen-address`, `--port` | HTTP settings for either source. Defaults are `127.0.0.1` and `8080` |
 | `--scenario <file>` | Required Demo-only JSONL file, absolute or relative to the working directory |
-| `--sse-interval-ms <ms>` | Ordinary SSE period from 1 through 1431655764 ms; default 500 ms |
+| `--stale-interval <ms>` | Sample stale threshold from 1 through 2147483647 ms; default 750 ms |
 | `--simconnect-interval <frames>` | Raw `SIM_FRAME` interval from 0 through 4294967295, inclusive; default 0 |
 | `--log <file>` | Optional exact JSONL destination, absolute or relative to the working directory |
 | `--help`, `--version` | Information without opening a DLL or log |
@@ -126,7 +126,7 @@ HTTP does not wait for worker loading or simulator readiness.
 | Output | Contract |
 | --- | --- |
 | Console diagnostics and optional log | Contain detailed source errors |
-| SSE | Current telemetry schema, including the configured SSE period |
+| SSE | Current telemetry schema, including the configured stale threshold |
 | `/health` | HTTP liveness, independently of simulator availability |
 
 ### Reception and resource ownership
@@ -181,7 +181,7 @@ The diagram separates native acquisition from HTTP delivery and browser callback
 2. Register each configured variable under one definition, then request the complete definition once through `SimConnect_RequestDataOnSimObject` with `PERIOD_SIM_FRAME`.
 3. Read queued messages through `SimConnect_GetNextDispatch`, checking cancellation before each read.
 4. Decode each message, record its monotonic receive time, and update instrument observations or source lifecycle state.
-5. Cache eligible normalized telemetry through the caller-owned `Publisher`, preserving acquisition timestamps; ordinary SSE delivery follows its shared schedule.
+5. Cache eligible normalized telemetry through the caller-owned `Publisher`, preserving acquisition timestamps; each accepted acquisition notifies SSE subscribers.
 6. After at most 128 messages, evaluate expiry, periodic diagnostics, system-state queries, and the silence watchdog.
 7. Wait for a Windows notification, cancellation, or a 50 ms timeout. Resume queue reading after notification or timeout.
 
@@ -199,7 +199,7 @@ An empty queue ends the current batch early. Cancellation exits reception and st
 | Diagnostic summary | Every second while the loop runs |
 | Silence watchdog | Reconnect after 15 seconds without packets |
 
-The interval counts simulation-frame events, not milliseconds. A bounded official-DLL observation found intervals 0 and 1 delivered once per separate interval-zero reference packet, and interval 2 once per two reference packets. That reference is another request rather than an independent simulator frame event. A large interval can leave the sample stale between packets: the source expires the whole sample after 1.5 times the SSE period, and IAS trend history resets at a gap of 500 ms or more.
+The interval counts simulation-frame events, not milliseconds. A bounded official-DLL observation found intervals 0 and 1 delivered once per separate interval-zero reference packet, and interval 2 once per two reference packets. That reference is another request rather than an independent simulator frame event. A large interval can leave the sample stale between packets: the source expires the whole sample at the stale threshold, and IAS trend history resets at that gap.
 
 > The 50 ms wait timeout is not a fixed 20 Hz acquisition rate. Data delivery follows simulator frames and native queue availability.
 > Processing time and scheduling can delay loop work. These intervals are not hard real-time guarantees.
@@ -348,7 +348,7 @@ Availability follows these rules:
 * No single event or nonempty filename establishes readiness.
 * Pause, invalid data, disconnect, and flight or simulator transitions invalidate retained attitude.
 * Resume and a new flight require a new valid sample.
-* Cache every eligible acquisition with its original receive time, including identical angles. The shared schedule publishes live snapshots.
+* Cache every eligible acquisition with its original receive time, including identical angles. Each accepted acquisition publishes a live snapshot.
 * Cached values, heartbeats, and system-state queries never refresh age.
 * Evaluate freshness during the [reading loop](#delivery-frequency-and-loop-timing), including quiet-period timeout checks. Unavailable publication carries no attitude.
 * Samples can continue during pause. Ordinary pause and menu can share flags, so the flags do not uniquely identify the UI phase.
@@ -358,7 +358,7 @@ Availability follows these rules:
 | `waiting` | Incomplete or inactive lifecycle, or a new sample required |
 | `live` | Valid sample from an active, unpaused flight |
 | `paused` | Nonzero pause flags, including unknown bits |
-| `stale` | No new valid sample for 1.5 times the SSE period while expecting live data |
+| `stale` | No new valid sample for the configured stale threshold while expecting live data |
 | `disconnected` | Native connection unavailable |
 | `invalid` | Input fails normalization or validation |
 
@@ -381,7 +381,7 @@ The native worker requests these optional observations:
 Optional fields follow these availability rules:
 
 * A valid packet replaces all optional observations together. Each optional value is validated separately and an invalid value is omitted.
-* The complete sample expires after 1.5 times the SSE period without an accepted packet. Pauses, flight changes, and reconnect clear cached values.
+* The complete sample expires after the configured stale threshold without an accepted packet. Pauses, flight changes, and reconnect clear cached values.
 * Invalid attitude makes the complete sample unavailable; a later valid packet can recover.
 
 Speed profiles have these source limits:
@@ -396,13 +396,13 @@ Speed profiles have these source limits:
 | Current flap limits | Not substituted for fixed VFE |
 | Dynamic redline | Not fixed VNE |
 
-IAS trend uses a bounded 0.5-second window of valid worker acquisitions and their monotonic receive times.
+IAS trend fits the last five valid IAS observations against their monotonic receipt times by linear regression. It is unavailable until five distinct increasing times are present.
 The trend describes knots per real second, including when simulation speed differs from real time.
 
 Trend freshness and history follow these rules:
 
-* Acceleration expires after 500 ms without a new IAS sample, and IAS trend history resets at a gap of 500 ms or more. IAS shares the complete sample's freshness deadline.
-* The history resets after invalid input, a stale gap, pause, or flight change.
+* Acceleration is updated only on a new sample and expires with the complete sample. History resets at a gap at least as long as the stale threshold.
+* The history resets after missing or invalid IAS, invalid input, a stale gap, pause, flight or session change, or disconnect. Equal timestamps replace the last point; backward timestamps restart history. Phone reconnects do not reset source history.
 
 ## Diagnostic logging
 

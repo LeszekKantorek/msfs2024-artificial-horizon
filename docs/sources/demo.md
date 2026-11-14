@@ -228,11 +228,11 @@ The [independent checkpoint fixture](../../tests/fixtures/demo-evidence.md) supp
 | KOHLSMAN setting, inHg | `grouped_sample` | Multiply by `33.8638866667` for `baro_setting.pressure_hpa`; the receiver also formats `baro_text` in inHg. Invalid pressure is omitted. |
 | VS0, VS1, minimum rotation, and barber pole, knots | `grouped_sample` | Positive valid values populate the corresponding partial `airspeed_profile`; unsupported profile fields remain absent. |
 | Autopilot availability, selected altitude, and radio mode | `grouped_sample` | `selected_altitude_ft` requires finite nonzero availability and radio mode equal to 0. Each gate and target must remain fresh. |
-| IAS history | Grouped sample IAS values | `ias_acceleration_ktps` derives from valid IAS acquisitions and their receiver times over a 500 ms window; it is not an authored native field. |
+| IAS history | Grouped sample IAS values | `ias_acceleration_ktps` derives from valid IAS acquisitions and their receiver times using linear regression of the last five valid observations; it is not an authored native field. |
 
 A receipt is not proof of a final value: the worker logs raw observations even when lifecycle blocks publication. The `state_transition` record includes a published snapshot only on a transition, not for every instrument update. Capture SSE for other final checkpoints. SSE delivers latest snapshots and can coalesce publications, so do not assume a one-to-one packet count or exact wall-clock equality.
 
-The complete sample expires after 1.5 times the SSE period without a grouped packet. Equal packets refresh its common receipt time. Live output requires active, unpaused lifecycle and a fresh valid attitude. Pause, flight changes, and disconnect clear cached values; a new eligible sample is required for recovery. Invalid optional fields are omitted, while unavailable attitude is null. The [SimConnect guide](simconnect.md#telemetry-acquisition-and-availability) defines the current gates and normalization.
+The complete sample expires after the configured stale threshold without a grouped packet. Equal packets refresh its common receipt time. Live output requires active, unpaused lifecycle and a fresh valid attitude. Pause, flight changes, and disconnect clear cached values; a new eligible sample is required for recovery. Invalid optional fields are omitted, while unavailable attitude is null. The [SimConnect guide](simconnect.md#telemetry-acquisition-and-availability) defines the current gates and normalization.
 
 ## Validation
 

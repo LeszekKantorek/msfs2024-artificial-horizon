@@ -21,7 +21,7 @@ The application needs to retain unavailable state without adding another receive
 | --- | --- |
 | Application composition | Select one source, validate configuration, create the channel, bind HTTP, and start the components |
 | `Server::bind(config, subscription)` | Receive an existing subscription. The server neither owns a `Publisher` nor starts a provider |
-| `Config` | Contain HTTP address, port, and SSE interval |
+| `Config` | Contain HTTP address, port, and stale threshold |
 | `SourceSelection` | Belong to application composition |
 | Native sources | Use the same receiver, dedicated native worker, `RunReport`, and optional diagnostics for Demo and SimConnect |
 | Telemetry and SSE | Keep the v1 contracts. Detailed source errors remain diagnostic output |
