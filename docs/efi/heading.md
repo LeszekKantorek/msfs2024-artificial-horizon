@@ -49,7 +49,7 @@ Wire definitions: [telemetry contract](../telemetry-contract.md#optional-magneti
 | Operation | Contract |
 | --- | --- |
 | `resize(layout)` | Use `layout.heading` to update geometry and grow the retained tick pool only when needed |
-| `render(frame)` | Consume the complete frame and update current and selected-heading presentation |
+| `render(displayFrame, now, sample)` | Draw display headings and apply raw availability and accessibility |
 | `invalidate()` | Clear availability, scale visibility, and bug position. Show `X` |
 
 The shared panel can pass an invalidation reason, but heading does not use that argument.
@@ -92,7 +92,7 @@ Paint heading elements in this order:
 ### Frame updates, SVG state, and accessibility
 
 * Resize updates geometry and grows the retained tick pool only when needed.
-* Use shared frame scheduling and the original expiry deadline without history, filtering, interpolation, or a new timer.
+* Use shared frame scheduling and the original expiry deadline with bounded interpolation and no independent timer. Raw input controls availability and accessibility; the displayed heading and selected heading take the shortest path across north. See the [frame lifecycle](lifecycle.md#sample-acceptance-and-drawing).
 * Include raw magnetic heading and valid selected heading in the accessible label. Identify unavailable selected heading separately.
 
 | State or DOM property | Effect or use |
@@ -103,6 +103,8 @@ Paint heading elements in this order:
 | Label `style.visibility` | Hide whole labels that intersect the window or clip edges |
 | Bug `transform` | Position an available bug. Remove its position when unavailable |
 | Heading `aria-label` | Describe raw headings or the unavailable state |
+
+Motion checks cover both directions across north, the negative 180-degree tie, raw availability, and bug recovery against the moving tape.
 
 ## Testing
 

@@ -26,7 +26,7 @@ Its private operations are `readMessage`, `acceptSample`, `publishSample`, and `
 | `stop()` | Close the connection, clear retry and age timers, and report suspended/waiting status, subject to [callback reentrancy limits](#callback-reentrancy-limits) |
 
 One client owns the subscription, retry timer, and age timer.
-The [scheduler](lifecycle.md#sample-acceptance-and-drawing) owns the retained frame and pending draw.
+The [scheduler](lifecycle.md#sample-acceptance-and-drawing) owns the latest raw sample, motion targets, and pending draw. It does not change the client freshness deadline.
 
 ### Snapshot validation and optional normalization
 

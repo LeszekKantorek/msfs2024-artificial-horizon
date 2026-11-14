@@ -9,7 +9,7 @@ Instrument ownership, shared helpers, public operations, and delivery boundaries
 | Application assembly | `app.js` | Assemble telemetry, status, panel, layout, resize observation, and page lifecycle |
 | Telemetry client | `telemetry/client.js` | Validate messages and own EventSource, sequence handling, retries, expiry, source/transport status, and start/stop |
 | Validation | `telemetry/validation.js` | Pure envelope validation and independent optional-value normalization |
-| Frame scheduler | `frame-scheduler.js` | Retain the latest frame, coalesce draws, check expiry, and cancel invalid work |
+| Frame scheduler | `frame-scheduler.js` | Retain raw samples and motion targets, interpolate eligible channels, coalesce draws, check expiry, and cancel invalid work |
 | Panel | `panel.js` | Compose instruments, assign layers, own and resize the common attitude clip, and delegate resize, acceptance, rendering, and invalidation |
 | Layout | `layout.js` | Allocate CSS-pixel regions, including the background extent and central readable area |
 | Instrument composition | Feature entry points | Select frame fields and delegate concrete geometry and readings to visual objects |
@@ -64,7 +64,7 @@ Each feature documents its factory interface in its Implementation section.
 
 Internal objects use these ownership rules:
 
-* Instrument entry points receive the complete read-only frame.
+* Instrument entry points receive the complete read-only display frame and raw sample.
 * Internal objects receive concrete SVG hosts, geometry, and the readings their operations require.
 * Factories select existing owned nodes or create dynamic nodes once.
 * Returned objects expose operations without public node bags.

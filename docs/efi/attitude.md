@@ -67,8 +67,8 @@ The instrument factories expose these operations:
 | --- | --- |
 | `createHorizon(instrument, layers)` in `horizon/index.js` | `resize(layout)`, `render(frame)` |
 | `createFixedSymbols(instrument, symbols)` in `fixed-symbols/index.js` | `resize(layout)` only |
-| `createSlipSkid(instrument, layers)` in `slip-skid.js` | `resize(layout)`, `render(frame)` |
-| `createTurnRate(instrument, layers)` in `turn-rate.js` | `resize(layout)`, `render(frame)` |
+| `createSlipSkid(instrument, layers)` in `slip-skid.js` | `resize(layout)`, `render(displayFrame, now, sample)` |
+| `createTurnRate(instrument, layers)` in `turn-rate.js` | `resize(layout)`, `render(displayFrame, now, sample)` |
 
 The composed visual objects retain concrete inputs and ownership:
 
@@ -91,7 +91,7 @@ Panel delegation preserves these boundaries:
 
 ### World transforms
 
-`horizon/index.js` owns `attitudeTransforms` and calculates the transforms once per frame from attitude and initialized local pitch geometry.
+The horizon uses only the display frame; slip and turn also use the raw sample for availability and labels. `horizon/index.js` owns `attitudeTransforms` and calculates the transforms once per frame from attitude and initialized local pitch geometry.
 World, pitch scale, and bank pointer receive the same transforms object.
 
 Pitch translation remains nested inside bank rotation. Background, attitude, and pitch clips stay fixed while the world rotates and translates.
@@ -157,9 +157,13 @@ Paint fixed children in this order:
 
 ### Frame updates and SVG state
 
+The shared scheduler interpolates pitch and shortest-path roll for the world, ladder, chevrons, and bank pointer. Slip and in-range turn endpoints also move between samples. Raw missing inputs show their warnings on the next draw, and raw turn overflow pins its endpoint immediately. See the [frame lifecycle](lifecycle.md#sample-acceptance-and-drawing).
+
 * Fixed objects have no per-frame render operation.
 * Aircraft calculates its common shape/outline path once per resize.
 * JavaScript writes slip/skid and turn-rate `data-available` to control local unavailable marks and hide the affected indication.
+
+Motion checks cover shared pitch transforms, roll wrap, raw turn overflow and reversal, and recovery after a coalesced unavailable input.
 
 ## Testing
 

@@ -69,8 +69,8 @@ Run these checks locally on Windows x64 MSVC.
 | Socket unit tests | Subscriber release and write/shutdown deadlines with bounded duplex transport |
 | Local TCP | Two active SSE connections and port reuse after shutdown |
 | DOM-free imports | `tests/helpers.test.mjs` imports visual owners/helpers/telemetry without `document` and exercises meaningful pure behavior |
-| Frame scheduler | Latest-frame/layout coalescing, coherent resize and render, expiry before draw, cancellation on data loss, resize without renewing age, fresh identical values |
-| Panel/status | Complete read-only frame delegation, shared attitude clip through resize/expiry, status without a sample, stale obscuring, separate source/transport state and announcements |
+| Frame scheduler | Receipt-based interpolation, coalescing, channel recovery, retargeting, coherent resize, expiry before draw, cancellation, and fresh identical values |
+| Panel/status | Read-only display and raw frame delegation, shared attitude clip through resize/expiry, status without a sample, stale obscuring, separate source/transport state and announcements |
 
 Apply the [client and validation suites](../efi/telemetry.md#client-and-validation-coverage) alongside these integration checks.
 

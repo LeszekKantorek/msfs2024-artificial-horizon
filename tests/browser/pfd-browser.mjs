@@ -11,6 +11,7 @@ import { checkSelectedAltitude } from './checks/selected-altitude-browser-checks
 import { checkVerticalSpeed } from './checks/vertical-speed-browser-checks.mjs';
 import { checkAltitudeTrend } from './checks/altitude-trend-browser-checks.mjs';
 import { checkHeading } from './checks/heading-browser-checks.mjs';
+import { checkSmoothing } from './checks/smoothing-browser-checks.mjs';
 import { checkTapeFooters } from './checks/tape-footer-browser-checks.mjs';
 import { checkTrueAirspeed } from './checks/true-airspeed-browser-checks.mjs';
 
@@ -264,6 +265,7 @@ try {
   await checkAirspeedIndications(page, setFixture,
     JSON.parse(readFileSync(new URL('../fixtures/airspeed-profile.json', import.meta.url))));
   await checkAltitude(page, setFixture, url);
+  await checkSmoothing(page, url);
   await checkSelectedAltitude(page, setFixture, url);
   await checkVerticalSpeed(page, setFixture, url);
   await checkAltitudeTrend(page, setFixture, url);
@@ -285,6 +287,11 @@ try {
       setFixture({ ias_kt: speed, gs_kt: 137.6 });
       await page.waitForFunction(speed => document.querySelector('#airspeed').getAttribute('aria-label') ===
         `Indicated airspeed ${speed} knots`, speed);
+      await page.waitForFunction(speed => {
+        const center = document.querySelector('#airspeed-tape-clip rect').getBBox().height / 2;
+        const value = Number(document.querySelector('#airspeed-scale').getAttribute('transform')?.match(/translate\(0 ([^)]+)\)/)?.[1]);
+        return Math.abs(value - (center + speed * 4)) < 1e-6;
+      }, speed);
       const actual = await page.evaluate(() => {
         const ias = document.querySelector('#airspeed');
         const center = document.querySelector('#fixed-symbols').getCTM().f - ias.getCTM().f;
@@ -333,6 +340,11 @@ try {
   }
   setFixture({ ias_kt: 99.5, gs_kt: 137.6 });
   await page.waitForFunction(() => document.querySelector('#airspeed').getAttribute('aria-label') === 'Indicated airspeed 99.5 knots');
+  await page.waitForFunction(() => {
+    const center = document.querySelector('#airspeed-tape-clip rect').getBBox().height / 2;
+    const y = Number(document.querySelector('#airspeed-scale').getAttribute('transform')?.match(/translate\(0 ([^)]+)\)/)?.[1]);
+    return Math.abs(y - (center + 99.5 * 4)) < 1e-6;
+  });
   await saveScreenshot(page, { path: '.local/pfd-browser/airspeed-rollover.png' });
   setFixture({ ias_kt: 123, gs_kt: 137 });
   // Independent pitch offsets for two actual usable panel sizes; no layout formula copy.
@@ -366,6 +378,14 @@ try {
       return Math.abs(document.querySelector('#world-pitch').transform.baseVal.consolidate().matrix.f - pitch * scale) < 1e-4 &&
         document.querySelector('#world-rotation').getAttribute('transform').startsWith(`rotate(${-roll} `);
     }, { pitch: pose.attitude.pitch_deg, roll: pose.attitude.roll_deg });
+    await page.waitForFunction(({ slip, turn }) => {
+      const ball = Number(document.querySelector('.slip-ball').getAttribute('cx'));
+      const vector = Number(document.querySelector('.turn-vector').getAttribute('d').split('H ')[1]);
+      const slipTravel = (Number(document.querySelector('#slip-skid .instrument-background').getAttribute('width')) - 24) / 2;
+      const turnTravel = (Number(document.querySelector('#turn-rate .instrument-background').getAttribute('width')) - 24) / 2;
+      return Math.abs(ball - slip * slipTravel) < 1e-4 &&
+        Math.abs(vector - Math.max(-6, Math.min(6, turn)) / 6 * turnTravel) < 1e-4;
+    }, { slip: pose.slip_skid, turn: pose.turn_rate_dps });
     const directions = await page.evaluate(() => ({
       ball: Number(document.querySelector('.slip-ball').getAttribute('cx')),
       vector: Number(document.querySelector('.turn-vector').getAttribute('d').split('H ')[1]),

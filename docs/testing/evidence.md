@@ -83,7 +83,7 @@ Record the measurement environment and observations:
 
 | Behavior | Current requirement |
 | --- | --- |
-| Demo acquisition | Baseline scenario uses 50 ms frames at the default native interval; SSE defaults to 500 ms |
+| Demo acquisition | Baseline scenario uses 50 ms frames at the default native interval; SSE publishes on source samples |
 | SimConnect attitude acquisition | `SIM_FRAME` with the configured native interval, default 0 |
 | Active-page stale indication | Browser deadline uses the configured stale threshold minus the age reported at SSE serialization. The source independently measures its deadline from native sample receipt |
 | Layout | At least 320 CSS px wide and 240 CSS px of usable height, in both orientations |
@@ -98,7 +98,7 @@ Source cadence follows the [telemetry contract](../telemetry-contract.md#framing
 These measurements require real equipment. The targets do not claim achieved performance.
 
 * Record the aircraft and tested mobile platforms: iOS or Android.
-* Mobile performance and any need for interpolation require measurements and a separate accepted change. Current rendering does not interpolate.
+* Mobile performance requires measurements on real devices. Browser interpolation adds display delay; measure receipt-to-first DOM movement and receipt-to-settlement using the same monotonic clock and observed frame intervals. Keep these measurements distinct from acquisition-to-display latency.
 * Use the [SimConnect evidence limits](../sources/simconnect.md#live-publication-evidence) for compatibility, sign/unit conversion, and lifecycle observations.
 * [ADR 0006](../adr/0006-simconnect-manual-ffi.md) governs manual FFI. Runtime/SDK distribution conditions require separate evidence and do not follow from a successful run.
 

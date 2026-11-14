@@ -20,14 +20,14 @@ export function createSlipSkid(instrument, layers) {
       setAttributes(background, { x: -travel - 12, y: -10, width: 2 * travel + 24, height: 20 });
       reference.setAttribute('d', `M -9 -7 V 7 M 9 -7 V 7 M ${-travel - 7} 0 h 4 M ${travel + 3} 0 h 4`);
     },
-    render(frame) {
-      const value = frame.slip_skid;
+    render(frame, now, sample = frame) {
+      const value = sample.slip_skid;
       const available = value !== null && value !== undefined;
       group.dataset.available = String(available);
       warning.dataset.available = String(available);
       group.setAttribute('aria-label', !available ? 'Slip/skid unavailable' :
         value === 0 ? 'Slip/skid centered' : `Slip/skid ${value < 0 ? 'left' : 'right'}`);
-      if (available) ball.setAttribute('cx', slipPosition(value, travel));
+      if (available) ball.setAttribute('cx', slipPosition(frame.slip_skid, travel));
     },
   };
 }

@@ -10,10 +10,10 @@ Instrument composition places side instruments over a shared attitude background
 
 ## Decision
 
-* Keep plain JavaScript, SVG, SSE, and latest-sample rendering without interpolation.
+* Keep plain JavaScript, SVG, SSE, and bounded browser interpolation on the shared scheduler.
 * Compose the panel from instrument modules with local coordinates and pure geometry calculations.
-* Use `panel.resize(layout)`, `panel.render(frame)`, and `panel.invalidate(reason)` as the presentation interface.
-* Pass the same complete, read-only frame to every instrument render method.
+* Use `panel.resize(layout)`, `panel.accept(frame, now)`, `panel.render(displayFrame, now, sample)`, and `panel.invalidate(reason)` as the presentation interface.
+* Pass the same read-only display frame and raw sample to every instrument render method.
 * Let each instrument select its data without changing panel delegation when its data needs expand.
 * Keep frame scheduling independent of attitude mathematics.
 * Preserve one sample deadline through layout changes and cancel pending drawing on invalidation.
@@ -21,6 +21,8 @@ Instrument composition places side instruments over a shared attitude background
 * Keep text, ticks, and value windows readable, with separate clipping for central pitch markings.
 * Validate structural refactoring separately from intentional composition changes.
 * Add instruments only within the accepted product scope.
+
+Bounded interpolation reduces steps while preserving prompt raw warnings and a shared expiry deadline. The [frame lifecycle](../efi/lifecycle.md#sample-acceptance-and-drawing) defines the timing and recovery rules.
 
 The [presentation document](../efi/index.md) owns detailed responsibilities, interfaces, and layer rules.
 The [roadmap](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/9) owns delivery order and technical prerequisites.

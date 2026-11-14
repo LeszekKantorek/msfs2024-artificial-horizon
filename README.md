@@ -106,6 +106,8 @@ cargo run --locked --bin msfs2024-artificial-horizon -- --source demo.dll --scen
 | SimConnect DLL cannot load | Place the official x64 DLL beside the executable or supply an absolute `--source` path. Demo never replaces SimConnect automatically |
 | Mapping cannot load | Place the validated `default.json` beside the executable, then restart |
 
+The browser smooths moving indications over the recent delivery interval, up to 330 ms. This reduces visible steps and adds display lag. See the [frame lifecycle](docs/efi/lifecycle.md#sample-acceptance-and-drawing).
+
 Select native reception with `--source SimConnect.dll`:
 
 ```powershell

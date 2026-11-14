@@ -44,7 +44,7 @@ Units roll from fractional IAS. Higher columns roll during the final knot before
 
 ### Composition and visual object interfaces
 
-`airspeed/index.js` composes IAS, TAS, and GS once, exposing `resize(layout)` and `render(frame)`:
+`airspeed/index.js` composes IAS, TAS, and GS once, exposing `resize(layout)` and `render(displayFrame, now, sample)`:
 
 | Operation or owner | Responsibility |
 | --- | --- |
@@ -65,7 +65,7 @@ The following objects implement IAS and GS. [Ranges/references](airspeed-indicat
 
 | Factory | Returned operations |
 | --- | --- |
-| `createAirspeed(instrument, layers)` in `airspeed/index.js` | `resize(layout)`, `render(frame)` |
+| `createAirspeed(instrument, layers)` in `airspeed/index.js` | `resize(layout)`, `render(displayFrame, now, sample)` |
 
 ```text
 Airspeed
@@ -147,7 +147,7 @@ SVG paint order follows these sequences:
 * Accessible speed labels retain current values or unavailable/overflow states.
 * IAS, TAS, GS, profile, and acceleration availability remain independent.
 * Every frame resets relevant warning, visibility, unit, fallback, and trend states, including missing data.
-* No independent animation, timer, interpolation, or client-generated flight values are used.
+* No independent animation or timer is used. The shared scheduler interpolates IAS and eligible trend displacement; raw IAS drives warnings and labels. See the [frame lifecycle](lifecycle.md#sample-acceptance-and-drawing).
 
 | State written by JavaScript | CSS or presentation effect |
 | --- | --- |

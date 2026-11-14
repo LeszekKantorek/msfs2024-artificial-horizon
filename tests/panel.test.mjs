@@ -141,3 +141,16 @@ test('repeated unavailable snapshots announce the same status only once', () => 
     assert.equal(h.get('.instrument').dataset.available, 'false');
   }
 });
+
+test('panel passes display and raw samples separately and status receives raw', () => {
+  const received = [], status = [];
+  const panel = composePanel({ querySelector() {} }, [
+    { render: (...args) => { received.push(args); return 500; } },
+    { render: (...args) => { received.push(args); return 300; } },
+  ], { render: value => status.push(value) });
+  const display = Object.freeze({ altitude_ft: 100 });
+  const sample = Object.freeze({ altitude_ft: 200 });
+  assert.equal(panel.render(display, 150, sample), 300);
+  assert.deepEqual(received, [[display, 150, sample], [display, 150, sample]]);
+  assert.deepEqual(status, [sample]);
+});

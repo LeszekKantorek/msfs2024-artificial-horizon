@@ -82,7 +82,7 @@ Altitude
 | --- | --- |
 | `resize(layout)` | Set the allocation and local geometry of the composed objects |
 | `accept(frame, now)` | Pass altitude and selected altitude to alert sample acceptance |
-| `render(frame, now)` | Update local altitude state and the composed indications; return the selected-altitude rendering result |
+| `render(displayFrame, now, sample)` | Draw interpolated tape and bug geometry with raw state, labels, and VSI text; return the selected-altitude rendering result |
 | `invalidate()` | Invalidate selected altitude, VSI, trend, and BARO |
 
 Composition follows these boundaries:

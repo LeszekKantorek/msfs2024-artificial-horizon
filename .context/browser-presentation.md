@@ -4,8 +4,8 @@ status: active
 ---
 
 * Use original assets for the dark, rectangular, G5-inspired SVG instrument.
-* Render the latest accepted sample on the next animation frame without interpolation.
-* Reconsider smoothing only after observing mobile behavior.
+* Apply bounded interpolation and raw warnings through the [frame lifecycle](../docs/efi/lifecycle.md#sample-acceptance-and-drawing).
+* Record mobile motion and lifecycle behavior separately from desktop evidence.
 * Separate source and transport status.
 * Obscure unavailable attitude instead of displaying a credible level-flight indication.
 * Use [PFD scope](pfd-demo-scope.md) for instrument scope and extension constraints.

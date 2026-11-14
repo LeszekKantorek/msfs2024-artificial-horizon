@@ -72,7 +72,7 @@ Fallback references preserve configured values when IAS is unavailable:
 * Zero IAS is valid.
 * IAS above 999 kt shows `OVR` and hides the numeric tape and trend.
 * The browser calculates the six-second prediction as `IAS + 6 * ias_acceleration_ktps` from source-supplied acceleration.
-* The magenta vector extends from current IAS toward that prediction.
+* The magenta vector extends from displayed IAS using the interpolated acceleration displacement. Raw prediction controls warnings, availability, and the prediction attribute. See the [frame lifecycle](lifecycle.md#sample-acceptance-and-drawing).
 * A negative prediction remains a calculation result and clips at the tape boundary.
 * Constant speed, missing acceleration, or a non-finite prediction hides the vector.
 * Missing configuration does not prevent a valid trend calculation.
@@ -171,6 +171,8 @@ Scale geometry uses local tape coordinates:
 | State written by JavaScript | CSS or presentation effect |
 | --- | --- |
 | Bottom references `data-visible` | Hide the development badge while fallback references occupy its area |
+
+Motion checks cover interpolated tape and vector geometry, immediate raw VNE warnings, and raw prediction metadata.
 
 ## Testing
 

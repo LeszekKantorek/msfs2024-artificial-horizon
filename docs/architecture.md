@@ -118,7 +118,7 @@ The browser receives telemetry from either provider through the same HTTP/SSE co
 * Present received values without generating independent flight data or sending setting/control commands.
 * Keep connection recovery and presentation scheduling in the browser.
 * Invalidate unavailable or expired data instead of displaying retained readings as live.
-* Apply no interpolation or extrapolation.
+* Interpolate eligible browser indications between accepted samples without extrapolation; see the [frame lifecycle](efi/lifecycle.md#sample-acceptance-and-drawing).
 
 Delivery preserves these system constraints:
 
@@ -148,7 +148,7 @@ Mixed application versions are unsupported.
 
 ```text
 Rust process: Provider -> Publisher -> latest state -> Subscription -> Snapshot -> SSE
-Browser:      SSE -> validate -> latest sample -> animation frame -> SVG/DOM
+Browser:      SSE -> validate -> raw sample -> shared interpolation -> animation frame -> SVG/DOM
 ```
 
 The flow separates acquisition, shared state, delivery, and presentation. The Rust-process path includes the provider and publication, which the HTTP server does not own.
@@ -180,7 +180,7 @@ A subscription reads the shared current state. Each accepted acquisition notifie
 | Snapshot -> SSE | Serialize the snapshot and send an event | Delivery does not control acquisition |
 | SSE -> validation | Validate the message and normalize optional indications independently | The browser does not generate independent flight data |
 | Latest sample -> animation frame | Accept fresh samples and coalesce draws | Sample acceptance and drawing have separate roles |
-| Animation frame -> SVG/DOM | Update instruments while checking data validity | No interpolation or extrapolation |
+| Animation frame -> SVG/DOM | Update instruments while checking data validity | Bounded interpolation; no extrapolation |
 
 Delivery and presentation have separate owners:
 

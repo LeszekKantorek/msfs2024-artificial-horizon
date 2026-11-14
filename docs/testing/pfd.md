@@ -109,6 +109,8 @@ node tests/browser/pfd-runtime-browser.mjs target/x86_64-pc-windows-msvc/release
 | `pfd-browser.mjs` | Real web assets and isolated loopback fixture on an OS-assigned port | Viewports, poses, snapshots with missing optional fields and attitude-only publications, stale states, resize, lifecycle, identity, frozen frames, hierarchy/paint order, shared clips, and background coverage | Screenshots under `.local/pfd-browser/`, covering both orientations against sky and ground |
 | `pfd-runtime-browser.mjs` | Release binary built from the checked source and passed explicitly | Every current imported module with HTTP 200/JavaScript MIME, Rust demo SSE, coherent bank/turn state within 25 seconds, and restart recovery without reload | `.local/pfd-runtime-landscape.png` |
 
+Controlled clock checks cover intermediate and settled geometry, raw warnings, and recovery. Screenshot comparisons use matched inputs after geometry settles. Measure receipt-to-first DOM movement and receipt-to-settlement on the browser monotonic clock; observed frame intervals bound timing resolution.
+
 The scripted geometry checks include these regression cases:
 
 * The coverage check must reject a deliberately narrowed background clip and pass after restoration.

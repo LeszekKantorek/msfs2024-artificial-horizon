@@ -14,6 +14,17 @@ export async function checkHeading(page, setFixture, url) {
         setFixture({ heading_deg: heading, selected_heading_deg: selected });
         await page.waitForFunction(({ heading, selected }) => document.querySelector('#heading').getAttribute('aria-label') ===
           `Magnetic heading ${heading} degrees, selected heading ${selected} degrees`, { heading, selected });
+        await page.waitForFunction(({ heading, selected, text }) => {
+          const width = document.querySelector('#heading-tape-clip rect').getBBox().width;
+          const tick = document.querySelector(`.heading-tick[data-heading-deg="${Math.floor(heading)}"]`);
+          if (!tick) return false;
+          const x = Number(tick.getAttribute('d').split(' ')[1]);
+          const difference = (selected - heading + 540) % 360 - 180;
+          const bug = document.querySelector('#selected-heading-bug').transform.baseVal.consolidate()?.matrix.e;
+          const expectedBug = Math.min(width - 8.5, Math.max(8.5, width / 2 + difference * 4));
+          return Math.abs(x - (width / 2 + (Math.floor(heading) - heading) * 4)) < 1e-5 &&
+            Math.abs(bug - expectedBug) < 1e-4 && document.querySelector('#heading-value').textContent === text;
+        }, { heading, selected, text });
         const paint = await page.evaluate(() => {
           const group = document.querySelector('#heading'), window = group.querySelector('.heading-window');
           const value = document.querySelector('#heading-value'), bug = document.querySelector('#selected-heading-bug');

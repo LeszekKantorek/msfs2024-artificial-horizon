@@ -115,10 +115,10 @@ Presentation components retain these responsibilities:
 
 | Component | Responsibility |
 | --- | --- |
-| Panel | Pass one complete read-only frame to each instrument |
+| Panel | Pass the read-only display frame and raw sample to each instrument |
 | Instrument composition | Select fields and delegate to visual objects |
 | Visual object | Own geometry and calculations |
-| Common scheduler | Own retained frames and timing |
+| Common scheduler | Own the latest raw sample, motion targets, and shared timing |
 | Telemetry client | Own the connection and freshness |
 
 ## Scope and governing decisions

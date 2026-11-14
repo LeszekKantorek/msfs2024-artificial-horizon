@@ -69,17 +69,17 @@ export function createSelectedAltitude(parent, bugHost) {
       group.dataset.alert = 'none'; group.dataset.flashing = 'false';
       value.style.visibility = ''; bug.style.display = 'none';
     },
-    render(altitude, target, now) {
-      const state = altitudeState(target);
+    render(altitude, target, now, rawAltitude = altitude, rawTarget = target) {
+      const state = altitudeState(rawTarget);
       const presentation = alertPresentation(alert, now);
-      const rounded = Math.round(target);
+      const rounded = Math.round(rawTarget);
       group.dataset.state = state;
       group.dataset.alert = presentation.deviation ? 'deviation' : presentation.flashing ? alert.kind : 'none';
       group.dataset.flashing = String(presentation.flashing);
       value.textContent = state === 'available' ? String(Object.is(rounded, -0) ? 0 : rounded) : state === 'overflow' ? 'OVR' : 'X';
       value.style.visibility = presentation.visible ? '' : 'hidden';
-      group.setAttribute('aria-label', `Selected altitude ${state === 'available' ? `${target} feet` : state}${presentation.deviation ? ', deviation' : ''}`);
-      const positioned = state === 'available' && altitudeState(altitude) === 'available';
+      group.setAttribute('aria-label', `Selected altitude ${state === 'available' ? `${rawTarget} feet` : state}${presentation.deviation ? ', deviation' : ''}`);
+      const positioned = state === 'available' && altitudeState(rawAltitude) === 'available';
       bug.style.display = positioned ? '' : 'none';
       if (positioned) bug.setAttribute('transform', `translate(0 ${selectedBugPosition(altitude, target, geometry.height)})`);
       return presentation.nextUpdateAt;

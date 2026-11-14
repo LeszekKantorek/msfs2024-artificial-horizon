@@ -19,6 +19,12 @@ export async function checkAltitudeTrend(page, setFixture, url) {
         await page.waitForFunction(fpm => document.querySelector('#vertical-speed').getAttribute('aria-label') === `Vertical speed ${fpm} feet per minute` &&
           document.querySelector('#selected-altitude').dataset.state === 'unavailable' &&
           document.querySelector('#altitude').getAttribute('aria-label') === 'Barometric altitude 10060 feet', fpm);
+        await page.waitForFunction(fpm => {
+          const trend = document.querySelector('#altitude-trend');
+          const height = document.querySelector('#altitude-tape-clip rect').getBBox().height;
+          const end = trend.getPointAtLength(trend.getTotalLength()).y;
+          return Math.abs(end - Math.max(1, Math.min(height - 1, height / 2 - fpm / 10 * 0.4))) < 1e-4;
+        }, fpm);
         const paint = await page.evaluate(() => {
           const trend = document.querySelector('#altitude-trend');
           const start = trend.getPointAtLength(0), end = trend.getPointAtLength(trend.getTotalLength());
@@ -65,6 +71,15 @@ export async function checkAltitudeTrend(page, setFixture, url) {
           document.querySelector('#altitude').getAttribute('aria-label') === `Barometric altitude ${altitude} feet` &&
           document.querySelector('#selected-altitude-value').textContent === String(target) &&
           document.querySelector('#vertical-speed').getAttribute('aria-label') === `Vertical speed ${fpm} feet per minute`, { altitude, target, fpm });
+        await page.waitForFunction(({ altitude, target, fpm }) => {
+          const height = document.querySelector('#altitude-tape-clip rect').getBBox().height;
+          const trend = document.querySelector('#altitude-trend');
+          const end = trend.getPointAtLength(trend.getTotalLength()).y;
+          const bug = document.querySelector('#selected-altitude-bug').transform.baseVal.consolidate()?.matrix.f;
+          const expectedBug = Math.min(height - 14.5, Math.max(14.5, height / 2 + (altitude - target) * 0.4));
+          return Math.abs(end - Math.max(1, Math.min(height - 1, height / 2 - fpm / 10 * 0.4))) < 1e-4 &&
+            Math.abs(bug - expectedBug) < 1e-4;
+        }, { altitude, target, fpm });
         const paint = await page.evaluate(fpm => {
           const trend = document.querySelector('#altitude-trend'), bug = document.querySelector('#selected-altitude-bug');
           const bugY = bug.transform.baseVal.consolidate().matrix.f;
@@ -93,6 +108,12 @@ export async function checkAltitudeTrend(page, setFixture, url) {
         setFixture({ altitude_ft: 10060, selected_altitude_ft: target, vertical_speed_fpm: -1500 });
         await page.waitForFunction(target => document.querySelector('#selected-altitude-value').textContent === String(target) &&
           document.querySelector('#vertical-speed').getAttribute('aria-label') === 'Vertical speed -1500 feet per minute', target);
+        await page.waitForFunction(target => {
+          const height = document.querySelector('#altitude-tape-clip rect').getBBox().height;
+          const bug = document.querySelector('#selected-altitude-bug').transform.baseVal.consolidate()?.matrix.f;
+          const expected = Math.min(height - 14.5, Math.max(14.5, height / 2 + (10060 - target) * 0.4));
+          return Math.abs(bug - expected) < 1e-4;
+        }, target);
         const covered = await page.evaluate(() => {
           const window = document.querySelector('.altitude-window');
           const center = document.querySelector('#altitude-tape-clip rect').getBBox().height / 2;

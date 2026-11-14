@@ -79,8 +79,10 @@ The altitude composition sets the paint order:
 ### Frame updates and invalidation
 
 * Use the common frame and original sample deadline for rendering and invalidation.
-* Add no timer or interpolation.
+* Use shared interpolation for the vector rate and no independent timer. Raw prediction controls vector availability and metadata.
 * Hide and clear the trend when required inputs become unavailable or the rate becomes zero.
+
+Motion checks cover signed rate transitions, raw prediction metadata, and vector clipping independent of VSI overflow.
 
 ## Testing
 
