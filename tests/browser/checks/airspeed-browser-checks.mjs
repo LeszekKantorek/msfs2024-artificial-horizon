@@ -224,6 +224,12 @@ export async function checkAirspeedIndications(page, setFixture, profile) {
           (prediction === null ? !trend.hasAttribute('data-prediction-kt') :
             Math.abs(Number(trend.dataset.predictionKt) - prediction) < 1e-8);
       }, { ias, prediction, overspeed, approaching });
+      await page.waitForFunction(ias => {
+        const clip = document.querySelector('#airspeed-tape-clip rect').getBBox();
+        const transform = document.querySelector('#airspeed-scale').getAttribute('transform');
+        const y = Number(transform?.match(/translate\(0 ([^)]+)\)/)?.[1]);
+        return Math.abs(y - (clip.height / 2 + ias * 4)) < 1e-6;
+      }, ias);
       const geometry = await page.evaluate(() => {
         const group = document.querySelector('#airspeed');
         const window = group.querySelector('.airspeed-window');
@@ -276,6 +282,12 @@ export async function checkAirspeedIndications(page, setFixture, profile) {
     setFixture({ ias_kt: 65, ias_acceleration_ktps: 5, airspeed_profile: profile });
     await page.waitForFunction(() => document.querySelector('#airspeed').getAttribute('aria-label') === 'Indicated airspeed 65 knots' &&
       Number(document.querySelector('#airspeed-trend').dataset.predictionKt) === 95);
+    await page.waitForFunction(() => {
+      const clip = document.querySelector('#airspeed-tape-clip rect').getBBox();
+      const transform = document.querySelector('#airspeed-scale').getAttribute('transform');
+      const y = Number(transform?.match(/translate\(0 ([^)]+)\)/)?.[1]);
+      return Math.abs(y - (clip.height / 2 + 65 * 4)) < 1e-6;
+    });
     const paint = await page.evaluate(() => {
       const white = document.querySelector('[data-range="flaps"]');
       const green = document.querySelector('[data-range="normal"]');
@@ -322,6 +334,12 @@ export async function checkAirspeedIndications(page, setFixture, profile) {
       setFixture({ ias_kt: speed, ias_acceleration_ktps: 0 });
       await page.waitForFunction(speed => document.querySelector('#airspeed').getAttribute('aria-label') ===
         `Indicated airspeed ${speed} knots`, speed);
+      await page.waitForFunction(speed => {
+        const clip = document.querySelector('#airspeed-tape-clip rect').getBBox();
+        const transform = document.querySelector('#airspeed-scale').getAttribute('transform');
+        const y = Number(transform?.match(/translate\(0 ([^)]+)\)/)?.[1]);
+        return Math.abs(y - (clip.height / 2 + speed * 4)) < 1e-6;
+      }, speed);
       const result = await page.evaluate(() => {
         const clip = document.querySelector('#airspeed-tape-clip rect').getBBox();
         const win = document.querySelector('.airspeed-window').getBBox();
@@ -348,6 +366,12 @@ export async function checkAirspeedIndications(page, setFixture, profile) {
         setFixture({ ias_kt: speed });
         await page.waitForFunction(speed => document.querySelector('#airspeed').getAttribute('aria-label') ===
           `Indicated airspeed ${speed} knots`, speed);
+      await page.waitForFunction(speed => {
+        const clip = document.querySelector('#airspeed-tape-clip rect').getBBox();
+        const transform = document.querySelector('#airspeed-scale').getAttribute('transform');
+        const y = Number(transform?.match(/translate\(0 ([^)]+)\)/)?.[1]);
+        return Math.abs(y - (clip.height / 2 + speed * 4)) < 1e-6;
+      }, speed);
         const visible = await page.locator('#airspeed-references text[data-reference="R"]').evaluate(n => getComputedStyle(n).display !== 'none');
         assert.equal(visible, edge + delta >= bounds.top && edge + delta <= bounds.bottom);
       }
@@ -400,6 +424,11 @@ export async function checkAirspeedIndications(page, setFixture, profile) {
         references: Object.fromEntries(['vr_kt', 'vx_kt', 'vy_kt', 'vg_kt'].map((key, i) => [key, values[i]])) } });
       await page.waitForFunction(({ ias, value }) => document.querySelector('#airspeed').getAttribute('aria-label') === `Indicated airspeed ${ias} knots` &&
         document.querySelector('#airspeed-references [data-reference="Y"][aria-label]').getAttribute('aria-label') === `VY ${value} knots`, { ias, value: values[2] });
+      await page.waitForFunction(ias => {
+        const clip = document.querySelector('#airspeed-tape-clip rect').getBBox();
+        const value = Number(document.querySelector('#airspeed-scale').getAttribute('transform')?.match(/translate\(0 ([^)]+)\)/)?.[1]);
+        return Math.abs(value - (clip.height / 2 + ias * 4)) < 1e-6;
+      }, ias);
       const geometry = await page.evaluate(() => {
         const clip = document.querySelector('#airspeed-tape-clip rect').getBBox();
         const win = document.querySelector('.airspeed-window').getBBox();

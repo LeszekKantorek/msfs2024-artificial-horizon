@@ -8,14 +8,16 @@ function harness() {
   let nextId = 0;
   const frames = new Map();
   const drawn = [];
+  const raw = [], accepted = [];
   const obscured = [];
   const renderer = createFrameScheduler({
-    panel: { render: value => { drawn.push(value); }, invalidate: reason => obscured.push(reason), resize() {} },
+    panel: { render: (value, time, sample) => { drawn.push(value); raw.push(sample); },
+      accept: (sample, time) => accepted.push([sample, time]), invalidate: reason => obscured.push(reason), resize() {} },
     now: () => time,
     requestFrame: fn => { const id = ++nextId; frames.set(id, fn); return id; },
     cancelFrame: id => frames.delete(id),
   });
-  return { renderer, frames, drawn, obscured,
+  return { renderer, frames, drawn, raw, accepted, obscured,
     advance: ms => { time += ms; },
     flush() { const pending = [...frames.values()]; frames.clear(); for (const fn of pending) fn(); },
   };
@@ -39,7 +41,7 @@ test('headings draw with the newest attitude and expire before resize can renew 
   const h = harness();
   h.renderer.accept({ ...sample(0, 0, 500), heading_deg: 359, selected_heading_deg: 1 });
   const latest = { ...sample(5, 15, 500), heading_deg: 0, selected_heading_deg: 1 };
-  h.renderer.accept(latest); h.flush(); assert.deepEqual(h.drawn, [latest]);
+  h.renderer.accept(latest); h.flush(); assert.equal(h.drawn[0].attitude.pitch_deg, 0); assert.equal(h.drawn[0].heading_deg, 359);
   h.advance(499); h.renderer.resize(pfdLayout(568, 240)); h.flush();
   assert.deepEqual(h.drawn.at(-1), latest);
   h.advance(1); h.renderer.resize(pfdLayout(320, 480)); h.flush();
@@ -53,7 +55,7 @@ test('speed indications stay in the same latest frame and retain their deadline 
   const latest = { ...first, ias_kt: 150, tas_kt: 160, gs_kt: 170, ias_acceleration_ktps: 0 };
   h.renderer.accept(first); h.renderer.accept(latest); h.flush();
   assert.equal(h.drawn.length, 1);
-  assert.deepEqual(h.drawn[0], latest);
+  assert.equal(h.drawn[0].ias_kt, 110); assert.equal(h.drawn[0].tas_kt, 160);
   h.advance(499); h.renderer.resize(pfdLayout(568, 240)); h.flush();
   assert.deepEqual(h.drawn.at(-1), latest);
   h.advance(1); h.renderer.resize(pfdLayout(320, 480)); h.flush();
@@ -68,7 +70,7 @@ test('altitude and pressure coalesce together and expire before a resize draw', 
   h.renderer.accept({ ...sample(0, 0, 500), altitude_ft: -20, baro_text: '29.92 inHg' });
   const latest = { ...sample(0, 0, 500), altitude_ft: 20, baro_text: '30.12 inHg' };
   h.renderer.accept(latest); h.flush();
-  assert.deepEqual(h.drawn, [latest]);
+  assert.notDeepEqual(h.drawn[0], latest);
   h.advance(499); h.renderer.resize(pfdLayout(568, 240)); h.flush();
   assert.deepEqual(h.drawn.at(-1), latest);
   h.advance(1); h.renderer.resize(pfdLayout(320, 480)); h.flush();
@@ -81,7 +83,7 @@ test('VSI coalesces with altitude and target, retaining the shared deadline thro
   h.renderer.accept({ ...sample(0, 0, 500), altitude_ft: 8500, selected_altitude_ft: 10000, vertical_speed_fpm: 0 });
   const latest = { ...sample(0, 0, 500), altitude_ft: 8525, selected_altitude_ft: 10000, vertical_speed_fpm: 1500 };
   h.renderer.accept(latest); h.flush();
-  assert.deepEqual(h.drawn, [latest]);
+  assert.notDeepEqual(h.drawn[0], latest);
   h.advance(499); h.renderer.resize(pfdLayout(568, 240)); h.flush();
   assert.deepEqual(h.drawn.at(-1), latest);
   h.advance(1); h.renderer.resize(pfdLayout(320, 480)); h.flush();
@@ -89,14 +91,16 @@ test('VSI coalesces with altitude and target, retaining the shared deadline thro
   assert.deepEqual(h.obscured, ['stale']);
 });
 
-test('a burst draws only its newest sample in one frame, without continuous animation', () => {
+test('a burst latches its first sample and animates to the newest target', () => {
   const h = harness();
   h.renderer.accept(sample(15)); h.renderer.accept(sample(-15)); h.renderer.accept(sample(10, 25));
   assert.equal(h.frames.size, 1); assert.equal(h.drawn.length, 0);
   h.flush();
-  assert.deepEqual(h.drawn, [sample(10, 25)]);
+  assert.deepEqual(h.drawn, [sample(15)]);
+  assert.equal(h.frames.size, 1);
+  h.advance(16); h.flush(); assert.deepEqual(h.drawn.at(-1), sample(10, 25));
   assert.equal(h.frames.size, 0);
-  h.renderer.accept(sample()); h.flush(); assert.equal(h.drawn.length, 2);
+  h.renderer.accept(sample()); h.flush(); assert.equal(h.drawn.length, 3);
 });
 
 test('a sample expiring before its frame is obscured even if timeout delivery is delayed', () => {
@@ -185,7 +189,7 @@ test('resize and fresh values commit together using the newest layout and sample
   assert.deepEqual(events, []);
   assert.equal(frames.length, 1);
   frames.shift()();
-  assert.deepEqual(events, [['resize', layout], ['render', sample(15)]]);
+  assert.deepEqual(events, [['resize', layout], ['render', sample(10)]]);
 });
 
 test('invalidation applies pending geometry under the cover and discards pending values', () => {
@@ -201,4 +205,165 @@ test('invalidation applies pending geometry under the cover and discards pending
   scheduler.resize(layout);
   scheduler.invalidate('suspended'); callback();
   assert.deepEqual(events, [['cover', 'suspended'], ['resize', layout]]);
+});
+
+test('motion interpolates at receipt cadence and retargets from the last paint', () => {
+  const h = harness();
+  h.renderer.accept(sample(0, 0, 2000)); h.flush();
+  h.advance(330); h.renderer.accept(sample(30, 0, 2000)); h.flush();
+  assert.equal(h.drawn.at(-1).attitude.pitch_deg, 0);
+  h.advance(165); h.flush(); assert.equal(h.drawn.at(-1).attitude.pitch_deg, 15);
+  h.advance(1); h.renderer.accept(sample(45, 0, 2000));
+  h.advance(15); h.flush(); assert.ok(Math.abs(h.drawn.at(-1).attitude.pitch_deg - 17.891566) < 0.00001);
+});
+
+test('fresh recovery baseline is drawn before a coalesced target', () => {
+  const h = harness();
+  h.advance(100); h.renderer.accept(sample(0, 0, 1000));
+  h.advance(50); h.renderer.accept(sample(30, 0, 1000));
+  h.advance(10); h.flush(); assert.equal(h.drawn.at(-1).attitude.pitch_deg, 0);
+  h.advance(25); h.flush(); assert.equal(h.drawn.at(-1).attitude.pitch_deg, 15);
+  h.advance(25); h.flush(); assert.equal(h.drawn.at(-1).attitude.pitch_deg, 30);
+  assert.equal(h.frames.size, 0);
+});
+
+test('roll crosses its wrap by the shortest path', () => {
+  const h = harness(); h.renderer.accept(sample(0, 179, 1000)); h.flush();
+  h.advance(100); h.renderer.accept(sample(0, -179, 1000)); h.flush();
+  h.advance(50); h.flush(); assert.equal(h.drawn.at(-1).attitude.roll_deg, -180);
+  h.advance(50); h.flush(); assert.equal(h.drawn.at(-1).attitude.roll_deg, -179);
+});
+
+
+test('channel recovery coalesces to the newest eligible value after loss', () => {
+  const h = harness();
+  const speed = value => ({ ...sample(0, 0, 2000), ias_kt: value });
+  h.renderer.accept(speed(100)); h.flush();
+  h.advance(10); h.renderer.accept(speed(null));
+  h.advance(10); h.renderer.accept(speed(120));
+  h.advance(10); h.renderer.accept(speed(140)); h.flush();
+  assert.equal(h.drawn.at(-1).ias_kt, 140);
+  assert.equal(h.frames.size, 0);
+});
+
+test('repeated eligibility breaks before the first draw snap to the latest recovery', () => {
+  const h = harness();
+  const speed = value => ({ ...sample(0, 0, 2000), ias_kt: value });
+  h.renderer.accept(speed(100)); h.advance(10); h.renderer.accept(speed(null));
+  h.advance(10); h.renderer.accept(speed(120)); h.advance(10); h.renderer.accept(speed(1000));
+  h.advance(10); h.renderer.accept(speed(130)); h.advance(10); h.renderer.accept(speed(140)); h.flush();
+  assert.equal(h.drawn.at(-1).ias_kt, 140);
+  assert.equal(h.frames.size, 0);
+});
+
+test('equal targets keep timing and raw expiry; an active target survives a coalesced detour', () => {
+  const h = harness(); h.renderer.accept(sample(0, 0, 2000)); h.flush();
+  h.advance(100); h.renderer.accept(sample(20, 0, 2000));
+  h.advance(10); h.renderer.accept(sample(20, 0, 2100)); h.flush();
+  assert.equal(h.drawn.at(-1).attitude.pitch_deg, 2);
+  assert.equal(h.drawn.at(-1).expiresAt, 2100);
+  h.advance(10); h.renderer.accept(sample(30, 0, 2100));
+  h.advance(10); h.renderer.accept(sample(20, 0, 2200)); h.flush();
+  assert.equal(h.drawn.at(-1).attitude.pitch_deg, 6);
+  h.advance(70); h.flush(); assert.equal(h.drawn.at(-1).attitude.pitch_deg, 20);
+});
+
+test('expired recovery baseline is skipped in favor of a fresh target', () => {
+  const h = harness(); h.renderer.accept(sample(0, 0, 50));
+  h.advance(40); h.renderer.accept(sample(30, 0, 1000));
+  h.advance(20); h.flush(); assert.equal(h.drawn.at(-1).attitude.pitch_deg, 30);
+  assert.equal(h.frames.size, 0);
+});
+
+test('heading takes the shortest path across north and a negative 180-degree tie', () => {
+  const h = harness(); const make = value => ({ ...sample(0, 0, 2000), heading_deg: value });
+  h.renderer.accept(make(359)); h.flush(); h.advance(100); h.renderer.accept(make(1)); h.flush();
+  h.advance(50); h.flush(); assert.equal(h.drawn.at(-1).heading_deg, 0);
+  h.advance(50); h.flush(); assert.equal(h.drawn.at(-1).heading_deg, 1);
+  h.advance(100); h.renderer.accept(make(181)); h.flush(); h.advance(100); h.flush();
+  assert.equal(h.drawn.at(-1).heading_deg, 271);
+});
+
+test('turn overflow pins immediately and range recovery moves from the drawn edge', () => {
+  const h = harness(); const make = value => ({ ...sample(0, 0, 2000), turn_rate_dps: value });
+  h.renderer.accept(make(0)); h.flush(); h.advance(100); h.renderer.accept(make(9)); h.flush();
+  assert.equal(h.drawn.at(-1).turn_rate_dps, 6);
+  h.advance(100); h.renderer.accept(make(-9)); h.flush(); assert.equal(h.drawn.at(-1).turn_rate_dps, -6);
+  h.advance(100); h.renderer.accept(make(-3)); h.flush(); assert.equal(h.drawn.at(-1).turn_rate_dps, -6);
+  h.advance(50); h.flush(); assert.equal(h.drawn.at(-1).turn_rate_dps, -4.5);
+});
+
+
+test('an unpainted overflow in the recovery baseline snaps to the latest in-range turn', () => {
+  const make = value => ({ ...sample(0, 0, 2000), turn_rate_dps: value });
+  for (const values of [[9, 3], [0, 9, 3]]) {
+    const h = harness();
+    for (const value of values) { h.renderer.accept(make(value)); h.advance(10); }
+    h.flush(); assert.equal(h.drawn.at(-1).turn_rate_dps, 3);
+    assert.equal(h.frames.size, 0);
+  }
+});
+
+test('coalesced turn overflow after an in-range paint keeps its actual anchor', () => {
+  const h = harness(); const make = value => ({ ...sample(0, 0, 2000), turn_rate_dps: value });
+  h.renderer.accept(make(0)); h.flush(); h.advance(100); h.renderer.accept(make(9));
+  h.advance(10); h.renderer.accept(make(3)); h.flush();
+  assert.equal(h.drawn.at(-1).turn_rate_dps, 0);
+  h.advance(16); h.flush(); assert.equal(h.drawn.at(-1).turn_rate_dps, 3);
+});
+
+
+test('turn re-entry at the capped value uses its own receipt timing', () => {
+  const h = harness(); const make = value => ({ ...sample(0, 0, 1000), turn_rate_dps: value });
+  h.renderer.accept(make(2)); h.flush(); h.advance(100); h.renderer.accept(make(9));
+  h.advance(10); h.renderer.accept(make(6)); h.flush();
+  assert.equal(h.drawn.at(-1).turn_rate_dps, 2);
+  h.advance(8); h.flush(); assert.equal(h.drawn.at(-1).turn_rate_dps, 4);
+  h.advance(8); h.flush(); assert.equal(h.drawn.at(-1).turn_rate_dps, 6);
+});
+
+
+test('raw sample and per-message history stay separate from moving BARO, VSI and altitude', () => {
+  const h = harness();
+  const first = { ...sample(0, 0, 1000), altitude_ft: 1000, selected_altitude_ft: 1200,
+    vertical_speed_fpm: 1000, baro_text: '29.92 inHg' };
+  const next = { ...first, altitude_ft: 1100, vertical_speed_fpm: 2000, baro_text: '30.12 inHg', expiresAt: 1500 };
+  h.renderer.accept(first); h.flush(); h.advance(100); h.renderer.accept(next); h.flush();
+  assert.deepEqual(h.accepted, [[first, 0], [next, 100]]); assert.equal(h.raw.at(-1), next);
+  assert.equal(h.drawn.at(-1).altitude_ft, 1000); assert.equal(h.drawn.at(-1).vertical_speed_fpm, 1000);
+  assert.equal(h.drawn.at(-1).baro_text, '30.12 inHg'); assert.equal(h.drawn.at(-1).expiresAt, 1500);
+  h.advance(50); h.flush(); assert.equal(h.drawn.at(-1).altitude_ft, 1050);
+  assert.equal(h.drawn.at(-1).vertical_speed_fpm, 1500);
+});
+
+test('a new target after baseline draw uses its own receipt and duration', () => {
+  const h = harness(); h.advance(100); h.renderer.accept(sample(0, 0, 1000));
+  h.advance(50); h.renderer.accept(sample(30, 0, 1000)); h.advance(10); h.flush();
+  h.advance(10); h.renderer.accept(sample(40, 0, 1000)); h.flush();
+  assert.equal(h.drawn.at(-1).attitude.pitch_deg, 0);
+  h.advance(10); h.flush(); assert.equal(h.drawn.at(-1).attitude.pitch_deg, 20);
+  h.advance(10); h.flush(); assert.equal(h.drawn.at(-1).attitude.pitch_deg, 40);
+});
+
+test('settled coalesced targets use the last change and consecutive retargets progress', () => {
+  const h = harness(); h.renderer.accept(sample(0, 0, 2000)); h.flush();
+  h.advance(100); h.renderer.accept(sample(10, 0, 2000)); h.advance(10); h.renderer.accept(sample(20, 0, 2000)); h.flush();
+  assert.equal(h.drawn.at(-1).attitude.pitch_deg, 0);
+  h.advance(8); h.flush(); assert.equal(h.drawn.at(-1).attitude.pitch_deg, 10);
+  h.advance(7); h.renderer.accept(sample(30, 0, 2000)); h.advance(1); h.flush();
+  const first = h.drawn.at(-1).attitude.pitch_deg; assert.ok(first > 10);
+  h.advance(15); h.renderer.accept(sample(40, 0, 2000)); h.advance(1); h.flush();
+  assert.ok(h.drawn.at(-1).attitude.pitch_deg > first);
+});
+
+test('opposite finite extreme trend rates blend without overflow', () => {
+  const h = harness(); const make = rate => ({ ...sample(0, 0, 2000), altitude_ft: 10000, vertical_speed_fpm: rate });
+  h.renderer.accept(make(1e308)); h.flush(); h.advance(100); h.renderer.accept(make(-1e308)); h.flush();
+  h.advance(50); h.flush(); assert.equal(h.drawn.at(-1).vertical_speed_fpm, 0);
+});
+
+test('reverse heading and roll wraps cross their normalized boundary', () => {
+  const h = harness(); const make = (heading, roll) => ({ ...sample(0, roll, 2000), heading_deg: heading });
+  h.renderer.accept(make(1, -179)); h.flush(); h.advance(100); h.renderer.accept(make(359, 179)); h.flush();
+  h.advance(50); h.flush(); assert.equal(h.drawn.at(-1).heading_deg, 0); assert.equal(h.drawn.at(-1).attitude.roll_deg, -180);
 });

@@ -108,7 +108,7 @@ impl Journal {
             separator,
         };
         if let Err(error) = active.record("session_start", json!({
-            "schema_version": 4, "started_unix_ms": (started_unix_ns / 1_000_000).to_string(),
+            "schema_version": 6, "started_unix_ms": (started_unix_ns / 1_000_000).to_string(),
             "clock": "UTC Unix epoch milliseconds", "process_id": std::process::id(),
             "live_publication_enabled": true,
             "validation_scope": "native observations; source identity appears in the environment record",
@@ -123,6 +123,7 @@ impl Journal {
         })
     }
 
+    #[cfg(test)]
     pub(super) fn enabled(&self) -> bool {
         self.active.is_some()
     }

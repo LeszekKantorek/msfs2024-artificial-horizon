@@ -73,11 +73,20 @@ impl Global {
 fn global() -> &'static Mutex<Global> {
     GLOBAL.get_or_init(|| Mutex::new(Global::new()))
 }
+#[derive(Clone, Copy)]
+struct Request {
+    id: u32,
+    definition: u32,
+    interval: u32,
+    first_frame: u64,
+}
+
 struct State {
     queue: VecDeque<(Vec<u8>, u32)>,
     retained: Vec<u8>,
-    definitions: HashMap<u32, Vec<(String, String)>>,
-    requests: Vec<(u32, u32)>,
+    definitions: HashMap<u32, Vec<(String, String, i32)>>,
+    requests: Vec<Request>,
+    frame_us: u64,
     subscriptions: HashMap<String, u32>,
     last_id: u32,
     life: Life,
@@ -101,6 +110,7 @@ fn record_call(s: &mut State, operation: &str, id: Option<u32>) {
     }
 }
 struct Connection {
+    origin: Instant,
     state: Arc<Mutex<State>>,
     stop: Arc<AtomicBool>,
     thread: Option<JoinHandle<()>>,
@@ -263,16 +273,17 @@ fn apply_event(s: &mut State, event: &Event, at: u64, notification: usize) {
                 .and_then(|(id, _)| *id);
             if let Some(id) = id {
                 send(s, notification, packet(1, &u32s(&[*code, id, *index])));
-                if sent_operation == "SimConnect_RequestDataOnSimObject"
+                if *code != 0
+                    && sent_operation == "SimConnect_RequestDataOnSimObject"
                     && let Some(request) = s.sent_requests.get(&id).copied()
                 {
-                    s.requests.retain(|(request_id, _)| *request_id != request);
+                    s.requests.retain(|entry| entry.id != request);
                 }
-                if sent_operation == "SimConnect_AddToDataDefinition"
+                if *code != 0
+                    && sent_operation == "SimConnect_AddToDataDefinition"
                     && let Some(definition) = s.sent_definitions.get(&id).copied()
                 {
-                    s.requests
-                        .retain(|(_, definition_id)| *definition_id != definition);
+                    s.requests.retain(|entry| entry.definition != definition);
                 }
             } else {
                 eprintln!(
@@ -291,6 +302,36 @@ fn apply_event(s: &mut State, event: &Event, at: u64, notification: usize) {
         }
     }
 }
+fn encode_numeric(value: f64, datatype: i32) -> Option<Vec<u8>> {
+    match datatype {
+        1 if value.is_finite()
+            && value.fract() == 0.0
+            && value >= i32::MIN as f64
+            && value <= i32::MAX as f64 =>
+        {
+            Some((value as i32).to_le_bytes().to_vec())
+        }
+        2 if value.is_finite()
+            && value.fract() == 0.0
+            && value >= i64::MIN as f64
+            && value < -(i64::MIN as f64) =>
+        {
+            Some((value as i64).to_le_bytes().to_vec())
+        }
+        3 => Some((value as f32).to_le_bytes().to_vec()),
+        4 => Some(value.to_le_bytes().to_vec()),
+        _ => None,
+    }
+}
+
+fn first_request_frame(elapsed_us: u64, frame_us: u64) -> u64 {
+    elapsed_us / frame_us + 1
+}
+
+fn frame_due(frame: u64, first_frame: u64, interval: u32) -> bool {
+    frame >= first_frame && (frame - first_frame).is_multiple_of(u64::from(interval.max(1)))
+}
+
 fn emit(s: &mut State, scenario: &Scenario, elapsed: u64, notification: usize) {
     s.life.through = elapsed;
     enum Due {
@@ -307,19 +348,48 @@ fn emit(s: &mut State, scenario: &Scenario, elapsed: u64, notification: usize) {
         .filter(|e| e.at == elapsed % scenario.duration)
         .map(|e| (e.order, Due::Event(e.event.clone())))
         .collect();
-    for &(request, definition) in &s.requests {
+    for &Request {
+        id: request,
+        definition,
+        interval,
+        first_frame,
+    } in &s.requests
+    {
+        let frame = elapsed / scenario.frame_us;
+        if !frame_due(frame, first_frame, interval) {
+            continue;
+        }
         let Some(fields) = s.definitions.get(&definition) else {
             continue;
         };
         let values: Option<Vec<(f64, usize)>> = fields
             .iter()
-            .map(|(n, u)| scenario.ordered_value(n, u, elapsed))
+            .map(|(n, u, datatype)| {
+                scenario.ordered_value(n, u, elapsed).or_else(|| {
+                    // Optional floating-point gaps use a synthetic unavailable value.
+                    // Missing attitude and single-field gaps remain silent.
+                    (fields.len() > 1
+                        && n != "PLANE PITCH DEGREES"
+                        && n != "PLANE BANK DEGREES"
+                        && matches!(datatype, 3 | 4))
+                    .then_some((f64::NAN, 0))
+                })
+            })
             .collect();
         if let Some(values) = values {
             let order = values.iter().map(|v| v.1).max().unwrap_or(0);
             let mut b = u32s(&[request, 0, definition, 0, 1, 1, values.len() as u32]);
-            for (value, _) in values {
-                b.extend(value.to_le_bytes());
+            let mut encodable = true;
+            for ((value, _), (_, _, datatype)) in values.into_iter().zip(fields) {
+                if let Some(encoded) = encode_numeric(value, *datatype) {
+                    b.extend(encoded);
+                } else {
+                    encodable = false;
+                    break;
+                }
+            }
+            if !encodable {
+                continue;
             }
             due.push((
                 order,
@@ -341,7 +411,9 @@ fn emit(s: &mut State, scenario: &Scenario, elapsed: u64, notification: usize) {
                 bytes,
             } => {
                 if elapsed >= s.life.unavailable_until
-                    && s.requests.contains(&(request, definition))
+                    && s.requests
+                        .iter()
+                        .any(|entry| entry.id == request && entry.definition == definition)
                 {
                     send(s, notification, bytes)
                 }
@@ -495,6 +567,7 @@ pub unsafe extern "C" fn SimConnect_Open(
             retained: vec![],
             definitions: HashMap::new(),
             requests: Vec::new(),
+            frame_us: scenario.frame_us,
             subscriptions: HashMap::new(),
             last_id: 0,
             life,
@@ -536,6 +609,7 @@ pub unsafe extern "C" fn SimConnect_Open(
         let handle = notification as usize;
         let worker = thread::spawn(move || thread_main(st, flag, scenario, origin, handle));
         let c = Box::new(Connection {
+            origin,
             state,
             stop,
             thread: Some(worker),
@@ -647,7 +721,7 @@ pub unsafe extern "C" fn SimConnect_AddToDataDefinition(
             return FAIL;
         };
         if !scenario::CATALOG.contains(&(n.as_str(), u.as_str()))
-            || datatype != 4
+            || !matches!(datatype, 1..=4)
             || epsilon != 0.0
             || datum != u32::MAX
         {
@@ -666,7 +740,7 @@ pub unsafe extern "C" fn SimConnect_AddToDataDefinition(
             return hr;
         }
         let mut s = c.state.lock().unwrap_or_else(|p| p.into_inner());
-        s.definitions.entry(id).or_default().push((n, u));
+        s.definitions.entry(id).or_default().push((n, u, datatype));
         record_sent(&mut s, "SimConnect_AddToDataDefinition");
         let sent_id = s.last_id;
         s.sent_definitions.insert(sent_id, id);
@@ -691,7 +765,7 @@ pub unsafe extern "C" fn SimConnect_RequestDataOnSimObject(
         let Some(c) = (unsafe { conn(h) }) else {
             return FAIL;
         };
-        if object != 0 || period != 3 || flags != 0 || origin != 0 || interval != 0 || limit != 0 {
+        if object != 0 || period != 3 || flags != 0 || origin != 0 || limit != 0 {
             return FAIL;
         }
         let fields = {
@@ -722,10 +796,18 @@ pub unsafe extern "C" fn SimConnect_RequestDataOnSimObject(
         if !s.definitions.contains_key(&definition) {
             return FAIL;
         }
-        if let Some(entry) = s.requests.iter_mut().find(|(id, _)| *id == request) {
-            entry.1 = definition;
+        let elapsed_us = c.origin.elapsed().as_micros().min(u64::MAX as u128) as u64;
+        let first_frame = first_request_frame(elapsed_us, s.frame_us);
+        let entry = Request {
+            id: request,
+            definition,
+            interval,
+            first_frame,
+        };
+        if let Some(existing) = s.requests.iter_mut().find(|entry| entry.id == request) {
+            *existing = entry;
         } else {
-            s.requests.push((request, definition));
+            s.requests.push(entry);
         }
         record_sent(&mut s, "SimConnect_RequestDataOnSimObject");
         let sent_id = s.last_id;
@@ -838,6 +920,28 @@ pub unsafe extern "C" fn SimConnect_GetLastSentPacketID(h: *mut c_void, out: *mu
 mod tests {
     use super::*;
     #[test]
+    fn integer_encoding_rejects_nonfinite_fractional_and_out_of_range_values() {
+        assert_eq!(
+            encode_numeric(i32::MIN as f64, 1).unwrap(),
+            i32::MIN.to_le_bytes()
+        );
+        assert_eq!(
+            encode_numeric(i32::MAX as f64, 1).unwrap(),
+            i32::MAX.to_le_bytes()
+        );
+        assert!(encode_numeric(i32::MAX as f64 + 1.0, 1).is_none());
+        assert!(encode_numeric(i32::MIN as f64 - 1.0, 1).is_none());
+        assert_eq!(
+            encode_numeric(i64::MIN as f64, 2).unwrap(),
+            i64::MIN.to_le_bytes()
+        );
+        assert!(encode_numeric(-(i64::MIN as f64), 2).is_none());
+        for value in [f64::NAN, f64::INFINITY, 1.5] {
+            assert!(encode_numeric(value, 1).is_none());
+            assert!(encode_numeric(value, 2).is_none());
+        }
+    }
+    #[test]
     fn fault_occurrences_count_only_matching_calls_and_do_not_rearm() {
         let text = concat!(
             "{\"type\":\"scenario\",\"format\":\"msfs-efi-simconnect-demo\",\"version\":1,\"mode\":\"scripted\",\"frame_period_ms\":50,\"duration_us\":1000000,\"initial\":{\"sim_running\":true,\"pause\":\"off\",\"flight\":null}}\n",
@@ -893,6 +997,7 @@ mod tests {
             retained: vec![],
             definitions: HashMap::new(),
             requests: Vec::new(),
+            frame_us: scenario.frame_us,
             subscriptions: HashMap::new(),
             last_id: 0,
             life: Life {
@@ -942,6 +1047,7 @@ mod ordering_tests {
             retained: vec![],
             definitions: HashMap::new(),
             requests: vec![],
+            frame_us: scenario.frame_us,
             subscriptions: HashMap::new(),
             last_id: 0,
             life: Life {
@@ -1008,6 +1114,42 @@ mod ordering_tests {
         );
     }
     #[test]
+    fn delayed_scenario_cursor_does_not_shift_request_phase() {
+        let lagging_cursor_us = 50_000;
+        let registration_us = 525_000;
+        let first = first_request_frame(registration_us, 50_000);
+        assert_eq!(first, 11);
+        assert_ne!(first, first_request_frame(lagging_cursor_us, 50_000));
+        for interval in [2, u32::MAX] {
+            assert!(!frame_due(10, first, interval));
+            assert!(frame_due(11, first, interval));
+            assert!(!frame_due(12, first, interval));
+            assert!(frame_due(11 + u64::from(interval), first, interval));
+        }
+    }
+
+    #[test]
+    fn frame_schedule_handles_boundaries_and_skips() {
+        for (interval, expected) in [
+            (0, vec![5, 6, 7, 8, 9, 10, 11]),
+            (1, vec![5, 6, 7, 8, 9, 10, 11]),
+            (2, vec![5, 7, 9, 11]),
+        ] {
+            let actual: Vec<_> = (5..=11)
+                .filter(|&frame| frame_due(frame, 5, interval))
+                .collect();
+            assert_eq!(actual, expected);
+        }
+        for interval in [u32::MAX - 1, u32::MAX] {
+            let next = 5 + u64::from(interval);
+            assert!(frame_due(5, 5, interval));
+            assert!(!frame_due(next - 1, 5, interval));
+            assert!(frame_due(next, 5, interval));
+        }
+        assert!(!frame_due(4, 5, 0));
+    }
+
+    #[test]
     fn independent_tracks_emit_equal_holds_and_gaps_on_controlled_frames() {
         let input = r#"{"type":"scenario","format":"msfs-efi-simconnect-demo","version":1,"mode":"scripted","frame_period_ms":50,"duration_us":8000000,"initial":{"sim_running":true,"pause":"off","flight":"one"}}
 {"type":"signal","id":"ias","simvar":"AIRSPEED INDICATED","unit":"knots","repeat":true}
@@ -1021,10 +1163,24 @@ mod ordering_tests {
             queue: VecDeque::new(),
             retained: vec![],
             definitions: HashMap::from([
-                (1, vec![("AIRSPEED INDICATED".into(), "knots".into())]),
-                (2, vec![("AIRSPEED TRUE".into(), "knots".into())]),
+                (1, vec![("AIRSPEED INDICATED".into(), "knots".into(), 4)]),
+                (2, vec![("AIRSPEED TRUE".into(), "knots".into(), 4)]),
             ]),
-            requests: vec![(11, 1), (12, 2)],
+            requests: vec![
+                Request {
+                    id: 11,
+                    definition: 1,
+                    interval: 0,
+                    first_frame: 0,
+                },
+                Request {
+                    id: 12,
+                    definition: 2,
+                    interval: 2,
+                    first_frame: 0,
+                },
+            ],
+            frame_us: scenario.frame_us,
             subscriptions: HashMap::new(),
             last_id: 0,
             life: Life {
@@ -1044,6 +1200,29 @@ mod ordering_tests {
             sent_definitions: HashMap::new(),
             catching_up: false,
         };
+        for (operation, send_id) in [
+            ("SimConnect_RequestDataOnSimObject", 21),
+            ("SimConnect_AddToDataDefinition", 22),
+        ] {
+            s.life
+                .sent_calls
+                .insert(operation.into(), vec![(Some(send_id), 0)]);
+            s.sent_requests.insert(send_id, 11);
+            s.sent_definitions.insert(send_id, 1);
+            apply_event(
+                &mut s,
+                &Event::Exception {
+                    sent_operation: operation.into(),
+                    sent_call_occurrence: 1,
+                    code: 0,
+                    index: 0,
+                },
+                0,
+                0,
+            );
+            assert!(s.requests.iter().any(|request| request.id == 11));
+        }
+        s.queue.clear();
         for frame in 0..160_u64 {
             emit(&mut s, &scenario, frame * 50_000, 0);
             let mut values = HashMap::new();
@@ -1060,7 +1239,7 @@ mod ordering_tests {
             );
             assert_eq!(
                 values.get(&12).copied(),
-                Some(if frame % 40 < 20 { 10.0 } else { 20.0 }),
+                (frame % 2 == 0).then_some(if frame % 40 < 20 { 10.0 } else { 20.0 }),
                 "frame {frame}"
             );
         }
@@ -1095,11 +1274,18 @@ mod ordering_tests {
                 definitions: HashMap::from([(
                     7,
                     vec![
-                        ("PLANE PITCH DEGREES".into(), "radians".into()),
-                        ("PLANE BANK DEGREES".into(), "radians".into()),
+                        ("PLANE PITCH DEGREES".into(), "radians".into(), 3),
+                        ("PLANE BANK DEGREES".into(), "radians".into(), 2),
+                        ("AIRSPEED INDICATED".into(), "knots".into(), 4),
                     ],
                 )]),
-                requests: vec![(9, 7)],
+                requests: vec![Request {
+                    id: 9,
+                    definition: 7,
+                    interval: 0,
+                    first_frame: 0,
+                }],
+                frame_us: scenario.frame_us,
                 subscriptions: HashMap::from([("Pause_EX1".into(), 10)]),
                 last_id: 0,
                 life: Life {
@@ -1126,6 +1312,16 @@ mod ordering_tests {
                 .map(|p| u32::from_le_bytes(p.0[8..12].try_into().unwrap()))
                 .collect();
             assert_eq!(ids, expected);
+            if let Some((bytes, _)) = s
+                .queue
+                .iter()
+                .find(|p| u32::from_le_bytes(p.0[8..12].try_into().unwrap()) == 8)
+            {
+                assert_eq!(bytes.len(), 60);
+                assert_eq!(f32::from_le_bytes(bytes[40..44].try_into().unwrap()), 0.5);
+                assert_eq!(i64::from_le_bytes(bytes[44..52].try_into().unwrap()), 1);
+                assert!(f64::from_le_bytes(bytes[52..60].try_into().unwrap()).is_nan());
+            }
             assert_eq!(s.life.pause, 4);
         }
     }

@@ -96,11 +96,11 @@ async fn altitude_and_baro_clear_independently_and_share_sample_freshness() {
     let baro = Some(String::from("29.92 inHg"));
     let full = FlightSample::new(attitude, None, None).with_altitude(altitude, baro.clone());
     publisher.publish_sample(full.clone()).unwrap();
-    advance(Duration::from_millis(999)).await;
+    advance(Duration::from_millis(749)).await;
     let snapshot = serde_json::to_value(subscription.snapshot()).unwrap();
     assert_eq!(snapshot["altitude_ft"], -0.1);
     assert_eq!(snapshot["baro_text"], "29.92 inHg");
-    assert_eq!(snapshot["sample_age_ms"], 999);
+    assert_eq!(snapshot["sample_age_ms"], 749);
     publisher.publish_sample(full.clone()).unwrap();
     assert_eq!(
         serde_json::to_value(subscription.snapshot()).unwrap()["sample_age_ms"],

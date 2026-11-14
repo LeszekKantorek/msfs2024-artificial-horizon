@@ -26,7 +26,7 @@ Its private operations are `readMessage`, `acceptSample`, `publishSample`, and `
 | `stop()` | Close the connection, clear retry and age timers, and report suspended/waiting status, subject to [callback reentrancy limits](#callback-reentrancy-limits) |
 
 One client owns the subscription, retry timer, and age timer.
-The [scheduler](lifecycle.md#sample-acceptance-and-drawing) owns the retained frame and pending draw.
+The [scheduler](lifecycle.md#sample-acceptance-and-drawing) owns the latest raw sample, motion targets, and pending draw. It does not change the client freshness deadline.
 
 ### Snapshot validation and optional normalization
 
@@ -61,7 +61,7 @@ Accepted live samples invoke callbacks in this order:
 | Connection fails or construction throws | Close the connection, clear the age timer, report reconnecting/waiting, and retry after 2000 ms while active |
 | Malformed or invalid snapshot | Clear the age timer and report invalid state |
 | Valid snapshot with sequence no greater than the retained sequence | Ignore the snapshot |
-| Accepted live snapshot | Subtract `sample_age_ms` from 1000 ms, using zero age when absent. Report stale if no freshness remains |
+| Accepted live snapshot | Set the delivery deadline to local receipt time plus `max(0, stale_interval_ms - sample_age_ms)`; reject expired samples before drawing |
 | Fresh live snapshot | Publish with the deadline `receivedAt + remaining` and schedule expiry |
 | Early expiry timer | Reschedule using the original received time and remaining duration |
 | Expiry deadline reached | Report stale even without another sample |

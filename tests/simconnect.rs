@@ -20,6 +20,7 @@ async fn source_scenario_selection_is_validated_without_starting_a_worker() {
         let (publisher, _) = telemetry::channel(source);
         let report = run(
             SimConnectConfig {
+                interval: 0,
                 dll,
                 log: None,
                 scenario,
@@ -41,6 +42,7 @@ async fn missing_explicit_dll_returns_controlled_error_without_diagnostics() {
     let (publisher, mut subscription) = telemetry::channel(Source::SimConnect);
     let report = run(
         SimConnectConfig {
+            interval: 0,
             dll: Some(dll),
             log: None,
             scenario: None,
@@ -71,6 +73,7 @@ async fn official_dll_stops_on_requested_shutdown_and_uses_caller_channel() {
     let (publisher, mut subscription) = telemetry::channel(Source::SimConnect);
     let report = run(
         SimConnectConfig {
+            interval: 0,
             dll: Some(dll),
             log: Some(log.clone()),
             scenario: None,

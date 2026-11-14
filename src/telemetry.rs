@@ -6,7 +6,7 @@ use tokio::{
     time::{Duration, Instant},
 };
 pub const SAMPLE_PERIOD: Duration = Duration::from_millis(50);
-pub const STALE_AFTER: Duration = Duration::from_millis(1_000);
+pub const STALE_AFTER: Duration = Duration::from_millis(750);
 const MAX_SEQUENCE: u64 = (1 << 53) - 1;
 
 /// Magnetic heading in degrees clockwise from north, within [0, 360).
@@ -448,8 +448,11 @@ pub enum State {
 /// Immutable wire snapshot. Obtain a new one immediately before serialization.
 #[derive(Clone, Debug, Serialize)]
 pub struct Snapshot {
+    #[serde(skip)]
+    projected_stale: bool,
     sequence: u64,
     source: Source,
+    stale_interval_ms: u32,
     state: &'static str,
     sample_age_ms: Option<u64>,
     attitude: Option<Attitude>,
@@ -482,9 +485,20 @@ pub struct Snapshot {
     #[serde(skip_serializing_if = "Option::is_none")]
     baro_setting: Option<BaroSetting>,
 }
+impl Snapshot {
+    pub(crate) fn projected_stale_sequence(&self) -> Option<u64> {
+        self.projected_stale.then_some(self.sequence)
+    }
+    pub(crate) fn commits_projected_stale(&self, sequence: u64) -> bool {
+        self.state == "stale"
+            && !self.projected_stale
+            && self.sequence == sequence.saturating_add(1)
+    }
+}
 #[derive(Clone, Debug)]
 struct Current {
     source: Source,
+    stale_interval_ms: u32,
     sequence: u64,
     state: State,
     accepted_at: Option<Instant>,
@@ -504,16 +518,24 @@ struct Current {
     baro_setting: Option<BaroSetting>,
 }
 impl Current {
+    fn stale_after(&self) -> Duration {
+        Duration::from_millis(u64::from(self.stale_interval_ms))
+    }
+    fn effective_state(&self, now: Instant) -> State {
+        if matches!(self.state, State::Live(_))
+            && self
+                .accepted_at
+                .is_some_and(|at| now.saturating_duration_since(at) >= self.stale_after())
+        {
+            State::Stale
+        } else {
+            self.state
+        }
+    }
     fn snapshot(&self) -> Snapshot {
-        let age = self
-            .accepted_at
-            .map(|at| Instant::now().saturating_duration_since(at));
-        let state =
-            if matches!(self.state, State::Live(_)) && age.is_some_and(|age| age >= STALE_AFTER) {
-                State::Stale
-            } else {
-                self.state
-            };
+        let now = Instant::now();
+        let age = self.accepted_at.map(|at| now.saturating_duration_since(at));
+        let state = self.effective_state(now);
         let (state, attitude) = match state {
             State::Waiting => ("waiting", None),
             State::Live(attitude) => ("live", Some(attitude)),
@@ -523,8 +545,10 @@ impl Current {
             State::Invalid => ("invalid", None),
         };
         Snapshot {
+            projected_stale: state == "stale" && matches!(self.state, State::Live(_)),
             sequence: self.sequence,
             source: self.source,
+            stale_interval_ms: self.stale_interval_ms,
             state,
             sample_age_ms: age.map(|age| u64::try_from(age.as_millis()).unwrap_or(u64::MAX)),
             attitude,
@@ -547,24 +571,24 @@ impl Current {
 }
 /// Single writer owns publication numbering and accepted sample time.
 pub struct Publisher {
-    sender: watch::Sender<Current>,
-    current: Current,
+    sender: std::sync::Arc<watch::Sender<Current>>,
+    gate: std::sync::Arc<std::sync::Mutex<()>>,
 }
 /// Keeps the existing channel open without granting a second publication owner.
 pub(crate) struct ChannelLifetime {
-    sender: watch::Sender<Current>,
+    sender: std::sync::Arc<watch::Sender<Current>>,
+    gate: std::sync::Arc<std::sync::Mutex<()>>,
 }
 impl ChannelLifetime {
     pub(crate) async fn recover(self) -> Publisher {
         // A cancelled SimConnect future signals its native worker, which may still
         // own the publisher until native cleanup returns. Never race that owner.
-        while self.sender.sender_count() != 1 {
+        while std::sync::Arc::strong_count(&self.sender) != 1 {
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
-        let current = self.sender.borrow().clone();
         Publisher {
             sender: self.sender,
-            current,
+            gate: self.gate,
         }
     }
 }
@@ -573,8 +597,63 @@ pub struct Subscription {
     receiver: watch::Receiver<Current>,
 }
 pub fn channel(source: Source) -> (Publisher, Subscription) {
+    make_channel(source, 750)
+}
+/// Aborts the shared expiry monitor when dropped.
+pub struct MonitorGuard(tokio::task::JoinHandle<()>);
+impl Drop for MonitorGuard {
+    fn drop(&mut self) {
+        self.0.abort();
+    }
+}
+/// Create a source channel with one shared, independently running expiry monitor.
+pub fn managed_channel(
+    source: Source,
+    stale_interval_ms: u32,
+) -> Result<(Publisher, Subscription, MonitorGuard), crate::ConfigError> {
+    if !(1..=2_147_483_647).contains(&stale_interval_ms) {
+        return Err(crate::ConfigError::InvalidStaleInterval);
+    }
+    let (publisher, subscription) = make_channel(source, stale_interval_ms);
+    let sender = std::sync::Arc::downgrade(&publisher.sender);
+    let gate = publisher.gate.clone();
+    let mut changes = subscription.receiver.clone();
+    let task = tokio::spawn(async move {
+        loop {
+            let deadline = {
+                let current = changes.borrow_and_update();
+                if matches!(current.state, State::Live(_)) && current.sequence < MAX_SEQUENCE {
+                    current.accepted_at.map(|at| at + current.stale_after())
+                } else {
+                    None
+                }
+            };
+            if let Some(deadline) = deadline {
+                tokio::select! {
+                    result = changes.changed() => if result.is_err() { break; },
+                    _ = tokio::time::sleep_until(deadline) => {
+                        let Some(sender) = sender.upgrade() else { break; };
+                        let _guard = gate.lock().unwrap_or_else(|e| e.into_inner());
+                        sender.send_if_modified(|current| {
+                            if matches!(current.state, State::Live(_)) && current.accepted_at.is_some_and(|at| at.elapsed() >= current.stale_after()) && current.sequence < MAX_SEQUENCE {
+                                current.sequence += 1;
+                                current.state = State::Stale;
+                                true
+                            } else { false }
+                        });
+                    }
+                }
+            } else if changes.changed().await.is_err() {
+                break;
+            }
+        }
+    });
+    Ok((publisher, subscription, MonitorGuard(task)))
+}
+fn make_channel(source: Source, interval_ms: u32) -> (Publisher, Subscription) {
     let current = Current {
         source,
+        stale_interval_ms: interval_ms,
         sequence: 0,
         state: State::Waiting,
         accepted_at: None,
@@ -594,23 +673,41 @@ pub fn channel(source: Source) -> (Publisher, Subscription) {
         baro_setting: None,
     };
     let (sender, receiver) = watch::channel(current.clone());
-    (Publisher { sender, current }, Subscription { receiver })
+    (
+        Publisher {
+            sender: std::sync::Arc::new(sender),
+            gate: std::sync::Arc::new(std::sync::Mutex::new(())),
+        },
+        Subscription { receiver },
+    )
 }
 impl Publisher {
     pub(crate) fn retain_channel(&self) -> ChannelLifetime {
         ChannelLifetime {
             sender: self.sender.clone(),
+            gate: self.gate.clone(),
         }
+    }
+
+    pub(crate) fn acquisition_gate(&self) -> std::sync::Arc<std::sync::Mutex<()>> {
+        self.gate.clone()
+    }
+    pub(crate) fn is_stale(&self) -> bool {
+        matches!(self.sender.borrow().state, State::Stale)
+    }
+
+    pub(crate) fn stale_after(&self) -> Duration {
+        self.sender.borrow().stale_after()
     }
 
     /// Source identity is fixed when the caller creates the channel.
     pub fn source(&self) -> Source {
-        self.current.source
+        self.sender.borrow().source
     }
 
     /// Inspect the same latest state sent to subscribers, without another channel.
     pub fn snapshot(&self) -> Snapshot {
-        self.current.snapshot()
+        self.sender.borrow().snapshot()
     }
 
     /// Live means a fresh callback from an active, unpaused source, not cached data.
@@ -621,7 +718,7 @@ impl Publisher {
     pub fn publish_sample(&mut self, sample: FlightSample) -> Result<(), TelemetryError> {
         self.publish_sample_at(sample, Instant::now())
     }
-    /// Preserve acquisition time when optional indications change or expire.
+    /// Preserve the receipt time of an accepted acquisition.
     pub(crate) fn publish_sample_at(
         &mut self,
         sample: FlightSample,
@@ -635,45 +732,62 @@ impl Publisher {
         sample: Option<FlightSample>,
         received_at: Instant,
     ) -> Result<(), TelemetryError> {
-        if self.current.sequence == MAX_SEQUENCE {
+        let mut exhausted = false;
+        self.sender.send_if_modified(|current| {
+            if !matches!(state, State::Live(_))
+                && std::mem::discriminant(&current.state) == std::mem::discriminant(&state)
+            {
+                return false;
+            }
+            if current.sequence == MAX_SEQUENCE {
+                exhausted = true;
+                return false;
+            }
+            current.sequence += 1;
+            if matches!(state, State::Live(_)) {
+                current.accepted_at = Some(received_at);
+            }
+            current.state = state;
+            current.heading = sample.as_ref().and_then(|s| s.heading_deg);
+            current.selected_heading = sample.as_ref().and_then(|s| s.selected_heading_deg);
+            current.slip_skid = sample.as_ref().and_then(|s| s.slip_skid);
+            current.turn_rate = sample.as_ref().and_then(|s| s.turn_rate_dps);
+            current.ias = sample.as_ref().and_then(|s| s.ias_kt);
+            current.gs = sample.as_ref().and_then(|s| s.gs_kt);
+            current.tas = sample.as_ref().and_then(|s| s.tas_kt);
+            current.airspeed_profile = sample.as_ref().and_then(|s| s.airspeed_profile);
+            current.ias_acceleration = sample.as_ref().and_then(|s| s.ias_acceleration_ktps);
+            current.altitude = sample.as_ref().and_then(|s| s.altitude_ft);
+            current.selected_altitude = sample.as_ref().and_then(|s| s.selected_altitude_ft);
+            current.vertical_speed = sample.as_ref().and_then(|s| s.vertical_speed_fpm);
+            current.baro_setting = sample.as_ref().and_then(|s| s.baro_setting);
+            current.baro = sample.as_ref().and_then(|s| s.baro_text.clone());
+            true
+        });
+        if exhausted {
             return Err(TelemetryError::SequenceExhausted);
         }
-        self.current.sequence += 1;
-        if matches!(state, State::Live(_)) {
-            self.current.accepted_at = Some(received_at);
-        }
-        self.current.state = state;
-        self.current.heading = sample.as_ref().and_then(|s| s.heading_deg);
-        self.current.selected_heading = sample.as_ref().and_then(|s| s.selected_heading_deg);
-        self.current.slip_skid = sample.as_ref().and_then(|s| s.slip_skid);
-        self.current.turn_rate = sample.as_ref().and_then(|s| s.turn_rate_dps);
-        self.current.ias = sample.as_ref().and_then(|s| s.ias_kt);
-        self.current.gs = sample.as_ref().and_then(|s| s.gs_kt);
-        self.current.tas = sample.as_ref().and_then(|s| s.tas_kt);
-        self.current.airspeed_profile = sample.as_ref().and_then(|s| s.airspeed_profile);
-        self.current.ias_acceleration = sample.as_ref().and_then(|s| s.ias_acceleration_ktps);
-        self.current.altitude = sample.as_ref().and_then(|s| s.altitude_ft);
-        self.current.selected_altitude = sample.as_ref().and_then(|s| s.selected_altitude_ft);
-        self.current.vertical_speed = sample.as_ref().and_then(|s| s.vertical_speed_fpm);
-        self.current.baro_setting = sample.as_ref().and_then(|s| s.baro_setting);
-        self.current.baro = sample.and_then(|s| s.baro_text);
-        self.sender.send_replace(self.current.clone());
         Ok(())
     }
     /// Call on an independent freshness tick, including when source callbacks stop.
     pub fn expire(&mut self) -> Result<(), TelemetryError> {
-        if matches!(self.current.state, State::Live(_))
-            && self
-                .current
-                .accepted_at
-                .is_some_and(|at| at.elapsed() >= STALE_AFTER)
-        {
+        let expired = {
+            let current = self.sender.borrow();
+            matches!(current.state, State::Live(_))
+                && current
+                    .accepted_at
+                    .is_some_and(|at| at.elapsed() >= current.stale_after())
+        };
+        if expired {
             self.publish(State::Stale)?;
         }
         Ok(())
     }
 }
 impl Subscription {
+    pub(crate) fn interval_ms(&self) -> u32 {
+        self.receiver.borrow().stale_interval_ms
+    }
     /// Obtain current state and acknowledge it atomically, including on subscription.
     pub fn snapshot_and_update(&mut self) -> Snapshot {
         self.receiver.borrow_and_update().snapshot()
@@ -727,6 +841,29 @@ pub enum TelemetryError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test(start_paused = true)]
+    async fn immediate_equal_samples_and_expiry_are_independent() {
+        let (mut publisher, mut receiver, guard) = managed_channel(Source::Demo, 750).unwrap();
+        let sample = FlightSample::new(Attitude::new(1.0, 2.0).unwrap(), None, None);
+        publisher.publish_sample(sample.clone()).unwrap();
+        let first = receiver.changed().await.unwrap();
+        tokio::time::advance(Duration::from_millis(500)).await;
+        publisher.publish_sample(sample).unwrap();
+        let second = receiver.changed().await.unwrap();
+        assert_eq!(second.sequence, first.sequence + 1);
+        assert_eq!(second.sample_age_ms, Some(0));
+        tokio::task::yield_now().await;
+        tokio::time::advance(Duration::from_millis(749)).await;
+        assert!(!receiver.receiver.has_changed().unwrap());
+        tokio::time::advance(Duration::from_millis(1)).await;
+        tokio::task::yield_now().await;
+        assert_eq!(receiver.changed().await.unwrap().state, "stale");
+        let abort = guard.0.abort_handle();
+        drop(guard);
+        tokio::task::yield_now().await;
+        assert!(abort.is_finished());
+    }
+
     #[tokio::test(start_paused = true)]
     async fn retained_channel_recovers_latest_sequence_age_and_clears_extensions() {
         let (mut publisher, mut subscription) = channel(Source::SimConnect);
@@ -862,7 +999,10 @@ mod tests {
     #[test]
     fn sequence_exhaustion_does_not_publish_or_wrap() {
         let (mut publisher, subscription) = channel(Source::Demo);
-        publisher.current.sequence = MAX_SEQUENCE - 1;
+        publisher.sender.send_if_modified(|current| {
+            current.sequence = MAX_SEQUENCE - 1;
+            false
+        });
         publisher.publish(State::Paused).unwrap();
         assert!(matches!(
             publisher.publish(State::Waiting),

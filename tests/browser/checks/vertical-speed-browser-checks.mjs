@@ -64,6 +64,14 @@ export async function checkVerticalSpeed(page, setFixture, url) {
       setFixture({ vertical_speed_fpm: -9999, altitude_ft: -60, selected_altitude_ft: -100 });
       await page.waitForFunction(() => document.querySelector('#vertical-speed-value').textContent === '-10000' &&
         document.querySelector('#altitude-sign').textContent === '−');
+      await page.waitForFunction(() => {
+        const height = document.querySelector('#altitude-tape-clip rect').getBBox().height;
+        const tick = document.querySelector('.altitude-tick');
+        const y = Number(tick.getAttribute('d').split(' ')[2]);
+        const expectedTick = height / 2 + (-60 - Number(tick.dataset.altitudeFt)) * 0.4;
+        const bug = document.querySelector('#selected-altitude-bug').transform.baseVal.consolidate()?.matrix.f;
+        return Math.abs(y - expectedTick) < 1e-8 && Math.abs(bug - (height / 2 + 16)) < 1e-4;
+      });
       const bugVisible = await page.evaluate(() => {
         const bug = document.querySelector('#selected-altitude-bug');
         const point = new DOMPoint(2, 0).matrixTransform(bug.getScreenCTM());

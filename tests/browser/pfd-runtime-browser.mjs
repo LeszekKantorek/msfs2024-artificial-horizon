@@ -5,8 +5,8 @@ import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
 import { once } from 'node:events';
 import { setTimeout as delay } from 'node:timers/promises';
-import { resolve } from 'node:path';
-import { mkdir } from 'node:fs/promises';
+import { dirname, join, resolve } from 'node:path';
+import { copyFile, mkdir, mkdtemp, rmdir, unlink } from 'node:fs/promises';
 
 const reservation = createServer();
 reservation.listen(0, '127.0.0.1');
@@ -19,6 +19,8 @@ let server;
 let browser;
 let session;
 let primaryError;
+let unavailableDirectory;
+let unavailableDll;
 async function start(sourceArguments = ['--source', 'demo.dll', '--scenario', resolve('demo-scenarios/demo-scenario.jsonl')]) {
   server = spawn(executable, [...sourceArguments, '--port', String(port)], { stdio: ['ignore', 'pipe', 'pipe'] });
   let failure;
@@ -50,15 +52,17 @@ async function currentSnapshot() {
   await reader.cancel();
   return JSON.parse(wire.split('\n').find(line => line.startsWith('data: ')).slice(6));
 }
-const altitudeReading = page => page.evaluate(() => ({
-  state: document.querySelector('#altitude').dataset.state,
-  feet: Number(document.querySelector('#altitude').getAttribute('aria-label').split(' ')[2]),
-  sign: document.querySelector('#altitude-sign').textContent,
-  drums: Number([...document.querySelectorAll('#altitude-digits > g')].map(n => n.firstElementChild.textContent).join('')),
-  baroState: document.querySelector('#barometric-setting').dataset.state,
-  pressureLabel: document.querySelector('#barometric-setting').getAttribute('aria-label'),
-  pressureText: document.querySelector('#barometric-value').textContent,
-}));
+const altitudeReading = async page => (await page.waitForFunction(() => {
+  const state = document.querySelector('#altitude').dataset.state;
+  const feet = Number(document.querySelector('#altitude').getAttribute('aria-label').split(' ')[2]);
+  const sign = document.querySelector('#altitude-sign').textContent;
+  const drums = Number([...document.querySelectorAll('#altitude-digits > g')].map(n => n.firstElementChild.textContent).join(''));
+  const baroState = document.querySelector('#barometric-setting').dataset.state;
+  const pressureLabel = document.querySelector('#barometric-setting').getAttribute('aria-label');
+  const pressureText = document.querySelector('#barometric-value').textContent;
+  return drums === Math.floor(Math.abs(feet) / 20) * 20 && sign === (feet < 0 ? '−' : '')
+    ? { state, feet, sign, drums, baroState, pressureLabel, pressureText } : false;
+})).jsonValue();
 function verifyAltitude(reading) {
   assert.equal(reading.state, 'available');
   assert.equal(reading.baroState, 'available');
@@ -133,7 +137,7 @@ async function checkRightTurnAndSpeeds(page) {
   }));
   assert.deepEqual(speeds, { ias: 'Indicated airspeed 150 knots', digits: '150', gs: '170', tas: '160', tasLabel: 'True airspeed 160 knots' });
   assert.equal(await page.locator('#airspeed').getAttribute('data-overspeed'), 'false');
-  // The receiver's 500 ms history can still include the preceding acceleration.
+  // The receiver's five-sample history can still include the preceding acceleration.
   await page.waitForFunction(() => getComputedStyle(document.querySelector('#airspeed-trend')).display === 'none', null, { timeout: 1500 });
   assert.equal(await page.locator('#airspeed-trend').evaluate(n => getComputedStyle(n).display), 'none');
   await saveScreenshot(page, { path: '.local/pfd-runtime-landscape.png' });
@@ -141,14 +145,15 @@ async function checkRightTurnAndSpeeds(page) {
 
 async function checkNorthCrossing(page) {
   // The source crosses north after the +3 degrees/second segment.
-  await page.waitForFunction(() => document.querySelector('#heading').getAttribute('aria-label') ===
-    'Magnetic heading 0 degrees, selected heading 0 degrees', null, { timeout: 20000 });
-  const north = await page.evaluate(() => ({
-    value: document.querySelector('#heading-value').textContent,
-    center: document.querySelector('#heading-tape-clip rect').getBBox().width / 2,
-    bug: document.querySelector('#selected-heading-bug').transform.baseVal.consolidate().matrix.e,
-  }));
-  assert.equal(north.value, '360'); assert.ok(Math.abs(north.center - north.bug) < 1e-4);
+  const north = await (await page.waitForFunction(() => {
+    const group = document.querySelector('#heading');
+    const center = document.querySelector('#heading-tape-clip rect').getBBox().width / 2;
+    const bug = document.querySelector('#selected-heading-bug').transform.baseVal.consolidate()?.matrix.e;
+    const value = document.querySelector('#heading-value').textContent;
+    return group.dataset.selectedAvailable === 'true' && Math.abs(center - bug) < 2 && value === '360'
+      ? { center, bug, value } : false;
+  }, null, { timeout: 20000 })).jsonValue();
+  assert.equal(north.value, '360'); assert.ok(Math.abs(north.center - north.bug) < 2);
   await saveScreenshot(page, { path: '.local/pfd-runtime-heading-north.png' });
 }
 
@@ -199,14 +204,15 @@ async function checkSourceLoss(page) {
 async function checkRecovery(page) {
   await page.locator('.instrument[data-available="true"]').waitFor();
   assert.equal(await page.locator('#turn-rate').getAttribute('aria-label'), 'Turn rate 0 degrees per second');
-  const recovered = await page.evaluate(() => ({
-    state: document.querySelector('#airspeed').dataset.state,
-    ias: Number(document.querySelector('#airspeed').getAttribute('aria-label').split(' ')[2]),
-    digits: [...document.querySelectorAll('#airspeed-digits > g')].map(n => n.firstElementChild.textContent).join(''),
-    gsState: document.querySelector('#ground-speed').dataset.state,
-    tas: Number(document.querySelector('#true-airspeed').getAttribute('aria-label').split(' ')[2]),
-    tasText: document.querySelector('#true-airspeed-value').textContent,
-  }));
+  const recovered = await (await page.waitForFunction(() => {
+    const state = document.querySelector('#airspeed').dataset.state;
+    const ias = Number(document.querySelector('#airspeed').getAttribute('aria-label').split(' ')[2]);
+    const digits = [...document.querySelectorAll('#airspeed-digits > g')].map(n => n.firstElementChild.textContent).join('');
+    const gsState = document.querySelector('#ground-speed').dataset.state;
+    const tas = Number(document.querySelector('#true-airspeed').getAttribute('aria-label').split(' ')[2]);
+    const tasText = document.querySelector('#true-airspeed-value').textContent;
+    return digits === String(Math.floor(ias)) ? { state, ias, digits, gsState, tas, tasText } : false;
+  })).jsonValue();
   assert.equal(recovered.state, 'available');
   assert.equal(recovered.gsState, 'available');
   assert.equal(await page.locator('#true-airspeed').getAttribute('data-state'), 'available');
@@ -251,9 +257,12 @@ try {
   await checkSourceLoss(page);
   await start();
   await checkRecovery(page);
-  // A failed real provider keeps HTTP connected and invalidates prior demo values.
+  // A synthetic unavailable provider keeps HTTP connected and invalidates prior demo values.
   await stop();
-  await start(['--source', resolve('.local/missing-browser-test/SimConnect.dll')]);
+  unavailableDirectory = await mkdtemp(resolve('.local/browser-unavailable-'));
+  unavailableDll = join(unavailableDirectory, 'SimConnect.dll');
+  await copyFile(join(dirname(executable), 'demo.dll'), unavailableDll);
+  await start(['--source', unavailableDll]);
   await page.waitForFunction(() => {
     const instrument = document.querySelector('.instrument');
     return instrument.dataset.source === 'simconnect' && instrument.dataset.state === 'disconnected' &&
@@ -287,5 +296,12 @@ try {
   primaryError = error;
   throw error;
 } finally {
-  await cleanupBrowserAndProcess({ session, primaryError, stop });
+  let cleanupError;
+  try { await cleanupBrowserAndProcess({ session, primaryError, stop }); }
+  catch (error) { if (!primaryError) cleanupError = error; }
+  try {
+    if (unavailableDll) await unlink(unavailableDll).catch(error => { if (error.code !== 'ENOENT') throw error; });
+    if (unavailableDirectory) await rmdir(unavailableDirectory);
+  } catch (error) { if (!primaryError && !cleanupError) cleanupError = error; }
+  if (cleanupError) throw cleanupError;
 }

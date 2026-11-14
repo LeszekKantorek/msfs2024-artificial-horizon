@@ -279,13 +279,13 @@ async fn unavailable_states_age_stale_and_heartbeat_are_independent() {
     let stale = snapshot(&frame(&mut body).await);
     assert_eq!(stale["state"], "stale");
     assert_eq!(stale["attitude"], Value::Null);
-    assert_eq!(stale["sample_age_ms"], 1000);
+    assert_eq!(stale["sample_age_ms"], 750);
     advance(Duration::from_secs(10)).await;
     let heartbeat = frame(&mut body).await;
     assert_eq!(heartbeat, ": heartbeat\n\n");
     let current = serde_json::to_value(subscription.snapshot()).unwrap();
     assert_eq!(current["sequence"], stale["sequence"]);
-    assert_eq!(current["sample_age_ms"], 11_000);
+    assert_eq!(current["sample_age_ms"], 10_750);
     for (state, name) in [
         (State::Invalid, "invalid"),
         (State::Disconnected, "disconnected"),
@@ -314,7 +314,7 @@ async fn age_is_computed_when_body_is_read_and_pending_final_state_precedes_eof(
     advance(STALE_AFTER).await;
     let initial = snapshot(&frame(&mut body).await);
     assert_eq!(initial["state"], "stale");
-    assert_eq!(initial["sample_age_ms"], 1000);
+    assert_eq!(initial["sample_age_ms"], 750);
     assert!(initial.get("heading_deg").is_none());
     assert!(initial.get("selected_heading_deg").is_none());
     publisher.publish(State::Invalid).unwrap();

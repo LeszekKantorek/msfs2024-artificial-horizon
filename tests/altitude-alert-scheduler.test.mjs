@@ -37,7 +37,8 @@ test('all samples advance alerts before one newest-sample draw; resize cannot re
   const h = harness();
   h.accept(8500); h.setTime(10); h.accept(9000); h.setTime(20); h.accept(10000);
   assert.equal(h.accepted.length, 3); assert.equal(h.frames.size, 1); assert.equal(h.draws.length, 0);
-  h.flush(); assert.equal(h.draws[0].frame.altitude_ft, 10000); assert.equal(h.alert.flashStarted, 20);
+  h.flush(); assert.equal(h.draws[0].frame.altitude_ft, 8500); assert.equal(h.alert.flashStarted, 20);
+  h.setTime(36); h.flush(); assert.equal(h.draws.at(-1).frame.altitude_ft, 10000);
   h.setTime(270); h.scheduler.resize(pfdLayout(320, 400)); h.flush();
   assert.equal(h.draws.at(-1).visible, false); assert.equal(h.draws.at(-1).frame.expiresAt, 1020);
   assert.equal(h.alert.flashStarted, 20); assert.equal(h.accepted.length, 3);
@@ -62,12 +63,12 @@ test('expiry during flashing obscures data before drawing, including a delayed f
 
 test('all invalidation reasons cancel work and old callbacks cannot disturb a resumed alert', () => {
   for (const reason of ['paused', 'stale', 'disconnected', 'reconnecting', 'suspended', 'invalid', 'waiting']) {
-    const h = harness(); h.accept(8500); h.accept(9000); h.flush();
+    const h = harness(); h.accept(8500); h.accept(9000); h.flush(); h.setTime(16); h.flush();
     const oldTimer = [...h.timers.values()][0].fn;
     h.scheduler.resize(pfdLayout(320, 400)); const oldFrame = [...h.frames.values()][0];
     h.scheduler.invalidate(reason);
     assert.equal(h.timers.size, 0); assert.equal(h.frames.size, 0); assert.deepEqual(h.alert, initialAlert());
-    h.accept(8500); h.accept(9000); h.flush();
+    h.accept(8500); h.accept(9000); h.flush(); h.setTime(32); h.flush();
     const timer = [...h.timers.keys()][0];
     oldTimer(); oldFrame();
     assert.equal(h.frames.size, 0); assert.deepEqual([...h.timers.keys()], [timer]);
@@ -76,7 +77,7 @@ test('all invalidation reasons cancel work and old callbacks cannot disturb a re
 });
 
 test('target change and local loss cancel old timing with silent recovery', () => {
-  const h = harness(); h.accept(8500); h.accept(9000); h.flush();
+  const h = harness(); h.accept(8500); h.accept(9000); h.flush(); h.setTime(16); h.flush();
   const oldTimer = [...h.timers.values()][0].fn;
   h.accept(9000, 9000); h.flush(); assert.equal(h.timers.size, 0);
   h.accept(9300, 9000); h.flush(); assert.equal(h.draws.at(-1).deviation, true);
@@ -98,13 +99,13 @@ test('fresh identical values renew only freshness and flash finishes exactly onc
 test('expired acceptance never updates alert history and early timers preserve the deadline', () => {
   const h = harness(); h.setTime(1000); h.accept(9000, 10000, 1000);
   assert.equal(h.accepted.length, 0); assert.deepEqual(h.covers, ['stale']);
-  h.accept(8500); h.accept(9000); h.flush();
+  h.accept(8500); h.accept(9000); h.flush(); h.setTime(1016); h.flush();
   const early = [...h.timers.values()][0].fn; early(); h.flush();
   assert.equal(h.draws.at(-1).visible, true); assert.equal([...h.timers.values()][0].at, 1250);
 });
 
 test('a fresh sample after delayed expiry resets history before establishing its silent baseline', () => {
-  const h = harness(); h.accept(10000); h.accept(10201); h.flush();
+  const h = harness(); h.accept(10000); h.accept(10201); h.flush(); h.setTime(16); h.flush();
   const oldTimer = [...h.timers.values()][0].fn;
   h.scheduler.resize(pfdLayout(320, 400)); const oldFrame = [...h.frames.values()][0];
   h.setTime(1500); h.accept(10201); h.flush();

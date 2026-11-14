@@ -20,13 +20,13 @@ export function composePanel(svg, instruments, status) {
     accept(frame, now) {
       for (const instrument of instruments) instrument.accept?.(frame, now);
     },
-    render(frame, now) {
+    render(frame, now, sample = frame) {
       let nextUpdateAt = null;
       for (const instrument of instruments) {
-        const next = instrument.render?.(frame, now);
+        const next = instrument.render?.(frame, now, sample);
         if (Number.isFinite(next)) nextUpdateAt = nextUpdateAt === null ? next : Math.min(nextUpdateAt, next);
       }
-      status.render(frame);
+      status.render(sample);
       return nextUpdateAt;
     },
     invalidate(reason) {

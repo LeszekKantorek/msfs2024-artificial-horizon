@@ -18,12 +18,14 @@ Decision status: Accepted.
 | Layout | No fixed aspect ratio. Size text, symbols, and scales independently. Preserve familiar relative positions |
 | Geometry | Separate layout, instrument geometry, and DOM updates |
 | SVG | Use explicit groups and clipping for moving elements, fixed references, markers, and warnings |
-| Rendering | Retain the stack and latest-sample animation frames without interpolation |
+| Rendering | Retain the stack and bounded browser interpolation on shared animation frames |
 | Structure | Add only what accepted feature requirements need |
 | Contract | Add optional v1 fields. Preserve attitude-only publication, field meanings, and lifecycle semantics |
 | Missing data | Show unavailable. Never fill missing live data with demo values |
 | Invalid data | Isolate optional instrument failures. Source/transport loss invalidates the panel |
 | Exclusions | No models or reserved space for battery, HSI, CDI, navigation course, ILS, GPS glidepath, or VNAV |
+
+Bounded interpolation reduces visible steps while keeping raw warnings and expiry independent of motion. The [frame lifecycle](../efi/lifecycle.md#sample-acceptance-and-drawing) defines its timing and recovery rules.
 
 ### Local BARO display preference
 
@@ -61,4 +63,4 @@ This decision does not establish cockpit unit synchronization or actual-device u
 
 > ADR acceptance records a decision. It does not indicate implementation or test results.
 
-Revisit for simulator controls, a supported cockpit unit source, interpolation, or another rendering technology supported by measurements.
+Revisit for simulator controls, a supported cockpit unit source or another rendering technology supported by measurements.

@@ -1,0 +1,118 @@
+{
+  "mappings": [
+    {
+      "field": "pitch",
+      "simvar": "PLANE PITCH DEGREES",
+      "unit": "radians",
+      "type": "SIMCONNECT_DATATYPE_FLOAT64"
+    },
+    {
+      "field": "roll",
+      "simvar": "PLANE BANK DEGREES",
+      "unit": "radians",
+      "type": "SIMCONNECT_DATATYPE_FLOAT64"
+    },
+    {
+      "field": "indicated_airspeed",
+      "simvar": "AIRSPEED INDICATED",
+      "unit": "knots",
+      "type": "SIMCONNECT_DATATYPE_FLOAT64"
+    },
+    {
+      "field": "true_airspeed",
+      "simvar": "AIRSPEED TRUE",
+      "unit": "knots",
+      "type": "SIMCONNECT_DATATYPE_FLOAT64"
+    },
+    {
+      "field": "ground_speed",
+      "simvar": "GROUND VELOCITY",
+      "unit": "knots",
+      "type": "SIMCONNECT_DATATYPE_FLOAT64"
+    },
+    {
+      "field": "barometric_altitude",
+      "simvar": "INDICATED ALTITUDE:1",
+      "unit": "feet",
+      "type": "SIMCONNECT_DATATYPE_FLOAT64"
+    },
+    {
+      "field": "baro_setting",
+      "simvar": "KOHLSMAN SETTING HG:1",
+      "unit": "inHg",
+      "type": "SIMCONNECT_DATATYPE_FLOAT64"
+    },
+    {
+      "field": "vertical_speed",
+      "simvar": "VERTICAL SPEED",
+      "unit": "feet per minute",
+      "type": "SIMCONNECT_DATATYPE_FLOAT64"
+    },
+    {
+      "field": "heading",
+      "simvar": "PLANE HEADING DEGREES MAGNETIC",
+      "unit": "degrees",
+      "type": "SIMCONNECT_DATATYPE_FLOAT64"
+    },
+    {
+      "field": "slip_skid",
+      "simvar": "TURN COORDINATOR BALL",
+      "unit": "position 128",
+      "type": "SIMCONNECT_DATATYPE_FLOAT64"
+    },
+    {
+      "field": "turn_rate",
+      "simvar": "TURN INDICATOR RATE",
+      "unit": "degrees per second",
+      "type": "SIMCONNECT_DATATYPE_FLOAT64"
+    },
+    {
+      "field": "vs0",
+      "simvar": "DESIGN SPEED VS0",
+      "unit": "knots",
+      "type": "SIMCONNECT_DATATYPE_FLOAT64"
+    },
+    {
+      "field": "vs1",
+      "simvar": "DESIGN SPEED VS1",
+      "unit": "knots",
+      "type": "SIMCONNECT_DATATYPE_FLOAT64"
+    },
+    {
+      "field": "rotation_speed",
+      "simvar": "DESIGN SPEED MIN ROTATION",
+      "unit": "knots",
+      "type": "SIMCONNECT_DATATYPE_FLOAT64"
+    },
+    {
+      "field": "maximum_airspeed",
+      "simvar": "AIRSPEED BARBER POLE",
+      "unit": "knots",
+      "type": "SIMCONNECT_DATATYPE_FLOAT64"
+    },
+    {
+      "field": "autopilot_available",
+      "simvar": "AUTOPILOT AVAILABLE",
+      "unit": "bool",
+      "type": "SIMCONNECT_DATATYPE_FLOAT64"
+    },
+    {
+      "field": "selected_heading",
+      "simvar": "AUTOPILOT HEADING LOCK DIR:0",
+      "unit": "degrees",
+      "type": "SIMCONNECT_DATATYPE_FLOAT64"
+    },
+    {
+      "field": "selected_altitude",
+      "simvar": "AUTOPILOT ALTITUDE LOCK VAR:0",
+      "unit": "feet",
+      "type": "SIMCONNECT_DATATYPE_FLOAT64"
+    },
+    {
+      "field": "autopilot_alt_radio_mode",
+      "simvar": "AUTOPILOT ALT RADIO MODE",
+      "unit": "bool",
+      "type": "SIMCONNECT_DATATYPE_FLOAT64"
+    }
+  ]
+}

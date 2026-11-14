@@ -37,6 +37,12 @@ export async function checkAltitude(page, setFixture, url) {
       for (const value of [-9999, -1000, -90, -20, -0.1, 0, 0.1, 20, 90, 100, 990, 1000, 9990, 10000, 99999]) {
         setFixture({ altitude_ft: value });
         await page.waitForFunction(value => document.querySelector('#altitude').getAttribute('aria-label') === `Barometric altitude ${value} feet`, value);
+        await page.waitForFunction(value => {
+          const height = document.querySelector('#altitude-tape-clip rect').getBBox().height;
+          const tick = document.querySelector('.altitude-tick');
+          return Math.abs(Number(tick.getAttribute('d').split(' ')[2]) -
+            (height / 2 + (value - Number(tick.dataset.altitudeFt)) * 0.4)) < 1e-8;
+        }, value);
         const actual = await page.evaluate(() => {
           const group = document.querySelector('#altitude');
           const clip = document.querySelector('#altitude-tape-clip rect').getBBox();

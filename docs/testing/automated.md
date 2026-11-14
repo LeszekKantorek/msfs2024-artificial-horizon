@@ -19,9 +19,11 @@ $env:CARGO_BUILD_TARGET = 'x86_64-pc-windows-msvc'
 cargo fmt --all -- --check
 cargo clippy --workspace --locked --all-targets -- -D warnings
 cargo build --workspace --locked
+Copy-Item default.json target/x86_64-pc-windows-msvc/debug/default.json
 cargo test --workspace --locked --all-targets
 node --test tests/*.test.mjs
 cargo build --workspace --locked --release
+Copy-Item default.json target/x86_64-pc-windows-msvc/release/default.json
 ```
 
 Local validation is mandatory for changes selected by the [validation scope matrix](index.md#validation-by-change-scope).

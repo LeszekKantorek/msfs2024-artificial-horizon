@@ -72,7 +72,7 @@ Fallback references preserve configured values when IAS is unavailable:
 * Zero IAS is valid.
 * IAS above 999 kt shows `OVR` and hides the numeric tape and trend.
 * The browser calculates the six-second prediction as `IAS + 6 * ias_acceleration_ktps` from source-supplied acceleration.
-* The magenta vector extends from current IAS toward that prediction.
+* The magenta vector extends from displayed IAS using the interpolated acceleration displacement. Raw prediction controls warnings, availability, and the prediction attribute. See the [frame lifecycle](lifecycle.md#sample-acceptance-and-drawing).
 * A negative prediction remains a calculation result and clips at the tape boundary.
 * Constant speed, missing acceleration, or a non-finite prediction hides the vector.
 * Missing configuration does not prevent a valid trend calculation.
@@ -171,6 +171,8 @@ Scale geometry uses local tape coordinates:
 | State written by JavaScript | CSS or presentation effect |
 | --- | --- |
 | Bottom references `data-visible` | Hide the development badge while fallback references occupy its area |
+
+Motion checks cover interpolated tape and vector geometry, immediate raw VNE warnings, and raw prediction metadata.
 
 ## Testing
 
@@ -306,7 +308,7 @@ Check the six-second speed trend during full-panel acceptance.
 
 ### Trend evidence and interpretation
 
-The provider calculates acceleration using a bounded [0.5-second acquisition window](../sources/simconnect.md#optional-instrument-observations).
+The provider calculates acceleration by linear regression of the [last five valid acquisitions](../sources/simconnect.md#optional-instrument-observations). The trend is unavailable until all five observations are present.
 The browser uses that acceleration for the [six-second prediction](#trend-prediction).
 
 The [recorded trend validation](https://github.com/LeszekKantorek/msfs2024-artificial-horizon/issues/87) supports these conclusions:
@@ -314,9 +316,9 @@ The [recorded trend validation](https://github.com/LeszekKantorek/msfs2024-artif
 | Evidence | Result and limit |
 | --- | --- |
 | Adjacent-acquisition replay | Differencing adjacent acquisitions produced acceleration spikes. This reconstruction does not establish painted-frame behavior. |
-| Recorded-session replay | The 0.5-second window produced a maximum acceleration of 8.061 kt/s in one recording. Journal elapsed times approximate worker receipt times. |
-| Automated checks | Synthetic cases cover noise, response, timing, and lifecycle behavior. Controlled browser checks provide separate presentation evidence. |
-| Reported live observation | The trend was stable at approximately constant IAS and responded sensibly to acceleration and deceleration. Aircraft details were not supplied. |
+| Recorded-session replay | The previous 0.5-second window produced a maximum acceleration of 8.061 kt/s in one recording. Journal elapsed times approximate worker receipt times. |
+| Automated checks | Synthetic cases cover regression, timing, and lifecycle behavior. Controlled browser checks provide separate presentation evidence. |
+| Reported live observation | The previous estimator was reported stable at approximately constant IAS and responsive to acceleration and deceleration. This observation does not validate the five-sample regression. Aircraft details were not supplied. |
 | Interpretation | Replay does not establish painted-frame behavior, perceived live behavior, or physical acceleration accuracy. |
 | Diagnostic hypothesis | Receipt timing is a possible cause of spikes in adjacent-acquisition derivatives. It is not a confirmed universal diagnosis of rapid IAS changes. |
 

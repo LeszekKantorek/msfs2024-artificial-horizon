@@ -1,14 +1,14 @@
 import { clamp, setAttributes } from './helpers.js';
 
-const DISPLAY_LIMIT = 6;
+export const DISPLAY_LIMIT = 6;
 const STANDARD_RATE = 3;
 const MARK_HALF_HEIGHT = 5;
 const ARROW_WIDTH = 6;
 
-export function turnGeometry(value, travel) {
+export function turnGeometry(value, travel, raw = value) {
   const end = clamp(value, -DISPLAY_LIMIT, DISPLAY_LIMIT) / DISPLAY_LIMIT * travel;
-  return { end, vector: `M 0 0 H ${end}`, overflow: Math.abs(value) > DISPLAY_LIMIT ?
-    `M ${end} 0 l ${value > 0 ? -ARROW_WIDTH : ARROW_WIDTH} -${MARK_HALF_HEIGHT} v ${2 * MARK_HALF_HEIGHT} Z` : '' };
+  return { end, vector: `M 0 0 H ${end}`, overflow: Math.abs(raw) > DISPLAY_LIMIT ?
+    `M ${end} 0 l ${raw > 0 ? -ARROW_WIDTH : ARROW_WIDTH} -${MARK_HALF_HEIGHT} v ${2 * MARK_HALF_HEIGHT} Z` : '' };
 }
 
 export function createTurnRate(instrument, layers) {
@@ -31,14 +31,14 @@ export function createTurnRate(instrument, layers) {
       setAttributes(background, { x: -travel - 12, y: -10, width: 2 * travel + 24, height: 20 });
       scale.setAttribute('d', `M ${-travel} 0 H ${travel} M 0 -${h} V ${h} M ${-standard} -${h} V ${h} M ${standard} -${h} V ${h}`);
     },
-    render(frame) {
-      const value = frame.turn_rate_dps;
+    render(frame, now, sample = frame) {
+      const value = sample.turn_rate_dps;
       const available = value !== null && value !== undefined;
       group.dataset.available = String(available);
       warning.dataset.available = String(available);
       group.setAttribute('aria-label', !available ? 'Turn rate unavailable' : `Turn rate ${value} degrees per second`);
       if (available) {
-        const geometry = turnGeometry(value, travel);
+        const geometry = turnGeometry(frame.turn_rate_dps, travel, value);
         vector.setAttribute('d', geometry.vector);
         overflow.setAttribute('d', geometry.overflow);
       }

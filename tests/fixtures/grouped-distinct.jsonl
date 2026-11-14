@@ -1,0 +1,41 @@
+{"type":"scenario","format":"msfs-efi-simconnect-demo","version":1,"mode":"scripted","frame_period_ms":50,"duration_us":6000000,"initial":{"sim_running":true,"pause":"off","flight":"distinct"}}
+{"type":"signal","id":"pitch","simvar":"PLANE PITCH DEGREES","unit":"radians","repeat":false}
+{"type":"hold","signal":"pitch","value":-0.1,"duration_ms":6000}
+{"type":"signal","id":"roll","simvar":"PLANE BANK DEGREES","unit":"radians","repeat":false}
+{"type":"hold","signal":"roll","value":0.2,"duration_ms":6000}
+{"type":"signal","id":"ias","simvar":"AIRSPEED INDICATED","unit":"knots","repeat":false}
+{"type":"hold","signal":"ias","value":101,"duration_ms":6000}
+{"type":"signal","id":"tas","simvar":"AIRSPEED TRUE","unit":"knots","repeat":false}
+{"type":"hold","signal":"tas","value":111,"duration_ms":2000}
+{"type":"gap","signal":"tas","duration_ms":2000}
+{"type":"hold","signal":"tas","value":111,"duration_ms":2000}
+{"type":"signal","id":"gs","simvar":"GROUND VELOCITY","unit":"knots","repeat":false}
+{"type":"hold","signal":"gs","value":121,"duration_ms":6000}
+{"type":"signal","id":"alt","simvar":"INDICATED ALTITUDE:1","unit":"feet","repeat":false}
+{"type":"hold","signal":"alt","value":1300,"duration_ms":6000}
+{"type":"signal","id":"baro","simvar":"KOHLSMAN SETTING HG:1","unit":"inHg","repeat":false}
+{"type":"hold","signal":"baro","value":29.9,"duration_ms":6000}
+{"type":"signal","id":"vsi","simvar":"VERTICAL SPEED","unit":"feet per minute","repeat":false}
+{"type":"hold","signal":"vsi","value":321,"duration_ms":6000}
+{"type":"signal","id":"heading","simvar":"PLANE HEADING DEGREES MAGNETIC","unit":"degrees","repeat":false}
+{"type":"hold","signal":"heading","value":222,"duration_ms":6000}
+{"type":"signal","id":"ball","simvar":"TURN COORDINATOR BALL","unit":"position 128","repeat":false}
+{"type":"hold","signal":"ball","value":32,"duration_ms":6000}
+{"type":"signal","id":"turn","simvar":"TURN INDICATOR RATE","unit":"degrees per second","repeat":false}
+{"type":"hold","signal":"turn","value":1.2,"duration_ms":6000}
+{"type":"signal","id":"vs0","simvar":"DESIGN SPEED VS0","unit":"knots","repeat":false}
+{"type":"hold","signal":"vs0","value":40,"duration_ms":6000}
+{"type":"signal","id":"vs1","simvar":"DESIGN SPEED VS1","unit":"knots","repeat":false}
+{"type":"hold","signal":"vs1","value":50,"duration_ms":6000}
+{"type":"signal","id":"vr","simvar":"DESIGN SPEED MIN ROTATION","unit":"knots","repeat":false}
+{"type":"hold","signal":"vr","value":60,"duration_ms":6000}
+{"type":"signal","id":"max","simvar":"AIRSPEED BARBER POLE","unit":"knots","repeat":false}
+{"type":"hold","signal":"max","value":160,"duration_ms":6000}
+{"type":"signal","id":"ap","simvar":"AUTOPILOT AVAILABLE","unit":"bool","repeat":false}
+{"type":"hold","signal":"ap","value":1,"duration_ms":6000}
+{"type":"signal","id":"selected_heading","simvar":"AUTOPILOT HEADING LOCK DIR:0","unit":"degrees","repeat":false}
+{"type":"hold","signal":"selected_heading","value":270,"duration_ms":6000}
+{"type":"signal","id":"selected_altitude","simvar":"AUTOPILOT ALTITUDE LOCK VAR:0","unit":"feet","repeat":false}
+{"type":"hold","signal":"selected_altitude","value":3000,"duration_ms":6000}
+{"type":"signal","id":"radio","simvar":"AUTOPILOT ALT RADIO MODE","unit":"bool","repeat":false}
+{"type":"hold","signal":"radio","value":0,"duration_ms":6000}

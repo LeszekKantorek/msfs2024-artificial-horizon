@@ -100,7 +100,7 @@ Paint the overlapping elements in this order:
 
 The [panel lifecycle](lifecycle.md#sample-acceptance-and-drawing) connects sample history to shared scheduling:
 
-* Every fresh accepted sample advances history before drawing is coalesced.
+* Every fresh accepted raw sample advances history before drawing is coalesced. The bug uses interpolated altitude and target, while text, state, and alerts use raw values. See the [frame lifecycle](lifecycle.md#sample-acceptance-and-drawing).
 * Rendering and resize never advance sample history.
 * Resize and timed redraws preserve history and the original sample deadline.
 * Delayed renders calculate the current phase from monotonic time without replaying missed phases.
@@ -110,6 +110,8 @@ This resets the selected object's history even when expiry callbacks were delaye
 The object returns the next visual deadline. Only the shared scheduler owns the timer.
 
 Invalidation clears history through the panel and cancels pending timer and frame work through the scheduler.
+
+Motion checks cover a moving tape and bug while raw crossings advance alert history before the next paint.
 
 ## Testing
 

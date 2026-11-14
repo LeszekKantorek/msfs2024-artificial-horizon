@@ -13,8 +13,8 @@ export function createAirspeed(instrument, layers) {
       ias.resize(layout.airspeed, groundSpeedPanelY);
       groundSpeed.resize({ x: layout.airspeed.x, width: layout.airspeed.width, y: groundSpeedPanelY });
     },
-    render(frame) {
-      ias.render(frame.ias_kt, frame.airspeed_profile, frame.ias_acceleration_ktps);
+    render(frame, now, sample = frame) {
+      ias.render(frame.ias_kt, sample.airspeed_profile, frame.ias_acceleration_ktps, sample.ias_kt, sample.ias_acceleration_ktps);
       groundSpeed.render(frame.gs_kt);
       trueAirspeed.render(frame.tas_kt);
     },

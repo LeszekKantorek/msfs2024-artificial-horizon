@@ -6,6 +6,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 pub struct Config {
     pub listen_address: IpAddr,
     pub port: u16,
+    pub stale_interval_ms: u32,
 }
 
 impl Default for Config {
@@ -13,12 +14,16 @@ impl Default for Config {
         Self {
             listen_address: Ipv4Addr::LOCALHOST.into(),
             port: 8080,
+            stale_interval_ms: 750,
         }
     }
 }
 
 impl Config {
     pub fn validate(&self) -> Result<(), ConfigError> {
+        if !(1..=2_147_483_647).contains(&self.stale_interval_ms) {
+            return Err(ConfigError::InvalidStaleInterval);
+        }
         if self.port == 0 {
             return Err(ConfigError::InvalidPort);
         }
@@ -37,6 +42,8 @@ impl Config {
 
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
+    #[error("Stale interval must be between 1 and 2147483647 milliseconds")]
+    InvalidStaleInterval,
     #[error("port must be between 1 and 65535; port 0 is not a supported configuration")]
     InvalidPort,
     #[error(

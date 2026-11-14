@@ -79,7 +79,7 @@ VSI corrects text positioning for glyph bounds, including the wider unavailable 
 ### Frame updates, SVG state, and accessibility
 
 * Use the common frame and expiry deadline.
-* Add no timer, interpolation, filtering, or sample history.
+* Use the raw value for text and overflow. The shared scheduler interpolates the rate only for the altitude trend; add no independent timer or sample history.
 * Include the raw value and feet per minute in the accessible label for available and overflow readings.
 * Use the same VSI module in the full layout fixture and production.
 

@@ -34,11 +34,13 @@ cd msfs2024-artificial-horizon
 
 ```powershell
 rustup default stable
+$env:CARGO_BUILD_TARGET = 'x86_64-pc-windows-msvc'
 cargo build --workspace --locked
+Copy-Item default.json target/x86_64-pc-windows-msvc/debug/default.json
 cargo run --locked --bin msfs2024-artificial-horizon -- --scenario demo-scenarios/demo-scenario.jsonl
 ```
 
-The workspace build places `demo.dll` beside the executable before startup.
+The workspace build places `demo.dll` beside the executable. The copy command places the mandatory mapping there too.
 
 ### 3. Open the display
 
@@ -96,14 +98,21 @@ cargo run --locked --bin msfs2024-artificial-horizon -- --source demo.dll --scen
 
 | Situation | Action / constraint |
 | --- | --- |
+| Native interval | Set `--simconnect-interval` to an integer from 0 through 4294967295; default 0. It is passed to the `SIM_FRAME` request |
+| Stale threshold | Set `--stale-interval` to an integer from 1 through 2147483647 ms; default 750 ms. It controls sample expiry, not publication cadence |
 | Port occupied | Select another `--port` from `1` to `65535` |
 | Invalid address | Use an IPv4/IPv6 address, not a hostname, multicast address, or IPv4 broadcast address |
 | Phone cannot connect | Check the private network, PC address, port, VPN interface, and firewall scope |
 | SimConnect DLL cannot load | Place the official x64 DLL beside the executable or supply an absolute `--source` path. Demo never replaces SimConnect automatically |
+| Mapping cannot load | Place the validated `default.json` beside the executable, then restart |
+
+The browser smooths moving indications over the recent delivery interval, up to 330 ms. This reduces visible steps and adds display lag. See the [frame lifecycle](docs/efi/lifecycle.md#sample-acceptance-and-drawing).
 
 Select native reception with `--source SimConnect.dll`:
 
 ```powershell
+cargo build --workspace --locked --release
+Copy-Item default.json target/x86_64-pc-windows-msvc/release/default.json
 cargo run --locked --release --bin msfs2024-artificial-horizon -- --source SimConnect.dll --log ".local\simconnect-sessions\active-pause.jsonl"
 ```
 
@@ -119,7 +128,7 @@ Configure native reception under these requirements:
 
 Interpret source availability and recorded results under these limits:
 
-* If SimConnect cannot start, HTTP remains available with unavailable display data. The console explains the source failure.
+* Missing DLLs, invalid DLL images, missing exports, and invalid mappings stop startup before HTTP binds. Dependency loading and runtime acquisition failures leave HTTP available with unavailable display data; the console explains the source failure.
 * Live publication requires a running simulator, a loaded flight, zero pause flags, and a fresh valid sample.
 * Recorded sessions support signs, pause/menu unavailability, fresh-sample recovery, and reconnect in the tested setup.
   The [evidence and limits](docs/sources/simconnect.md#live-publication-evidence) define that coverage.

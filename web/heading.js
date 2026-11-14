@@ -81,12 +81,13 @@ export function createHeading(instrument, layers) {
       rows.forEach(({ tick, label }, index) => { tick.style.display = label.style.display = index < count ? '' : 'none'; });
     },
     invalidate,
-    render(frame) {
+    render(frame, now, sample = frame) {
       const heading = frame.heading_deg, selected = frame.selected_heading_deg;
-      if (!validHeading(heading)) { invalidate(); return; }
+      const rawHeading = sample.heading_deg, rawSelected = sample.selected_heading_deg;
+      if (!validHeading(rawHeading)) { invalidate(); return; }
       group.dataset.state = 'available';
-      group.dataset.selectedAvailable = String(validHeading(selected));
-      group.setAttribute('aria-label', `Magnetic heading ${heading} degrees${validHeading(selected) ? `, selected heading ${selected} degrees` : ', selected heading unavailable'}`);
+      group.dataset.selectedAvailable = String(validHeading(rawSelected));
+      group.setAttribute('aria-label', `Magnetic heading ${rawHeading} degrees${validHeading(rawSelected) ? `, selected heading ${rawSelected} degrees` : ', selected heading unavailable'}`);
       tape.style.display = '';
       value.textContent = headingText(heading);
       headingTicks(heading, geometry.width).forEach((row, index) => {
@@ -96,7 +97,7 @@ export function createHeading(instrument, layers) {
         label.textContent = row.value % 10 === 0 ? headingText(row.value) : '';
         label.style.visibility = row.labelVisible ? '' : 'hidden';
       });
-      const position = headingBugPosition(heading, selected, geometry.width);
+      const position = validHeading(rawSelected) ? headingBugPosition(heading, selected, geometry.width) : null;
       bug.style.display = position === null ? 'none' : '';
       if (position === null) bug.removeAttribute('transform');
       else bug.setAttribute('transform', `translate(${position} 0)`);

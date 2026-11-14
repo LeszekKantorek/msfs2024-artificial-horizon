@@ -3,10 +3,17 @@ import { altitudeState } from './readout.js';
 import { tickPosition } from './tape.js';
 
 // Source ft/min predicts six seconds; resize keeps the tape's fixed pixel scale.
-export function altitudeTrend(altitude, fpm, height) {
+export function altitudePrediction(altitude, fpm) {
   if (altitudeState(altitude) !== 'available' || !Number.isFinite(fpm) || fpm === 0) return null;
-  const change = fpm / 10;
-  return { prediction: altitude + change, y: clamp(tickPosition(0, change, height), 1, height - 1) };
+  const prediction = altitude + fpm / 10;
+  return Number.isFinite(prediction) ? prediction : null;
+}
+function trendY(fpm, height) {
+  return clamp(tickPosition(0, fpm / 10, height), 1, height - 1);
+}
+export function altitudeTrend(altitude, fpm, height) {
+  const prediction = altitudePrediction(altitude, fpm);
+  return prediction === null ? null : { prediction, y: trendY(fpm, height) };
 }
 
 export function createAltitudeTrend(defs, parent) {
@@ -28,13 +35,14 @@ export function createAltitudeTrend(defs, parent) {
       setAttributes(rect, { x: lane.x, y: 0, width: lane.width, height: lane.height });
     },
     invalidate,
-    render(altitude, fpm) {
-      const trend = altitudeTrend(altitude, fpm, geometry.height);
-      if (!trend) { invalidate(); return; }
+    render(altitude, fpm, rawAltitude = altitude, rawFpm = fpm) {
+      const prediction = altitudePrediction(rawAltitude, rawFpm);
+      if (prediction === null) { invalidate(); return; }
+      const y = trendY(fpm, geometry.height);
       const x = geometry.x + geometry.width / 2;
       line.style.display = '';
-      setAttributes(line, { d: `M ${x} ${geometry.height / 2} V ${trend.y}`,
-        'data-prediction-ft': trend.prediction });
+      setAttributes(line, { d: `M ${x} ${geometry.height / 2} V ${y}`,
+        'data-prediction-ft': prediction });
     },
   };
 }

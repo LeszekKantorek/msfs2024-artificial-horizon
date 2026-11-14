@@ -32,7 +32,7 @@ Instruments share the frame under these rules:
 ```js
 panel.resize(layout);
 panel.accept(frame, now);
-panel.render(frame, now);
+panel.render(displayFrame, now, sample);
 panel.invalidate(reason);
 ```
 
@@ -40,7 +40,7 @@ panel.invalidate(reason);
 | --- | --- |
 | `resize(layout)` | Update instrument geometry, including while unavailable. Do not renew data validity |
 | `accept(frame, now)` | Advance optional instrument history for each accepted fresh sample, without DOM writes |
-| `render(frame, now)` | Apply one fresh, coherent presentation frame. Return the earliest next monotonic visual deadline, or `null` |
+| `render(displayFrame, now, sample)` | Apply interpolated geometry and raw state. Return the earliest next monotonic visual deadline, or `null` |
 | `invalidate(reason)` | Obscure invalid indications immediately. Do not substitute level flight or zero values |
 
 `composePanel` delegates optional acceptance and invalidation operations to instruments.
@@ -50,7 +50,7 @@ The [instrument composition](composition.md#instrument-composition) defines the 
 ## Initialization and geometry updates
 
 * Create instrument elements once during initialization.
-* Run `resize(layout)` before the first `render(frame)`.
+* Run `resize(layout)` before the first `render(displayFrame, now, sample)`.
 * Supply real geometry without substitute defaults.
 
 | Component | Initialization | Resize | Render |
@@ -69,17 +69,21 @@ The [instrument composition](composition.md#instrument-composition) defines the 
 4. Retain the newest sample and request at most one animation frame.
 
 * Fresh samples with unchanged numeric values still renew freshness.
-* Do not interpolate or extrapolate current readings between accepted samples.
+* Interpolate eligible moving values without extrapolating beyond the newest sample.
 
 ### Coalesced frame rendering
 
-The scheduler retains one latest sample and at most one pending draw.
+The scheduler retains the latest raw sample, one target per motion channel, and at most one pending draw. The client derives the browser-monotonic `expiresAt` from the SSE sample age and freshness limit. The display frame carries that deadline and the latest discrete inputs. Instruments receive the display frame and raw sample as read-only values. Status, warnings, alert history, and source-value accessibility labels use raw data.
+
+The first fresh sample after invalidation establishes a baseline. If newer data arrives before its first paint, eligible channels paint that baseline once while raw state uses the newest sample. An expired baseline is skipped. An availability break clears the affected channel and the next eligible value snaps, including when loss and recovery coalesce.
+
+The duration is the preceding receipt interval clamped to 16–330 ms, including equal samples. Equal targets retain their pending receipt and duration. A changed target starts at the last painted value. When the channel is settled, its segment starts at the target's receipt time; when active, a changed target starts at the previous paint time. A deferred target after the baseline draw starts at the later of its change receipt and the baseline draw, including a replacement before the next draw. An active target that changes and returns before a draw retains its existing segment. If a recovery baseline includes an unpainted turn overflow, the newest eligible turn value snaps. Linear segments stop at the target. Heading, selected heading, and roll take the shortest angular path, with a negative 180-degree tie. Raw turn overflow pins the endpoint immediately. Each valid vector interpolates its source rate; raw prediction and eligibility control its visibility.
 Each animation callback follows this sequence:
 
 1. Check the retained sample's original deadline. Invalidate expired data instead of drawing it.
 2. Apply the pending layout.
 3. Cancel obsolete timing work and render the fresh frame in the same callback.
-4. Schedule the next timed visual update if the panel returns a finite deadline.
+4. Request the next common frame while motion remains. Once settled, schedule a finite instrument deadline with the visual timer.
 
 ### Resize and local preference redraws
 
@@ -118,7 +122,7 @@ The scheduler retains at most one visual timer.
 Invalidation follows this sequence:
 
 1. Cancel timed updates and pending drawing.
-2. Discard the retained sample.
+2. Discard the retained sample, targets, values, and receipt timing.
 3. Invoke `panel.invalidate(reason)` immediately, obscuring invalid indications and resetting instrument state.
 4. Apply any pending layout under the unavailable cover.
 

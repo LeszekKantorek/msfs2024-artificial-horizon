@@ -57,9 +57,9 @@ export function createTape(defs, parent) {
         width: range.name === 'flaps' ? RANGE_LANE_WIDTH / 2 : RANGE_LANE_WIDTH, ...rangeBounds(ias.value, range, geometry) });
     }
   }
-  function renderTrend(ias, prediction) {
+  function renderTrend(prediction, acceleration) {
     trend.style.display = prediction === null ? 'none' : '';
-    trend.setAttribute('d', prediction === null ? '' : `M ${geometry.width - 10} ${geometry.centerY} V ${clamp(geometry.centerY + tapeOffset(ias.value, prediction), geometry.clipTopY + 1, geometry.clipBottomY - 1)}`);
+    trend.setAttribute('d', prediction === null ? '' : `M ${geometry.width - 10} ${geometry.centerY} V ${clamp(geometry.centerY + tapeOffset(0, 6 * acceleration), geometry.clipTopY + 1, geometry.clipBottomY - 1)}`);
     if (prediction === null) trend.removeAttribute('data-prediction-kt');
     else trend.setAttribute('data-prediction-kt', prediction);
   }
@@ -73,10 +73,10 @@ export function createTape(defs, parent) {
       }).join(' '));
       for (const label of labels) label.setAttribute('x', tape.width - 30);
     },
-    render(ias, profile, prediction) {
+    render(ias, profile, prediction, acceleration) {
       if (ias.state === 'available') scale.setAttribute('transform', `translate(0 ${geometry.centerY + tapeOffset(ias.value, 0)})`);
       renderRanges(ias, profile);
-      renderTrend(ias, prediction);
+      renderTrend(prediction, acceleration);
     },
   };
 }

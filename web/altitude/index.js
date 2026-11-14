@@ -42,16 +42,16 @@ export function createAltitude(instrument, layers, redraw = () => {}) {
     },
     accept(frame, now) { selected.accept(frame.altitude_ft, frame.selected_altitude_ft, now); },
     invalidate() { selected.invalidate(); vsi.invalidate(); trend.invalidate(); baro.invalidate(); },
-    render(frame, now) {
-      const state = altitudeState(frame.altitude_ft);
+    render(frame, now, sample = frame) {
+      const state = altitudeState(sample.altitude_ft);
       group.dataset.state = state;
-      group.setAttribute('aria-label', `Barometric altitude ${state === 'available' ? `${frame.altitude_ft} feet` : state}`);
+      group.setAttribute('aria-label', `Barometric altitude ${state === 'available' ? `${sample.altitude_ft} feet` : state}`);
       tape.render(state === 'available' ? frame.altitude_ft : null);
       readout.render(frame.altitude_ft, state);
       baro.render(frame.baro_text, frame.baro_setting, Object.hasOwn(frame, 'baro_setting'));
-      vsi.render(frame.vertical_speed_fpm);
-      trend.render(frame.altitude_ft, frame.vertical_speed_fpm);
-      return selected.render(frame.altitude_ft, frame.selected_altitude_ft, now);
+      vsi.render(sample.vertical_speed_fpm);
+      trend.render(frame.altitude_ft, frame.vertical_speed_fpm, sample.altitude_ft, sample.vertical_speed_fpm);
+      return selected.render(frame.altitude_ft, frame.selected_altitude_ft, now, sample.altitude_ft, sample.selected_altitude_ft);
     },
   };
 }

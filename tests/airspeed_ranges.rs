@@ -87,7 +87,7 @@ async fn new_fields_share_age_clear_independently_and_never_survive_attitude_onl
     let attitude = Attitude::new(0.0, 0.0).unwrap();
     let full = demo::sample(120);
     publisher.publish_sample(full.clone()).unwrap();
-    advance(Duration::from_millis(999)).await;
+    advance(Duration::from_millis(749)).await;
     assert_eq!(
         serde_json::to_value(subscription.snapshot()).unwrap()["airspeed_profile"],
         profile_fixture()

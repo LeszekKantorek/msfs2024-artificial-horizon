@@ -50,8 +50,8 @@ The application follows these composition constraints:
 
 | Interface | Contract |
 | --- | --- |
-| CLI | Parse DLL source, required Demo scenario and optional log, HTTP address/port, help, and version. Own process signals and exit status |
-| `Config` | Contain only `listen_address` and `port`. Never read process arguments |
+| CLI | Parse DLL source, required Demo scenario, optional log, native interval and stale threshold, HTTP address/port, help, and version. Own process signals and exit status |
+| `Config` | Contain `listen_address`, `port`, and `stale_interval_ms`. Never read process arguments |
 | `application::SourceSelection` | Hold the native source configuration; derive source identity from the selected DLL basename |
 | `application::run(config, source, shutdown)` | Validate configuration, create the channel, bind HTTP, start components, and collect results. Return `Result<(), ApplicationError>` |
 | Application shutdown future | Caller-owned future with output `io::Result<()>`. Only the CLI handles process signals |
@@ -118,7 +118,7 @@ The browser receives telemetry from either provider through the same HTTP/SSE co
 * Present received values without generating independent flight data or sending setting/control commands.
 * Keep connection recovery and presentation scheduling in the browser.
 * Invalidate unavailable or expired data instead of displaying retained readings as live.
-* Apply no interpolation or extrapolation.
+* Interpolate eligible browser indications between accepted samples without extrapolation; see the [frame lifecycle](efi/lifecycle.md#sample-acceptance-and-drawing).
 
 Delivery preserves these system constraints:
 
@@ -148,7 +148,7 @@ Mixed application versions are unsupported.
 
 ```text
 Rust process: Provider -> Publisher -> latest state -> Subscription -> Snapshot -> SSE
-Browser:      SSE -> validate -> latest sample -> animation frame -> SVG/DOM
+Browser:      SSE -> validate -> raw sample -> shared interpolation -> animation frame -> SVG/DOM
 ```
 
 The flow separates acquisition, shared state, delivery, and presentation. The Rust-process path includes the provider and publication, which the HTTP server does not own.
@@ -170,7 +170,7 @@ The flow separates acquisition, shared state, delivery, and presentation. The Ru
 | Detect silent sources | Expire samples server-side even without publications |
 | Release stalled clients | Close writers that exceed the socket deadline |
 
-A subscription reads the shared current state. Snapshot reads calculate freshness at access time; slow consumers can skip intermediate samples without delaying acquisition.
+A subscription reads the shared current state. Each accepted acquisition notifies subscribers immediately. State transitions also publish promptly; slow consumers can skip intermediate samples without delaying acquisition. Snapshot reads calculate freshness at access time.
 
 ### HTTP/SSE delivery and browser consumption
 
@@ -180,7 +180,7 @@ A subscription reads the shared current state. Snapshot reads calculate freshnes
 | Snapshot -> SSE | Serialize the snapshot and send an event | Delivery does not control acquisition |
 | SSE -> validation | Validate the message and normalize optional indications independently | The browser does not generate independent flight data |
 | Latest sample -> animation frame | Accept fresh samples and coalesce draws | Sample acceptance and drawing have separate roles |
-| Animation frame -> SVG/DOM | Update instruments while checking data validity | No interpolation or extrapolation |
+| Animation frame -> SVG/DOM | Update instruments while checking data validity | Bounded interpolation; no extrapolation |
 
 Delivery and presentation have separate owners:
 
@@ -193,10 +193,11 @@ Delivery and presentation have separate owners:
 
 | API / owner | Behavior |
 | --- | --- |
-| `telemetry::channel(Source)` | Return one `Publisher` and a cloneable `Subscription`. Fix source identity for the channel lifetime |
+| `telemetry::channel(Source)` | Return one `Publisher` and a cloneable `Subscription` with immediate publication and default stale threshold metadata |
+| `telemetry::managed_channel(Source, stale_interval_ms)` | Return a shared channel and expiry monitor guard the caller retains; reject invalid thresholds |
 | `Publisher` | Accept typed `State`. Only `State::Live(Attitude)` carries validated normalized degrees |
 | Provider | Emit live only for fresh callbacks from an active, unpaused source. Otherwise emit explicit unavailable states |
-| `Publisher::expire()` | Call on an independent 50 ms freshness tick, even without callbacks |
+| `Publisher::expire()` | Evaluate expiry for a caller-managed channel; the managed channel evaluates expiry independently |
 | `Subscription::snapshot()` | Read current state without acknowledging pending publication |
 | `changed().await` | Wait for and acknowledge the newest publication |
 | `snapshot_and_update()` | Read and acknowledge atomically for the first SSE event, preventing duplicate delivery of a pending publication |
@@ -211,12 +212,12 @@ The executable supplies a shutdown trigger to application composition. It accept
 
 ### Startup
 
-1. Validate configuration and the selected DLL path syntax.
+1. Validate configuration, the adjacent mapping, and the DLL image and required exports through bounded file inspection without loading it.
 2. Create the `waiting` telemetry channel and retain its lifetime handle.
 3. Bind HTTP with the prepared subscription. A failed bind prevents acquisition from starting.
 4. Start the HTTP task and the selected provider task.
 
-* HTTP availability does not depend on DLL loading, simulator connection, or flight readiness.
+* HTTP availability after preflight does not depend on worker DLL initialization, simulator connection, or flight readiness.
 
 ### Source failure and service availability
 

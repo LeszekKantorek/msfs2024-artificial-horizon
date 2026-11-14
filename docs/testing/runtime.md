@@ -19,7 +19,9 @@ Use committed `Cargo.lock`. These checks require no simulator or SDK.
 3. Start the server.
 
    ```powershell
-   cargo run --locked --bin msfs2024-artificial-horizon -- --scenario demo-scenarios/demo-scenario.jsonl
+   cargo build --workspace --locked --target x86_64-pc-windows-msvc
+   Copy-Item default.json target/x86_64-pc-windows-msvc/debug/default.json
+   cargo run --locked --target x86_64-pc-windows-msvc --bin msfs2024-artificial-horizon -- --scenario demo-scenarios/demo-scenario.jsonl
    ```
 
 4. Check the endpoints and CLI behavior below.
@@ -67,8 +69,8 @@ Run these checks locally on Windows x64 MSVC.
 | Socket unit tests | Subscriber release and write/shutdown deadlines with bounded duplex transport |
 | Local TCP | Two active SSE connections and port reuse after shutdown |
 | DOM-free imports | `tests/helpers.test.mjs` imports visual owners/helpers/telemetry without `document` and exercises meaningful pure behavior |
-| Frame scheduler | Latest-frame/layout coalescing, coherent resize and render, expiry before draw, cancellation on data loss, resize without renewing age, fresh identical values |
-| Panel/status | Complete read-only frame delegation, shared attitude clip through resize/expiry, status without a sample, stale obscuring, separate source/transport state and announcements |
+| Frame scheduler | Receipt-based interpolation, coalescing, channel recovery, retargeting, coherent resize, expiry before draw, cancellation, and fresh identical values |
+| Panel/status | Read-only display and raw frame delegation, shared attitude clip through resize/expiry, status without a sample, stale obscuring, separate source/transport state and announcements |
 
 Apply the [client and validation suites](../efi/telemetry.md#client-and-validation-coverage) alongside these integration checks.
 
@@ -102,9 +104,9 @@ The following rules apply to the shared producer:
 
 | Property | Expected behavior |
 | --- | --- |
-| Sampling | One fresh sample every 50 ms, including unchanged poses. Skip missed ticks |
+| Sampling | Baseline scenario uses 50 ms frames at the default interval, including unchanged poses. Skip missed frames |
 | Initial state | `waiting`, then `live` on fresh data |
-| Expiry | No accepted sample for 1,000 ms makes attitude stale |
+| Expiry | No accepted sample for the configured stale threshold makes the complete sample stale |
 | Source failure | Never substitute demo for unavailable SimConnect |
 
 ### Fixtures and tests

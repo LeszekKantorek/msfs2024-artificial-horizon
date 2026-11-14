@@ -54,13 +54,14 @@ export function createIas(defs, parent, warnings) {
       readout.resize(readoutGeometry, { unitX: tapeGeometry.width / 2, unitY: tapeGeometry.unitY });
       references.resize(tapeGeometry);
     },
-    render(value, profile, acceleration) {
-      const { ias, prediction, overspeed, approaching, showBottomReferences } = deriveIasReadings(value, profile, acceleration);
+    render(value, profile, acceleration, rawValue = value, rawAcceleration = acceleration) {
+      const { ias: rawIas, prediction, overspeed, approaching, showBottomReferences } = deriveIasReadings(rawValue, profile, rawAcceleration);
+      const ias = { value, state: rawIas.state };
       group.dataset.overspeed = String(overspeed);
       group.dataset.approaching = String(approaching);
       group.dataset.state = ias.state;
-      group.setAttribute('aria-label', `Indicated airspeed ${ias.state === 'available' ? `${ias.value} knots` : ias.state}`);
-      tape.render(ias, profile, prediction);
+      group.setAttribute('aria-label', `Indicated airspeed ${ias.state === 'available' ? `${rawIas.value} knots` : ias.state}`);
+      tape.render(ias, profile, prediction, acceleration);
       readout.render(ias);
       references.render(ias, profile, showBottomReferences);
     },
