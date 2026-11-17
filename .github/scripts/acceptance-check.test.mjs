@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CONTEXT, closingIssues, validateAcceptance, githubApi, runAcceptance } from './acceptance-check.mjs';
+import { CONTEXT, closingIssues, validateAcceptance, githubApi, runAcceptance, acceptanceRunFailed } from './acceptance-check.mjs';
 
 const repo = 'example/pfd';
 const sha = 'a'.repeat(40);
@@ -329,4 +329,36 @@ test('API requests use fixed GitHub origin, refuse redirects, and do not disclos
   });
   await assert.rejects(api('/repos/example/pfd/issues/21'), error =>
     error.message.includes('403') && !error.message.includes('test-secret'));
+});
+
+test('PR-triggered job reports its own result while refreshing separate commit statuses', async () => {
+  const otherSha = 'b'.repeat(40);
+  const target = pr();
+  const other = pr('- [ ] Incomplete', 49, otherSha);
+  const state = fakeApi([target, other]);
+  const event = { action: 'opened', pull_request: target };
+  const report = await runAcceptance({ api: state.api, repository: repo, event, targetUrl: 'https://example.test/run' });
+  assert.equal(acceptanceRunFailed(report, event), false);
+  assert.equal(report.find(result => result.sha === sha).state, 'success');
+  assert.equal(report.find(result => result.sha === otherSha).state, 'failure');
+  assert.equal(state.writes.findLast(write => write.path.endsWith(sha)).body.state, 'success');
+  assert.equal(state.writes.findLast(write => write.path.endsWith(otherSha)).body.state, 'failure');
+
+  const failingEvent = { action: 'opened', pull_request: other };
+  assert.equal(acceptanceRunFailed(report, failingEvent), true);
+  assert.equal(acceptanceRunFailed(report, {}), true);
+  report.find(result => result.sha === otherSha).state = 'error';
+  assert.equal(acceptanceRunFailed(report, event), false);
+  assert.equal(acceptanceRunFailed(report, {}), true);
+});
+
+test('PR job fails for missing, stale, malformed or shared-head failing target', async () => {
+  const event = { action: 'synchronize', pull_request: pr() };
+  assert.equal(acceptanceRunFailed([], event), true);
+  assert.equal(acceptanceRunFailed([{ sha: 'b'.repeat(40), prs: [47], state: 'success' }], event), true);
+  assert.throws(() => acceptanceRunFailed([], { pull_request: {} }), /Invalid pull request event/);
+  assert.equal(acceptanceRunFailed([], { ...event, action: 'closed' }), false);
+  const state = fakeApi([pr(), pr('- [ ] Incomplete', 49)]);
+  const report = await run(state);
+  assert.equal(acceptanceRunFailed(report, event), true);
 });

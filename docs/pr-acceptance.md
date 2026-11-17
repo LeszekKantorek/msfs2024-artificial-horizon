@@ -84,6 +84,12 @@ These events refresh acceptance status:
 
 > GitHub can delay scheduled jobs.
 
+### Workflow result
+
+For a PR event, the job result reflects the event PR's current head. A failure in a PR with a different head does not fail that job. The validator still refreshes the separate `Acceptance criteria` status for every open PR head. If the event PR is absent or its head changed during validation, the job fails; a closed PR that is absent from the open list is an expected exception.
+
+For issue events, pushes, manual runs, and scheduled runs, the job reports failure if any checked result fails. PRs sharing a head retain a shared commit status, so all of them must pass for that status to succeed.
+
 ### Commit status consistency
 
 The control applies these consistency rules:
@@ -140,7 +146,7 @@ The suite covers these boundaries:
 | Parsing | Optional references and checklist presence, supplied checkbox checks, hidden examples, and issue section boundaries |
 | API access | Failures and pagination |
 | Concurrent changes | Metadata edits, new heads, and shared commits |
-| Repeated execution | Repeated runs |
+| Repeated execution | Repeated runs and PR job results isolated from unrelated heads |
 | Planning files | Main-bound PRs, root entry types, removal from the final tree, API failures, and main versus working-branch pushes |
 
 Run this suite locally when changing the validator or its workflow.

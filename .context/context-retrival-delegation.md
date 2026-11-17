@@ -18,7 +18,7 @@ Use these rules before reasoning or planning that depends on project knowledge. 
 | Another agent's work depends on retrieval results | Requesting agent | Wait for the results before starting that agent and pass the report to it. |
 | Retrieval and another task are independent | Requesting agent | They can run in parallel. Do not assume the other agent received results produced later. |
 
-* Knowing a source path does not establish that it covers every applicable requirement. Read governing requirements and complete Subtask instructions; a retrieval report does not replace them.
+* Knowing a source path does not establish that it covers every applicable requirement. Read governing requirements and complete governing plans and issue requirements; a retrieval report does not replace them.
 * Do not independently repeat the same retrieval in both agents. The implementing or task subagent can retrieve additional context when its sources are insufficient.
 * A subagent can ask the requesting agent whether retrieval was performed. If it was, the requesting agent passes the report. Include every report in full and exactly as received, with paths, line ranges, descriptions, gaps, and access limitations. Keep interpretations and additional instructions separate from the report.
 

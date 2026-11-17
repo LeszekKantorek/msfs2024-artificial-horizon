@@ -13,7 +13,7 @@ Maintain project knowledge under these requirements:
 * Keep independent topics separate so agents can read only relevant entries. Link canonical sources instead of repeating their commands or rules.
 * Remove session progress and expired task-specific permissions from reusable knowledge.
 * Remove obsolete pending items for completed work while retaining useful constraints and lessons.
-* Preserve existing accepted plans and amendments under the [handoff rules](iterative-development.md#accepted-plans-and-handoffs). Subtasks are the primary future handoff; this does not authorize deleting existing plans.
+* Preserve existing accepted plans and amendments under the [handoff rules](iterative-development.md#accepted-plans-and-handoffs).
 * For discrepancies outside the editing scope, follow [findings outside the current scope](iterative-development.md#findings-outside-the-current-scope).
 
 ### Local entry and index convention
@@ -34,7 +34,7 @@ These formats apply to `.context/` entries, their index, and navigation. They ar
 Maintain navigation and retrieval under these requirements:
 
 * Put direct routes in the [index](index.md) and conditional routes in [task guidance](task-guidance.md).
-* Keep retrieval procedure steps in context-retrieve. [Context selection and retrieval delegation](context-retrival-delegation.md) owns project selection constraints; [implementation context preparation](iterative-development.md#prepare-subtask-context) applies them to execution. Maps supply destinations and use conditions rather than duplicate the procedure.
+* Keep retrieval procedure steps in context-retrieve. [Context selection and retrieval delegation](context-retrival-delegation.md) owns project selection constraints; [implementation context preparation](iterative-development.md#prepare-execution-context) applies them to execution. Maps supply destinations and use conditions rather than duplicate the procedure.
 * When moving knowledge, update incoming links, index rows, and replacement paths.
 * Exclude session records from knowledge retrieval under [hook maintenance](#hook-maintenance).
 
@@ -62,7 +62,7 @@ The project skills below are versioned locally. They are separate from the pinne
 | Skill | Procedure owner | Supporting knowledge |
 | --- | --- | --- |
 | [project-write-content](../.agents/skills/project-write-content/SKILL.md) | Edit its `SKILL.md` and Markdown examples | Language remains in `technical-writing-rules`; project conventions remain in [writing guidance](../CONTRIBUTING.md#writing-guidance) |
-| [project-plan-change](../.agents/skills/project-plan-change/SKILL.md) | Edit its `SKILL.md` for Task planning and self-contained Subtasks | [Planning rationale](implementation-planning.md); [Subtask execution and handoffs](iterative-development.md#accepted-plans-and-handoffs) |
+| [project-plan-change](../.agents/skills/project-plan-change/SKILL.md) | Edit its `SKILL.md` for local change planning | [Planning rationale](implementation-planning.md); [Execution and handoffs](iterative-development.md#accepted-plans-and-handoffs) |
 | [project-diagnose-failure](../.agents/skills/project-diagnose-failure/SKILL.md) | Edit its `SKILL.md` | [Symptom map and sources](error-diagnosis.md); environment restrictions remain in their entries |
 | [project-validate-presentation](../.agents/skills/project-validate-presentation/SKILL.md) | Edit its `SKILL.md` | Feature checks, commands, and evidence requirements remain in testing documentation |
 | [project-prepare-pr](../.agents/skills/project-prepare-pr/SKILL.md) | Edit its `SKILL.md` | Acceptance criteria and CI interpretation retain their existing owners |
@@ -98,7 +98,7 @@ Maintain the hook integration under these requirements:
 * Preserve unrelated hooks when updating the integration.
 * The startup reminder describes the six context skills without prescribing a sequence.
 * Use `context-review-sessions` with `context-preserve` for session review. The installed skill reports review outcomes without updating the CSV registry; do not claim automatic completion bookkeeping.
-* Subtask execution must leave a [complete main-conversation summary](iterative-development.md#final-subtask-summary) for later JSON session analysis, including resolved gaps and consultation results.
+* Execution must leave a [complete main-conversation summary](iterative-development.md#final-execution-summary) for later JSON session analysis, including resolved gaps and consultation results.
 * Do not assume that local journals, detailed test reports, or separate subagent transcripts remain available after execution. No session-analysis tooling changes are required by this reporting rule.
 * Exclude the CSV registry, its lock, and session metadata under `.context/sessions/` from knowledge retrieval and commits.
 * Stop and PreCompact allow five seconds; Interrupt and SessionEnd retain the host's three-second maximum.

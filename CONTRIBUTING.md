@@ -148,33 +148,30 @@ Before delivery, satisfy these validation and evidence requirements:
 
 ## Workflow
 
-Follow the [work organization model](docs/work-organization.md) for issue levels, responsibilities, and iterative planning when carrying out this workflow:
+Follow the [work organization model](docs/work-organization.md) for issue types and acceptance:
 
-1. Read the Subtask, its Task, and the relevant Epic. For work without an issue, establish the requested outcome and validation expectations directly.
-2. Check prerequisites and current context against the relevant source sections and code. Use accepted decisions and report consequential gaps before dependent work.
-3. Create a branch from current `main` named `change/<topic>` in an additional working tree under `.worktrees/` in the main checkout. Follow [working tree setup](#additional-working-trees).
-4. Deliver one reviewable outcome under the [change requirements](#change-requirements). A diagnostic, research, or documentation Subtask does not require application code changes.
-5. Update affected documentation, contracts, and fixtures.
-6. Select and run checks through the [validation scope matrix](docs/testing/index.md#validation-by-change-scope).
-7. Follow [PR preparation](#prepare-a-pull-request) to prepare the description or publish the requested PR.
+1. Read the issue when one exists. Establish the requested outcome and user acceptance expectations.
+2. Check current sources, decisions, prerequisites, and code. Report consequential gaps before dependent work.
+3. Create a branch and working tree from current `main` as described in [additional working trees](#additional-working-trees).
+4. Deliver the requested outcome, update affected documentation and contracts, and select checks through the [validation scope matrix](docs/testing/index.md#validation-by-change-scope).
+5. Follow [PR preparation](#prepare-a-pull-request) for the requested delivery.
 
 ### Additional working trees
 
-Planning files may be committed under `.plans/` on working branches. Before merging into `main`, remove every tracked entry from `.plans/` in the proposed final tree, including placeholder files. Keep durable requirements in their documentation owners and use commit-pinned links when retaining a branch plan as issue context.
-The [acceptance control](docs/pr-acceptance.md#planning-files) checks this rule for PRs targeting `main` and for pushes to `main`. Git does not normally track empty directories; an absent `.plans/` directory satisfies the rule.
-
-From the main checkout, replace `<topic>` with a name for the change and create the working tree:
+For an issue, use `<number>-<description>` for the branch and working tree. From the main checkout, replace the placeholder with the issue number and a short description:
 
 ```powershell
-git worktree add -b change/<topic> .worktrees/<topic> main
+git worktree add -b <number>-<description> .worktrees/<number>-<description> main
 ```
 
-Run development commands from the new working tree. Git ignores `.worktrees/` in the main checkout, but `git clean -fdx` can delete ignored working trees and their local changes.
+Work in the new tree. Store plans and analyses for the work in `.plans/<number>-<description>/` within that tree. For work without an issue, use a descriptive name in place of the number and description.
 
-After completing the work, remove the working tree from the main checkout:
+Planning files may be committed on a working branch. Remove all tracked entries under `.plans/`, including placeholders, from the final tree of every PR targeting `main`. An absent directory satisfies this rule; the [acceptance control](docs/pr-acceptance.md#planning-files) checks it. Preserve durable requirements in their documentation owners.
+
+Git ignores `.worktrees/` in the main checkout, but `git clean -fdx` can delete ignored working trees and local changes. After completing work, remove the working tree from the main checkout:
 
 ```powershell
-git worktree remove .worktrees/<topic>
+git worktree remove .worktrees/<number>-<description>
 ```
 
 Removing the working tree does not remove its branch.
@@ -184,9 +181,8 @@ Removing the working tree does not remove its branch.
 Use [project-prepare-pr](.agents/skills/project-prepare-pr/SKILL.md) for local descriptions or authorized publication under these contribution requirements:
 
 * Describe what changed, why, and important design choices or consequences.
-* Link the Subtask when one exists and reference its Task for context. Use a closing keyword only when the PR completes that issue's criteria.
-* A Subtask can use several PRs or no PR. Do not close its Task or Epic solely because this PR completes a Subtask.
-* Issue linkage and acceptance checklists remain optional for work without an issue. Subtask instructions must still define observable acceptance criteria.
+* Link the relevant issue when one exists. Use a closing keyword only when the PR completes that issue's criteria.
+* Issue linkage and acceptance checklists remain optional for work without an issue.
 * Record applicable validation evidence in the PR, a related issue, or a durable linked record. No fixed test-status section or command list is required.
 
 ### Acceptance criteria and additional verification
@@ -199,12 +195,7 @@ Verify and record acceptance in this order:
 4. Leave supplied unconfirmed criteria unchecked. Record remaining verification and expected results in the PR, related issue, or linked record.
 5. Keep supplied checklists accurate. Unchecked criteria in a closing-linked issue and any visible unchecked PR task block the acceptance status.
 
-Apply the [completion rules](docs/work-organization.md#completion-and-evidence) at each issue level:
-
-* Close a Subtask only after its outcome and required verification are supported by evidence. A diagnostic result must distinguish confirmed findings from unresolved causes.
-* Evaluate each Task and Epic against its own result and criteria. Completed children alone do not establish acceptance.
-* Keep a Task open for further planning when diagnostic results identify additional work or leave its required result unconfirmed.
-* Change issue status and publish evidence only within authorized GitHub work.
+Confirm each issue's own result and acceptance criteria before closure. Record remaining verification when evidence is incomplete. Change issue status or publish evidence only within authorized GitHub work.
 
 Apply these merge and status constraints:
 
@@ -214,22 +205,7 @@ Apply these merge and status constraints:
 
 ### Promote agreed findings
 
-Use confirmed findings to continue Task planning or define an agreed follow-up through these steps:
-
-1. Review the evidence, distinguish established findings from hypotheses, and define the authorized follow-up scope.
-   Diagnostic results can support further planning before the originating Subtask closes.
-2. Preserve durable requirements and reusable findings in their documentation owners. Link the originating Subtask and relevant results in the follow-up context.
-3. Prepare a Task or Subtask at the appropriate level. Publish it only when authorized; otherwise, return a complete draft.
-4. For authorized publication, verify label availability, apply the level label, and establish and verify the actual parent/sub-issue relationship.
-
-Each follow-up issue must remain usable without the originating conversation or local notes:
-
-* State the problem, relevant context, agreed scope, and exclusions.
-* Link the canonical requirements rather than making the issue their only source.
-* Include acceptance criteria and their validation method, with observable expected results.
-* Preserve supporting findings and unresolved questions with their actual status.
-
-> A reference in the description or a checklist does not establish a parent/sub-issue relationship.
+Use confirmed findings to define an agreed follow-up. Preserve durable requirements in their documentation owners and distinguish confirmed findings from hypotheses. Draft or publish an issue only within authorized scope, using the [work organization model](docs/work-organization.md).
 
 ## Project guidance
 
@@ -249,7 +225,7 @@ Write project text under these requirements:
 * Retain technical ownership terms when they describe resource management or responsibilities.
 * Use the [project terminology](docs/efi/index.md#terminology): EFI for the complete instrument, artificial horizon for attitude indication. Keep technical identifiers consistent with their consumers.
 * Preserve requirements, units, limits, and uncertainty. Distinguish planned behavior, implementation, and confirmed acceptance.
-* Keep supplied accepted plan originals local and verbatim, including their original language. Prepare Subtask instructions in English while preserving accepted requirements and decisions.
+* Keep supplied accepted plan originals local and verbatim, including their original language. Preserve accepted requirements and decisions in local plans.
 * Put feature requirements, presentation, implementation details, and tests on the owning feature page. Keep shared procedures in the testing guide.
 * Link canonical public documentation rather than agent context. Check moved content, links, anchors, and Markdown paragraph boundaries.
 * Use [project-write-content](.agents/skills/project-write-content/SKILL.md) for Markdown structure and examples, including when writing is part of implementation. Explicit project conventions take precedence over conflicting general defaults.
