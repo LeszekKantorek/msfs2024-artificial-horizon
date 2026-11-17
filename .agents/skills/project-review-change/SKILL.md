@@ -33,8 +33,8 @@ Produce assessed findings for an identified implementation, with supporting evid
 * Read applicable owners: `docs/telemetry-contract.md` for field semantics, `docs/efi/` for presentation, `docs/sources/` for acquisition, and `docs/server.md` for delivery and shutdown.
 * Check governing ADRs before challenging intentional boundaries. Retain conflicting requirements for assessment in Step 5.
 * For issue-based work, use [issue and artifact retrieval](../../../.context/repository-instructions.md#read-github-issue-context). Include relevant artifact references and unresolved reads.
-* Prepare the [Subtask handoff](../../../.context/iterative-development.md#accepted-plans-and-handoffs) when applicable. Include accepted decisions, amendments, preserved invariants, validation evidence, and known limitations.
-* Include a governing supplied plan when one exists. State which inputs are absent and use the agreed scope when no Subtask or accepted plan applies.
+* Prepare the [execution context](../../../.context/iterative-development.md#accepted-plans-and-handoffs) when applicable. Include accepted decisions, amendments, preserved invariants, validation evidence, and known limitations.
+* Include a governing supplied plan when one exists. State which inputs are absent and use the agreed scope when no issue or accepted plan applies.
 * Attribute existing validation to its original evidence. Missing checks do not prevent static inspection.
 
 Choose how to perform the review:

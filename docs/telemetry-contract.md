@@ -354,7 +354,7 @@ The fields above define current v1. The [EFI scope](efi/index.md#product-scope-a
 Organize extension requirements and delivery under these rules:
 
 * Keep extension requirements in their feature or contract owner.
-* Plan delivery in the relevant Tasks and Subtasks under the [work organization model](work-organization.md).
+* Plan delivery in the relevant issues under the [work organization model](work-organization.md).
 
 Each feature slice must meet these integration requirements:
 

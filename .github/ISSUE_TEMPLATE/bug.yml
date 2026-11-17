@@ -1,18 +1,14 @@
 name: Bug report
-description: Report incorrect behavior as a Task. A confirmed cause or proposed fix is not required.
+description: Report incorrect behavior and how users can verify the correction.
 title: "[Bug]: "
-labels: ["task", "bug"]
+labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
         If there is nothing to enter in a field, use `N/A`.
 
-        A parent Epic can be linked through GitHub's Relationships control.
-
-        This report is a Task and must meet these requirements:
-
-        * Describe observed behavior separately from suspected causes. A confirmed cause or proposed fix is not required.
+        Describe observed behavior separately from suspected causes. A confirmed cause or proposed fix is not required.
   - type: textarea
     id: environment
     attributes:
@@ -42,7 +38,7 @@ body:
     id: acceptance
     attributes:
       label: Acceptance criteria
-      description: List the observable results of the fix as Markdown checkboxes.
+      description: Describe how an end user can verify the fix and its expected results as Markdown checkboxes.
     validations:
       required: true
   - type: textarea

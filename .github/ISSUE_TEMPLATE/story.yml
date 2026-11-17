@@ -1,0 +1,19 @@
+name: Story
+description: Describe a feature or other result to deliver and how users can accept it.
+title: "[Story]: "
+labels: ["story"]
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired result
+      description: Describe what users need and the result to deliver.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Describe how an end user can check the result, with expected behavior as Markdown checkboxes.
+    validations:
+      required: true

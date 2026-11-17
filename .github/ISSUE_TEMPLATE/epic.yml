@@ -1,5 +1,5 @@
 name: Epic
-description: A project goal and expected result, delivered through Tasks.
+description: A project goal and expected result, delivered through stories and bugs.
 title: "[Epic]: "
 labels: ["epic"]
 body:
@@ -8,7 +8,7 @@ body:
       value: |
         If there is nothing to enter in a field, use `N/A`.
 
-        Tasks can be linked through GitHub's Relationships controls.
+        Related stories and bugs can be linked through GitHub's Relationships controls.
   - type: textarea
     id: goal
     attributes:
@@ -34,7 +34,7 @@ body:
     id: acceptance
     attributes:
       label: Acceptance criteria
-      description: List observable completion conditions and required evidence as Markdown checkboxes. Completed children alone do not establish acceptance.
+      description: List observable completion conditions and required evidence as Markdown checkboxes. Confirm the Epic result independently of related issues.
     validations:
       required: true
   - type: textarea

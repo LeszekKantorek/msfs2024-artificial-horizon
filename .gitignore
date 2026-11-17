@@ -25,7 +25,7 @@ __pycache__/
 *.pyc
 
 # Local work and additional skills
-# .plans/ is intentionally versioned on working branches; acceptance excludes it from main.
+# Local task plans may be versioned on working branches; acceptance excludes them from main.
 /.local/
 /.worktrees/
 # Microsoft SDK artifacts are obtained separately, never versioned.

@@ -14,13 +14,13 @@ Use these owners for repository requirements and procedures:
 
 ## Follow-up findings
 
-Use [finding promotion](../CONTRIBUTING.md#promote-agreed-findings) to continue Task planning from confirmed results or define an agreed follow-up.
+Use [finding promotion](../CONTRIBUTING.md#promote-agreed-findings) to continue planning from confirmed results or define an agreed follow-up.
 
 ## GitHub issue records
 
 ### Read GitHub issue context
 
-Before planning or execution, read the issue and its required parent context:
+Before planning or execution, read the relevant issue and any linked context needed for its outcome:
 
 1. Fetch current issue content, metadata, and relevant comments. Always list artifacts separately, even when the issue response does not mention them.
    Refresh this context for new execution sessions or relevant changes.
@@ -33,7 +33,7 @@ Before planning or execution, read the issue and its required parent context:
    Inspect HTML source without running embedded code.
 4. Compare artifacts with the issue, current contracts, and accepted decisions.
    Resolve consequential conflicts before dependent work. Keep proposals distinct from accepted requirements.
-5. Cite artifact URLs and `updated_at` values in plans and handoffs.
+5. Cite artifact URLs and `updated_at` values in local plans.
 
 List artifacts through a supported reader or the connector's general fetch operation:
 
@@ -47,8 +47,8 @@ Issue maintenance follows these authorization boundaries:
 
 * Do not automatically correct historical or completed issues, including their text, checklists, links, or status.
 * Change historical records only when the user explicitly requests that change.
-* Maintain Epics, Tasks, and Subtasks only within the authorized scope. Planning, publication, and reorganization are separate permissions.
-* Return complete drafts when publication is not authorized. Verify labels and actual parent/sub-issue relationships after authorized publication.
+* Maintain issues only within the authorized scope. Planning, publication, and reorganization are separate permissions.
+* Return complete drafts when publication is not authorized. Verify labels and any relationships created after authorized publication.
 * An open issue is not permission to rewrite it during documentation review.
 * Preserve requirements in their canonical Markdown owner without editing the source issue.
 * Report obsolete links or contradictory statements in historical issues instead of silently repairing them.
@@ -57,7 +57,7 @@ Issue maintenance follows these authorization boundaries:
 Keep records in the owners defined by the [work organization model](../docs/work-organization.md):
 
 * Keep requirements and contracts in documentation.
-* Keep work, unresolved proposals, execution results, and acceptance evidence in Issues.
+* Keep user-facing outcomes and acceptance criteria in issues. Keep agent context, plans, and analyses in the local worktree.
 * Retain execution gaps and consultation details in the main conversation under [execution reporting](iterative-development.md#record-execution-findings).
 * State requirements so they can be understood without opening an issue.
 * Issue links can identify work or supporting evidence. They must not replace the requirement in its documentation owner.
