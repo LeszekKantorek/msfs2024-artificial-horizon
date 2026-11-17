@@ -206,6 +206,19 @@ export async function runAcceptance({ api, repository, baseBranch = 'main', targ
   return report;
 }
 
+// A PR-triggered job reports its own current head. Other events report the full refresh.
+export function acceptanceRunFailed(report, event) {
+  if (!event.pull_request) return report.some(result => result.state !== 'success');
+  const number = event.pull_request.number;
+  const sha = event.pull_request.head?.sha;
+  if (!Number.isSafeInteger(number) || number < 1 || !/^[a-f0-9]{40}$/.test(sha ?? '')) {
+    throw new Error('Invalid pull request event.');
+  }
+  const target = report.find(result => result.prs.includes(number));
+  if (!target) return event.action !== 'closed';
+  return target.sha !== sha || target.state !== 'success';
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     if (!process.env.GITHUB_TOKEN) throw new Error('GITHUB_TOKEN is required.');
@@ -219,6 +232,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     }
     if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY,
       `## Acceptance validation\n\n${report.map(r => `* ${r.prs.length ? `PR ${r.prs.join(', ')}` : `${r.ref} ${r.sha}`}: **${r.state}**\n${r.errors.map(e => `  * ${e}`).join('\n')}`).join('\n')}\n`);
-    if (report.some(result => result.state !== 'success')) process.exitCode = 1;
+    if (acceptanceRunFailed(report, event)) process.exitCode = 1;
   } catch (error) { console.error(error.message); process.exitCode = 1; }
 }
